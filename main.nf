@@ -100,25 +100,60 @@ ch_output_docs_images = file("$baseDir/docs/images/", checkIfExists: true)
 /*
  * Create a channel for input read files
  */
-if (params.input_paths) {
-    if (params.single_end) {
-        Channel
-            .from(params.input_paths)
-            .map { row -> [ row[0], [ file(row[1][0], checkIfExists: true) ] ] }
-            .ifEmpty { exit 1, "params.input_paths was empty - no input files supplied" }
-            .into { ch_read_files_fastqc; ch_read_files_trimming }
-    } else {
-        Channel
-            .from(params.input_paths)
-            .map { row -> [ row[0], [ file(row[1][0], checkIfExists: true), file(row[1][1], checkIfExists: true) ] ] }
-            .ifEmpty { exit 1, "params.input_paths was empty - no input files supplied" }
-            .into { ch_read_files_fastqc; ch_read_files_trimming }
-    }
-} else {
-    Channel
-        .fromFilePairs(params.input, size: params.single_end ? 1 : 2)
-        .ifEmpty { exit 1, "Cannot find any reads matching: ${params.input}\nNB: Path needs to be enclosed in quotes!\nIf this is single-end data, please specify --single_end on the command line." }
-        .into { ch_read_files_fastqc; ch_read_files_trimming }
+// if (params.input_paths) {
+//     if (params.single_end) {
+//         Channel
+//             .from(params.input_paths)
+//             .map { row -> [ row[0], [ file(row[1][0], checkIfExists: true) ] ] }
+//             .ifEmpty { exit 1, "params.input_paths was empty - no input files supplied" }
+//             .into { ch_read_files_fastqc; ch_read_files_trimming }
+//     } else {
+//         Channel
+//             .from(params.input_paths)
+//             .map { row -> [ row[0], [ file(row[1][0], checkIfExists: true), file(row[1][1], checkIfExists: true) ] ] }
+//             .ifEmpty { exit 1, "params.input_paths was empty - no input files supplied" }
+//             .into { ch_read_files_fastqc; ch_read_files_trimming }
+//     }
+// } else {
+//     Channel
+//         .fromFilePairs(params.input, size: params.single_end ? 1 : 2)
+//         .ifEmpty { exit 1, "Cannot find any reads matching: ${params.input}\nNB: Path needs to be enclosed in quotes!\nIf this is single-end data, please specify --single_end on the command line." }
+//         .into { ch_read_files_fastqc; ch_read_files_trimming }
+// }
+
+/*
+ * Create a channel for input files
+ */
+params.covar = "$baseDir/test-datasets/data/data_phenotypes_and_covariates/example1.covar"
+params.pheno = "$baseDir/test-datasets/data/data_phenotypes_and_covariates/example1.pheno"
+params.outdir = "results"
+
+log.info """\
+         GWAS - N F   P I P E L I N E    
+         ===================================
+         covar		  : ${params.covar}
+         pheno        : ${params.pheno}
+         outdir       : ${params.outdir}
+         """
+         .stripIndent()
+
+ 
+/* 
+ * define the `plink` process for association analysis
+ */
+process plink {
+    
+    input:
+	path covar from params.covar
+	path pheno from params.pheno
+     
+    output:
+    path 'output' into plink_ch
+
+    script: 
+    """
+	plink --bfile $covar --pheno $pheno --assoc --out output
+    """
 }
 
 // Header log info
