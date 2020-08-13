@@ -1,4 +1,4 @@
-FROM nfcore/base:dev
+FROM nfcore/base:1.10.2
 LABEL authors="Jesper Gådin" \
       description="Docker image containing all software requirements for the nf-core/gwas pipeline"
 
