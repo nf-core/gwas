@@ -1,15 +1,74 @@
 # nf-core/gwas: Usage
 
+## :warning: Please read this documentation on the nf-core website: [https://nf-co.re/gwas/usage](https://nf-co.re/gwas/usage)
+
+> _Documentation of pipeline parameters is generated automatically from the pipeline schema and can no longer be found in markdown files._
+
 ## Introduction
 
 <!-- TODO nf-core: Add documentation about anything specific to running your pipeline. For general topics, please point to (and add to) the main nf-core website. -->
+
+## Samplesheet input
+
+You will need to create a samplesheet file with information about the samples in your experiment before running the pipeline. Use this parameter to specify its location. It has to be a comma-separated file with 4 columns, and a header row as shown in the examples below.
+
+```bash
+--input '[path to samplesheet file]'
+```
+
+### Multiple replicates
+
+The `group` identifier is the same when you have multiple replicates from the same experimental group, just increment the `replicate` identifier appropriately. The first replicate value for any given experimental group must be 1. Below is an example for a single experimental group in triplicate:
+
+```bash
+group,replicate,fastq_1,fastq_2
+control,1,AEG588A1_S1_L002_R1_001.fastq.gz,AEG588A1_S1_L002_R2_001.fastq.gz
+control,2,AEG588A2_S2_L002_R1_001.fastq.gz,AEG588A2_S2_L002_R2_001.fastq.gz
+control,3,AEG588A3_S3_L002_R1_001.fastq.gz,AEG588A3_S3_L002_R2_001.fastq.gz
+```
+
+### Multiple runs of the same library
+
+The `group` and `replicate` identifiers are the same when you have re-sequenced the same sample more than once (e.g. to increase sequencing depth). The pipeline will concatenate the raw reads before alignment. Below is an example for two samples sequenced across multiple lanes:
+
+```bash
+group,replicate,fastq_1,fastq_2
+control,1,AEG588A1_S1_L002_R1_001.fastq.gz,AEG588A1_S1_L002_R2_001.fastq.gz
+control,1,AEG588A1_S1_L003_R1_001.fastq.gz,AEG588A1_S1_L003_R2_001.fastq.gz
+treatment,1,AEG588A4_S4_L003_R1_001.fastq.gz,AEG588A4_S4_L003_R2_001.fastq.gz
+treatment,1,AEG588A4_S4_L004_R1_001.fastq.gz,AEG588A4_S4_L004_R2_001.fastq.gz
+```
+
+### Full design
+
+A final design file consisting of both single- and paired-end data may look something like the one below. This is for two experimental groups in triplicate, where the last replicate of the `treatment` group has been sequenced twice.
+
+```bash
+group,replicate,fastq_1,fastq_2
+control,1,AEG588A1_S1_L002_R1_001.fastq.gz,AEG588A1_S1_L002_R2_001.fastq.gz
+control,2,AEG588A2_S2_L002_R1_001.fastq.gz,AEG588A2_S2_L002_R2_001.fastq.gz
+control,3,AEG588A3_S3_L002_R1_001.fastq.gz,AEG588A3_S3_L002_R2_001.fastq.gz
+treatment,1,AEG588A4_S4_L003_R1_001.fastq.gz,
+treatment,2,AEG588A5_S5_L003_R1_001.fastq.gz,
+treatment,3,AEG588A6_S6_L003_R1_001.fastq.gz,
+treatment,3,AEG588A6_S6_L004_R1_001.fastq.gz,
+```
+
+| Column         | Description                                                                                                 |
+|----------------|-------------------------------------------------------------------------------------------------------------|
+| `group`        | Group identifier for sample. This will be identical for replicate samples from the same experimental group. |
+| `replicate`    | Integer representing replicate number. Must start from `1..<number of replicates>`.                         |
+| `fastq_1`      | Full path to FastQ file for read 1. File has to be zipped and have the extension ".fastq.gz" or ".fq.gz".   |
+| `fastq_2`      | Full path to FastQ file for read 2. File has to be zipped and have the extension ".fastq.gz" or ".fq.gz".   |
+
+An [example samplesheet](../assets/samplesheet.csv) has been provided with the pipeline.
 
 ## Running the pipeline
 
 The typical command for running the pipeline is as follows:
 
 ```bash
-nextflow run nf-core/gwas --input '*_R{1,2}.fastq.gz' -profile docker
+nextflow run nf-core/gwas --input samplesheet.csv -profile docker
 ```
 
 This will launch the pipeline with the `docker` configuration profile. See below for more information about profiles.
@@ -47,7 +106,7 @@ This version number will be logged in reports when you run the pipeline, so that
 
 Use this parameter to choose a configuration profile. Profiles can give configuration presets for different compute environments.
 
-Several generic profiles are bundled with the pipeline which instruct the pipeline to use software packaged using different methods (Docker, Singularity, Conda) - see below.
+Several generic profiles are bundled with the pipeline which instruct the pipeline to use software packaged using different methods (Docker, Singularity, Podman, Conda) - see below.
 
 > We highly recommend the use of Docker or Singularity containers for full pipeline reproducibility, however when this is not possible, Conda is also supported.
 
@@ -64,8 +123,11 @@ If `-profile` is not specified, the pipeline will run locally and expect all sof
 * `singularity`
   * A generic configuration profile to be used with [Singularity](https://sylabs.io/docs/)
   * Pulls software from Docker Hub: [`nfcore/gwas`](https://hub.docker.com/r/nfcore/gwas/)
+* `podman`
+  * A generic configuration profile to be used with [Podman](https://podman.io/)
+  * Pulls software from Docker Hub: [`nfcore/gwas`](https://hub.docker.com/r/nfcore/gwas/)
 * `conda`
-  * Please only use Conda as a last resort i.e. when it's not possible to run the pipeline with Docker or Singularity.
+  * Please only use Conda as a last resort i.e. when it's not possible to run the pipeline with Docker, Singularity or Podman.
   * A generic configuration profile to be used with [Conda](https://conda.io/docs/)
   * Pulls most software from [Bioconda](https://bioconda.github.io/)
 * `test`
@@ -98,7 +160,7 @@ process {
 
 See the main [Nextflow documentation](https://www.nextflow.io/docs/latest/config.html) for more information.
 
-If you are likely to be running `nf-core` pipelines regularly it may be a good idea to request that your custom config file is uploaded to the `nf-core/configs` git repository. Before you do this please can you test that the config file works with your pipeline of choice using the `-c` parameter (see definition below). You can then create a pull request to the `nf-core/configs` repository with the addition of your config file, associated documentation file (see examples in [`nf-core/configs/docs`](https://github.com/nf-core/configs/tree/master/docs)), and amending [`nfcore_custom.config`](https://github.com/nf-core/configs/blob/master/nfcore_custom.config) to include your custom profile.
+If you are likely to be running `nf-core` pipelines regularly it may be a good idea to request that your custom config file is uploaded to the `nf-core/configs` git repository. Before you do this please can you test that the config file works with your pipeline of choice using the `-c` parameter (see definition above). You can then create a pull request to the `nf-core/configs` repository with the addition of your config file, associated documentation file (see examples in [`nf-core/configs/docs`](https://github.com/nf-core/configs/tree/master/docs)), and amending [`nfcore_custom.config`](https://github.com/nf-core/configs/blob/master/nfcore_custom.config) to include your custom profile.
 
 If you have any questions or issues please send us a message on [Slack](https://nf-co.re/join/slack) on the [`#configs` channel](https://nfcore.slack.com/channels/configs).
 

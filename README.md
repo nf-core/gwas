@@ -1,10 +1,10 @@
 # ![nf-core/gwas](docs/images/nf-core-gwas_logo.png)
 
-**A pipeline for Genome Wide Association Studies**.
+**This is a new skeleton pipeline**.
 
 [![GitHub Actions CI Status](https://github.com/nf-core/gwas/workflows/nf-core%20CI/badge.svg)](https://github.com/nf-core/gwas/actions)
 [![GitHub Actions Linting Status](https://github.com/nf-core/gwas/workflows/nf-core%20linting/badge.svg)](https://github.com/nf-core/gwas/actions)
-[![Nextflow](https://img.shields.io/badge/nextflow-%E2%89%A519.10.0-brightgreen.svg)](https://www.nextflow.io/)
+[![Nextflow](https://img.shields.io/badge/nextflow-%E2%89%A520.04.0-brightgreen.svg)](https://www.nextflow.io/)
 
 [![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg)](https://bioconda.github.io/)
 [![Docker](https://img.shields.io/docker/automated/nfcore/gwas.svg)](https://hub.docker.com/r/nfcore/gwas)
@@ -18,12 +18,12 @@ The pipeline is built using [Nextflow](https://www.nextflow.io), a workflow tool
 
 1. Install [`nextflow`](https://nf-co.re/usage/installation)
 
-2. Install either [`Docker`](https://docs.docker.com/engine/installation/) or [`Singularity`](https://www.sylabs.io/guides/3.0/user-guide/) for full pipeline reproducibility _(please only use [`Conda`](https://conda.io/miniconda.html) as a last resort; see [docs](https://nf-co.re/usage/configuration#basic-configuration-profiles))_
+2. Install any of [`Docker`](https://docs.docker.com/engine/installation/), [`Singularity`](https://www.sylabs.io/guides/3.0/user-guide/) or [`Podman`](https://podman.io/) for full pipeline reproducibility _(please only use [`Conda`](https://conda.io/miniconda.html) as a last resort; see [docs](https://nf-co.re/usage/configuration#basic-configuration-profiles))_
 
 3. Download the pipeline and test it on a minimal dataset with a single command:
 
     ```bash
-    nextflow run nf-core/gwas -profile test,<docker/singularity/conda/institute>
+    nextflow run nf-core/gwas -profile test,<docker/singularity/podman/conda/institute>
     ```
 
     > Please check [nf-core/configs](https://github.com/nf-core/configs#documentation) to see if a custom config file to run nf-core pipelines already exists for your Institute. If so, you can simply use `-profile <institute>` in your command. This will enable either `docker` or `singularity` and set the appropriate execution settings for your local compute environment.
@@ -33,20 +33,20 @@ The pipeline is built using [Nextflow](https://www.nextflow.io), a workflow tool
     <!-- TODO nf-core: Update the example "typical command" below used to run the pipeline -->
 
     ```bash
-    nextflow run nf-core/gwas -profile <docker/singularity/conda/institute> --input '*_R{1,2}.fastq.gz' --genome GRCh37
+    nextflow run nf-core/gwas -profile <docker/singularity/podman/conda/institute> --input samplesheet.csv --genome GRCh37
     ```
 
-See [usage docs](docs/usage.md) for all of the available options when running the pipeline.
+See [usage docs](https://nf-co.re/gwas/usage) for all of the available options when running the pipeline.
 
 ## Documentation
 
-The nf-core/gwas pipeline comes with documentation about the pipeline which you can read at [https://nf-core/gwas/docs](https://nf-core/gwas/docs) or find in the [`docs/` directory](docs).
+The nf-core/gwas pipeline comes with documentation about the pipeline: [usage](https://nf-co.re/gwas/usage) and [output](https://nf-co.re/gwas/output).
 
 <!-- TODO nf-core: Add a brief overview of what the pipeline does and how it works -->
 
 ## Credits
 
-nf-core/gwas was originally written by Jesper Gådin.
+nf-core/gwas was originally written by Abhinav Sharma, Raquel Dias, Alain Coletta.
 
 ## Contributions and Support
 

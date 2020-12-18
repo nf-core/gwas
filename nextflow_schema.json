@@ -1,8 +1,8 @@
 {
-    "$schema": "https://json-schema.org/draft-07/schema",
+    "$schema": "http://json-schema.org/draft-07/schema",
     "$id": "https://raw.githubusercontent.com/nf-core/gwas/master/nextflow_schema.json",
     "title": "nf-core/gwas pipeline parameters",
-    "description": "A pipeline for Genome Wide Association Studies",
+    "description": "This is a new skeleton pipeline",
     "type": "object",
     "definitions": {
         "input_output_options": {
@@ -16,15 +16,9 @@
             "properties": {
                 "input": {
                     "type": "string",
-                    "fa_icon": "fas fa-dna",
-                    "description": "Input FastQ files.",
-                    "help_text": "Use this to specify the location of your input FastQ files. For example:\n\n```bash\n--input 'path/to/data/sample_*_{1,2}.fastq'\n```\n\nPlease note the following requirements:\n\n1. The path must be enclosed in quotes\n2. The path must have at least one `*` wildcard character\n3. When using the pipeline with paired end data, the path must use `{1,2}` notation to specify read pairs.\n\nIf left unspecified, a default pattern is used: `data/*{1,2}.fastq.gz`"
-                },
-                "single_end": {
-                    "type": "boolean",
-                    "description": "Specifies that the input is single-end reads.",
-                    "fa_icon": "fas fa-align-center",
-                    "help_text": "By default, the pipeline expects paired-end data. If you have single-end data, you need to specify `--single_end` on the command line when you launch the pipeline. A normal glob pattern, enclosed in quotation marks, can then be used for `--input`. For example:\n\n```bash\n--single_end --input '*.fastq'\n```\n\nIt is not possible to run a mixture of single-end and paired-end files in one run."
+                    "description": "Path to comma-separated file containing information about the samples in the experiment.",
+                    "help_text": "You will need to create a samplesheet with information about the samples in your experiment before running the pipeline. Use this parameter to specify its location. It has to be a comma-separated file with 4 columns, and a header row. See [usage docs](https://nf-co.re/gwas/docs/usage#--input).",
+                    "fa_icon": "fas fa-file-csv"
                 },
                 "outdir": {
                     "type": "string",
@@ -101,7 +95,7 @@
                         "link",
                         "copy",
                         "copyNoFollow",
-                        "mov"
+                        "move"
                     ]
                 },
                 "name": {

@@ -1,5 +1,5 @@
-FROM nfcore/base:1.10.2
-LABEL authors="Jesper Gådin" \
+FROM nfcore/base:dev
+LABEL authors="Abhinav Sharma, Raquel Dias, Alain Coletta" \
       description="Docker image containing all software requirements for the nf-core/gwas pipeline"
 
 # Install the conda environment
