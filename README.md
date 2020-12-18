@@ -44,6 +44,61 @@ The nf-core/gwas pipeline comes with documentation about the pipeline: [usage](h
 
 <!-- TODO nf-core: Add a brief overview of what the pipeline does and how it works -->
 
+<!-- From Raquel Genomics imputaiton pipeline-->
+
+
+A tool for imputation of genotype array datasets from dbGaP. The Genotype Imputation Pipeline consists of the following steps:
+
+0. Identify input genome build version automatically
+1. Lift the input to build GRCh37 (hg19)
+2. Quality control 1: LD-based fix of strand flips, fix strand swaps, filter variants by missingness
+3. Split samples by ancestry
+4. Quality control 2: filter samples by missingness, filter variants by HWE
+5. Phase
+6. Impute
+
+
+## Dependencies
+The pipeline was tested in garibaldi using the following required software and packages:
+
+- R v3.5.1
+- vcftools v0.1.14
+- PLINK v1.9
+- PLINK v2.00a3LM 64-bit Intel
+- samtools v1.9
+- GenotypeHarmonizer v1.4.20
+- ADMIXTURE
+- Eagle v2.4
+- Minimac4
+- liftOver
+
+## How to run
+
+
+### Step 0: Check genome build and select chain file
+
+
+Where:
+- myinput is the full path to the input genotype array dataset in either vcf or vcf.gz format
+- myoutput is the full path to save the output of this step
+- gz (gz=yes or gz=no) is whether the input file is either vcf or vcf.gz format
+
+The output file will have the sufix *.BuildChecked
+
+### Step 1: Lifeover input genotype array to GRCh37 build
+
+### Step 2: LD-based fix of strand flips, fix strand swaps and mismatching alleles, and initial quality control (90% missingnes per variant)
+
+### Step 3: Estimate ancestry and split samples by ancestry
+
+### Step 4: 2nd quality control
+
+### Step 5: Phasing
+
+### Step 6: Imputation and post-imputation quality control
+
+
+
 ## Credits
 
 nf-core/gwas was originally written by Abhinav Sharma, Raquel Dias, Alain Coletta.
