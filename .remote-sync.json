@@ -1,0 +1,16 @@
+{
+  "transport": "scp",
+  "hostname": "65.21.0.173",
+  "port": 22,
+  "username": "root",
+  "keyfile": "/Users/alaincoletta/.ssh/id_rsa",
+  "target": "/root/gwas",
+  "ignore": [
+    ".remote-sync.json",
+    ".git/**",
+    ".ipynb_checkpoints/**"
+  ],
+  "watch": [
+    "/"
+  ]
+}
