@@ -1,4 +1,4 @@
-FROM nfcore/base:1.13.3
+FROM nfcore/base:1.14
 LABEL authors="Abhinav Sharma, Raquel Dias, Alain Coletta." \
       description="Docker image containing all software requirements for the nf-core/gwas pipeline"
 
