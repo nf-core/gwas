@@ -8,7 +8,20 @@
             },
             "multiqc": {
                 "git_sha": "e937c7950af70930d1f34bb961403d9d2aa81c7d"
+            },
+            "tabix/tabix": {
+                "git_sha": "e937c7950af70930d1f34bb961403d9d2aa81c7d"
+            },
+            "tabix/bgzip": {
+                "git_sha": "e937c7950af70930d1f34bb961403d9d2aa81c7d"
+            },
+            "bcftools/merge": {
+                "git_sha": "e937c7950af70930d1f34bb961403d9d2aa81c7d"
+            },
+            "vcftools": {
+                "git_sha": "e937c7950af70930d1f34bb961403d9d2aa81c7d"
             }
         }
     }
 }
+
