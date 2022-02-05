@@ -64,7 +64,7 @@ The nf-core/gwas pipeline comes with documentation about the pipeline [usage](ht
 
 ## Credits
 
-nf-core/gwas was originally written by Abhinav Sharma, Raquel Dias, Alain Coletta..
+nf-core/gwas was originally written by Abhinav Sharma (@abhi18av), Davi Josué Marcon (@Mxrcon), Raquel Dias.
 
 We thank the following people for their extensive assistance in the development of this pipeline:
 
