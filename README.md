@@ -28,7 +28,7 @@ On release, automated continuous integration tests run the pipeline on a full-si
 
 ## Pipeline summary
 
-<!-- TODO nf-core: Fill in short bullet-pointed list of the default steps in the pipeline -->
+<!-- TODO nf-core: Fill in short bullet-pointed list of the default steps in the pipeline. -->
 
 1. Read QC ([`FastQC`](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/))
 2. Present QC for raw reads ([`MultiQC`](http://multiqc.info/))
@@ -66,7 +66,7 @@ The nf-core/gwas pipeline comes with documentation about the pipeline [usage](ht
 
 ## Credits
 
-nf-core/gwas was originally written by Abhinav Sharma, Raquel Dias, Alain Coletta..
+nf-core/gwas was originally written by Abhinav Sharma (@abhi18av), Davi Josué Marcon (@Mxrcon), Raquel Dias.
 
 We thank the following people for their extensive assistance in the development of this pipeline:
 
