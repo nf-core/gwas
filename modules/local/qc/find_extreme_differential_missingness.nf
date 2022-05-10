@@ -1,10 +1,12 @@
 // Find those SNPs that have diff missingness in cases & controls
 process findSnpExtremeDifferentialMissingness {
   memory other_mem_req
-  input:
+
+    input:
     path(clean_missing)
   echo true
-  output:
+
+    output:
     tuple val(base), path(failed), emit: bad_snps_ch
     path(failed), emit: report_diffmiss_ch
     path(failed), emit: skewsnps_ch

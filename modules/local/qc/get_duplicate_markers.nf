@@ -9,9 +9,9 @@ process getDuplicateMarkers {
   publishDir params.output_dir, pattern: "*dups", \
              overwrite:true, mode:'copy'
   input:
-    path(inpfname) from checked_input.bim_ch
+    path(inpfname)
   output:
-    path("${base}.dups") into duplicates_ch
+    path("${base}.dups"), emit: duplicates_ch
   script:
      base     = inpfname.baseName
      outfname = "${base}.dups"

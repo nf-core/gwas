@@ -10,15 +10,14 @@
 process removeDuplicateSNPs {
   memory plink_mem_req
   input:
-   tuple file(bed), file(bim), file(fam) from checked_input.raw_ch
-   file(dups) from  duplicates_ch
+   tuple path(bed), path(bim), path(fam)
+   path(dups)
 
   output:
-    tuple  file("${nodup}.bed"),file("${nodup}.bim"),file("${nodup}.fam")\
-    into (qc1_ch,qc1B_ch,qc1C_ch,qc1D_ch,qc1E_ch)
-    tuple file("${base}.orig"), file(dups) into report_dups_ch
-    file ("${nodup}.lmiss") into snp_miss_ch
-    file ("${nodup}.imiss") into (ind_miss_ch1, ind_miss_ch2)
+    tuple  path("${nodup}.bed"), path("${nodup}.bim"), path("${nodup}.fam"), emit: qc1_ch
+    tuple file("${base}.orig"), path(dups), emit: report_dups_ch
+    path("${nodup}.lmiss"), emit: snp_miss_ch
+    path("${nodup}.imiss"), emit: ind_miss_ch1
   script:
    base    = bed.baseName
    nodup   = "${base}-nd"

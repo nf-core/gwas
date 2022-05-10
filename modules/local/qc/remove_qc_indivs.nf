@@ -1,14 +1,13 @@
 process removeQCIndivs {
   memory plink_mem_req
   input:
-    path(f_miss_het)     from failed_miss_het
-    path(rel_indivs)     from related_indivs_ch1
-    path (f_sex_check_f) from failed_sex_ch1
-    path (poorgc)        from poorgc10_ch
-    tuple path(bed), path(bim), path(fam) from qc2D_ch
+    path(f_miss_het)
+    path(rel_indivs)
+    path (f_sex_check_f)
+    path (poorgc)
+    tuple path(bed), path(bim), path(fam)
   output:
-     path("${out}.{bed,bim,fam}") into\
-        (qc3A_ch, qc3B_ch)
+    path("${out}.{bed,bim,fam}"), emit: qc3A_ch
   script:
    base = bed.baseName
    out  = "${base}-c".replace(".","_")

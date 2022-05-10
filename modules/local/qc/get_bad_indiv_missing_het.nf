@@ -3,9 +3,9 @@
 process getBadIndivsMissingHet {
   memory other_mem_req
   input:
-    tuple path(het), path(imiss) from hetero_check_ch
+    tuple path(het), path(imiss)
   output:
-    path(outfname) into (failed_miss_het, report_misshetremf_ch)
+    path(outfname), emit: failed_miss_het
   publishDir params.output_dir, overwrite:true, mode:'copy', pattern: "*.txt"
   script:
     base = het.baseName
