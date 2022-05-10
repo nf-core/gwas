@@ -4,10 +4,10 @@ process compPCA {
    cpus max_plink_cores
    memory plink_mem_req
    input:
-      file plinks from qc2A_ch
+    path(plinks)
    output:
-      tuple file ("${prune}.eigenval"), file("${prune}.eigenvec") into (pcares, pcares1)
-      tuple file ("${prune}.bed"), file("${prune}.bim"), file("${prune}.fam") into out_only_pcs_ch
+    tuple path("${prune}.eigenval"), path("${prune}.eigenvec"), emit: pcares
+    tuple path("${prune}.bed"), path("${prune}.bim"), path("${prune}.fam"), emit: out_only_pcs_ch
    publishDir "${params.output_dir}/pca", overwrite:true, mode:'copy',pattern: "${prune}*"
    script:
       base = plinks[0].baseName

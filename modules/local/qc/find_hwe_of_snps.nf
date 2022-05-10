@@ -3,9 +3,9 @@
 process findHWEofSNPs {
   memory other_mem_req
   input:
-     file hwe from hwe_scores_ch
+     path hwe from hwe_scores_ch
   output:
-     file output  into unaff_hwe
+     path output  into unaff_hwe
 
   script:
     base   = hwe.baseName.replace(".","_")

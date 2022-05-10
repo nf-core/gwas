@@ -2,12 +2,12 @@
 process findSnpExtremeDifferentialMissingness {
   memory other_mem_req
   input:
-    file clean_missing from clean_diff_miss_ch2
+    path(clean_missing)
   echo true
   output:
-     tuple val(base), file(failed) into bad_snps_ch
-     file(failed) into report_diffmiss_ch
-     file(failed) into skewsnps_ch
+    tuple val(base), path(failed), emit: bad_snps_ch
+    path(failed), emit: report_diffmiss_ch
+    path(failed), emit: skewsnps_ch
   script:
     cut_diff_miss=params.cut_diff_miss
     missing = clean_missing

@@ -2,10 +2,10 @@ process convertInVcf {
    memory plink_mem_req
    cpus max_plink_cores
    input :
-     tuple file(bed), file(bim), file(fam), file (log) from qc4A_ch
+     tuple path(bed), path(bim), path(fam), path (log) from qc4A_ch
    publishDir params.output_dir, overwrite:true, mode:'copy'
    output :
-    file("${base}.vcf")
+    path("${base}.vcf")
    script:
      base= bed.baseName
      """

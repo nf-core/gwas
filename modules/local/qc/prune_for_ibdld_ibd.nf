@@ -6,11 +6,11 @@ if (params.high_ld_regions_fname != "") {
     cpus max_plink_cores
     memory plink_mem_req
     input:
-      file plinks from qc2B_ch
-      file ldreg  from ldreg_ch
+      path plinks from qc2B_ch
+      path ldreg  from ldreg_ch
       publishDir params.output_dir, overwrite:true, mode:'copy'
     output:
-      file "${outf}.genome" into (find_rel_ch,batch_rel_ch)
+      path "${outf}.genome" into (find_rel_ch,batch_rel_ch)
     script:
       base   = plinks[0].baseName
       outf   =  base.replace(".","_")
@@ -28,10 +28,10 @@ if (params.high_ld_regions_fname != "") {
     cpus max_plink_cores
     memory plink_mem_req
     input:
-      file plinks from qc2B_ch
+      path plinks from qc2B_ch
       publishDir params.output_dir, overwrite:true, mode:'copy'
     output:
-      file "${outf}.genome" into (find_rel_ch,batch_rel_ch)
+      path "${outf}.genome" into (find_rel_ch,batch_rel_ch)
     script:
       base   = plinks[0].baseName
       outf   =  base.replace(".","_")

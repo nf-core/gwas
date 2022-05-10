@@ -5,14 +5,14 @@
 process identifyIndivDiscSexinfo {
   memory plink_mem_req
   input:
-     file(plinks) from qc1B_ch
+     path(plinks) from qc1B_ch
 
   publishDir params.output_dir, overwrite:true, mode:'copy'
 
   output:
-     file(logfile) into  (report_failed_sex_ch, failed_sex_ch1)
-     tuple file(imiss), file(lmiss),file(sexcheck_report) into batchrep_missing_ch
-     file("${base}.hwe") into hwe_stats_ch
+     path(logfile) into  (report_failed_sex_ch, failed_sex_ch1)
+     tuple path(imiss), path(lmiss),path(sexcheck_report) into batchrep_missing_ch
+     path("${base}.hwe") into hwe_stats_ch
   validExitStatus 0, 1
   script:
     base = plinks[0].baseName

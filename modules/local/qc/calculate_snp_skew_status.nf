@@ -5,11 +5,11 @@ process calculateSnpSkewStatus {
   memory plink_mem_req
   cpus max_plink_cores
   input:
-    file(plinks) from qc3A_ch.combine(cc_ch)
+    path(plinks) from qc3A_ch.combine(cc_ch)
   output:
-    file "${base}.missing" into clean_diff_miss_plot_ch1
-    file mperm into clean_diff_miss_ch2
-    file "${base}.hwe" into hwe_scores_ch
+    path "${base}.missing" into clean_diff_miss_plot_ch1
+    path mperm into clean_diff_miss_ch2
+    path "${base}.hwe" into hwe_scores_ch
   script:
    base  = plinks[0].baseName
    out   = base.replace(".","_")

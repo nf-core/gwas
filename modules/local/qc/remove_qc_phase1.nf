@@ -1,11 +1,11 @@
 process removeQCPhase1 {
   memory plink_mem_req
   input:
-    tuple file(bed), file(bim), file(fam) from qc1_ch
+    tuple path(bed), path(bim), path(fam) from qc1_ch
   publishDir params.output_dir, overwrite:true, mode:'copy'
   output:
-    file("${output}*.{bed,bim,fam}") into (qc2A_ch,qc2B_ch,qc2C_ch,qc2D_ch)
-     tuple file("qc1.out"), file("${output}.irem") into report_qc1_ch
+    path("${output}*.{bed,bim,fam}") into (qc2A_ch,qc2B_ch,qc2C_ch,qc2D_ch)
+     tuple path("qc1.out"), path("${output}.irem") into report_qc1_ch
   script:
      base=bed.baseName
      output = "${base}-c".replace(".","_")
