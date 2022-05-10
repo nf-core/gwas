@@ -5,7 +5,8 @@ process compPCA {
    memory plink_mem_req
    input:
     path(plinks)
-   output:
+
+    output:
     tuple path("${prune}.eigenval"), path("${prune}.eigenvec"), emit: pcares
     tuple path("${prune}.bed"), path("${prune}.bim"), path("${prune}.fam"), emit: out_only_pcs_ch
    publishDir "${params.output_dir}/pca", overwrite:true, mode:'copy',pattern: "${prune}*"

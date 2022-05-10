@@ -1,9 +1,9 @@
 process getInitMAF {
   memory plink_mem_req
   input:
-     path(plink) from qc1C_ch
+     path(plink)
   output:
-     path("${newbase}.frq") into init_freq_ch
+    path("${newbase}.frq"), emit: init_freq_ch
   script:
     base = plink[0].baseName
     newbase = base.replace(".","_")

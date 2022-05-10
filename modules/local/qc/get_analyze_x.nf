@@ -7,9 +7,9 @@ if (extrasexinfo == "--must-have-sex") {
    process getX {
      memory other_mem_req
      input:
-       path(plink) from qc1D_ch
+       path(plink)
       output:
-       path("X*") into X_chr_ch
+        path("X*"),emit: X_chr_ch
       script:
       base = plink[0].baseName
       """
@@ -34,9 +34,9 @@ if (extrasexinfo == "--must-have-sex") {
    process analyseX {
      memory other_mem_req
      input:
-       path(xchr) from X_chr_ch
+       path(xchr)
      output:
-       path(out) into x_analy_res_ch // batchReport
+        path(out), emit: x_analy_res_ch // batchReport
      script:
 	x = xchr[0].baseName
 	out = "x.pkl"
