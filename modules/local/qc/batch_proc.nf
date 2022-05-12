@@ -17,10 +17,10 @@ process batchProc {
     tuple path("*.csv"), path("*pdf"), emit: report_batch_aux_ch // need to stage
 
   script:
-    phenotype = "pheno.phe"
-    batch = "batch.phe"
-    base = eigenval.baseName
-    batch_col = params.batch_col
-    pheno_col = params.pheno_col
+    def phenotype = "pheno.phe"
+    def batch = "batch.phe"
+    def base = eigenval.baseName
+    def batch_col = params.batch_col
+    def pheno_col = params.pheno_col
     template "batchReport.py"
 }
