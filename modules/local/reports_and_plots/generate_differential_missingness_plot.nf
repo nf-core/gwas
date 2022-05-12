@@ -1,14 +1,17 @@
 process generateDifferentialMissingnessPlot {
    memory other_mem_req
+
    input:
-     file clean_missing from clean_diff_miss_plot_ch1
-   publishDir params.output_dir, overwrite:true, mode:'copy', pattern: "*.pdf"
+     file clean_missing
+
    output:
-      file output into report_diffmissP_ch
+      file output
+
    script:
-       input = clean_missing
-       base  = clean_missing.baseName.replace(".","_").replace("-nd","")
-       output= "${base}-diff-snpmiss_plot.pdf"
+       def input = clean_missing
+       def base  = clean_missing.baseName.replace(".","_").replace("-nd","")
+       def output= "${base}-diff-snpmiss_plot.pdf"
+
        template "diffMiss.py"
 
  }

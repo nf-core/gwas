@@ -4,22 +4,24 @@
  */
 process identifyIndivDiscSexinfo {
   memory plink_mem_req
+  validExitStatus 0, 1
+
   input:
      path(plinks)
 
-  publishDir params.output_dir, overwrite:true, mode:'copy'
 
   output:
     path(logfile),emit:  (report_failed_sex_ch, failed_sex_ch1)
     tuple path(imiss), path(lmiss),path(sexcheck_report),emit: batchrep_missing_ch
     path("${base}.hwe"), emit: hwe_stats_ch
-  validExitStatus 0, 1
+
   script:
-    base = plinks[0].baseName
-    logfile= "${base}.badsex"
-    sexcheck_report = "${base}.sexcheck"
-    imiss  = "${base}.imiss"
-    lmiss  = "${base}.lmiss"
+    def base = plinks[0].baseName
+    def logfile= "${base}.badsex"
+    def sexcheck_report = "${base}.sexcheck"
+    def imiss  = "${base}.imiss"
+    def lmiss  = "${base}.lmiss"
+
     if (params.sexinfo_available == true)
     """
        plink $K --bfile $base --hardy --check-sex $f_hi_female $f_lo_male --missing  --out $base

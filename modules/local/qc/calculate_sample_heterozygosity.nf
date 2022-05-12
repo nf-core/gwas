@@ -4,13 +4,16 @@ process calculateSampleHeterozygosity {
       path(nodups)
 
    publishDir params.output_dir, overwrite:true, mode:'copy'
+
    output:
     tuple path("${hetf}.het"), path("${hetf}.imiss"), emit: hetero_check_ch
     path("${hetf}.imiss"), emit: missing_stats_ch
+
    script:
-      base = nodups[0].baseName
-      hetf = "${base}".replace(".","_")
-   """
-     plink --bfile $base  $sexinfo --het --missing  --out $hetf
-   """
+      def base = nodups[0].baseName
+      def hetf = "${base}".replace(".","_")
+
+    """
+        plink --bfile $base  $sexinfo --het --missing  --out $hetf
+    """
 }

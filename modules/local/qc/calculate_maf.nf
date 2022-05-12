@@ -1,5 +1,6 @@
 process calculateMaf {
   memory plink_mem_req
+
   input:
     tuple  path(bed), path(bim), path(fam), path(log)
 

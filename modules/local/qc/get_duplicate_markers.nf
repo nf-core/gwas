@@ -6,14 +6,16 @@
  */
 process getDuplicateMarkers {
   memory other_mem_req
-  publishDir params.output_dir, pattern: "*dups", \
-             overwrite:true, mode:'copy'
+
   input:
     path(inpfname)
+
   output:
     path("${base}.dups"), emit: duplicates_ch
+
   script:
-     base     = inpfname.baseName
-     outfname = "${base}.dups"
+     def base     = inpfname.baseName
+     def outfname = "${base}.dups"
+
      template "dups.py"
 }

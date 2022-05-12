@@ -1,16 +1,20 @@
 process drawPCA {
     memory other_mem_req
+    publishDir params.output_dir, overwrite:true, mode:'copy',pattern: "*.pdf"
+
     input:
-      tuple file(eigvals), file(eigvecs) from pcares
-      file cc from cc2_ch
+      tuple file(eigvals), file(eigvecs)
+      file(cc)
+
     output:
       tuple  file ("eigenvalue.pdf"), file(output) into report_pca_ch
-    publishDir params.output_dir, overwrite:true, mode:'copy',pattern: "*.pdf"
+
     script:
-      base=eigvals.baseName
-      cc_fname = params.case_control
+      def base=eigvals.baseName
+      def cc_fname = params.case_control
       // also relies on "col" defined above
-      output="${base}-pca".replace(".","_")+".pdf"
+      def output="${base}-pca".replace(".","_")+".pdf"
+
       template "drawPCA.py"
 
 }

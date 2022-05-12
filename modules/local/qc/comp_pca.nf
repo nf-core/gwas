@@ -3,13 +3,15 @@
 process compPCA {
    cpus max_plink_cores
    memory plink_mem_req
-   input:
-    path(plinks)
+   publishDir "${params.output_dir}/pca", overwrite:true, mode:'copy',pattern: "${prune}*"
 
-    output:
+   input:
+        path(plinks)
+
+   output:
     tuple path("${prune}.eigenval"), path("${prune}.eigenvec"), emit: pcares
     tuple path("${prune}.bed"), path("${prune}.bim"), path("${prune}.fam"), emit: out_only_pcs_ch
-   publishDir "${params.output_dir}/pca", overwrite:true, mode:'copy',pattern: "${prune}*"
+
    script:
       base = plinks[0].baseName
       prune= "${base}-prune".replace(".","_")

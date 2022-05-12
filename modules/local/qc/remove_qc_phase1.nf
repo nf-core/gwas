@@ -1,14 +1,17 @@
 process removeQCPhase1 {
   memory plink_mem_req
+
   input:
     tuple path(bed), path(bim), path(fam)
-  publishDir params.output_dir, overwrite:true, mode:'copy'
+
   output:
     path("${output}*.{bed,bim,fam}"), emit: qc2A_ch
     tuple path("qc1.out"), path("${output}.irem"),emit: report_qc1_ch
+
   script:
-     base=bed.baseName
-     output = "${base}-c".replace(".","_")
+     def base=bed.baseName
+     def output = "${base}-c".replace(".","_")
+
      """
      # remove really realy bad SNPs and really bad individuals
      plink $K --autosome --bfile $base $sexinfo --mind 0.1 --geno 0.1 --make-bed --out temp1

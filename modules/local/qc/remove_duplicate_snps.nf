@@ -9,6 +9,7 @@
 
 process removeDuplicateSNPs {
   memory plink_mem_req
+
   input:
    tuple path(bed), path(bim), path(fam)
    path(dups)
@@ -18,9 +19,10 @@ process removeDuplicateSNPs {
     tuple file("${base}.orig"), path(dups), emit: report_dups_ch
     path("${nodup}.lmiss"), emit: snp_miss_ch
     path("${nodup}.imiss"), emit: ind_miss_ch1
+
   script:
-   base    = bed.baseName
-   nodup   = "${base}-nd"
+   def base    = bed.baseName
+   def nodup   = "${base}-nd"
    """
     plink $K --bfile $base $sexinfo $extrasexinfo --exclude $dups --missing --make-bed --out $nodup
     wc -l ${base}.bim > ${base}.orig

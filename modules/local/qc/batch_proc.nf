@@ -1,5 +1,6 @@
 process batchProc {
   memory plink_mem_req
+
   input:
     tuple path(eigenval), path(eigenvec)
     tuple path(imiss), path(lmiss), path(sexcheck_report)
@@ -8,11 +9,13 @@ process batchProc {
     path(genome)       // pruneForIBD
     path(pkl)        // analyseX
     path(rem_indivs) // findRel
+
   publishDir params.output_dir, pattern: "*{csv,pdf}", \
              overwrite:true, mode:'copy'
   output:
     path("${base}-batch.tex"),emit: report_batch_report_ch
     tuple path("*.csv"), path("*pdf"), emit: report_batch_aux_ch // need to stage
+
   script:
     phenotype = "pheno.phe"
     batch = "batch.phe"
