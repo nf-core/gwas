@@ -7,7 +7,7 @@
  *   qc.log log file
  */
 
-process removeDuplicateSNPs {
+process remove_duplicate_snps {
   memory plink_mem_req
 
   input:

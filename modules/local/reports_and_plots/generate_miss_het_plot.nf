@@ -1,4 +1,4 @@
-process generateMissHetPlot {
+process generate_miss_het_plot {
   memory other_mem_req
   publishDir params.output_dir, overwrite:true, mode:'copy', pattern: "*.pdf"
 

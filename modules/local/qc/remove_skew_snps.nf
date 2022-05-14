@@ -1,4 +1,4 @@
-process removeSkewSnps {
+process remove_skew_snps {
 
   memory plink_mem_req
 

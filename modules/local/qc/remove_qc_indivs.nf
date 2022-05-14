@@ -1,4 +1,4 @@
-process removeQCIndivs {
+process remove_qc_indivs {
   memory plink_mem_req
 
   input:

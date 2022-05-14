@@ -1,6 +1,6 @@
 // run script to find a tuple of individuals we can remove to ensure no relatedness
 //  Future - perhaps replaced with Primus
-process findRelatedIndiv {
+process find_related_indiv {
   memory other_mem_req
   publishDir params.output_dir, overwrite:true, mode:'copy'
 

@@ -1,4 +1,4 @@
-process convertInVcf {
+process convert_in_vcf {
    memory plink_mem_req
    cpus max_plink_cores
    publishDir params.output_dir, overwrite:true, mode:'copy'

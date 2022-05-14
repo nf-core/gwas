@@ -1,4 +1,4 @@
-process generateIndivMissingnessPlot {
+process generate_indiv_missingness_plot {
   memory other_mem_req
   publishDir params.output_dir, overwrite:true, mode:'copy', pattern: "*.pdf"
 

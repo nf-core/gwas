@@ -1,4 +1,4 @@
-process generateMafPlot {
+process generate_maf_plot {
   memory other_mem_req
 
   input:

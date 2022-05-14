@@ -1,5 +1,5 @@
 // Find those who have bad heterozygosity
-process getBadIndivsMissingHet {
+process get_bad_indivs_missing_het {
   memory other_mem_req
   publishDir params.output_dir, overwrite:true, mode:'copy', pattern: "*.txt"
 

@@ -1,4 +1,4 @@
-process removeQCPhase1 {
+process remove_qc_phase1 {
   memory plink_mem_req
 
   input:

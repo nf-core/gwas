@@ -1,7 +1,7 @@
 mperm_header=" CHR                               SNP         EMP1         EMP2 "
 
 // Find differential missingness between cases and controls; also compute HWE scores
-process calculateSnpSkewStatus {
+process calculate_snp_skew_status {
   memory plink_mem_req
   cpus max_plink_cores
 

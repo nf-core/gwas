@@ -1,17 +1,17 @@
-process calculateMaf {
+process calculate_maf {
   memory plink_mem_req
+  publishDir params.output_dir, overwrite:true, mode:'copy', pattern: "*.frq"
 
   input:
     tuple  path(bed), path(bim), path(fam), path(log)
 
-  publishDir params.output_dir, overwrite:true, mode:'copy', pattern: "*.frq"
 
   output:
     path "${base}.frq",emit: maf_plot_ch
 
   script:
-    base = bed.baseName
-    out  = base.replace(".","_")
+    def base = bed.baseName
+    def out  = base.replace(".","_")
     """
       plink --bfile $base $sexinfo  --freq --out $out
     """

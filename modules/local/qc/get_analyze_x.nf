@@ -3,7 +3,7 @@ missingness = [0.01,0.03,0.05]  // this is used by one of the templates
 if (extrasexinfo == "--must-have-sex") {
 
    /* Detailed analysis of X-chromosome */
-   process getX {
+   process get_x {
 
      memory other_mem_req
 
@@ -35,7 +35,7 @@ if (extrasexinfo == "--must-have-sex") {
 
 
 
-   process analyseX {
+   process analyse_x {
      memory other_mem_req
      input:
        path(xchr)

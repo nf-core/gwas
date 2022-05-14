@@ -1,4 +1,4 @@
-process generateDifferentialMissingnessPlot {
+process generate_differential_missingness_plot {
    memory other_mem_req
 
    input:

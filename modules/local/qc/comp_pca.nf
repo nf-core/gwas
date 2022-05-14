@@ -1,6 +1,6 @@
 // We do PCA on qc2 data because relatively few SNPs and individuals will be removed later and
 // this is an expensive operation so we start early. Similarly for computing relatedness
-process compPCA {
+process comp_pca {
    cpus max_plink_cores
    memory plink_mem_req
    publishDir "${params.output_dir}/pca", overwrite:true, mode:'copy',pattern: "${prune}*"

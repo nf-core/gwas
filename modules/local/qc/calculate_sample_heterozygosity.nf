@@ -1,9 +1,10 @@
-process calculateSampleHeterozygosity {
+process calculate_sample_heterozygosity {
    memory plink_mem_req
+   publishDir params.output_dir, overwrite:true, mode:'copy'
+
    input:
       path(nodups)
 
-   publishDir params.output_dir, overwrite:true, mode:'copy'
 
    output:
     tuple path("${hetf}.het"), path("${hetf}.imiss"), emit: hetero_check_ch

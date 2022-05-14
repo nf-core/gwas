@@ -2,7 +2,7 @@ if (params.high_ld_regions_fname != "") {
 
   ldreg_ch=Channel.fromPath(params.high_ld_regions_fname)
 
-  process pruneForIBDLD {
+  process prune_for_ibdld {
     cpus max_plink_cores
     memory plink_mem_req
 
@@ -27,7 +27,7 @@ if (params.high_ld_regions_fname != "") {
   }
 } else {
 
-  process pruneForIBD {
+  process prune_for_ibd {
     cpus max_plink_cores
     memory plink_mem_req
     publishDir params.output_dir, overwrite:true, mode:'copy'

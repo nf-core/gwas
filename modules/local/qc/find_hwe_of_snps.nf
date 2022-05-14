@@ -1,5 +1,5 @@
 // Find HWE scores of each SNP
-process findHWEofSNPs {
+process find_hwe_of_snps {
   memory other_mem_req
 
   input:

@@ -1,7 +1,7 @@
 repnames = ["dups","cleaned","misshet","mafpdf","snpmiss","indmisspdf","failedsex","misshetremf","diffmissP","diffmiss","pca","hwepdf","related","inpmd5","outmd5","batch"]
 
 
-process produceReports {
+process produce_reports {
   memory other_mem_req
   label 'latex'
 

@@ -1,4 +1,4 @@
-process generateHwePlot {
+process generate_hwe_plot {
   memory other_mem_req
   publishDir params.output_dir, overwrite:true, mode:'copy', pattern: "*.pdf"
 

@@ -2,7 +2,7 @@
  * results are put in the output directory
  * Also does HWE
  */
-process identifyIndivDiscSexinfo {
+process identify_indiv_disc_sexinfo {
   memory plink_mem_req
   validExitStatus 0, 1
 

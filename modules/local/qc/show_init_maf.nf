@@ -1,4 +1,4 @@
-process showInitMAF {
+process show_init_maf {
   memory other_mem_req
 
   input:

@@ -1,5 +1,5 @@
 // Find those SNPs that have diff missingness in cases & controls
-process findSnpExtremeDifferentialMissingness {
+process find_snp_extreme_differential_missingness {
   memory other_mem_req
   echo true
 

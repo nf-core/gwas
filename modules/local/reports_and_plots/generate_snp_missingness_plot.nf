@@ -1,4 +1,4 @@
-process generateSnpMissingnessPlot {
+process generate_snp_missingness_plot {
   memory other_mem_req
   echo true
 
