@@ -1,4 +1,4 @@
-process batch_proc {
+process BATCH_PROC {
   memory plink_mem_req
   publishDir params.output_dir, pattern: "*{csv,pdf}",  overwrite:true, mode:'copy'
 

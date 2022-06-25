@@ -43,7 +43,7 @@ if (extrasexinfo == "--must-have-sex") {
         path(out), emit: x_analy_res_ch // batchReport
      script:
 	x = xchr[0].baseName
-	out = "x.pkl"
+	def out = "x.pkl"
 	template "xCheck.py"
    }
 } else {

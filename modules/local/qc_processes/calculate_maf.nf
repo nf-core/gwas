@@ -1,4 +1,4 @@
-process calculate_maf {
+process CALCULATE_MAF {
   memory plink_mem_req
   publishDir params.output_dir, overwrite:true, mode:'copy', pattern: "*.frq"
 
