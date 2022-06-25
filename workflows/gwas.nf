@@ -71,6 +71,9 @@ workflow GWAS {
     )
     ch_versions = ch_versions.mix(INPUT_CHECK.out.versions)
 
+    QC_WF
+
+
     //
     // MODULE: Run FastQC
     //

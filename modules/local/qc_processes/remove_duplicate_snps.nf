@@ -7,7 +7,7 @@
  *   qc.log log file
  */
 
-process remove_duplicate_snps {
+process REMOVE_DUPLICATE_SNPS {
   memory plink_mem_req
 
   input:
