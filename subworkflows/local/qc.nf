@@ -1,18 +1,42 @@
-import REMOVE_DUPLICATE_SNPS ...
-import GET_X ...
+import { GET_DUPLICATE_MARKERS }
+import { REMOVE_DUPLICATE_SNPS }
+import { GET_X }
+import {ANALYZE_X }
+import {IDENTIFY_INDIV_DISC_SEXINFO}
+import {GENERATE_SNP_MISSINGNESS_PLOT}
+import {GENERATE_INDIV_MISSINGNESS_PLOT}
+import {GET_INIT_MAF}
+import {GENERATE_SNP}
+import {GENERATE_SNP_MISSINGNESS_PLOT}
+import GENERATE_INDIV_MISSINGNESS_PLOT}
+import {SHOW_INIT_MAF}
+import {SHOW_HWE_STATS}
+import {SAMPLESHEET_CHECK}
+
+
+
+workflow QC_TEMP {
+
+    GET_DUPLICATE_MARKERS(checkedInput.bim_ch) //FIXME
+    //
+    REMOVE_DUPLICATE_SNPS(GET_DUPLICATE_MARKERS.out.duplicates_ch)
+
+    if (extrasexinfo == "--must-have-sex") { //TODO optional analysis of X chromossome
+        GET_X(REMOVE_DUPLICATE_SNPS.out.qc1_ch)
+        ANALYZE_X(GET_X.OUT.X_chr_ch)
+    )
+
+    IDENTIFY_INDIV_DISC_SEXINFO(REMOVE_DUPLICATE_SNPS.out.qc1_ch)
+    GET_INIT_MAF(REMOVE_DUPLICATE_SNPS.out.qc1_ch)
+
+//PLOTS
+    GENERATE_SNP_MISSINGNESS_PLOT(REMOVE_DUPLICATE_SNPS.out.snp_miss_ch)
+    GENERATE_INDIV_MISSINGNESS_PLOT(REMOVE_DUPLICATE_SNPS.out.ind_miss_ch)
+    SHOW_INIT_MAF(GET_INIT_MAF.out.init_freq_ch)
+    SHOW_HWE_STATS(IDENTIFY_INDIV_DISC_SEXINFO.out.hwe_stats_ch)
+}
 
 workflow QC_PROCESSES {
-
-    REMOVE_DUPLICATE_SNPS(input_TODO)
-
-    GET_X(
-        REMOVE_DUPLICATE_SNPS.out.qc1_ch
-    )
-
-
-    ANALYZE_X(
-        GET_X.out.x_chr_ch
-    )
 
 
 }

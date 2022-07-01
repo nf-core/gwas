@@ -1,9 +1,6 @@
 missingness = [0.01,0.03,0.05]  // this is used by one of the templates
 
-if (extrasexinfo == "--must-have-sex") {
-
-   /* Detailed analysis of X-chromosome */
-   process get_x {
+   process GET_X {
 
      memory other_mem_req
 
@@ -33,23 +30,3 @@ if (extrasexinfo == "--must-have-sex") {
             """
    }
 
-
-
-   process analyse_x {
-     memory other_mem_req
-     input:
-       path(xchr)
-     output:
-        path(out), emit: x_analy_res_ch // batchReport
-     script:
-	x = xchr[0].baseName
-	def out = "x.pkl"
-	template "xCheck.py"
-   }
-} else {
-
-
-  x_analy_res_ch = Channel.fromPath("0")
-
-
-}

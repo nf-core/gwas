@@ -1,4 +1,4 @@
-process get_init_maf {
+process GET_INIT_MAF {
   memory plink_mem_req
 
   input:
