@@ -1,6 +1,5 @@
 process GENERATE_SNP_MISSINGNESS_PLOT {
-  memory other_mem_req
-  echo true
+  debug true
 
   input:
       path(lmissf)

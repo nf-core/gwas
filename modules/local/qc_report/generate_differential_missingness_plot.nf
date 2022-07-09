@@ -1,11 +1,10 @@
-process generate_differential_missingness_plot {
-   memory other_mem_req
+process GENERATE_DIFFERENTIAL_MISSINGNESS_PLOT {
 
    input:
-     file clean_missing
+        path(clean_missing)
 
    output:
-      file output
+        path(output)
 
    script:
        def input = clean_missing

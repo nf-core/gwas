@@ -1,15 +1,14 @@
 process SHOW_HWE_STATS {
-  memory other_mem_req
 
   input:
-     path(hwe)
+        path(hwe)
 
   output:
-    tuple path("${base}.pdf"), path("${base}-qq.pdf"), path("${base}.tex"), emit: report_inithwe_ch
+        tuple path("${base}.pdf"), path("${base}-qq.pdf"), path("${base}.tex"), emit: report_inithwe_ch
 
   script:
-    def base = hwe.baseName+"-inithwe"
-    def base = base.replace(".","_")
+        def base = hwe.baseName+"-inithwe"
+        def base = base.replace(".","_")
 
-    template "showhwe.py"
+        template "showhwe.py"
 }

@@ -1,6 +1,4 @@
-process SAMPLE_SHEET {
-  input:
-        path(sheet)
+process NO_SAMPLE_SHEET {
 
   output:
         path("poorgc10.lst"), emit: poorgc10_ch
@@ -9,6 +7,6 @@ process SAMPLE_SHEET {
   script:
         """
         mkdir -p plates
-        sampleqc.py $sheet ${params.gc10} "${idpat}"  poorgc10.lst plates/crgc10.tex
+        sampleqc.py 0 0 0 poorgc10.lst plates/crgc10.tex
         """
-}
+    }

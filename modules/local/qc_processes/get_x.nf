@@ -1,16 +1,14 @@
 missingness = [0.01,0.03,0.05]  // this is used by one of the templates
 
-   process GET_X {
+process GET_X {
 
-     memory other_mem_req
+  input:
+        path(plink)
 
-     input:
-       path(plink)
+  output:
+        path("X*"), emit: X_chr_ch
 
-      output:
-        path("X*"),emit: X_chr_ch
-
-      script:
+  script:
         def base = plink[0].baseName
 
             """
@@ -28,5 +26,4 @@ missingness = [0.01,0.03,0.05]  // this is used by one of the templates
             touch X.bed X.bim X.fam EMPTYX
             fi
             """
-   }
-
+}
