@@ -128,17 +128,22 @@ if (inpat.contains("s3://") || inpat.contains("az://")) {
 workflow QC_PROCESSES {
 
     take:
-        checkedInput
+        checked_input
+        poor_gc_10_ch
 
 
     main:
 
-        checkedInput.bim_ch | GET_DUPLICATE_MARKERS
+        checked_input.bim_ch | GET_DUPLICATE_MARKERS
 
         REMOVE_DUPLICATE_SNPS(
-            checkedInput.bim_ch,
+            checked_input.bim_ch,
             GET_DUPLICATE_MARKERS.out.duplicates_ch
         )
+
+        qc1_ch = REMOVE_DUPLICATE_SNPS.out.qc1_ch
+
+        qc1_ch | PRODUCE_REPORTS
 
         //FIXME Make sure this works as expected
         def missingness = [0.01,0.03,0.05]  // this is used by one of the templates
@@ -147,7 +152,7 @@ workflow QC_PROCESSES {
         //TODO optional analysis of X chromossome
         if (extrasexinfo == "--must-have-sex") {
 
-            x_analy_res_ch = REMOVE_DUPLICATE_SNPS.out.qc1_ch \
+            x_analy_res_ch = qc1_ch \
                              | GET_X.out.x_chr_ch \
                              | ANALYZE_X.out.x_analy_res_ch
 
@@ -164,7 +169,6 @@ workflow QC_PROCESSES {
         REMOVE_DUPLICATE_SNPS.out.snp_miss_ch \
         | GENERATE_SNP_MISSINGNESS_PLOT.out.report_snpmiss_ch
 
-        qc1_ch = REMOVE_DUPLICATE_SNPS.out.qc1_ch
 
         qc1_ch \
         | IDENTIFY_INDIV_DISC_SEX_INFO.out.hwe_stats_ch \
@@ -177,17 +181,14 @@ workflow QC_PROCESSES {
         | IDENTIFY_INDIV_DISC_SEX_INFO.out.batchrep_missing_ch \
         | BATCH_PROC
 
-        //TODO Merge with the other submodules
-        qc1_ch \
-        | IDENTIFY_INDIV_DISC_SEX_INFO.out.failed_sex_ch \
-        | REMOVE_QC_INDIVS
-
         qc1_ch \
         | GET_INIT_MAF.out.init_freq_ch \
         | SHOW_INIT_MAF.out.report_initmaf_ch
 
         qc2_ch = REMOVE_DUPLICATE_SNPS.out.qc1_ch \
                 | REMOVE_QC_PHASE1.out.qc2_ch
+
+        qc2_ch | PRODUCE_REPORTS
 
         qc2_ch | COMP_PCA.out.pcares | DRAW_PCA
 
@@ -202,12 +203,17 @@ workflow QC_PROCESSES {
         | FIND_RELATED_INDIV.out.related_indivs_ch \
         | BATCH_PROC
 
-        qc3_ch = REMOVE_DUPLICATE_SNPS.out.qc1_ch \
-                | REMOVE_QC_PHASE1.out.qc2_ch \
-                | COMP_PCA.out.out_only_pcs_ch \
-                | PRUNE_FOR_IBD.out.find_rel_ch \
-                | FIND_RELATED_INDIV.out.related_indivs_ch \
-                | REMOVE_QC_INDIVS.out.qc3_ch
+
+        PRUNE_FOR_IBD.out.find_rel_ch | FIND_RELATED_INDIV.out.related_indivs_ch
+
+        qc3_ch = REMOVE_QC_INDIVS(
+                        GET_BAD_INDIV_MISSING_HET.out.failed_miss_het,
+                        FIND_RELATED_INDIV.out.related_indivs_ch,
+                        IDENTIFY_INDIV_DISC_SEX_INFO.out.failed_sex_ch,
+                        poor_gc10_ch,
+                        qc2_ch
+                    )
+
 
         qc3_ch \
         | CALCULATE_SNP_SKEW_STATUS.out.clean_diff_miss_plot_ch \
@@ -240,10 +246,6 @@ workflow QC_PROCESSES {
         | GET_BAD_INDIV_MISSING_HET.out.failed_miss_het
 
 
-        qc2_ch | PRODUCE_REPORTS
-
-        qc1_ch | PRODUCE_REPORTS
-
 
         //FIXME Make sure this is working as expected
         def mperm_header=" CHR                               SNP         EMP1         EMP2 "
@@ -257,7 +259,7 @@ workflow QC_WF {
     QC_INPUT_VALIDATION()
 
     QC_PROCESSES(
-        QC_INPUT_VALIDATION.out.checkedInput
+        QC_INPUT_VALIDATION.out.checked_input
     )
 
     PRODUCE_REPORTS(
