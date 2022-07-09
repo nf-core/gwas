@@ -130,6 +130,8 @@ workflow QC_PROCESSES {
     take:
         checked_input
         poor_gc_10_ch
+        phenotype_ch
+        batch_ch
 
 
     main:
@@ -143,13 +145,12 @@ workflow QC_PROCESSES {
 
         qc1_ch = REMOVE_DUPLICATE_SNPS.out.qc1_ch
 
-        qc1_ch | PRODUCE_REPORTS
 
         //FIXME Make sure this works as expected
         def missingness = [0.01,0.03,0.05]  // this is used by one of the templates
 
 
-        //TODO optional analysis of X chromossome
+        //TODO optional analysis of X chromosome
         if (extrasexinfo == "--must-have-sex") {
 
             x_analy_res_ch = qc1_ch \
@@ -178,8 +179,7 @@ workflow QC_PROCESSES {
         | IDENTIFY_INDIV_DISC_SEX_INFO.out.failed_sex_ch
 
         qc1_ch \
-        | IDENTIFY_INDIV_DISC_SEX_INFO.out.batchrep_missing_ch \
-        | BATCH_PROC
+        | IDENTIFY_INDIV_DISC_SEX_INFO.out.batchrep_missing_ch
 
         qc1_ch \
         | GET_INIT_MAF.out.init_freq_ch \
@@ -188,21 +188,27 @@ workflow QC_PROCESSES {
         qc2_ch = REMOVE_DUPLICATE_SNPS.out.qc1_ch \
                 | REMOVE_QC_PHASE1.out.qc2_ch
 
-        qc2_ch | PRODUCE_REPORTS
-
         qc2_ch | COMP_PCA.out.pcares | DRAW_PCA
 
         qc2_ch | COMP_PCA.out.out_only_pcs_ch | BATCH_PROC
 
-        qc2_ch | COMP_PCA.out.out_only_pcs_ch | PRUNE_FOR_IBD.out.find_rel_ch | BATCH_PROC
+        //TODO: The choice for find_rel_ch involves an if-else
+        find_rel_ch = qc2_ch | COMP_PCA.out.out_only_pcs_ch | PRUNE_FOR_IBD.out.find_rel_ch // PRUNE_FOR_IBDLD.out.find_rel_ch
 
 
-        qc2_ch \
-        | COMP_PCA.out.out_only_pcs_ch \
-        | PRUNE_FOR_IBD.out.find_rel_ch \
-        | FIND_RELATED_INDIV.out.related_indivs_ch \
-        | BATCH_PROC
+        find_rel_ch \
+        | FIND_RELATED_INDIV.out.related_indivs_ch
 
+
+        BATCH_PROC(
+            COMP_PCA.out.pcares,
+            IDENTIFY_INDIV_DISC_SEX_INFO.out.batchrep_missing_ch,
+            phenotype_ch,
+            batch_ch,
+            find_rel_ch,
+            x_analy_res_ch,
+            FIND_RELATED_INDIV.out.related_indivs_ch
+        )
 
         qc2_ch \
         | CALCULATE_SAMPLE_HETEROZYGOSITY.out.hetero_check_ch \
@@ -213,7 +219,7 @@ workflow QC_PROCESSES {
         | GET_BAD_INDIV_MISSING_HET.out.failed_miss_het
 
 
-        PRUNE_FOR_IBD.out.find_rel_ch | FIND_RELATED_INDIV.out.related_indivs_ch
+        find_rel_ch | FIND_RELATED_INDIV.out.related_indivs_ch
 
         REMOVE_QC_INDIVS(
                         GET_BAD_INDIV_MISSING_HET.out.failed_miss_het,
