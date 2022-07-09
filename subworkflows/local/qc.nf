@@ -49,6 +49,52 @@ import { PRODUCE_REPORTS } from "../../modules/qc_report/produce_reports.nf"
 //FIXME
 workflow QC_INPUT_VALIDATION {
 
+if (params.case_control) {
+  ccfile = params.case_control
+  Channel.fromPath(ccfile).into { cc_ch; cc2_ch }
+  col    = params.case_control_col
+  diffpheno = "--pheno cc.phe --pheno-name $col"
+  if (params.case_control.toString().contains("s3://") || params.case_control.toString().contains("az://")) {
+       println "Case control file is in the cloud so we can't check it"
+  } else
+  if (! file(params.case_control).exists()) {
+     error("\n\nThe file <${params.case_control}> given for <params.case_control> does not exist")
+    } else {
+      def line
+      new File(params.case_control).withReader { line = it.readLine() }
+      fields = line.split()
+      if (! fields.contains(params.case_control_col))
+	  error("\n\nThe file <${params.case_control}> given for <params.case_control> does not have a column <${params.case_control_col}>\n")
+    }
+
+} else {
+  diffpheno = ""
+  col = ""
+  cc_ch  = Channel.value.into("none").into { cc_ch; cc2_ch }
+}
+
+
+phenotype_ch = getSubChannel(params.phenotype,"pheno",params.pheno_col)
+batch_ch     = getSubChannel(params.batch,"batch",params.batch_col)
+
+
+
+
+/* Define the command to add for plink depending on whether sexinfo is
+ * available or not.
+ */
+
+if ( nullfile.contains(params.sexinfo_available) ) {
+  sexinfo = "--allow-no-sex"
+  extrasexinfo = ""
+  println "Sexinfo not available, command --allow-no-sex\n"
+} else {
+  sexinfo = ""
+  extrasexinfo = "--must-have-sex"
+  println "Sexinfo available command"
+}
+
+
 /* Get the input files -- could be a glob
  * We match the bed, bim, fam file -- order determined lexicographically
  * not by order given, we check that they exist and then
@@ -93,22 +139,37 @@ workflow QC_PROCESSES {
             GET_DUPLICATE_MARKERS.out.duplicates_ch
         )
 
+        //FIXME Make sure this works as expected
+        def missingness = [0.01,0.03,0.05]  // this is used by one of the templates
+
+
         //TODO optional analysis of X chromossome
         if (extrasexinfo == "--must-have-sex") {
-            GET_X(REMOVE_DUPLICATE_SNPS.out.qc1_ch)
-            ANALYZE_X(GET_X.OUT.X_chr_ch)
-        )
 
-        IDENTIFY_INDIV_DISC_SEXINFO(
+            GET_X(
+                REMOVE_DUPLICATE_SNPS.out.qc1_ch
+            )
+
+            ANALYZE_X(
+                GET_X.out.X_chr_ch
+            )
+
+        } else {
+
+            x_analy_res_ch = Channel.fromPath("0")
+
+        }
+
+
+        IDENTIFY_INDIV_DISC_SEX_INFO(
             REMOVE_DUPLICATE_SNPS.out.qc1_ch
         )
 
-        GET_INIT_MAF(
-            REMOVE_DUPLICATE_SNPS.out.qc1_ch
+        SHOW_HWE_STATS(
+            IDENTIFY_INDIV_DISC_SEX_INFO.out.hwe_stats_ch
         )
 
 
-        //PLOTS
         GENERATE_SNP_MISSINGNESS_PLOT(
             REMOVE_DUPLICATE_SNPS.out.snp_miss_ch
         )
@@ -117,12 +178,13 @@ workflow QC_PROCESSES {
             REMOVE_DUPLICATE_SNPS.out.ind_miss_ch
         )
 
-        SHOW_INIT_MAF(
-            GET_INIT_MAF.out.init_freq_ch
+
+        GET_INIT_MAF(
+            REMOVE_DUPLICATE_SNPS.out.qc1_ch
         )
 
-        SHOW_HWE_STATS(
-            IDENTIFY_INDIV_DISC_SEXINFO.out.hwe_stats_ch
+        SHOW_INIT_MAF(
+            GET_INIT_MAF.out.init_freq_ch
         )
 
 

@@ -2,9 +2,9 @@
  * results are put in the output directory
  * Also does HWE
  */
-process IDENTIFY_INDIV_DISC_SEXINFO {
+process IDENTIFY_INDIV_DISC_SEX_INFO {
 
-    //FIXME Remove this usage as it has been deprecated
+  //FIXME Remove this usage as it has been deprecated
   validExitStatus 0, 1
 
   input:

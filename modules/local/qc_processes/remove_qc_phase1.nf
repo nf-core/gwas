@@ -4,8 +4,8 @@ process REMOVE_QC_PHASE1 {
         tuple path(bed), path(bim), path(fam)
 
   output:
-        path("${output}*.{bed,bim,fam}"), emit: qc2A_ch
-        tuple path("qc1.out"), path("${output}.irem"),emit: report_qc1_ch
+        path("${output}*.{bed,bim,fam}"), emit: qc2_ch
+        tuple path("qc1.out"), path("${output}.irem"), emit: report_qc1_ch
 
   script:
         def base=bed.baseName
