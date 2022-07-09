@@ -11,7 +11,7 @@ process BATCH_PROC {
     path(rem_indivs) // findRel
 
   output:
-    path("${base}-batch.tex"),emit: report_batch_report_ch
+    path("${base}-batch.tex"), emit: report_batch_report_ch
     tuple path("*.csv"), path("*pdf"), emit: report_batch_aux_ch // need to stage
 
   script:

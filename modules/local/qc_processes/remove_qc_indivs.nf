@@ -8,7 +8,7 @@ process REMOVE_QC_INDIVS {
         tuple path(bed), path(bim), path(fam)
 
   output:
-        path("${out}.{bed,bim,fam}"), emit: qc3A_ch
+        path("${out}.{bed,bim,fam}"), emit: qc3_ch
 
   script:
         def base = bed.baseName

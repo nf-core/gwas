@@ -4,8 +4,8 @@ process CALCULATE_SNP_SKEW_STATUS {
         path(plinks)
 
   output:
-        path("${base}.missing"), emit: clean_diff_miss_plot_ch1
-        path(mperm), emit: clean_diff_miss_ch2
+        path("${base}.missing"), emit: clean_diff_miss_plot_ch
+        path(mperm), emit: clean_diff_miss_ch
         path("${base}.hwe"), emit: hwe_scores_ch
 
   script:

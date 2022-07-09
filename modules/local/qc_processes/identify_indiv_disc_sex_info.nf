@@ -12,8 +12,8 @@ process IDENTIFY_INDIV_DISC_SEX_INFO {
 
 
   output:
-        path(logfile),emit:  failed_sex_ch
-        tuple path(imiss), path(lmiss),path(sexcheck_report),emit: batchrep_missing_ch
+        path(logfile), emit: failed_sex_ch //report_failed_sex_ch
+        tuple path(imiss), path(lmiss), path(sexcheck_report), emit: batchrep_missing_ch
         path("${base}.hwe"), emit: hwe_stats_ch
 
   script:

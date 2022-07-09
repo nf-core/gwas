@@ -4,7 +4,7 @@ process GENERATE_DIFFERENTIAL_MISSINGNESS_PLOT {
         path(clean_missing)
 
    output:
-        path(output)
+        path(output) //report_diffmissP_ch
 
    script:
        def input = clean_missing

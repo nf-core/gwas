@@ -8,7 +8,7 @@ process FIND_RELATED_INDIV {
         path (ibd_genome)
 
   output:
-        path(outfname), emit: related_indivs_ch1
+        path(outfname), emit: related_indivs_ch
 
   script:
         def base = missing.baseName

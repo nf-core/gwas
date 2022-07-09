@@ -4,7 +4,7 @@ process GET_X {
         path(plink)
 
   output:
-        path("X*"), emit: X_chr_ch
+        path("X*"), emit: x_chr_ch
 
   script:
         def base = plink[0].baseName
