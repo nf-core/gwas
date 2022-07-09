@@ -5,7 +5,7 @@ process REMOVE_SKEW_SNPS {
         path(failed)
 
   output:
-        tuple path("${output}.bed"), path("${output}.bim"), path("${output}.fam"), path("${output}.log"), emit: qc4A_ch
+        tuple path("${output}.bed"), path("${output}.bim"), path("${output}.fam"), path("${output}.log"), emit: qc4_ch
 
   script:
         def base = plinks[0].baseName

@@ -6,7 +6,7 @@ process CALCULATE_MAF {
 
 
   output:
-    path "${base}.frq",emit: maf_plot_ch
+    path "${base}.frq", emit: maf_plot_ch
 
   script:
     def base = bed.baseName

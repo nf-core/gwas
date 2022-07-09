@@ -6,7 +6,7 @@ process CALCULATE_SAMPLE_HETEROZYGOSITY {
 
 
    output:
-        tuple path("${hetf}.het"), path("${hetf}.imiss"), emit: hetero_check_ch
+        tuple path("${hetf}.het"), path("${hetf}.imiss"), emit: hetero_check_ch //plot1_het_ch
         path("${hetf}.imiss"), emit: missing_stats_ch
 
    script:

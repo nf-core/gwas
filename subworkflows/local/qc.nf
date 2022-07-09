@@ -147,11 +147,9 @@ workflow QC_PROCESSES {
         //TODO optional analysis of X chromossome
         if (extrasexinfo == "--must-have-sex") {
 
-            REMOVE_DUPLICATE_SNPS.out.qc1_ch \
-            | GET_X.out.x_chr_ch \
-            | ANALYZE_X.out.x_analy_res_ch \
-            | BATCH_PROC \
-            | PRODUCE_REPORTS
+            x_analy_res_ch = REMOVE_DUPLICATE_SNPS.out.qc1_ch \
+                             | GET_X.out.x_chr_ch \
+                             | ANALYZE_X.out.x_analy_res_ch
 
         } else {
 
@@ -161,93 +159,90 @@ workflow QC_PROCESSES {
 
 
         REMOVE_DUPLICATE_SNPS.out.ind_miss_ch \
-        | GENERATE_INDIV_MISSINGNESS_PLOT.out.report_indmisspdf_ch \
-        | PRODUCE_REPORTS
+        | GENERATE_INDIV_MISSINGNESS_PLOT.out.report_indmisspdf_ch
 
         REMOVE_DUPLICATE_SNPS.out.snp_miss_ch \
-        | GENERATE_SNP_MISSINGNESS_PLOT.out.report_snpmiss_ch \
-        | PRODUCE_REPORTS
+        | GENERATE_SNP_MISSINGNESS_PLOT.out.report_snpmiss_ch
 
-        REMOVE_DUPLICATE_SNPS.out.qc1_ch \
+        qc1_ch = REMOVE_DUPLICATE_SNPS.out.qc1_ch
+
+        qc1_ch \
         | IDENTIFY_INDIV_DISC_SEX_INFO.out.hwe_stats_ch \
-        | SHOW_HWE_STATS.out.report_inithwe_ch \
-        | PRODUCE_REPORTS
+        | SHOW_HWE_STATS.out.report_inithwe_ch
 
-        REMOVE_DUPLICATE_SNPS.out.qc1_ch \
-        | IDENTIFY_INDIV_DISC_SEX_INFO.out.failed_sex_ch \
-        | PRODUCE_REPORTS
+        qc1_ch \
+        | IDENTIFY_INDIV_DISC_SEX_INFO.out.failed_sex_ch
 
-        REMOVE_DUPLICATE_SNPS.out.qc1_ch \
+        qc1_ch \
         | IDENTIFY_INDIV_DISC_SEX_INFO.out.batchrep_missing_ch \
-        | BATCH_PROC \
-        | PRODUCE_REPORTS
+        | BATCH_PROC
 
-        REMOVE_DUPLICATE_SNPS.out.qc1_ch \
+        //TODO Merge with the other submodules
+        qc1_ch \
         | IDENTIFY_INDIV_DISC_SEX_INFO.out.failed_sex_ch \
         | REMOVE_QC_INDIVS
 
-        REMOVE_DUPLICATE_SNPS.out.qc1_ch \
+        qc1_ch \
         | GET_INIT_MAF.out.init_freq_ch \
-        | SHOW_INIT_MAF.out.report_initmaf_ch \
-        | PRODUCE_REPORTS
+        | SHOW_INIT_MAF.out.report_initmaf_ch
 
-        REMOVE_DUPLICATE_SNPS.out.qc1_ch \
-        | REMOVE_QC_PHASE1.out.qc2_ch \
-        | COMP_PCA.out.pcares \
-        | DRAW_PCA
+        qc2_ch = REMOVE_DUPLICATE_SNPS.out.qc1_ch \
+                | REMOVE_QC_PHASE1.out.qc2_ch
 
-        REMOVE_DUPLICATE_SNPS.out.qc1_ch \
-        | REMOVE_QC_PHASE1.out.qc2_ch \
-        | COMP_PCA.out.out_only_pcs_ch \
-        | BATCH_PROC \
-        | PRODUCE_REPORTS
+        qc2_ch | COMP_PCA.out.pcares | DRAW_PCA
 
-        REMOVE_DUPLICATE_SNPS.out.qc1_ch \
-        | REMOVE_QC_PHASE1.out.qc2_ch \
-        | COMP_PCA.out.out_only_pcs_ch \
-        | PRUNE_FOR_IBD.out.find_rel_ch \
-        | BATCH_PROC \
-        | PRODUCE_REPORTS
+        qc2_ch | COMP_PCA.out.out_only_pcs_ch | BATCH_PROC
 
-        REMOVE_DUPLICATE_SNPS.out.qc1_ch \
-        | REMOVE_QC_PHASE1.out.qc2_ch \
+        qc2_ch | COMP_PCA.out.out_only_pcs_ch | PRUNE_FOR_IBD.out.find_rel_ch | BATCH_PROC
+
+
+        qc2_ch \
         | COMP_PCA.out.out_only_pcs_ch \
         | PRUNE_FOR_IBD.out.find_rel_ch \
         | FIND_RELATED_INDIV.out.related_indivs_ch \
-        | BATCH_PROC \
-        | PRODUCE_REPORTS
+        | BATCH_PROC
 
-        REMOVE_DUPLICATE_SNPS.out.qc1_ch \
-        | REMOVE_QC_PHASE1.out.qc2_ch \
-        | COMP_PCA.out.out_only_pcs_ch \
-        | PRUNE_FOR_IBD.out.find_rel_ch \
-        | FIND_RELATED_INDIV.out.related_indivs_ch \
-        | REMOVE_QC_INDIVS.out.qc3_ch \
+        qc3_ch = REMOVE_DUPLICATE_SNPS.out.qc1_ch \
+                | REMOVE_QC_PHASE1.out.qc2_ch \
+                | COMP_PCA.out.out_only_pcs_ch \
+                | PRUNE_FOR_IBD.out.find_rel_ch \
+                | FIND_RELATED_INDIV.out.related_indivs_ch \
+                | REMOVE_QC_INDIVS.out.qc3_ch
+
+        qc3_ch \
         | CALCULATE_SNP_SKEW_STATUS.out.clean_diff_miss_plot_ch \
-        | GENERATE_DIFFERENTIAL_MISSINGNESS_PLOT \
-        | PRODUCE_REPORTS
+        | GENERATE_DIFFERENTIAL_MISSINGNESS_PLOT
 
-        REMOVE_DUPLICATE_SNPS.out.qc1_ch \
-        | REMOVE_QC_PHASE1.out.qc2_ch \
-        | COMP_PCA.out.out_only_pcs_ch \
-        | PRUNE_FOR_IBD \
-        | FIND_RELATED_INDIV \
-        | REMOVE_QC_INDIVS \
-        | CALCULATE_SNP_SKEW_STATUS \
-        | FIND_SNP_EXTREME_DIFFERENTIAL_MISSINGNESS \
-        | PRODUCE_REPORTS
+        qc3_ch \
+        | CALCULATE_SNP_SKEW_STATUS.out.clean_diff_miss_plot_ch \
+        | FIND_SNP_EXTREME_DIFFERENTIAL_MISSINGNESS.out.skewsnps_ch
 
-        REMOVE_DUPLICATE_SNPS.out.qc1_ch | REMOVE_QC_PHASE1.out.qc2_ch | COMP_PCA.out.out_only_pcs_ch | PRUNE_FOR_IBD | FIND_RELATED_INDIV | REMOVE_QC_INDIVS | CALCULATE_SNP_SKEW_STATUS | FIND_SNP_EXTREME_DIFFERENTIAL_MISSINGNESS | REMOVE_SKEW_SNPS | CALCULATE_MAF | GENERATE_MAF_PLOT
+        qc3_ch \
+        | CALCULATE_SNP_SKEW_STATUS.out.clean_diff_miss_plot_ch \
+        | FIND_SNP_EXTREME_DIFFERENTIAL_MISSINGNESS.out.skewsnps_ch \
+        | REMOVE_SKEW_SNPS.out.qc4_ch \
+        | CALCULATE_MAF.out.maf_plot_ch \
+        | GENERATE_MAF_PLOT
 
-        REMOVE_DUPLICATE_SNPS.out.qc1_ch | REMOVE_QC_PHASE1.out.qc2_ch | COMP_PCA.out.out_only_pcs_ch | PRUNE_FOR_IBD | FIND_RELATED_INDIV | REMOVE_QC_INDIVS | CALCULATE_SNP_SKEW_STATUS | FIND_SNP_EXTREME_DIFFERENTIAL_MISSINGNESS | REMOVE_SKEW_SNPS | OUT_MD5 | PRODUCE_REPORTS
-
-
-        REMOVE_DUPLICATE_SNPS.out.qc1_ch | REMOVE_QC_PHASE1.out.qc2_ch | CALCULATE_SAMPLE_HETEROZYGOSITY | GENERATE_MISS_HET_PLOT | PRODUCE_REPORTS
-        REMOVE_DUPLICATE_SNPS.out.qc1_ch | REMOVE_QC_PHASE1.out.qc2_ch | CALCULATE_SAMPLE_HETEROZYGOSITY | GET_BAD_INDIV_MISSING_HET | PRODUCE_REPORTS
+        qc3_ch \
+        | CALCULATE_SNP_SKEW_STATUS.out.clean_diff_miss_plot_ch \
+        | FIND_SNP_EXTREME_DIFFERENTIAL_MISSINGNESS.out.skewsnps_ch \
+        | REMOVE_SKEW_SNPS.out.qc4_ch \
+        | OUT_MD5
 
 
-        REMOVE_DUPLICATE_SNPS.out.qc1_ch | REMOVE_QC_PHASE1.out.qc2_ch | PRODUCE_REPORTS
-        REMOVE_DUPLICATE_SNPS.out.qc1_ch | PRODUCE_REPORTS
+        qc2_ch \
+        | CALCULATE_SAMPLE_HETEROZYGOSITY.out.hetero_check_ch \
+        | GENERATE_MISS_HET_PLOT
+
+        qc2_ch \
+        | CALCULATE_SAMPLE_HETEROZYGOSITY.out.hetero_check_ch \
+        | GET_BAD_INDIV_MISSING_HET.out.failed_miss_het
+
+
+        qc2_ch | PRODUCE_REPORTS
+
+        qc1_ch | PRODUCE_REPORTS
 
 
         //FIXME Make sure this is working as expected

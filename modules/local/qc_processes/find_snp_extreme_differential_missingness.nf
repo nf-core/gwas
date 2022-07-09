@@ -7,7 +7,6 @@ process FIND_SNP_EXTREME_DIFFERENTIAL_MISSINGNESS {
 
   output:
         tuple val(base), path(failed), emit: bad_snps_ch
-        path(failed), emit: report_diffmiss_ch
         path(failed), emit: skewsnps_ch
 
   script:
