@@ -1,4 +1,4 @@
-process NO_SAMPLE_SHEET {
+process NO_SAMPLESHEET {
 
   output:
         path("poorgc10.lst"), emit: poorgc10_ch
