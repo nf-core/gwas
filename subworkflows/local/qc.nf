@@ -46,41 +46,96 @@ import { PRODUCE_REPORTS } from "../../modules/qc_report/produce_reports.nf"
 // Definitions of local workflows
 //======================
 
+//FIXME
 workflow QC_INPUT_VALIDATION {
+
+/* Get the input files -- could be a glob
+ * We match the bed, bim, fam file -- order determined lexicographically
+ * not by order given, we check that they exist and then
+ * send the all the files to raw_ch and just the bim file to bim_ch */
+inpat = "${params.input_dir}/${params.input_pat}"
+
+
+
+if (inpat.contains("s3://") || inpat.contains("az://")) {
+  print "Here"
+  this_checker = { it -> return it}
+} else {
+  this_checker = checker
+}
+
+
+    Channel
+   .fromFilePairs("${inpat}.{bed,bim,fam}",size:3, flat : true)
+    { file -> file.baseName }  \
+      .ifEmpty { error "No matching plink files" }        \
+      .map { a -> [this_checker(a[1]), this_checker(a[2]), this_checker(a[3])] }\
+      .multiMap {  it ->
+         raw_ch: it
+         bim_ch: it[1]
+         inpmd5ch : it
+       }.set {checked_input}
 
 }
 
 
 workflow QC_PROCESSES {
 
-    GET_DUPLICATE_MARKERS(checkedInput.bim_ch)
+    take:
+        checkedInput
 
-    REMOVE_DUPLICATE_SNPS(GET_DUPLICATE_MARKERS.out.duplicates_ch)
 
-    //TODO optional analysis of X chromossome
-    if (extrasexinfo == "--must-have-sex") {
-        GET_X(REMOVE_DUPLICATE_SNPS.out.qc1_ch)
-        ANALYZE_X(GET_X.OUT.X_chr_ch)
-    )
+    main:
+        GET_DUPLICATE_MARKERS( checkedInput.bim_ch )
 
-    IDENTIFY_INDIV_DISC_SEXINFO(REMOVE_DUPLICATE_SNPS.out.qc1_ch)
-    GET_INIT_MAF(REMOVE_DUPLICATE_SNPS.out.qc1_ch)
+        REMOVE_DUPLICATE_SNPS(
+            checkedInput.bim_ch,
+            GET_DUPLICATE_MARKERS.out.duplicates_ch
+        )
 
-    //PLOTS
-    GENERATE_SNP_MISSINGNESS_PLOT(REMOVE_DUPLICATE_SNPS.out.snp_miss_ch)
-    GENERATE_INDIV_MISSINGNESS_PLOT(REMOVE_DUPLICATE_SNPS.out.ind_miss_ch)
-    SHOW_INIT_MAF(GET_INIT_MAF.out.init_freq_ch)
-    SHOW_HWE_STATS(IDENTIFY_INDIV_DISC_SEXINFO.out.hwe_stats_ch)
+        //TODO optional analysis of X chromossome
+        if (extrasexinfo == "--must-have-sex") {
+            GET_X(REMOVE_DUPLICATE_SNPS.out.qc1_ch)
+            ANALYZE_X(GET_X.OUT.X_chr_ch)
+        )
+
+        IDENTIFY_INDIV_DISC_SEXINFO(
+            REMOVE_DUPLICATE_SNPS.out.qc1_ch
+        )
+
+        GET_INIT_MAF(
+            REMOVE_DUPLICATE_SNPS.out.qc1_ch
+        )
+
+
+        //PLOTS
+        GENERATE_SNP_MISSINGNESS_PLOT(
+            REMOVE_DUPLICATE_SNPS.out.snp_miss_ch
+        )
+
+        GENERATE_INDIV_MISSINGNESS_PLOT(
+            REMOVE_DUPLICATE_SNPS.out.ind_miss_ch
+        )
+
+        SHOW_INIT_MAF(
+            GET_INIT_MAF.out.init_freq_ch
+        )
+
+        SHOW_HWE_STATS(
+            IDENTIFY_INDIV_DISC_SEXINFO.out.hwe_stats_ch
+        )
+
 
 }
 
 
 workflow QC_WF {
 
+
     QC_INPUT_VALIDATION()
 
     QC_PROCESSES(
-        QC_INPUT_VALIDATION
+        QC_INPUT_VALIDATION.out.checkedInput
     )
 
     PRODUCE_REPORTS(
