@@ -1,3 +1,5 @@
+//NOTE: Reserved for a global input validation
+
 process SAMPLESHEET_CHECK {
     tag "$samplesheet"
 
