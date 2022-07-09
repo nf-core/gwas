@@ -1,5 +1,3 @@
-mperm_header=" CHR                               SNP         EMP1         EMP2 "
-
 // Find differential missingness between cases and controls; also compute HWE scores
 process CALCULATE_SNP_SKEW_STATUS {
   input:

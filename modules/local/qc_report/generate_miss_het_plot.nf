@@ -5,7 +5,7 @@ process GENERATE_MISS_HET_PLOT {
         tuple file(het), file(imiss)
 
   output:
-        path(output)
+        path(output), emit: report_misshet_ch
 
   script:
         def base = imiss.baseName
