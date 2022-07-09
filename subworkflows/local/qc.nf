@@ -46,7 +46,7 @@ import { PRODUCE_REPORTS } from "../../modules/qc_report/produce_reports.nf"
 // Definitions of local workflows
 //======================
 
-//FIXME
+//TODO Restructure this logic after the QC_PROCESSES workflow is done
 workflow QC_INPUT_VALIDATION {
 
 if (params.case_control) {
@@ -204,9 +204,18 @@ workflow QC_PROCESSES {
         | BATCH_PROC
 
 
+        qc2_ch \
+        | CALCULATE_SAMPLE_HETEROZYGOSITY.out.hetero_check_ch \
+        | GENERATE_MISS_HET_PLOT
+
+        qc2_ch \
+        | CALCULATE_SAMPLE_HETEROZYGOSITY.out.hetero_check_ch \
+        | GET_BAD_INDIV_MISSING_HET.out.failed_miss_het
+
+
         PRUNE_FOR_IBD.out.find_rel_ch | FIND_RELATED_INDIV.out.related_indivs_ch
 
-        qc3_ch = REMOVE_QC_INDIVS(
+        REMOVE_QC_INDIVS(
                         GET_BAD_INDIV_MISSING_HET.out.failed_miss_het,
                         FIND_RELATED_INDIV.out.related_indivs_ch,
                         IDENTIFY_INDIV_DISC_SEX_INFO.out.failed_sex_ch,
@@ -214,6 +223,8 @@ workflow QC_PROCESSES {
                         qc2_ch
                     )
 
+
+        qc3_ch = REMOVE_QC_INDIVS.out.qc3_ch
 
         qc3_ch \
         | CALCULATE_SNP_SKEW_STATUS.out.clean_diff_miss_plot_ch \
@@ -223,28 +234,17 @@ workflow QC_PROCESSES {
         | CALCULATE_SNP_SKEW_STATUS.out.clean_diff_miss_plot_ch \
         | FIND_SNP_EXTREME_DIFFERENTIAL_MISSINGNESS.out.skewsnps_ch
 
-        qc3_ch \
-        | CALCULATE_SNP_SKEW_STATUS.out.clean_diff_miss_plot_ch \
-        | FIND_SNP_EXTREME_DIFFERENTIAL_MISSINGNESS.out.skewsnps_ch \
-        | REMOVE_SKEW_SNPS.out.qc4_ch \
+
+        qc4_ch = CALCULATE_SNP_SKEW_STATUS.out.clean_diff_miss_plot_ch \
+                | FIND_SNP_EXTREME_DIFFERENTIAL_MISSINGNESS.out.skewsnps_ch \
+                | REMOVE_SKEW_SNPS.out.qc4_ch
+
+        qc4_ch \
         | CALCULATE_MAF.out.maf_plot_ch \
         | GENERATE_MAF_PLOT
 
-        qc3_ch \
-        | CALCULATE_SNP_SKEW_STATUS.out.clean_diff_miss_plot_ch \
-        | FIND_SNP_EXTREME_DIFFERENTIAL_MISSINGNESS.out.skewsnps_ch \
-        | REMOVE_SKEW_SNPS.out.qc4_ch \
+        qc4_ch \
         | OUT_MD5
-
-
-        qc2_ch \
-        | CALCULATE_SAMPLE_HETEROZYGOSITY.out.hetero_check_ch \
-        | GENERATE_MISS_HET_PLOT
-
-        qc2_ch \
-        | CALCULATE_SAMPLE_HETEROZYGOSITY.out.hetero_check_ch \
-        | GET_BAD_INDIV_MISSING_HET.out.failed_miss_het
-
 
 
         //FIXME Make sure this is working as expected

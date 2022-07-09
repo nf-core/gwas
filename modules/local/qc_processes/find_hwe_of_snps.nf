@@ -2,9 +2,10 @@
 process FIND_HWE_OF_SNPS {
 
   input:
-        path hwe
+        path(hwe)
+
   output:
-        path output, emit: unaff_hwe
+        path(output), emit: unaff_hwe
 
   script:
         def base   = hwe.baseName.replace(".","_")
