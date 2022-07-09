@@ -4,7 +4,7 @@
  * Outputs:
  * - duplicates.snps    : A possibly empty file with a list of SNPs
  */
-process get_duplicate_markers {
+process GET_DUPLICATE_MARKERS {
   memory other_mem_req
 
   input:

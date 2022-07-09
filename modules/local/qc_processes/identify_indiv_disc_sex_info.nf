@@ -2,7 +2,7 @@
  * results are put in the output directory
  * Also does HWE
  */
-process identify_indiv_disc_sexinfo {
+process IDENTIFY_INDIV_DISC_SEXINFO {
   memory plink_mem_req
   validExitStatus 0, 1
 
@@ -11,7 +11,7 @@ process identify_indiv_disc_sexinfo {
 
 
   output:
-    path(logfile),emit:  (report_failed_sex_ch, failed_sex_ch1)
+    path(logfile),emit:  failed_sex_ch
     tuple path(imiss), path(lmiss),path(sexcheck_report),emit: batchrep_missing_ch
     path("${base}.hwe"), emit: hwe_stats_ch
 

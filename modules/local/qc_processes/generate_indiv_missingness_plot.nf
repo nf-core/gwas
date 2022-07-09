@@ -1,12 +1,12 @@
-process generate_indiv_missingness_plot {
+process GENERATE_INDIV_MISSINGNESS_PLOT {
   memory other_mem_req
   publishDir params.output_dir, overwrite:true, mode:'copy', pattern: "*.pdf"
 
   input:
-      file(imissf) from ind_miss_ch1
+      path(imissf)
 
   output:
-    file(output) into report_indmisspdf_ch
+      file(output), emit: report_indmisspdf_ch
 
   script:
     def input  = imissf

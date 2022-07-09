@@ -1,5 +1,5 @@
 // Generate MD5 sums of output paths
-process out_md5 {
+process OUT_MD5 {
   memory other_mem_req
   echo true
 

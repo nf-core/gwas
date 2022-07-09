@@ -1,4 +1,4 @@
-process show_hwe_stats {
+process SHOW_HWE_STATS {
   memory other_mem_req
 
   input:
