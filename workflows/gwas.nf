@@ -36,6 +36,7 @@ ch_multiqc_custom_config = params.multiqc_config ? Channel.fromPath(params.multi
 // SUBWORKFLOW: Consisting of a mix of local and nf-core/modules
 //
 include { INPUT_CHECK } from '../subworkflows/local/input_check'
+include { QC_WF }       from '../subworkflows/local/qc'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -61,14 +62,17 @@ def multiqc_report = []
 
 workflow GWAS {
 
-    def = nextflowversion =nextflow.version
 
-    if (workflow.repository)
-    wflowversion="${workflow.repository} --- ${workflow.revision} [${workflow.commitId}]"
-    else
-    wflowversion="A local copy of the workflow was used"
+    //
+    // QC SUBWORKFLOW
+    //
+
+    if (params.only_qc) {
+        QC_WF()
+    }
 
 
+    /*
 
     ch_versions = Channel.empty()
 
@@ -79,9 +83,6 @@ workflow GWAS {
         ch_input
     )
     ch_versions = ch_versions.mix(INPUT_CHECK.out.versions)
-
-    QC_WF
-
 
     //
     // MODULE: Run FastQC
@@ -112,7 +113,8 @@ workflow GWAS {
         ch_multiqc_files.collect()
     )
     multiqc_report = MULTIQC.out.report.toList()
-    ch_versions    = ch_versions.mix(MULTIQC.out.versions)
+    ch_versions    = ch_versions.mix(MULTIQC.out.versions)*/
+    */
 }
 
 /*

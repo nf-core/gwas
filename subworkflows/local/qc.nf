@@ -165,23 +165,22 @@ workflow QC_INPUT_VALIDATION {
 
 
             if (inpat.contains("s3://") || inpat.contains("az://")) {
-            print "Here"
-            this_checker = { it -> return it}
-            } else {
-            this_checker = checker
+                print "Here"
+                this_checker = { it -> return it}
+                } else {
+                this_checker = checker
             }
 
 
-            Channel
-            .fromFilePairs("${inpat}.{bed,bim,fam}",size:3, flat : true)
-                { file -> file.baseName }  \
-                .ifEmpty { error "No matching plink files" }        \
-                .map { a -> [this_checker(a[1]), this_checker(a[2]), this_checker(a[3])] }\
-                .multiMap {  it ->
-                    raw_ch: it
-                    bim_ch: it[1]
-                    inpmd5ch : it
-                }.set {checked_input}
+            Channel .fromFilePairs("${inpat}.{bed,bim,fam}",size:3, flat : true)
+                    { file -> file.baseName }  \
+                    .ifEmpty { error "No matching plink files" }        \
+                    .map { a -> [this_checker(a[1]), this_checker(a[2]), this_checker(a[3])] }\
+                    .multiMap {  it ->
+                        raw_ch: it
+                        bim_ch: it[1]
+                        inpmd5ch : it
+                    }.set {checked_input}
 
 
             if (samplesheet != "0")  {
