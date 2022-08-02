@@ -90,3 +90,22 @@ def getSubChannel = { parm, parm_name, col_name ->
   }
   return new_ch;
 }
+
+
+
+def getConfig = {
+  all_files = workflow.configFiles.unique()
+  text = ""
+  all_files.each { fname ->
+      base = fname.baseName
+      curr = "\n\n*-subsection{*-protect*-url{$base}}@.@@.@*-footnotesize@.@*-begin{verbatim}"
+      file(fname).eachLine { String line ->
+	if (line.contains("secretKey")) { line = "secretKey='*******'" }
+        if (line.contains("accessKey")) { line = "accessKey='*******'" }
+        curr = curr + "@.@"+line
+      }
+      curr = curr +"@.@*-end{verbatim}\n"
+      text = text+curr
+  }
+  return text
+}
