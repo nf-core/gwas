@@ -342,6 +342,8 @@ workflow QC_PROCESSES {
         //FIXME Make sure this is working as expected
         def mperm_header=" CHR                               SNP         EMP1         EMP2 "
 
+    emit:
+        reports_ch
 }
 
 
@@ -351,7 +353,10 @@ workflow QC_WF {
     QC_INPUT_VALIDATION()
 
     QC_PROCESSES(
-        QC_INPUT_VALIDATION.out.checked_input
+        QC_INPUT_VALIDATION.out.checked_input_ch,
+        QC_INPUT_VALIDATION.out.poor_gc_10_ch,
+        QC_INPUT_VALIDATION.out.phenotype_ch,
+        QC_INPUT_VALIDATION.out.batch_ch,
     )
 
     PRODUCE_REPORTS(

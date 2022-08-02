@@ -5,7 +5,7 @@
 process IDENTIFY_INDIV_DISC_SEX_INFO {
 
   //FIXME Remove this usage as it has been deprecated
-  validExitStatus 0, 1
+  // validExitStatus 0, 1
 
   input:
         path(plinks)
@@ -24,15 +24,15 @@ process IDENTIFY_INDIV_DISC_SEX_INFO {
         def lmiss  = "${base}.lmiss"
 
         if (params.sexinfo_available == true)
-        """
-        plink $K --bfile $base --hardy --check-sex $f_hi_female $f_lo_male --missing  --out $base
-        head -n 1 ${base}.sexcheck > $logfile
-        grep  'PROBLEM' ${base}.sexcheck >> $logfile
-        """
+            """
+            plink $K --bfile $base --hardy --check-sex $f_hi_female $f_lo_male --missing  --out $base
+            head -n 1 ${base}.sexcheck > $logfile
+            grep  'PROBLEM' ${base}.sexcheck >> $logfile
+            """
         else
-        """
-        plink --bfile $base  --hardy --missing  --out $base
-        echo 'FID IID STATUS' > $sexcheck_report
-        echo 'No sex information'  > $logfile
-        """
+            """
+            plink --bfile $base  --hardy --missing  --out $base
+            echo 'FID IID STATUS' > $sexcheck_report
+            echo 'No sex information'  > $logfile
+            """
 }
