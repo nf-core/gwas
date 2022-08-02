@@ -61,6 +61,15 @@ def multiqc_report = []
 
 workflow GWAS {
 
+    def = nextflowversion =nextflow.version
+
+    if (workflow.repository)
+    wflowversion="${workflow.repository} --- ${workflow.revision} [${workflow.commitId}]"
+    else
+    wflowversion="A local copy of the workflow was used"
+
+
+
     ch_versions = Channel.empty()
 
     //

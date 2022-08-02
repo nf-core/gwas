@@ -70,7 +70,8 @@ workflow QC_INPUT_VALIDATION {
                 checkSampleSheet(samplesheet)
             }
 
-            idfiles = [params.batch,params.phenotype]
+            def idfiles = [params.batch,params.phenotype]
+
             idfiles.each { checkColumnHeader(it,['FID','IID']) }
 
             println "The batch file is ${params.batch}"
@@ -93,38 +94,40 @@ workflow QC_INPUT_VALIDATION {
             params.each { parm ->
             if (! allowed_params.contains(parm.key)) {
                     println "Check $parm  ************** is it a valid parameter -- are you using one rather than two - signs or vice-versa";
-            }
+                }
             }
 
 
             if (params.case_control) {
-            ccfile = params.case_control
-            Channel.fromPath(ccfile).into { cc_ch; cc2_ch }
-            col    = params.case_control_col
-            diffpheno = "--pheno cc.phe --pheno-name $col"
-            if (params.case_control.toString().contains("s3://") || params.case_control.toString().contains("az://")) {
-                println "Case control file is in the cloud so we can't check it"
-            } else
-            if (! file(params.case_control).exists()) {
-                error("\n\nThe file <${params.case_control}> given for <params.case_control> does not exist")
+                ccfile = params.case_control
+                Channel.fromPath(ccfile).into { cc_ch; cc2_ch }
+                col    = params.case_control_col
+                diffpheno = "--pheno cc.phe --pheno-name $col"
+                if (params.case_control.toString().contains("s3://") || params.case_control.toString().contains("az://")) {
+                    println "Case control file is in the cloud so we can't check it"
+                } else if (! file(params.case_control).exists()) {
+                    error("\n\nThe file <${params.case_control}> given for <params.case_control> does not exist")
                 } else {
-                def line
-                new File(params.case_control).withReader { line = it.readLine() }
-                fields = line.split()
-                if (! fields.contains(params.case_control_col))
-                error("\n\nThe file <${params.case_control}> given for <params.case_control> does not have a column <${params.case_control_col}>\n")
+                    def line
+                    new File(params.case_control).withReader { line = it.readLine() }
+                    fields = line.split()
+                    if (! fields.contains(params.case_control_col))
+                    error("\n\nThe file <${params.case_control}> given for <params.case_control> does not have a column <${params.case_control_col}>\n")
                 }
-
             } else {
-            diffpheno = ""
-            col = ""
-            cc_ch  = Channel.value.into("none").into { cc_ch; cc2_ch }
+                def diffpheno = ""
+                def col = ""
+                cc_ch  = Channel.value.into("none").into { cc_ch; cc2_ch }
             }
 
 
-            phenotype_ch = getSubChannel(params.phenotype,"pheno",params.pheno_col)
-            batch_ch     = getSubChannel(params.batch,"batch",params.batch_col)
+            ch_phenotype = getSubChannel(params.phenotype,"pheno",params.pheno_col)
+            ch_batch     = getSubChannel(params.batch,"batch",params.batch_col)
 
+
+
+
+//---- Modification of variables for pipeline -------------------------------//
 
 
 
@@ -133,13 +136,13 @@ workflow QC_INPUT_VALIDATION {
             */
 
             if ( nullfile.contains(params.sexinfo_available) ) {
-            sexinfo = "--allow-no-sex"
-            extrasexinfo = ""
-            println "Sexinfo not available, command --allow-no-sex\n"
+                sexinfo = "--allow-no-sex"
+                extrasexinfo = ""
+                println "Sexinfo not available, command --allow-no-sex\n"
             } else {
-            sexinfo = ""
-            extrasexinfo = "--must-have-sex"
-            println "Sexinfo available command"
+                sexinfo = ""
+                extrasexinfo = "--must-have-sex"
+                println "Sexinfo available command"
             }
 
 
@@ -147,7 +150,7 @@ workflow QC_INPUT_VALIDATION {
             * We match the bed, bim, fam file -- order determined lexicographically
             * not by order given, we check that they exist and then
             * send the all the files to raw_ch and just the bim file to bim_ch */
-            inpat = "${params.input_dir}/${params.input_pat}"
+            def inpat = "${params.input_dir}/${params.input_pat}"
 
 
 
@@ -181,9 +184,27 @@ workflow QC_INPUT_VALIDATION {
                 }.set {checked_input}
 
 
-    emit:
+            if (samplesheet != "0")  {
+                sample_sheet_ch = file(samplesheet)
 
+                SAMPLESHEET(sample_sheet_ch)
+
+                ch_poorgc10 = SAMPLESHEET(sample_sheet_ch).out.poorgc10_ch
+                ch_report_poorgc10 = SAMPLESHEET(sample_sheet_ch).out.report_poorgc10_ch
+
+            } else {
+
+               ch_poorgc10 = NO_SAMPLESHEET().out.poorgc10_ch
+               ch_report_poorgc10 = NO_SAMPLESHEET().out.report_poorgc10_ch
+
+
+            }
+
+    emit:
         checked_input_ch = checked_input
+        poor_gc_10_ch = ch_poorgc10
+        phenotype_ch = ch_phenotype
+        batch_ch = ch_batch
 
 }
 
@@ -199,6 +220,7 @@ workflow QC_PROCESSES {
 
     main:
 
+        checked_input.input_md5_ch | IN_MD5.out.report_input_md5_ch
 
         checked_input.bim_ch | GET_DUPLICATE_MARKERS
 
