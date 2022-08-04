@@ -43,6 +43,8 @@ include { IN_MD5 } from "../../modules/local/qc_report/in_md5.nf"
 include { OUT_MD5 } from "../../modules/local/qc_report/out_md5.nf"
 include { PRODUCE_REPORTS } from "../../modules/local/qc_report/produce_reports.nf"
 
+
+
 //======================
 // Definitions of some utils
 //======================
@@ -52,98 +54,97 @@ include { PRODUCE_REPORTS } from "../../modules/local/qc_report/produce_reports.
 // NB: if the file is in S3 we cannot do the test since Groovy does not
 // allow us to access the file directly
 def getSubChannel = { parm, parm_name, col_name ->
-  if (parm.toString().contains("s3://")) {
-    println "The file <$parm> is in S3 so we cannot do a pre-check";
-    return Channel.fromPath(parm);
-  }
-  if (parm.toString().contains("az://")) {
-    println "The file <$parm> is in Azure so we cannot do a pre-check";
-    return Channel.fromPath(parm);
-  }
-  if ((parm==0) || (parm=="0") || (parm==false) || (parm=="false")) {
-    filename = "emptyZ0${parm_name}.txt";
-    new File(filename).createNewFile()
-    new_ch = Channel.fromPath(filename);
-
-  } else {
-    if (! file(parm).exists()) {
-     error("\n\nThe file <$parm> given for <params.${parm_name}> does not exist")
-    } else {
-      def line
-      new File(parm).withReader { line = it.readLine() }
-      fields = line.split()
-      if (! fields.contains(col_name))
-	  error("\n\nThe file <$parm> given for <params.${parm_name}> does not have a column <${col_name}>\n")
+    if (parm.toString().contains("s3://")) {
+        println "The file <$parm> is in S3 so we cannot do a pre-check";
+        return Channel.fromPath(parm);
     }
-    new_ch = Channel.fromPath(parm);
-  }
-  return new_ch;
+    if (parm.toString().contains("az://")) {
+        println "The file <$parm> is in Azure so we cannot do a pre-check";
+        return Channel.fromPath(parm);
+    }
+    if ((parm==0) || (parm=="0") || (parm==false) || (parm=="false")) {
+        filename = "emptyZ0${parm_name}.txt";
+        new File(filename).createNewFile()
+        new_ch = Channel.fromPath(filename);
+
+    } else {
+        if (! file(parm).exists()) {
+        error("\n\nThe file <$parm> given for <params.${parm_name}> does not exist")
+        } else {
+        def line
+        new File(parm).withReader { line = it.readLine() }
+        fields = line.split()
+        if (! fields.contains(col_name))
+        error("\n\nThe file <$parm> given for <params.${parm_name}> does not have a column <${col_name}>\n")
+        }
+        new_ch = Channel.fromPath(parm);
+    }
+    return new_ch;
 }
 
 
 def getConfig = {
-  all_files = workflow.configFiles.unique()
-  text = ""
-  all_files.each { fname ->
-      base = fname.baseName
-      curr = "\n\n*-subsection{*-protect*-url{$base}}@.@@.@*-footnotesize@.@*-begin{verbatim}"
-      file(fname).eachLine { String line ->
-	if (line.contains("secretKey")) { line = "secretKey='*******'" }
-        if (line.contains("accessKey")) { line = "accessKey='*******'" }
-        curr = curr + "@.@"+line
-      }
-      curr = curr +"@.@*-end{verbatim}\n"
-      text = text+curr
-  }
-  return text
+    all_files = workflow.configFiles.unique()
+    text = ""
+    all_files.each { fname ->
+        base = fname.baseName
+        curr = "\n\n*-subsection{*-protect*-url{$base}}@.@@.@*-footnotesize@.@*-begin{verbatim}"
+        file(fname).eachLine { String line ->
+        if (line.contains("secretKey")) { line = "secretKey='*******'" }
+            if (line.contains("accessKey")) { line = "accessKey='*******'" }
+            curr = curr + "@.@"+line
+        }
+        curr = curr +"@.@*-end{verbatim}\n"
+        text = text+curr
+    }
+    return text
 }
 
-def checkColumnHeader(fname, columns) {
-  if (workflow.profile == "awsbatch") return;
-  if (fname.toString().contains("s3://")) return;
-  //FIXME The presence of nullfile (undeclared function param)
-  if (nullfile.contains(fname)) return;
-  new File(fname).withReader { line = it.readLine().tokenize() }
-  problem = false;
-  columns.each { col ->
-    if (! line.contains(col) ) {
-      println "The file <$fname> does not contain the column <$col>";
-      problem=true;
+def checkColumnHeader(fname, columns, nullfile) {
+    if (workflow.profile == "awsbatch") return;
+    if (fname.toString().contains("s3://")) return;
+    //FIXME The presence of nullfile (undeclared function param)
+    if (nullfile.contains(fname)) return;
+    new File(fname).withReader { line = it.readLine().tokenize() }
+    problem = false;
+    columns.each { col ->
+        if (! line.contains(col) ) {
+        println "The file <$fname> does not contain the column <$col>";
+        problem=true;
+        }
+        if (problem)
+        System.exit(2)
     }
-    if (problem)
-      System.exit(2)
-  }
 }
 
 
 def checkSampleSheet(fname)  {
-  if (workflow.profile == "awsbatch") return;
-  if (fname.contains("s3://") )return;
-  if (fname.contains("az://") ) return;
-  if (nullfile.contains(fname) || fname.contains(".xls")) return;
-  new File(fname).withReader { line = it.readLine()}
-  problem  = false
-  prob_str = ""
-  if (! line.contains(",")) {
-    problem = true;
-    prob_str = "If given as a CSV file, it must be comma-separated\n";
-  }
-  headers = line.tokenize(",")
-  headers.each { println it}
-  if (!(headers.contains("Institute Sample Label") ||
-      (headers.contains("Sample Plate") && headers.contains("Well")))) {
-    problem= true
-    prob_str = prob_str + "Column headers must include 'Institute Sample Label'  or both 'Sample Plate' and 'Well'"
-  }
-  if (problem)  {
-    println "There's a problem with the sample sheet <$fname>."
-    println prob_str;
-    //FIXME
-    System.exit(1)
-  }
+    if (workflow.profile == "awsbatch") return;
+    if (fname.contains("s3://") )return;
+    if (fname.contains("az://") ) return;
+    //FIXME The presence of nullfile (undeclared function param)
+    if (nullfile.contains(fname) || fname.contains(".xls")) return;
+    new File(fname).withReader { line = it.readLine()}
+    problem  = false
+    prob_str = ""
+    if (! line.contains(",")) {
+        problem = true;
+        prob_str = "If given as a CSV file, it must be comma-separated\n";
+    }
+    headers = line.tokenize(",")
+    headers.each { println it}
+    if (!(headers.contains("Institute Sample Label") ||
+        (headers.contains("Sample Plate") && headers.contains("Well")))) {
+        problem= true
+        prob_str = prob_str + "Column headers must include 'Institute Sample Label'  or both 'Sample Plate' and 'Well'"
+    }
+    if (problem)  {
+        println "There's a problem with the sample sheet <$fname>."
+        println prob_str;
+        //FIXME
+        System.exit(1)
+    }
 }
-
-
 
 
 //======================
@@ -153,6 +154,11 @@ def checkSampleSheet(fname)  {
 workflow QC_INPUT_VALIDATION {
     main:
 
+            //======================
+            // Validation checks and channel construction
+            //======================
+
+
             if (params.idpat ==  "0")
                 idpat   = "(.*)"
             else
@@ -160,8 +166,12 @@ workflow QC_INPUT_VALIDATION {
 
             def K = "--keep-allele-order"
 
-            def nullfile = [false,"False","false", "FALSE",0,"","0","null",null]
 
+            //----------------------------
+            // Adapt as per the samplesheet
+            //----------------------------
+
+            def nullfile = [false,"False","false", "FALSE",0,"","0","null",null]
 
             if (nullfile.contains(params.samplesheet))
                 samplesheet = "0"
@@ -170,9 +180,14 @@ workflow QC_INPUT_VALIDATION {
                 checkSampleSheet(samplesheet)
             }
 
+
+
+            //----------------------------
+
             def idfiles = [params.batch,params.phenotype]
 
-            idfiles.each { checkColumnHeader(it,['FID','IID']) }
+            //FIXME Disabled the check to avoid the compilation/scope issues
+            // idfiles.each { checkColumnHeader(it, ['FID','IID', nullfile]) }
 
             println "The batch file is ${params.batch}"
 
@@ -200,7 +215,7 @@ workflow QC_INPUT_VALIDATION {
 
                 ccfile = params.case_control
 
-                Channel.fromPath(ccfile).into { cc_ch; cc2_ch }
+                cc_ch = Channel.fromPath(ccfile)
 
                 def col    = params.case_control_col
 
@@ -218,9 +233,9 @@ workflow QC_INPUT_VALIDATION {
                         error("\n\nThe file <${params.case_control}> given for <params.case_control> does not have a column <${params.case_control_col}>\n")
                 }
             } else {
-                diffpheno = ""
-                col = ""
-                cc_ch  = Channel.value.into("none").into { cc_ch; cc2_ch }
+                def diffpheno = ""
+                def col = ""
+                cc_ch  = Channel.value("none")
             }
 
 
@@ -233,9 +248,7 @@ workflow QC_INPUT_VALIDATION {
 
 
 
-            /* Define the command to add for plink depending on whether sexinfo is
-            * available or not.
-            */
+            // Define the command to add for plink depending on whether sexinfo is available or not.
 
             if ( nullfile.contains(params.sexinfo_available) ) {
                 sexinfo = "--allow-no-sex"
@@ -248,10 +261,10 @@ workflow QC_INPUT_VALIDATION {
             }
 
 
-            /* Get the input files -- could be a glob
-            * We match the bed, bim, fam file -- order determined lexicographically
-            * not by order given, we check that they exist and then
-            * send the all the files to raw_ch and just the bim file to bim_ch */
+            // Get the input files -- could be a glob
+            // We match the bed, bim, fam file -- order determined lexicographically
+            // not by order given, we check that they exist and then
+            // send the all the files to raw_ch and just the bim file to bim_ch
             def inpat = "${params.input_dir}/${params.input_pat}"
 
 
@@ -452,15 +465,15 @@ workflow QC_WF {
 
     QC_INPUT_VALIDATION()
 
-    QC_PROCESSES(
-        QC_INPUT_VALIDATION.out.checked_input_ch,
-        QC_INPUT_VALIDATION.out.poor_gc_10_ch,
-        QC_INPUT_VALIDATION.out.phenotype_ch,
-        QC_INPUT_VALIDATION.out.batch_ch,
-    )
+    // QC_PROCESSES(
+    //     QC_INPUT_VALIDATION.out.checked_input_ch,
+    //     QC_INPUT_VALIDATION.out.poor_gc_10_ch,
+    //     QC_INPUT_VALIDATION.out.phenotype_ch,
+    //     QC_INPUT_VALIDATION.out.batch_ch,
+    // )
 
-    PRODUCE_REPORTS(
-        QC_PROCESSES.out.reports_ch
-    )
+    // PRODUCE_REPORTS(
+    //     QC_PROCESSES.out.reports_ch
+    // )
 
 }
