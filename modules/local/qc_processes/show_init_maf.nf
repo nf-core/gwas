@@ -7,7 +7,7 @@ process SHOW_INIT_MAF {
 
   script:
         def base = freq.baseName+"-initmaf"
-        def base = base.replace(".","_")
+        base = base.replace(".","_")
 
         template "showmaf.py"
 }

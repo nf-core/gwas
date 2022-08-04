@@ -9,13 +9,13 @@ def summary_params = NfcoreSchema.paramsSummaryMap(workflow, params)
 // Validate input parameters
 WorkflowGwas.initialise(params, log)
 
-// TODO nf-core: Add all file path parameters for the pipeline to the list below
+// FIXME nf-core: Add all file path parameters for the pipeline to the list below
 // Check input path parameters to see if they exist
-def checkPathParamList = [ params.input, params.multiqc_config, params.fasta ]
-for (param in checkPathParamList) { if (param) { file(param, checkIfExists: true) } }
+// def checkPathParamList = [ params.input, params.multiqc_config, params.fasta ]
+// for (param in checkPathParamList) { if (param) { file(param, checkIfExists: true) } }
 
-// Check mandatory parameters
-if (params.input) { ch_input = file(params.input) } else { exit 1, 'Input samplesheet not specified!' }
+// FIXME Check mandatory parameters
+// if (params.input) { ch_input = file(params.input) } else { exit 1, 'Input samplesheet not specified!' }
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -35,7 +35,7 @@ ch_multiqc_custom_config = params.multiqc_config ? Channel.fromPath(params.multi
 //
 // SUBWORKFLOW: Consisting of a mix of local and nf-core/modules
 //
-include { INPUT_CHECK } from '../subworkflows/local/input_check'
+// include { INPUT_CHECK } from '../subworkflows/local/input_check'
 include { QC_WF }       from '../subworkflows/local/qc'
 
 /*
@@ -47,8 +47,8 @@ include { QC_WF }       from '../subworkflows/local/qc'
 //
 // MODULE: Installed directly from nf-core/modules
 //
-include { FASTQC                      } from '../modules/nf-core/modules/fastqc/main'
-include { MULTIQC                     } from '../modules/nf-core/modules/multiqc/main'
+// include { FASTQC                      } from '../modules/nf-core/modules/fastqc/main'
+// include { MULTIQC                     } from '../modules/nf-core/modules/multiqc/main'
 include { CUSTOM_DUMPSOFTWAREVERSIONS } from '../modules/nf-core/modules/custom/dumpsoftwareversions/main'
 
 /*
@@ -63,9 +63,9 @@ def multiqc_report = []
 workflow GWAS {
 
 
-    //
+    //=============================================
     // QC SUBWORKFLOW
-    //
+    //=============================================
 
     if (params.only_qc) {
         QC_WF()
@@ -117,7 +117,7 @@ workflow GWAS {
         ch_multiqc_files.collect()
     )
     multiqc_report = MULTIQC.out.report.toList()
-    ch_versions    = ch_versions.mix(MULTIQC.out.versions)*/
+    ch_versions    = ch_versions.mix(MULTIQC.out.versions)
     */
 }
 

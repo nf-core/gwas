@@ -8,7 +8,7 @@ process SHOW_HWE_STATS {
 
   script:
         def base = hwe.baseName+"-inithwe"
-        def base = base.replace(".","_")
+        base = base.replace(".","_")
 
         template "showhwe.py"
 }

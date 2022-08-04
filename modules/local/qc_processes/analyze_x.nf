@@ -1,6 +1,6 @@
 missingness = [0.01,0.03,0.05]  // this is used by one of the templates
 
-process ANALYSE_X {
+process ANALYZE_X {
      input:
        path(xchr)
 

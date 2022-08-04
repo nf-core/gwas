@@ -1,49 +1,149 @@
-// Import modules from modules/qc_input_validations
-import { NO_SAMPLESHEET } from "../../modules/qc_input/no_samplesheet.nf"
-import { SAMPLESHEET } from "../../modules/qc_input/samplesheet.nf"
+// Include modules from modules/local/qc_input_validations
+include { NO_SAMPLESHEET } from "../../modules/local/qc_input_validations/no_samplesheet.nf"
+include { SAMPLESHEET } from "../../modules/local/qc_input_validations/samplesheet.nf"
 
 
-// Import functions from modules/qc_utils
-import { getres; checkColumnHeader; checkSampleSheet; getSubChannel } from "../../modules/qc_utils.nf"
+// Include functions from modules/local/qc_utils
+include { getres } from "../../modules/local/qc_utils.nf"
 
-// Import modules from modules/qc_processes
-import { ANALYZE_X } from "../../modules/qc_processes/analyze_x.nf"
-import { BATCH_PROC } from "../../modules/qc_processes/batch_proc.nf"
-import { CALCULATE_MAF } from "../../modules/qc_processes/calculate_maf.nf"
-import { CALCULATE_SAMPLE_HETEROZYGOSITY } from "../../modules/qc_processes/calculate_sample_heterozygosity.nf"
-import { CALCULATE_SNP_SKEW_STATUS } from "../../modules/qc_processes/calculate_snp_skew_status.nf"
-import { COMP_PCA } from "../../modules/qc_processes/comp_pca.nf"
-import { CONVERT_IN_VCF } from "../../modules/qc_processes/convert_in_vcf.nf"
-import { FIND_SNP_EXTREME_DIFFERENTIAL_MISSINGNESS } from "../../modules/qc_processes/find_snp_extreme_differential_missingness.nf"
-import { FIND_HWE_OF_SNPS } from "../../modules/qc_processes/find_hwe_of_snps.nf"
-import { FIND_RELATED_INDIV } from "../../modules/qc_processes/find_related_indiv.nf"
-import { GET_BAD_INDIV_MISSING_HET } from "../../modules/qc_processes/get_bad_indiv_missing_het.nf"
-import { GET_DUPLICATE_MARKERS } from "../../modules/qc_processes/get_duplicate_markers.nf"
-import { GET_INIT_MAF } from "../../modules/qc_processes/get_init_maf.nf"
-import { GET_X } from "../../modules/qc_processes/get_x.nf"
-import { IDENTIFY_INDIV_DISC_SEX_INFO } from "../../modules/qc_processes/identify_indiv_disc_sex_info.nf"
-import { PRUNE_FOR_IBD } from "../../modules/qc_processes/prune_for_ibd.nf"
-import { PRUNE_FOR_IBDLD } from "../../modules/qc_processes/prune_for_ibdld.nf"
-import { REMOVE_DUPLICATE_SNPS } from "../../modules/qc_processes/remove_duplicate_snps.nf"
-import { REMOVE_QC_INDIVS } from "../../modules/qc_processes/remove_qc_indivs.nf"
-import { REMOVE_QC_PHASE1 } from "../../modules/qc_processes/remove_qc_phase1.nf"
-import { REMOVE_SKEW_SNPS } from "../../modules/qc_processes/remove_skew_snps.nf"
-import { SAMPLE_SHEET } from "../../modules/qc_processes/sample_sheet.nf"
-import { SHOW_HWE_STATS } from "../../modules/qc_processes/show_hwe_stats.nf"
-import { SHOW_INIT_MAF } from "../../modules/qc_processes/show_init_maf.nf"
+// Include modules from modules/local/qc_processes
+include { ANALYZE_X } from "../../modules/local/qc_processes/analyze_x.nf"
+include { BATCH_PROC } from "../../modules/local/qc_processes/batch_proc.nf"
+include { CALCULATE_MAF } from "../../modules/local/qc_processes/calculate_maf.nf"
+include { CALCULATE_SAMPLE_HETEROZYGOSITY } from "../../modules/local/qc_processes/calculate_sample_heterozygosity.nf"
+include { CALCULATE_SNP_SKEW_STATUS } from "../../modules/local/qc_processes/calculate_snp_skew_status.nf"
+include { COMP_PCA } from "../../modules/local/qc_processes/comp_pca.nf"
+include { CONVERT_IN_VCF } from "../../modules/local/qc_processes/convert_in_vcf.nf"
+include { FIND_SNP_EXTREME_DIFFERENTIAL_MISSINGNESS } from "../../modules/local/qc_processes/find_snp_extreme_differential_missingness.nf"
+include { FIND_HWE_OF_SNPS } from "../../modules/local/qc_processes/find_hwe_of_snps.nf"
+include { FIND_RELATED_INDIV } from "../../modules/local/qc_processes/find_related_indiv.nf"
+include { GET_BAD_INDIVS_MISSING_HET } from "../../modules/local/qc_processes/get_bad_indivs_missing_het.nf"
+include { GET_DUPLICATE_MARKERS } from "../../modules/local/qc_processes/get_duplicate_markers.nf"
+include { GET_INIT_MAF } from "../../modules/local/qc_processes/get_init_maf.nf"
+include { GET_X } from "../../modules/local/qc_processes/get_x.nf"
+include { IDENTIFY_INDIV_DISC_SEX_INFO } from "../../modules/local/qc_processes/identify_indiv_disc_sex_info.nf"
+include { PRUNE_FOR_IBD } from "../../modules/local/qc_processes/prune_for_ibd.nf"
+include { PRUNE_FOR_IBDLD } from "../../modules/local/qc_processes/prune_for_ibdld.nf"
+include { REMOVE_DUPLICATE_SNPS } from "../../modules/local/qc_processes/remove_duplicate_snps.nf"
+include { REMOVE_QC_INDIVS } from "../../modules/local/qc_processes/remove_qc_indivs.nf"
+include { REMOVE_QC_PHASE1 } from "../../modules/local/qc_processes/remove_qc_phase1.nf"
+include { REMOVE_SKEW_SNPS } from "../../modules/local/qc_processes/remove_skew_snps.nf"
+include { SHOW_HWE_STATS } from "../../modules/local/qc_processes/show_hwe_stats.nf"
+include { SHOW_INIT_MAF } from "../../modules/local/qc_processes/show_init_maf.nf"
 
-// Import modules from modules/qc_report
+// Include modules from modules/local/qc_report
+include { DRAW_PCA } from "../../modules/local/qc_report/draw_pca.nf"
+include { GENERATE_DIFFERENTIAL_MISSINGNESS_PLOT } from "../../modules/local/qc_report/generate_differential_missingness_plot.nf"
+include { GENERATE_HWE_PLOT } from "../../modules/local/qc_report/generate_hwe_plot.nf"
+include { GENERATE_INDIV_MISSINGNESS_PLOT } from "../../modules/local/qc_report/generate_indiv_missingness_plot.nf"
+include { GENERATE_MAF_PLOT } from "../../modules/local/qc_report/generate_maf_plot.nf"
+include { GENERATE_MISS_HET_PLOT } from "../../modules/local/qc_report/generate_miss_het_plot.nf"
+include { GENERATE_SNP_MISSINGNESS_PLOT } from "../../modules/local/qc_report/generate_snp_missingness_plot.nf"
+include { IN_MD5 } from "../../modules/local/qc_report/in_md5.nf"
+include { OUT_MD5 } from "../../modules/local/qc_report/out_md5.nf"
+include { PRODUCE_REPORTS } from "../../modules/local/qc_report/produce_reports.nf"
 
-import { DRAW_PCA } from "../../modules/qc_report/draw_pca.nf"
-import { GENERATE_DIFFERENTIAL_MISSINGNESS_PLOT } from "../../modules/qc_report/generate_differential_missingness_plot.nf"
-import { GENERATE_HWE_PLOT } from "../../modules/qc_report/generate_hwe_plot.nf"
-import { GENERATE_INDIV_MISSINGNESS_PLOT } from "../../modules/qc_report/generate_indiv_missingness_plot.nf"
-import { GENERATE_MAF_PLOT } from "../../modules/qc_report/generate_maf_plot.nf"
-import { GENERATE_MISS_HET_PLOT } from "../../modules/qc_report/generate_miss_het_plot.nf"
-import { GENERATE_SNP_MISSINGNESS_PLOT } from "../../modules/qc_report/generate_snp_missingness_plot.nf"
-import { IN_MD5 } from "../../modules/qc_report/in_md5.nf"
-import { OUT_MD5 } from "../../modules/qc_report/out_md5.nf"
-import { PRODUCE_REPORTS } from "../../modules/qc_report/produce_reports.nf"
+//======================
+// Definitions of some utils
+//======================
+
+// This method first checks that the data file has the stated column
+// If so, it creates a channel for it
+// NB: if the file is in S3 we cannot do the test since Groovy does not
+// allow us to access the file directly
+def getSubChannel = { parm, parm_name, col_name ->
+  if (parm.toString().contains("s3://")) {
+    println "The file <$parm> is in S3 so we cannot do a pre-check";
+    return Channel.fromPath(parm);
+  }
+  if (parm.toString().contains("az://")) {
+    println "The file <$parm> is in Azure so we cannot do a pre-check";
+    return Channel.fromPath(parm);
+  }
+  if ((parm==0) || (parm=="0") || (parm==false) || (parm=="false")) {
+    filename = "emptyZ0${parm_name}.txt";
+    new File(filename).createNewFile()
+    new_ch = Channel.fromPath(filename);
+
+  } else {
+    if (! file(parm).exists()) {
+     error("\n\nThe file <$parm> given for <params.${parm_name}> does not exist")
+    } else {
+      def line
+      new File(parm).withReader { line = it.readLine() }
+      fields = line.split()
+      if (! fields.contains(col_name))
+	  error("\n\nThe file <$parm> given for <params.${parm_name}> does not have a column <${col_name}>\n")
+    }
+    new_ch = Channel.fromPath(parm);
+  }
+  return new_ch;
+}
+
+
+def getConfig = {
+  all_files = workflow.configFiles.unique()
+  text = ""
+  all_files.each { fname ->
+      base = fname.baseName
+      curr = "\n\n*-subsection{*-protect*-url{$base}}@.@@.@*-footnotesize@.@*-begin{verbatim}"
+      file(fname).eachLine { String line ->
+	if (line.contains("secretKey")) { line = "secretKey='*******'" }
+        if (line.contains("accessKey")) { line = "accessKey='*******'" }
+        curr = curr + "@.@"+line
+      }
+      curr = curr +"@.@*-end{verbatim}\n"
+      text = text+curr
+  }
+  return text
+}
+
+def checkColumnHeader(fname, columns) {
+  if (workflow.profile == "awsbatch") return;
+  if (fname.toString().contains("s3://")) return;
+  //FIXME The presence of nullfile (undeclared function param)
+  if (nullfile.contains(fname)) return;
+  new File(fname).withReader { line = it.readLine().tokenize() }
+  problem = false;
+  columns.each { col ->
+    if (! line.contains(col) ) {
+      println "The file <$fname> does not contain the column <$col>";
+      problem=true;
+    }
+    if (problem)
+      System.exit(2)
+  }
+}
+
+
+def checkSampleSheet(fname)  {
+  if (workflow.profile == "awsbatch") return;
+  if (fname.contains("s3://") )return;
+  if (fname.contains("az://") ) return;
+  if (nullfile.contains(fname) || fname.contains(".xls")) return;
+  new File(fname).withReader { line = it.readLine()}
+  problem  = false
+  prob_str = ""
+  if (! line.contains(",")) {
+    problem = true;
+    prob_str = "If given as a CSV file, it must be comma-separated\n";
+  }
+  headers = line.tokenize(",")
+  headers.each { println it}
+  if (!(headers.contains("Institute Sample Label") ||
+      (headers.contains("Sample Plate") && headers.contains("Well")))) {
+    problem= true
+    prob_str = prob_str + "Column headers must include 'Institute Sample Label'  or both 'Sample Plate' and 'Well'"
+  }
+  if (problem)  {
+    println "There's a problem with the sample sheet <$fname>."
+    println prob_str;
+    //FIXME
+    System.exit(1)
+  }
+}
+
+
 
 
 //======================
@@ -102,9 +202,9 @@ workflow QC_INPUT_VALIDATION {
 
                 Channel.fromPath(ccfile).into { cc_ch; cc2_ch }
 
-                col    = params.case_control_col
+                def col    = params.case_control_col
 
-                diffpheno = "--pheno cc.phe --pheno-name $col"
+                def diffpheno = "--pheno cc.phe --pheno-name $col"
 
                 if (params.case_control.toString().contains("s3://") || params.case_control.toString().contains("az://")) {
                     println "Case control file is in the cloud so we can't check it"
@@ -118,8 +218,8 @@ workflow QC_INPUT_VALIDATION {
                         error("\n\nThe file <${params.case_control}> given for <params.case_control> does not have a column <${params.case_control_col}>\n")
                 }
             } else {
-                def diffpheno = ""
-                def col = ""
+                diffpheno = ""
+                col = ""
                 cc_ch  = Channel.value.into("none").into { cc_ch; cc2_ch }
             }
 
@@ -302,13 +402,13 @@ workflow QC_PROCESSES {
 
         qc2_ch \
         | CALCULATE_SAMPLE_HETEROZYGOSITY.out.hetero_check_ch \
-        | GET_BAD_INDIV_MISSING_HET.out.failed_miss_het
+        | GET_BAD_INDIVS_MISSING_HET.out.failed_miss_het
 
 
         find_rel_ch | FIND_RELATED_INDIV.out.related_indivs_ch
 
         REMOVE_QC_INDIVS(
-                        GET_BAD_INDIV_MISSING_HET.out.failed_miss_het,
+                        GET_BAD_INDIVS_MISSING_HET.out.failed_miss_het,
                         FIND_RELATED_INDIV.out.related_indivs_ch,
                         IDENTIFY_INDIV_DISC_SEX_INFO.out.failed_sex_ch,
                         poor_gc10_ch,
