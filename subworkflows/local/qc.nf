@@ -303,18 +303,21 @@ workflow QC_INPUT_VALIDATION {
 
                 SAMPLESHEET(sample_sheet_ch)
 
-                ch_poorgc10 = SAMPLESHEET(sample_sheet_ch).out.poorgc10_ch
-                ch_report_poorgc10 = SAMPLESHEET(sample_sheet_ch).out.report_poorgc10_ch
+                ch_poorgc10 = SAMPLESHEET.out.poorgc10_ch
+                ch_report_poorgc10 = SAMPLESHEET.out.report_poorgc10_ch
 
             } else {
 
-               ch_poorgc10 = NO_SAMPLESHEET().out.poorgc10_ch
-               ch_report_poorgc10 = NO_SAMPLESHEET().out.report_poorgc10_ch
+                NO_SAMPLESHEET()
+
+                ch_poorgc10 = NO_SAMPLESHEET.out.poorgc10_ch
+                ch_report_poorgc10 = NO_SAMPLESHEET.out.report_poorgc10_ch
 
             }
 
     emit:
-        checked_input_ch = checked_input
+        checked_input_md5_ch = checked_input.inpmd5ch
+        checked_input_bim_ch = checked_input.bim_ch
         poor_gc_10_ch = ch_poorgc10
         phenotype_ch = ch_phenotype
         batch_ch = ch_batch
@@ -325,7 +328,8 @@ workflow QC_INPUT_VALIDATION {
 workflow QC_PROCESSES {
 
     take:
-        checked_input
+        checked_input_md5_ch
+        checked_input_bim_ch
         poor_gc_10_ch
         phenotype_ch
         batch_ch
