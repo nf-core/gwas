@@ -269,28 +269,24 @@ workflow QC_INPUT_VALIDATION {
 
 
 
+
             // Checks if the file exists
-            checker = { fn ->
-            if (fn.exists())
-                return fn;
-                else
-                error("\n\n-----------------\nFile $fn does not exist\n\n---\n")
-            }
-
-
-
             if (inpat.contains("s3://") || inpat.contains("az://")) {
-                print "Here"
-                this_checker = { it -> return it}
+                    def this_checker = { it -> return it}
                 } else {
-                this_checker = checker
+                    def this_checker = { fn ->
+                                        if (fn.exists())
+                                            return fn;
+                                            else
+                                            error("\n\n-----------------\nFile $fn does not exist\n\n---\n")
+                                        }
             }
 
 
             Channel .fromFilePairs("${inpat}.{bed,bim,fam}",size:3, flat : true)
                     { file -> file.baseName }  \
                     .ifEmpty { error "No matching plink files" }        \
-                    .map { a -> [this_checker(a[1]), this_checker(a[2]), this_checker(a[3])] }\
+                    // .map { a -> [this_checker(a[1]), this_checker(a[2]), this_checker(a[3])] } \
                     .multiMap {  it ->
                         raw_ch: it
                         bim_ch: it[1]
@@ -337,12 +333,12 @@ workflow QC_PROCESSES {
 
     main:
 
-        checked_input.input_md5_ch | IN_MD5.out.report_input_md5_ch
+        checked_input_md5_ch | IN_MD5.out.report_input_md5_ch
 
-        checked_input.bim_ch | GET_DUPLICATE_MARKERS
+        checked_input_bim_ch | GET_DUPLICATE_MARKERS
 
         REMOVE_DUPLICATE_SNPS(
-            checked_input.bim_ch,
+            checked_input_bim_ch,
             GET_DUPLICATE_MARKERS.out.duplicates_ch
         )
 
