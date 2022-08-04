@@ -1,5 +1,4 @@
-process batch_proc {
-  memory plink_mem_req
+process BATCH_PROC {
   publishDir params.output_dir, pattern: "*{csv,pdf}",  overwrite:true, mode:'copy'
 
   input:
@@ -12,7 +11,7 @@ process batch_proc {
     path(rem_indivs) // findRel
 
   output:
-    path("${base}-batch.tex"),emit: report_batch_report_ch
+    path("${base}-batch.tex"), emit: report_batch_report_ch
     tuple path("*.csv"), path("*pdf"), emit: report_batch_aux_ch // need to stage
 
   script:

@@ -1,5 +1,4 @@
-process calculate_maf {
-  memory plink_mem_req
+process CALCULATE_MAF {
   publishDir params.output_dir, overwrite:true, mode:'copy', pattern: "*.frq"
 
   input:
@@ -7,7 +6,7 @@ process calculate_maf {
 
 
   output:
-    path "${base}.frq",emit: maf_plot_ch
+    path "${base}.frq", emit: maf_plot_ch
 
   script:
     def base = bed.baseName

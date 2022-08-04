@@ -1,5 +1,4 @@
-process draw_pca {
-    memory other_mem_req
+process DRAW_PCA {
     publishDir params.output_dir, overwrite:true, mode:'copy',pattern: "*.pdf"
 
     input:

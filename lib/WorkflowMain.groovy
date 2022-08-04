@@ -53,10 +53,10 @@ class WorkflowMain {
             System.exit(0)
         }
 
-        // Validate workflow parameters via the JSON schema
-        if (params.validate_params) {
-            NfcoreSchema.validateParameters(workflow, params, log)
-        }
+        // FIXME Validate workflow parameters via the JSON schema
+        // if (params.validate_params) {
+        //     NfcoreSchema.validateParameters(workflow, params, log)
+        // }
 
         // Print parameter summary log to screen
         log.info paramsSummaryLog(workflow, params, log)
@@ -72,11 +72,11 @@ class WorkflowMain {
         // Check AWS batch settings
         NfcoreTemplate.awsBatch(workflow, params)
 
-        // Check input has been provided
-        if (!params.input) {
-            log.error "Please provide an input samplesheet to the pipeline e.g. '--input samplesheet.csv'"
-            System.exit(1)
-        }
+        // FIXME Check input has been provided
+        // if (!params.input) {
+        //     log.error "Please provide an input samplesheet to the pipeline e.g. '--input samplesheet.csv'"
+        //     System.exit(1)
+        // }
     }
 
     //

@@ -1,12 +1,11 @@
-process generate_snp_missingness_plot {
-  memory other_mem_req
-  echo true
+process GENERATE_SNP_MISSINGNESS_PLOT {
+  debug true
 
   input:
-      file(lmissf) from snp_miss_ch
+      path(lmissf)
 
   output:
-     file(output) into report_snpmiss_ch
+      path(output), emit: report_snpmiss_ch
 
 
   script:
