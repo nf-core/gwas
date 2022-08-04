@@ -87,22 +87,25 @@ workflow QC_INPUT_VALIDATION {
             def f_hi_female     = params.f_hi_female
             def remove_on_bp    = params.remove_on_bp
 
-            def allowed_params= ["AMI","accessKey","batch","batch_col","bootStorageSize","case_control","case_control_col", "chipdescription", "cut_het_high","cut_get_low","cut_maf","cut_mind","cut_geno","cut_hwe","f_hi_female","f_lo_male","cut_diff_miss","cut_het_low", "help","input_dir","input_pat","instanceType","manifest", "maxInstances", "max_plink_cores","high_ld_regions_fname","other_mem_req","output", "output_align", "output_dir","phenotype","pheno_col","pi_hat", "plink_mem_req","region","reference","samplesheet", "scripts","secretKey","sexinfo_available", "sharedStorageMount","strandreport","work_dir","max_forks","big_time","super_pi_hat","samplesize","idpat","newpat","access-key","secret-key","instance-type","boot-storage-size","max-instances","shared-storage-mount","gemma_num_cores","remove_on_bp","queue","data","pheno","gc10"]
+            // def allowed_params= ["AMI","accessKey","batch","batch_col","bootStorageSize","case_control","case_control_col", "chipdescription", "cut_het_high","cut_get_low","cut_maf","cut_mind","cut_geno","cut_hwe","f_hi_female","f_lo_male","cut_diff_miss","cut_het_low", "help","input_dir","input_pat","instanceType","manifest", "maxInstances", "max_plink_cores","high_ld_regions_fname","other_mem_req","output", "output_align", "output_dir","phenotype","pheno_col","pi_hat", "plink_mem_req","region","reference","samplesheet", "scripts","secretKey","sexinfo_available", "sharedStorageMount","strandreport","work_dir","max_forks","big_time","super_pi_hat","samplesize","idpat","newpat","access-key","secret-key","instance-type","boot-storage-size","max-instances","shared-storage-mount","gemma_num_cores","remove_on_bp","queue","data","pheno","gc10"]
 
-
-
-            params.each { parm ->
-            if (! allowed_params.contains(parm.key)) {
-                    println "Check $parm  ************** is it a valid parameter -- are you using one rather than two - signs or vice-versa";
-                }
-            }
+            // params.each { parm ->
+            // if (! allowed_params.contains(parm.key)) {
+            //         println "Check $parm  ************** is it a valid parameter -- are you using one rather than two - signs or vice-versa";
+            //     }
+            // }
 
 
             if (params.case_control) {
+
                 ccfile = params.case_control
+
                 Channel.fromPath(ccfile).into { cc_ch; cc2_ch }
+
                 col    = params.case_control_col
+
                 diffpheno = "--pheno cc.phe --pheno-name $col"
+
                 if (params.case_control.toString().contains("s3://") || params.case_control.toString().contains("az://")) {
                     println "Case control file is in the cloud so we can't check it"
                 } else if (! file(params.case_control).exists()) {
@@ -112,7 +115,7 @@ workflow QC_INPUT_VALIDATION {
                     new File(params.case_control).withReader { line = it.readLine() }
                     fields = line.split()
                     if (! fields.contains(params.case_control_col))
-                    error("\n\nThe file <${params.case_control}> given for <params.case_control> does not have a column <${params.case_control_col}>\n")
+                        error("\n\nThe file <${params.case_control}> given for <params.case_control> does not have a column <${params.case_control_col}>\n")
                 }
             } else {
                 def diffpheno = ""
@@ -123,7 +126,6 @@ workflow QC_INPUT_VALIDATION {
 
             ch_phenotype = getSubChannel(params.phenotype,"pheno",params.pheno_col)
             ch_batch     = getSubChannel(params.batch,"batch",params.batch_col)
-
 
 
 
@@ -195,7 +197,6 @@ workflow QC_INPUT_VALIDATION {
 
                ch_poorgc10 = NO_SAMPLESHEET().out.poorgc10_ch
                ch_report_poorgc10 = NO_SAMPLESHEET().out.report_poorgc10_ch
-
 
             }
 
