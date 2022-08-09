@@ -10,7 +10,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--bed",action='store', help="Bed File",required = True)
 parser.add_argument("--bim",action='store', help="Bim File",required = True)
 parser.add_argument("--fam",action='store', help="Fam File",required = True)
-parser.add_argument("--out",action='store', help="Fam File",required = True)
+parser.add_argument("--out",action='store', help="Output filename",required = True)
 
 args = parser.parse_args()
 

@@ -2,10 +2,19 @@
 from __future__ import print_function
 import sys
 import os
+import argparse
 
-# Called as a template from nextflow
-if len(sys.argv) == 1:
-    sys.argv=["dups.py","$inpfname","$outfname","$remove_on_bp"]
+
+parser = argparse.ArgumentParser()
+
+parser.add_argument("--inpfname",action='store', help="Input filename",required = True)
+parser.add_argument("--outfname",action='store', help="Output filename",required = True)
+parser.add_argument("--remove_on_bp",action='store', help="??",required = True)
+
+
+args = parser.parse_args()
+
+
 
 
 def getChrom(chrom):
@@ -48,11 +57,11 @@ def removeOnBP(fname, out):
 
 
 os.system("hostname > hostname")
-f=open(sys.argv[1])
+f=open(args.inpfname)
 if not f:
-    sys.exit("File <%s> not opened"%sys.argv[1])
+    sys.exit("File <%s> not opened"%args.inpfname)
 s_name = set()
-out=open(sys.argv[2],"w")
+out=open(args.outfname,"w")
 for line in f:
     data=line.strip().split()
     snp_name = data[1]
@@ -62,8 +71,8 @@ for line in f:
         s_name.add(data[1])
 f.close()
 
-if sys.argv[3] in ["1",1,True,"True","true"]:
-    removeOnBP(sys.argv[1],out)
+if args.remove_on_bp in ["1",1,True,"True","true"]:
+    removeOnBP(args.inpfnameout)
 
 out.close()
 
