@@ -13,5 +13,12 @@ process FIND_RELATED_INDIV {
   script:
         def base = missing.baseName
         def outfname = "${base}-fail_IBD".replace(".","_")+".txt"
-        template "removeRelInds.py"
+        // def super_pi_hat = "??" FIX
+        """
+        removeRelInds.py \\
+        --missing ${missing} \\
+        --ibd_genome ${ibd_genome} \\
+        --outfname ${outfname} \\
+        --super_pi_hat ${super_pi_hat} 
+        """
 }

@@ -20,5 +20,17 @@ process BATCH_PROC {
     def base = eigenval.baseName
     def batch_col = params.batch_col
     def pheno_col = params.pheno_col
-    template "batchReport.py"
+    """
+    batchReport.py \\
+    --base ${base} \\
+    --batch ${batch} \\
+    --batch_col  ${batch_col} \\
+    --phenotype ${phenotype} \\
+    --pheno_col ${pheno_col} \\
+    --imiss  ${imiss} \\
+    --sexcheck_report ${sexcheck_report} \\
+    --eigenvec  ${eigenvec} \\
+    --genome  ${genome} \\
+    --sx_pickle  ${pkl}
+    """ 
 }

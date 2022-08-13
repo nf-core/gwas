@@ -15,6 +15,11 @@ process FIND_SNP_EXTREME_DIFFERENTIAL_MISSINGNESS {
         def base     = missing.baseName.replace("-.*","").replace(".","_")
         def probcol = 'EMP2'  // need to change if we don't use mperm
         def failed   = "${base}-failed_diffmiss.snps"
-
-        template "select_diffmiss_qcplink.py"
+        """
+        select_diffmiss_qcplink.py \\
+        --missing ${missing}\\
+        --probcol ${probcol}\\
+        --cut_diff_miss ${cut_diff_miss}\\
+        --failed ${failed}
+        """
 }

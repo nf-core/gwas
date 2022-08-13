@@ -9,5 +9,9 @@ process SHOW_INIT_MAF {
         def base = freq.baseName+"-initmaf"
         base = base.replace(".","_")
 
-        template "showmaf.py"
+        """
+        showmaf.py \\
+        --freq ${freq} \\
+        --base ${base}
+        """
 }
