@@ -3,21 +3,27 @@
 
 import pandas as pd
 import sys
+import argparse
 
-if len(sys.argv)<=1:
-    sys.argv=["removeRelInds.py","$missing","$ibd_genome","$outfname","$super_pi_hat"]
+parser = argparse.ArgumentParser()
 
+parser.add_argument("--missing",action='store', help="..",required = True)
+parser.add_argument("--ibd_genome",action='store', help="..",required = True)
+parser.add_argument("--outfname",action='store', help="..",required = True)
+parser.add_argument("--super_pi_hat",action='store', help="..",required = True)
+
+args = parser.parse_args()
 
 EOL=chr(10)
 
 str_type = {"FID":str, "IID":str, "FID1":str, "IID1":str, "FID2":str, 'IID2':str}
 
-imissf = pd.read_csv(sys.argv[1],delim_whitespace=True,dtype=str_type)
+imissf = pd.read_csv(args.missing,delim_whitespace=True,dtype=str_type)
 imissf.set_index(["FID","IID"],inplace=True)
-genomef = pd.read_csv(sys.argv[2],delim_whitespace=True,usecols=["FID1","IID1","FID2","IID2","PI_HAT"],dtype=str_type)
+genomef = pd.read_csv(args.ibd_genome,delim_whitespace=True,usecols=["FID1","IID1","FID2","IID2","PI_HAT"],dtype=str_type)
 
-outf   =open(sys.argv[3],"w")
-super_pi_hat = float(sys.argv[4])
+outf   =open(args.outfname,"w")
+super_pi_hat = float(args.super_pi_hat)
 
 def getDegrees(remove):
    elts = set(imissf.index.values)

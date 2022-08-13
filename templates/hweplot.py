@@ -16,7 +16,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--input",action='store', help="..",required = True)
 parser.add_argument("--output",action='store', help="..",required = True)
 
-args = parseArguments()
+args = parser.parse_args()
 
 
 fig,ax = plt.subplots(figsize=(8,6))
