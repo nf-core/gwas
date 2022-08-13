@@ -7,11 +7,19 @@ import re
 import os
 import pandas as pd
 import numpy as np
-if len(sys.argv)<=1:
-    sys.argv=["xCheck.py","$x","$f_hi_female", "$f_lo_male","$out"]
-    missingness=eval("$missingness")
-else:
-    missingness = [0.01,0.03,0.05]
+
+parser = argparse.ArgumentParser()
+
+parser.add_argument("--x",action='store', help="..",required = True)
+parser.add_argument("--f_hi_female",action='store', help="..",required = True)
+parser.add_argument("--f_lo_male",action='store', help="..",required = True)
+parser.add_argument("--out",action='store', help="..",required = True)
+parser.add_argument("--missingness",action='store', help="..",required = True)
+
+args = parser.parse_args()
+
+
+# default    missingness = [0.01,0.03,0.05]
 
 idtypes = dict(map(lambda x: (x,object),["FID","IID"]))
 
@@ -40,15 +48,15 @@ def checkNoX(base,outfn):
     return
 
 
-base   = sys.argv[1]
-f_hi_female = float(sys.argv[2])
-f_lo_male   = float(sys.argv[3])
-outfn  = sys.argv[4]
+base   = args.x
+f_hi_female = float(args.f_hi_female)
+f_lo_male   = float(args.f_lo_male)
+outfn  = args.out
 
 checkNoX(base,outfn)
 
 result = getResForM(base,1)
-for m in missingness:
+for m in args.missingness:
     try:
         curr   = getResForM(base,m)
     except IOError:
