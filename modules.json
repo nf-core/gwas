@@ -1,0 +1,38 @@
+{
+    "name": "nf-core/gwas",
+    "homePage": "https://github.com/nf-core/gwas",
+    "repos": {
+        "nf-core/modules": {
+            "git_url": "https://github.com/nf-core/modules.git",
+            "modules": {
+                "bcftools/merge": {
+                    "git_sha": "e745e167c1020928ef20ea1397b6b4d230681b4d",
+                    "branch": "master"
+                },
+                "custom/dumpsoftwareversions": {
+                    "git_sha": "e745e167c1020928ef20ea1397b6b4d230681b4d",
+                    "branch": "master"
+                },
+                "fastqc": {
+                    "git_sha": "e745e167c1020928ef20ea1397b6b4d230681b4d",
+                    "branch": "master"
+                },
+                "multiqc": {
+                    "git_sha": "e745e167c1020928ef20ea1397b6b4d230681b4d",
+                    "branch": "master"
+                },
+                "tabix/bgzip": {
+                    "git_sha": "e745e167c1020928ef20ea1397b6b4d230681b4d",
+                    "branch": "master"
+                },
+                "tabix/tabix": {
+                    "git_sha": "e745e167c1020928ef20ea1397b6b4d230681b4d",
+                    "branch": "master"
+                },
+                "vcftools": {
+                    "git_sha": "e745e167c1020928ef20ea1397b6b4d230681b4d",
+                    "branch": "master"
+                }
+        }
+    }
+}
