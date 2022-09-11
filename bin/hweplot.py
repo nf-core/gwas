@@ -10,16 +10,13 @@ import argparse
 import matplotlib.pyplot as plt
 import sys
 
-def parseArguments():
-    if len(sys.argv)<=1:
-        sys.argv="snpmissPlot.py $input $output".split()
-    parser=argparse.ArgumentParser()
-    parser.add_argument('input', type=str, metavar='input'),
-    parser.add_argument('output', type=str, metavar='output'),
-    args = parser.parse_args()
-    return args
 
-args = parseArguments()
+parser = argparse.ArgumentParser()
+
+parser.add_argument("--input",action='store', help="..",required = True)
+parser.add_argument("--output",action='store', help="..",required = True)
+
+args = parser.parse_args()
 
 
 fig,ax = plt.subplots(figsize=(8,6))

@@ -15,6 +15,11 @@ process GET_DUPLICATE_MARKERS {
   script:
         def base     = inpfname.baseName
         def outfname = "${base}.dups"
-
-        template "dups.py"
+        //def remove_on_bp = "??" FIX
+        """
+        dups.py \\
+        --inpfname ${inpfname}
+        --outfname ${outfname}
+        --remove_on_bp ${remove_on_bp}
+        """
 }

@@ -9,11 +9,11 @@ import matplotlib.pyplot as plt
 
 EOL=chr(10)
 
+parser = argparse.ArgumentParser()
 
-if len(sys.argv)<=1:
-    sys.argv="showmaf.py $freq  $base".split()
-
-
+parser.add_argument("--freq",action='store', help="..",required = True)
+parser.add_argument("--base",action='store', help="..",required = True)
+args = parser.parse_args()
 
 template = """
 *-paragraph*{Minor allele frequency.} Table *-ref{tab:initmafspec} on page *-pageref{tab:initmafspec} shows the minor allele frequency spectrum for the raw data. The number of monomorphic SNPs is shown in the first row. Note that some of the MAFs with very low MAF are actually monomorphic, with the polymorphisms due to genotyping error. Figure *-ref{fig:initmafspec} on page *-pageref{fig:initmafspec} shows the cumulative distribution of MAF.  This can be used to determine an appropriate MAF cut-off.
@@ -64,8 +64,8 @@ def getPic(frm,fname):
 
 
 
-frm = pd.read_csv(sys.argv[1],delim_whitespace=True)
-base = sys.argv[2]
+frm = pd.read_csv(args.freq,delim_whitespace=True)
+base = args.base
 pdfout = "%s.pdf"%base
 texout = "%s.tex"%base
 

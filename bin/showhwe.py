@@ -8,12 +8,14 @@ use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib
 EOL=chr(10)
+import argparse
 
+parser = argparse.ArgumentParser()
 
-if len(sys.argv)<=1:
-    sys.argv="showmaf.py $hwe  $base".split()
+parser.add_argument("--hwe",action='store', help="..",required = True)
+parser.add_argument("--base",action='store', help="..",required = True)
 
-
+args = parser.parse_args()
 
 template = """
 *-paragraph*{Hardy Weinberg Statistics}: 
@@ -117,7 +119,7 @@ def getPic(frm,test,pdfout):
    plt.savefig(pdfout)
 
 
-f = open(sys.argv[1])
+f = open(args.hwe)
 header=f.readline()
 test=False
 for i in range(5):
@@ -129,12 +131,12 @@ for i in range(5):
     elif "ALL" in line:
         test="ALL"
 if not test:
-    print((EOL*5)+"The Hardy-Weinberg file is malformed, can't find ALL test <%s>"%sys.argv[1])
+    print((EOL*5)+"The Hardy-Weinberg file is malformed, can't find ALL test <%s>"%args.hwe)
     sys.exit(12)
 
-frm = pd.read_csv(sys.argv[1],delim_whitespace=True)
+frm = pd.read_csv(args.hwe,delim_whitespace=True)
 frm = frm[frm["TEST"]==test]
-base = sys.argv[2]
+base = args.base
 pdfout = "%s.pdf"%base
 texout = "%s.tex"%base
 qqpdf  = "%s-qq.pdf"%base

@@ -10,5 +10,9 @@ process SHOW_HWE_STATS {
         def base = hwe.baseName+"-inithwe"
         base = base.replace(".","_")
 
-        template "showhwe.py"
+        """
+        showhwe.py \\
+        --hwe ${hwe} \\
+        --base ${base}
+        """
 }
