@@ -6,7 +6,6 @@
                                         `._,._,'
   nf-core/gwas v${version}
 ----------------------------------------------------
-
 Run Name: $runName
 
 <% if (success){
