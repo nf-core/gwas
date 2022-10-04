@@ -4,7 +4,8 @@
     nf-core/gwas
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     Github : https://github.com/nf-core/gwas
-Website: https://nf-co.re/gwas
+
+    Website: https://nf-co.re/gwas
     Slack  : https://nfcore.slack.com/channels/gwas
 ----------------------------------------------------------------------------------------
 */
