@@ -24,7 +24,7 @@ On release, automated continuous integration tests run the pipeline on a full-si
 
 ## Pipeline summary
 
-<!-- TODO nf-core: Fill in short bullet-pointed list of the default steps in the pipeline -->
+<!-- TODO nf-core: Fill in short bullet-pointed list of the default steps in the pipeline. -->
 
 1. Read QC ([`FastQC`](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/))
 2. Present QC for raw reads ([`MultiQC`](http://multiqc.info/))
@@ -62,11 +62,11 @@ The nf-core/gwas pipeline comes with documentation about the pipeline [usage](ht
 
 ## Credits
 
-nf-core/gwas was originally written by Davi Josué Marcon (@Mxrcon), Abhinav Sharma (@abhi18av), Jean-Tristan Brandenburg (@jeantristanb), Lindsay Clark (@lvclark) and Scott Hazelhurst (@shaze)..
+The `nf-core/gwas` was originally written by Davi Josué Marcon (@Mxrcon), Abhinav Sharma (@abhi18av), Jean-Tristan Brandenburg (@jeantristanb), Lindsay Clark (@lvclark) and Scott Hazelhurst (@shaze).
 
-We thank the following people for their extensive assistance in the development of this pipeline:
+<!-- We thank the following people for their extensive assistance in the development of this pipeline: -->
 
-<!-- TODO nf-core: If applicable, make list of people who have also contributed -->
+We would like to acknowledge the contributions from [NIH](https://www.nih.gov/) and [H3ABioNet](https://www.h3abionet.org/) on the [h3abionet/h3agwas](https://github.com/h3abionet/h3agwas) pipeline which served as the basis for the initial nf-core/gwas release.
 
 ## Contributions and Support
 
