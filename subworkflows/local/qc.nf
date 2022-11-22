@@ -477,4 +477,5 @@ workflow QC_WF {
 
     // PRODUCE_REPORTS(
     //     QC_PROCESSES.out.reports_ch
-    // 
+    //
+} 
