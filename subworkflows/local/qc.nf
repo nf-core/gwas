@@ -11,7 +11,7 @@ include { ANALYZE_X } from "../../modules/local/qc_processes/analyze_x.nf"
 include { BATCH_PROC } from "../../modules/local/qc_processes/batch_proc.nf"
 include { CALCULATE_MAF } from "../../modules/local/qc_processes/calculate_maf.nf"
 include { CALCULATE_SAMPLE_HETEROZYGOSITY } from "../../modules/local/qc_processes/calculate_sample_heterozygosity.nf"
-include { CALCULATE_SNP_SKEW_STATUS } from "../../modules/local/qc_processes/calculate_snp_skew_status.nf"
+include { CALCULATE_SNP_SKEW_STATUS } from "../../modules/local/qc_/rocesses/calculate_snp_skew_status.nf"
 include { COMP_PCA } from "../../modules/local/qc_processes/comp_pca.nf"
 include { CONVERT_IN_VCF } from "../../modules/local/qc_processes/convert_in_vcf.nf"
 include { FIND_SNP_EXTREME_DIFFERENTIAL_MISSINGNESS } from "../../modules/local/qc_processes/find_snp_extreme_differential_missingness.nf"
@@ -468,7 +468,8 @@ workflow QC_WF {
     QC_INPUT_VALIDATION()
 
     QC_PROCESSES(
-         QC_INPUT_VALIDATION.out.checked_input_ch,
+         QC_INPUT_VALIDATION.out.checked_input_md5_ch
+         QC_INPUT_VALIDATION.out.checked_input_bim_ch
          QC_INPUT_VALIDATION.out.poor_gc_10_ch,
          QC_INPUT_VALIDATION.out.phenotype_ch,
          QC_INPUT_VALIDATION.out.batch_ch,
@@ -476,6 +477,4 @@ workflow QC_WF {
 
     // PRODUCE_REPORTS(
     //     QC_PROCESSES.out.reports_ch
-    // )
-
-}
+    // 
