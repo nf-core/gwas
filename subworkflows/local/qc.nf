@@ -335,7 +335,7 @@ workflow QC_PROCESSES {
 
         //checked_input_md5_ch | IN_MD5.out.report_input_md5_ch
         IN_MD5(checked_input_md5_ch)
-        
+        /*
         checked_input_bim_ch | GET_DUPLICATE_MARKERS
 
         REMOVE_DUPLICATE_SNPS(
@@ -345,7 +345,7 @@ workflow QC_PROCESSES {
         
         qc1_ch = REMOVE_DUPLICATE_SNPS.out.qc1_ch
 
-        /*
+        
         //FIXME Make sure this works as expected
         def missingness = [0.01,0.03,0.05]  // this is used by one of the templates
 
@@ -472,7 +472,7 @@ workflow QC_WF {
          QC_INPUT_VALIDATION.out.checked_input_bim_ch,
          QC_INPUT_VALIDATION.out.poor_gc_10_ch,
          QC_INPUT_VALIDATION.out.phenotype_ch,
-         QC_INPUT_VALIDATION.out.batch_ch,
+         QC_INPUT_VALIDATION.out.batch_ch
     )
 
     // PRODUCE_REPORTS(
