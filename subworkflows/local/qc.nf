@@ -468,8 +468,8 @@ workflow QC_WF {
     QC_INPUT_VALIDATION()
 
     QC_PROCESSES(
-         QC_INPUT_VALIDATION.out.checked_input_md5_ch
-         QC_INPUT_VALIDATION.out.checked_input_bim_ch
+         QC_INPUT_VALIDATION.out.checked_input_md5_ch,
+         QC_INPUT_VALIDATION.out.checked_input_bim_ch,
          QC_INPUT_VALIDATION.out.poor_gc_10_ch,
          QC_INPUT_VALIDATION.out.phenotype_ch,
          QC_INPUT_VALIDATION.out.batch_ch,
