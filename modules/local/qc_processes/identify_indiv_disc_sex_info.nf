@@ -19,7 +19,7 @@ process IDENTIFY_INDIV_DISC_SEX_INFO {
   script:
         base = plinks[0].baseName
         logfile= "${base}.badsex"
-        def sexcheck_report = "${base}.sexcheck"
+        sexcheck_report = "${base}.sexcheck"
         imiss  = "${base}.imiss"
         lmiss  = "${base}.lmiss"
         def K = "--keep-allele-order"
