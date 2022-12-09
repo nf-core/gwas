@@ -379,10 +379,9 @@ workflow QC_PROCESSES {
     
         
         //.out.failed_sex_ch
-        /*
 
         qc1_ch | GET_INIT_MAF
-
+        /*
         GET_INIT_MAF.out.init_freq_ch | SHOW_INIT_MAF
 
         qc2_ch = REMOVE_DUPLICATE_SNPS.out.qc1_ch \
