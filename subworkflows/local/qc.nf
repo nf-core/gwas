@@ -381,11 +381,12 @@ workflow QC_PROCESSES {
         //.out.failed_sex_ch
 
         qc1_ch | GET_INIT_MAF
-        /*
+        
         GET_INIT_MAF.out.init_freq_ch | SHOW_INIT_MAF
-
-        qc2_ch = REMOVE_DUPLICATE_SNPS.out.qc1_ch \
-                | REMOVE_QC_PHASE1.out.qc2_ch
+        
+        REMOVE_DUPLICATE_SNPS.out.qc1_ch | REMOVE_QC_PHASE1
+        /*
+        qc2_ch = REMOVE_QC_PHASE1.out.qc2_ch
 
         qc2_ch | COMP_PCA.out.pcares | DRAW_PCA
 
