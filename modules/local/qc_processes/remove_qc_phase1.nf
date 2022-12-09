@@ -11,7 +11,7 @@ process REMOVE_QC_PHASE1 {
         def base=bed.baseName
         def output = "${base}-c".replace(".","_")
         def K = "--keep-allele-order"
-        if ( nullfile.contains(params.sexinfo_available) ) {
+        if ( params.sexinfo_available != true ) {
               sexinfo = "--allow-no-sex"
               extrasexinfo = ""
             } else {
