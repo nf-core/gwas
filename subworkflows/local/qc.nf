@@ -376,18 +376,14 @@ workflow QC_PROCESSES {
         
         IDENTIFY_INDIV_DISC_SEX_INFO.out.hwe_stats_ch 
         | SHOW_HWE_STATS //.out.report_inithwe_ch
-        /*
-        qc1_ch 
-        | IDENTIFY_INDIV_DISC_SEX_INFO
+    
         
         //.out.failed_sex_ch
+        /*
 
-        qc1_ch \
-        | IDENTIFY_INDIV_DISC_SEX_INFO.out.batchrep_missing_ch
+        qc1_ch | GET_INIT_MAF
 
-        qc1_ch \
-        | GET_INIT_MAF.out.init_freq_ch \
-        | SHOW_INIT_MAF.out.report_initmaf_ch
+        GET_INIT_MAF.out.init_freq_ch | SHOW_INIT_MAF
 
         qc2_ch = REMOVE_DUPLICATE_SNPS.out.qc1_ch \
                 | REMOVE_QC_PHASE1.out.qc2_ch
