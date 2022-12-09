@@ -390,7 +390,7 @@ workflow QC_PROCESSES {
 
         qc2_ch | COMP_PCA
 
-        COMP_PCA.out.pcares | DRAW_PCA
+        // DRAW_PCA(COMP_PCA.out.pcares, case_control)
         
         COMP_PCA.out.out_only_pcs_ch | BATCH_PROC
         /*
