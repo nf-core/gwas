@@ -361,11 +361,11 @@ workflow QC_PROCESSES {
 
             x_analy_res_ch = Channel.fromPath("0")
 
-        }
+        
         */
 
-        REMOVE_DUPLICATE_SNPS.out.ind_miss_ch \
-        | GENERATE_INDIV_MISSINGNESS_PLOT.out.report_indmisspdf_ch
+        REMOVE_DUPLICATE_SNPS.out.ind_miss_ch | GENERATE_INDIV_MISSINGNESS_PLOT
+        //.out.report_indmisspdf_ch
         /*
         REMOVE_DUPLICATE_SNPS.out.snp_miss_ch \
         | GENERATE_SNP_MISSINGNESS_PLOT.out.report_snpmiss_ch
