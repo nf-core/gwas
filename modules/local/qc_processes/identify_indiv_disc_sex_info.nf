@@ -25,7 +25,7 @@ process IDENTIFY_INDIV_DISC_SEX_INFO {
         def K = "--keep-allele-order"
         if (params.sexinfo_available == true)
             """
-            plink $K --bfile $base --hardy --check-sex $f_hi_female $f_lo_male --missing  --out $base
+            plink $K --bfile $base --hardy --check-sex ${params.f_hi_female} ${params.f_lo_male} --missing  --out $base
             head -n 1 ${base}.sexcheck > $logfile
             grep  'PROBLEM' ${base}.sexcheck >> $logfile
             """
