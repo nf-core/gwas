@@ -21,7 +21,7 @@ process IDENTIFY_INDIV_DISC_SEX_INFO {
         logfile= "${base}.badsex"
         def sexcheck_report = "${base}.sexcheck"
         imiss  = "${base}.imiss"
-        def lmiss  = "${base}.lmiss"
+        lmiss  = "${base}.lmiss"
         def K = "--keep-allele-order"
         if (params.sexinfo_available == true)
             """
