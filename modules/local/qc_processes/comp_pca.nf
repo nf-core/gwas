@@ -11,8 +11,8 @@ process COMP_PCA {
         tuple path("${prune}.bed"), path("${prune}.bim"), path("${prune}.fam"), emit: out_only_pcs_ch
 
    script:
-        def base = plinks[0].baseName
-        def prune = "${base}-prune".replace(".","_")
+        base = plinks[0].baseName
+        prune = "${base}-prune".replace(".","_")
 
         """
         plink --bfile ${base} --indep-pairwise 100 20 0.2 --out check
