@@ -15,7 +15,7 @@ process GET_DUPLICATE_MARKERS {
   script:
 
         prefix     = inpfname.baseName
-        def outfname = "${base}.dups"
+        def outfname = "${prefix}.dups"
         //def remove_on_bp = "??" FIX
         """
         dups.py \\
