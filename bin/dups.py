@@ -25,7 +25,7 @@ def getChrom(chrom):
     return result
 
 def removeOnBP(fname, out):
-    f = open(fname,encoding="utf16")
+    f = open(fname,errors='ignore')
     line = f.readline().strip().split()
     old_chrom = getChrom(line[0])
     old_snp   = line[1]
@@ -57,11 +57,11 @@ def removeOnBP(fname, out):
 
 
 os.system("hostname > hostname")
-f=open(args.inpfname,encoding="utf16")
+f=open(args.inpfname, errors='ignore')
 if not f:
     sys.exit("File <%s> not opened"%args.inpfname)
 s_name = set()
-out=open(args.outfname,"w",encoding="utf16")
+out=open(args.outfname,"w", errors='ignore')
 for line in f:
     data=line.strip().split()
     snp_name = data[1]
