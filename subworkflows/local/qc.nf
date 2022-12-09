@@ -339,7 +339,7 @@ workflow QC_PROCESSES {
         checked_input_bim_ch | GET_DUPLICATE_MARKERS
         
         REMOVE_DUPLICATE_SNPS(
-            checked_input_bim_ch,
+            checked_input_md5_ch,
             GET_DUPLICATE_MARKERS.out.duplicates_ch
         )
         /*
