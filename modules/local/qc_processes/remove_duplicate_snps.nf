@@ -33,7 +33,7 @@ process REMOVE_DUPLICATE_SNPS {
             //println "Sexinfo available command"
             }
         """
-            plink ${k} --bfile $base ${params.sexinfo} ${params.extrasexinfo} --exclude $dups --missing --make-bed --out $nodup
+            plink ${k} --bfile $base $sexinfo $extrasexinfo --exclude $dups --missing --make-bed --out $nodup
             wc -l ${base}.bim > ${base}.orig
             wc -l ${base}.fam >> ${base}.orig
         """
