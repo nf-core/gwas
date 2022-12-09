@@ -10,6 +10,14 @@ process REMOVE_QC_PHASE1 {
   script:
         def base=bed.baseName
         def output = "${base}-c".replace(".","_")
+        def K = --keep-allele-order
+        if ( nullfile.contains(params.sexinfo_available) ) {
+              sexinfo = "--allow-no-sex"
+              extrasexinfo = ""
+            } else {
+            sexinfo = ""
+            extrasexinfo = "--must-have-sex"
+        }
 
         """
         # remove really realy bad SNPs and really bad individuals
