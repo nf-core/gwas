@@ -342,10 +342,10 @@ workflow QC_PROCESSES {
             checked_input_md5_ch,
             GET_DUPLICATE_MARKERS.out.duplicates_ch
         )
-        /*
+        
         qc1_ch = REMOVE_DUPLICATE_SNPS.out.qc1_ch
 
-        
+        /*
         //FIXME Make sure this works as expected
         def missingness = [0.01,0.03,0.05]  // this is used by one of the templates
 
@@ -362,11 +362,11 @@ workflow QC_PROCESSES {
             x_analy_res_ch = Channel.fromPath("0")
 
         }
-
+        */
 
         REMOVE_DUPLICATE_SNPS.out.ind_miss_ch \
         | GENERATE_INDIV_MISSINGNESS_PLOT.out.report_indmisspdf_ch
-
+        /*
         REMOVE_DUPLICATE_SNPS.out.snp_miss_ch \
         | GENERATE_SNP_MISSINGNESS_PLOT.out.report_snpmiss_ch
 
