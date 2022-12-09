@@ -7,6 +7,6 @@ process IN_MD5 {
   script:
        out  = "${pattern}.md5"
        """
-       md5.py --pat ${path} --bed ${bed} --bim ${bim} --fam ${fam} --out ${out}
+       md5.py --bed ${bed} --bim ${bim} --fam ${fam} --out ${out}
        """
 }
