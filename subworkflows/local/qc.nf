@@ -289,7 +289,7 @@ workflow QC_INPUT_VALIDATION {
                     // .map { a -> [this_checker(a[1]), this_checker(a[2]), this_checker(a[3])] } \
                     .multiMap {  it ->
                         raw_ch: it
-                        bim_ch: it[1]
+                        bim_ch: it[2]
                         inpmd5ch : it
                     }.set {checked_input}
 
