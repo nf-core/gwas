@@ -72,7 +72,7 @@ for line in f:
 f.close()
 
 if args.remove_on_bp in ["1",1,True,"True","true"]:
-    removeOnBP(args.inpfnameout)
+    removeOnBP(args.outfname)
 
 out.close()
 
