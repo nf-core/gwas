@@ -19,8 +19,8 @@ process GET_DUPLICATE_MARKERS {
         //def remove_on_bp = "??" FIX
         """
         dups.py \\
-        --inpfname ${inpfname}
-        --outfname ${outfname}
+        --inpfname ${inpfname} \\
+        --outfname ${outfname} \\
         --remove_on_bp ${params.remove_on_bp}
         """
 }
