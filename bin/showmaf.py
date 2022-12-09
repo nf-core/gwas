@@ -6,6 +6,7 @@ import sys
 from matplotlib import use
 use('Agg')
 import matplotlib.pyplot as plt
+import argparse
 
 EOL=chr(10)
 
