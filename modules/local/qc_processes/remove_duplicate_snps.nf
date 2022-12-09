@@ -23,6 +23,15 @@ process REMOVE_DUPLICATE_SNPS {
         def base    = bed.baseName
         def nodup   = "${base}-nd"
         def k = "--keep-allele-order"
+        if ( params.sexinfo_available =! true) {
+            sexinfo = "--allow-no-sex"
+            extrasexinfo = ""
+            //println "Sexinfo not available, command --allow-no-sex\n"
+            } else {
+            sexinfo = ""
+            extrasexinfo = "--must-have-sex"
+            //println "Sexinfo available command"
+            }
         """
             plink ${k} --bfile $base ${params.sexinfo} ${params.extrasexinfo} --exclude $dups --missing --make-bed --out $nodup
             wc -l ${base}.bim > ${base}.orig
