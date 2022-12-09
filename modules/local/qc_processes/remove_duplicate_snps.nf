@@ -17,7 +17,7 @@ process REMOVE_DUPLICATE_SNPS {
         tuple path("${nodup}.bed"), path("${nodup}.bim"), path("${nodup}.fam"), emit: qc1_ch
         tuple path("${base}.orig"), path(dups), emit: report_dups_ch
         path("${nodup}.lmiss"), emit: snp_miss_ch
-        path("${nodup}.imiss"), emit: ind_miss_ch1
+        path("${nodup}.imiss"), emit: ind_miss_ch
 
   script:
         base    = bed.baseName
