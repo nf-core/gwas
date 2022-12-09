@@ -10,7 +10,7 @@
 process REMOVE_DUPLICATE_SNPS {
 
   input:
-        tuple path(bed), path(bim), path(fam)
+        tuple val(pattern), path(bed), path(bim), path(fam)
         path(dups)
 
   output:
