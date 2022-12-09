@@ -10,7 +10,7 @@ process GET_DUPLICATE_MARKERS {
         path(inpfname)
 
   output:
-        path("${outfname}.dups"), emit: duplicates_ch
+        path("${outfname}"), emit: duplicates_ch
 
   script:
 
