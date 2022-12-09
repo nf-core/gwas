@@ -10,11 +10,11 @@ process GET_DUPLICATE_MARKERS {
         path(inpfname)
 
   output:
-        path("${base}.dups"), emit: duplicates_ch
+        path("${prefix}.dups"), emit: duplicates_ch
 
   script:
 
-        base     = inpfname.baseName
+        prefix     = inpfname.baseName
         def outfname = "${base}.dups"
         //def remove_on_bp = "??" FIX
         """
