@@ -312,7 +312,7 @@ workflow QC_INPUT_VALIDATION {
             }
 
     emit:
-        checked_input_raw_ch = checked_input.inpmd5ch
+        checked_input_md5_ch = checked_input.inpmd5ch
         checked_input_bim_ch = checked_input.bim_ch
         poor_gc_10_ch = ch_poorgc10
         phenotype_ch = ch_phenotype
@@ -324,7 +324,7 @@ workflow QC_INPUT_VALIDATION {
 workflow QC_PROCESSES {
 
     take:
-        checked_input_raw_ch
+        checked_input_md5_ch
         checked_input_bim_ch
         poor_gc_10_ch
         phenotype_ch
@@ -334,12 +334,12 @@ workflow QC_PROCESSES {
     main:
 
         //checked_input_md5_ch | IN_MD5.out.report_input_md5_ch
-        IN_MD5(checked_input_raw_ch)
+        IN_MD5(checked_input_md5_ch)
         
         checked_input_bim_ch | GET_DUPLICATE_MARKERS
         
         REMOVE_DUPLICATE_SNPS(
-            checked_input_raw_ch,
+            checked_input_bim_ch,
             GET_DUPLICATE_MARKERS.out.duplicates_ch
         )
         /*
