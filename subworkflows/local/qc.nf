@@ -392,7 +392,7 @@ workflow QC_PROCESSES {
 
         // DRAW_PCA(COMP_PCA.out.pcares, case_control)
         
-        COMP_PCA.out.out_only_pcs_ch | BATCH_PROC
+        // BATCH_PROC() <- 7 input channels
         /*
         //TODO: The choice for find_rel_ch involves an if-else
         find_rel_ch = qc2_ch | COMP_PCA.out.out_only_pcs_ch | PRUNE_FOR_IBD.out.find_rel_ch // PRUNE_FOR_IBDLD.out.find_rel_ch
