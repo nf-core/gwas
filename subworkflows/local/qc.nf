@@ -385,13 +385,15 @@ workflow QC_PROCESSES {
         GET_INIT_MAF.out.init_freq_ch | SHOW_INIT_MAF
         
         REMOVE_DUPLICATE_SNPS.out.qc1_ch | REMOVE_QC_PHASE1
-        /*
+        
         qc2_ch = REMOVE_QC_PHASE1.out.qc2_ch
 
-        qc2_ch | COMP_PCA.out.pcares | DRAW_PCA
+        qc2_ch | COMP_PCA
 
-        qc2_ch | COMP_PCA.out.out_only_pcs_ch | BATCH_PROC
-
+        COMP_PCA.out.pcares | DRAW_PCA
+        
+        COMP_PCA.out.out_only_pcs_ch | BATCH_PROC
+        /*
         //TODO: The choice for find_rel_ch involves an if-else
         find_rel_ch = qc2_ch | COMP_PCA.out.out_only_pcs_ch | PRUNE_FOR_IBD.out.find_rel_ch // PRUNE_FOR_IBDLD.out.find_rel_ch
 
