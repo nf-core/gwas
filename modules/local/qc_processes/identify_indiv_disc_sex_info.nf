@@ -17,12 +17,12 @@ process IDENTIFY_INDIV_DISC_SEX_INFO {
         path("${base}.hwe"), emit: hwe_stats_ch
 
   script:
-        def base = plinks[0].baseName
-        def logfile= "${base}.badsex"
+        base = plinks[0].baseName
+        logfile= "${base}.badsex"
         def sexcheck_report = "${base}.sexcheck"
-        def imiss  = "${base}.imiss"
+        imiss  = "${base}.imiss"
         def lmiss  = "${base}.lmiss"
-
+        def K = "--keep-allele-order"
         if (params.sexinfo_available == true)
             """
             plink $K --bfile $base --hardy --check-sex $f_hi_female $f_lo_male --missing  --out $base
