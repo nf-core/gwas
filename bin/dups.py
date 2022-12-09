@@ -61,7 +61,9 @@ f=open(args.inpfname)
 if not f:
     sys.exit("File <%s> not opened"%args.inpfname)
 s_name = set()
+
 out=open(args.outfname,"w")
+
 for line in f:
     data=line.strip().split()
     snp_name = data[1]
@@ -72,7 +74,7 @@ for line in f:
 f.close()
 
 if args.remove_on_bp in ["1",1,True,"True","true"]:
-    removeOnBP(args.outfname)
+    removeOnBP(args.outfname,out)
 
 out.close()
 
