@@ -333,10 +333,8 @@ workflow QC_PROCESSES {
 
     main:
 
-        checked_input_md5_ch.view()
-        //| IN_MD5.out.report_input_md5_ch
-        //IN_MD5(checked_input_md5_ch)
-        
+        //checked_input_md5_ch | IN_MD5.out.report_input_md5_ch
+        IN_MD5(checked_input_md5_ch)
         /*
         checked_input_bim_ch | GET_DUPLICATE_MARKERS
 
