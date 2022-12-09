@@ -373,10 +373,10 @@ workflow QC_PROCESSES {
 
         
         qc1_ch | IDENTIFY_INDIV_DISC_SEX_INFO
-        /*
+        
         IDENTIFY_INDIV_DISC_SEX_INFO.out.hwe_stats_ch 
         | SHOW_HWE_STATS //.out.report_inithwe_ch
-        
+        /*
         qc1_ch 
         | IDENTIFY_INDIV_DISC_SEX_INFO
         
