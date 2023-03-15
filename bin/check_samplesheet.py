@@ -140,6 +140,16 @@ def read_head(handle, num_lines=10):
     return "".join(lines)
 
 
+def read_head(handle, num_lines=10):
+    """Read the specified number of lines from the current position in the file."""
+    lines = []
+    for idx, line in enumerate(handle):
+        if idx == num_lines:
+            break
+        lines.append(line)
+    return "".join(lines)
+
+
 def sniff_format(handle):
     """
     Detect the tabular format.

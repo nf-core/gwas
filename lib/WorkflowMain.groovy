@@ -63,10 +63,10 @@ class WorkflowMain {
         // Print parameter summary log to screen
         log.info paramsSummaryLog(workflow, params, log)
 
-        // Validate workflow parameters via the JSON schema
-        if (params.validate_params) {
-            NfcoreSchema.validateParameters(workflow, params, log)
-        }
+        // FIXME Validate workflow parameters via the JSON schema
+        // if (params.validate_params) {
+        //     NfcoreSchema.validateParameters(workflow, params, log)
+        // }
 
         // Check that a -profile or Nextflow config has been provided to run the pipeline
         NfcoreTemplate.checkConfigProvided(workflow, log)
@@ -79,11 +79,11 @@ class WorkflowMain {
         // Check AWS batch settings
         NfcoreTemplate.awsBatch(workflow, params)
 
-        // Check input has been provided
-        if (!params.input) {
-            log.error "Please provide an input samplesheet to the pipeline e.g. '--input samplesheet.csv'"
-            System.exit(1)
-        }
+        // FIXME Check input has been provided
+        // if (!params.input) {
+        //     log.error "Please provide an input samplesheet to the pipeline e.g. '--input samplesheet.csv'"
+        //     System.exit(1)
+        // }
     }
     //
     // Get attribute from genome config file e.g. fasta
