@@ -289,7 +289,7 @@ workflow QC_INPUT_VALIDATION {
                     // .map { a -> [this_checker(a[1]), this_checker(a[2]), this_checker(a[3])] } \
                     .multiMap {  it ->
                         raw_ch: it
-                        bim_ch: it[1]
+                        bim_ch: it[2]
                         inpmd5ch : it
                     }.set {checked_input}
 
@@ -333,18 +333,19 @@ workflow QC_PROCESSES {
 
     main:
 
-        checked_input_md5_ch | IN_MD5.out.report_input_md5_ch
-
+        //checked_input_md5_ch | IN_MD5.out.report_input_md5_ch
+        IN_MD5(checked_input_md5_ch)
+        
         checked_input_bim_ch | GET_DUPLICATE_MARKERS
-
+        
         REMOVE_DUPLICATE_SNPS(
-            checked_input_bim_ch,
+            checked_input_md5_ch,
             GET_DUPLICATE_MARKERS.out.duplicates_ch
         )
-
+        
         qc1_ch = REMOVE_DUPLICATE_SNPS.out.qc1_ch
 
-
+        /*
         //FIXME Make sure this works as expected
         def missingness = [0.01,0.03,0.05]  // this is used by one of the templates
 
@@ -360,37 +361,39 @@ workflow QC_PROCESSES {
 
             x_analy_res_ch = Channel.fromPath("0")
 
-        }
+        
+        */
 
-
-        REMOVE_DUPLICATE_SNPS.out.ind_miss_ch \
-        | GENERATE_INDIV_MISSINGNESS_PLOT.out.report_indmisspdf_ch
-
+        REMOVE_DUPLICATE_SNPS.out.ind_miss_ch | GENERATE_INDIV_MISSINGNESS_PLOT
+        //.out.report_indmisspdf_ch
+        
         REMOVE_DUPLICATE_SNPS.out.snp_miss_ch \
-        | GENERATE_SNP_MISSINGNESS_PLOT.out.report_snpmiss_ch
+        | GENERATE_SNP_MISSINGNESS_PLOT
+        //.out.report_snpmiss_ch
 
+        
+        qc1_ch | IDENTIFY_INDIV_DISC_SEX_INFO
+        
+        IDENTIFY_INDIV_DISC_SEX_INFO.out.hwe_stats_ch 
+        | SHOW_HWE_STATS //.out.report_inithwe_ch
+    
+        
+        //.out.failed_sex_ch
 
-        qc1_ch \
-        | IDENTIFY_INDIV_DISC_SEX_INFO.out.hwe_stats_ch \
-        | SHOW_HWE_STATS.out.report_inithwe_ch
+        qc1_ch | GET_INIT_MAF
+        
+        GET_INIT_MAF.out.init_freq_ch | SHOW_INIT_MAF
+        
+        REMOVE_DUPLICATE_SNPS.out.qc1_ch | REMOVE_QC_PHASE1
+        
+        qc2_ch = REMOVE_QC_PHASE1.out.qc2_ch
 
-        qc1_ch \
-        | IDENTIFY_INDIV_DISC_SEX_INFO.out.failed_sex_ch
+        qc2_ch | COMP_PCA
 
-        qc1_ch \
-        | IDENTIFY_INDIV_DISC_SEX_INFO.out.batchrep_missing_ch
-
-        qc1_ch \
-        | GET_INIT_MAF.out.init_freq_ch \
-        | SHOW_INIT_MAF.out.report_initmaf_ch
-
-        qc2_ch = REMOVE_DUPLICATE_SNPS.out.qc1_ch \
-                | REMOVE_QC_PHASE1.out.qc2_ch
-
-        qc2_ch | COMP_PCA.out.pcares | DRAW_PCA
-
-        qc2_ch | COMP_PCA.out.out_only_pcs_ch | BATCH_PROC
-
+        // DRAW_PCA(COMP_PCA.out.pcares, case_control)
+        
+        // BATCH_PROC() <- 7 input channels
+        /*
         //TODO: The choice for find_rel_ch involves an if-else
         find_rel_ch = qc2_ch | COMP_PCA.out.out_only_pcs_ch | PRUNE_FOR_IBD.out.find_rel_ch // PRUNE_FOR_IBDLD.out.find_rel_ch
 
@@ -454,9 +457,10 @@ workflow QC_PROCESSES {
 
         //FIXME Make sure this is working as expected
         def mperm_header=" CHR                               SNP         EMP1         EMP2 "
-
+    
     emit:
         reports_ch
+    */    
 }
 
 
@@ -465,15 +469,15 @@ workflow QC_WF {
 
     QC_INPUT_VALIDATION()
 
-    // QC_PROCESSES(
-    //     QC_INPUT_VALIDATION.out.checked_input_ch,
-    //     QC_INPUT_VALIDATION.out.poor_gc_10_ch,
-    //     QC_INPUT_VALIDATION.out.phenotype_ch,
-    //     QC_INPUT_VALIDATION.out.batch_ch,
-    // )
+    QC_PROCESSES(
+         QC_INPUT_VALIDATION.out.checked_input_md5_ch,
+         QC_INPUT_VALIDATION.out.checked_input_bim_ch,
+         QC_INPUT_VALIDATION.out.poor_gc_10_ch,
+         QC_INPUT_VALIDATION.out.phenotype_ch,
+         QC_INPUT_VALIDATION.out.batch_ch
+    )
 
     // PRODUCE_REPORTS(
     //     QC_PROCESSES.out.reports_ch
-    // )
-
-}
+    //
+} 

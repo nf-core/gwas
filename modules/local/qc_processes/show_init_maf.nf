@@ -6,8 +6,7 @@ process SHOW_INIT_MAF {
         tuple path("${base}.pdf"), path("${base}.tex"), emit: report_initmaf_ch
 
   script:
-        def base = freq.baseName+"-initmaf"
-        base = base.replace(".","_")
+        base = (freq.baseName+"-initmaf").replace(".","_")
 
         """
         showmaf.py \\

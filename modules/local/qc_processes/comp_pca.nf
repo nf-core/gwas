@@ -12,7 +12,7 @@ process COMP_PCA {
 
    script:
         def base = plinks[0].baseName
-        def prune = "${base}-prune".replace(".","_")
+        def prune = ("${base}-prune").replace(".","_")
 
         """
         plink --bfile ${base} --indep-pairwise 100 20 0.2 --out check

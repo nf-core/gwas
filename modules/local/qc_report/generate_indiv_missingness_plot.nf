@@ -5,13 +5,13 @@ process GENERATE_INDIV_MISSINGNESS_PLOT {
         path(imissf)
 
   output:
-        path(output), emit: report_indmisspdf_ch
+        path("${output}"), emit: report_indmisspdf_ch
 
   script:
         def input  = imissf
         def base   = imissf.baseName
-        def label  = "samples"
-        def output = "${base}-indmiss_plot".replace(".","_")+".pdf"
-
-        template "missPlot.py"
+        output = "${base}-indmiss_plot".replace(".","_")+".pdf"
+         """
+         missPlot.py --input $imissf --label samples --output $output
+         """
 }

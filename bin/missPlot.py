@@ -15,9 +15,9 @@ def parseArguments():
     if len(sys.argv)<=1:
         sys.argv="snpmissPlot.py $input $label $output".split()
     parser=argparse.ArgumentParser()
-    parser.add_argument('input', type=str, metavar='input'),
-    parser.add_argument('label', type=str, metavar='label'),
-    parser.add_argument('output', type=str, metavar='output'),
+    parser.add_argument('--input', type=str, metavar='input'),
+    parser.add_argument('--label', type=str, metavar='label'),
+    parser.add_argument('--output', type=str, metavar='output'),
     args = parser.parse_args()
     return args
 

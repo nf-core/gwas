@@ -6,14 +6,22 @@ process DRAW_PCA {
       file(cc)
 
     output:
-      tuple  file ("eigenvalue.pdf"), file(output) into report_pca_ch
+      tuple  file ("eigenvalue.pdf"), file(output), emit: report_pca_ch
 
     script:
       def base=eigvals.baseName
       def cc_fname = params.case_control
-      // also relies on "col" defined above
+      def col= params.case_control_col
       def output="${base}-pca".replace(".","_")+".pdf"
+      """
+      drawPCA.py --base $base \\
+      --cc $cc \\
+      --cc_fname $cc_fname \\
+      --col $col \\
+      --eigvals $eigvals \\
+      --eigvecs $eigvecs \\
+      --output $output
 
-      template "drawPCA.py"
+      """
 
 }
