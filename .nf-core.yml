@@ -1,2 +1,17 @@
+bump_version: null
+lint: null
+nf_core_version: 3.0.0
+org_path: null
 repository_type: pipeline
-nf_core_version: "2.14.1"
+template:
+  author: "Davi Josu\xE9 Marcon (@Mxrcon), Abhinav Sharma (@abhi18av), Jean-Tristan\
+    \ Brandenburg (@jeantristanb), Lindsay Clark (@lvclark) and Scott Hazelhurst (@shaze)."
+  description: A pipeline for genome wide association studies.
+  force: false
+  is_nfcore: true
+  name: gwas
+  org: nf-core
+  outdir: .
+  skip_features: null
+  version: 1.0dev
+update: null
