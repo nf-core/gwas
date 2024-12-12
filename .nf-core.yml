@@ -1,7 +1,4 @@
-bump_version: null
-lint: null
-nf_core_version: 3.0.2
-org_path: null
+nf_core_version: 3.1.0
 repository_type: pipeline
 template:
   author: "Davi Josu\xE9 Marcon (@Mxrcon), Abhinav Sharma (@abhi18av), Jean-Tristan\
@@ -12,6 +9,4 @@ template:
   name: gwas
   org: nf-core
   outdir: .
-  skip_features: null
   version: 1.0dev
-update: null
