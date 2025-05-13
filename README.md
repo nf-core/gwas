@@ -38,7 +38,7 @@
 ![Diagram](nf-core-gwas-diagram.png)
 
 > [!NOTE]
-> This is an intendded diagram of what the pipeline will do. Please feel free to contribute and add more tools are considered that will enhance or add new helpful features to it
+> This is an intendded diagram of what the pipeline will do. Please feel free to contribute and add more tools are considered that will enhance or add new helpful features to it. Modify the following diagram as the pipeline evolves [Excalidraw diagram](https://excalidraw.com/#room=29c5ae0d0b30de77800b,idXDcLVCH_n0pzU5bXfxtA)
 
 ## Usage
 
