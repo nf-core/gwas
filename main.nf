@@ -25,8 +25,22 @@ include { PIPELINE_COMPLETION     } from './subworkflows/local/utils_nfcore_gwas
 */
 
 //
-// WORKFLOW: Run main analysis pipeline depending on type of input
+workflow {
+    download_samplesheet()
+    process_samplesheet()
+}
 //
+params.samplesheet_url = "https://raw.githubusercontent.com/KarchinLab/TCRtoolkit-Bulk/main/test_data/minimal-example/samplesheet.csv"
+process download_samplesheet {
+    output:
+    path "samplesheet.csv"
+
+    script:
+    """
+    curl -sSL ${params.samplesheet_url} -o samplesheet.csv
+    """
+}
+
 workflow NFCORE_GWAS {
 
     take:

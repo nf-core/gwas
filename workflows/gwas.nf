@@ -3,17 +3,39 @@
     IMPORT MODULES / SUBWORKFLOWS / FUNCTIONS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
-include { MULTIQC                } from '../modules/nf-core/multiqc/main'
-include { paramsSummaryMap       } from 'plugin/nf-schema'
-include { paramsSummaryMultiqc   } from '../subworkflows/nf-core/utils_nfcore_pipeline'
-include { softwareVersionsToYAML } from '../subworkflows/nf-core/utils_nfcore_pipeline'
-include { methodsDescriptionText } from '../subworkflows/local/utils_nfcore_gwas_pipeline'
+// include { MULTIQC                } from '../modules/nf-core/multiqc/main'
+// include { paramsSummaryMap       } from 'plugin/nf-schema'
+// include { paramsSummaryMultiqc   } from '../subworkflows/nf-core/utils_nfcore_pipeline'
+// include { softwareVersionsToYAML } from '../subworkflows/nf-core/utils_nfcore_pipeline'
+// include { methodsDescriptionText } from '../subworkflows/local/utils_nfcore_gwas_pipeline'
+include { PLINK_VCF               } from '../modules/nf-core/plink/vcf/main'
 
-/*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    RUN MAIN WORKFLOW
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-*/
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//     RUN MAIN WORKFLOW
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+params.covar_url = "https://raw.githubusercontent.com/nf-core/test-datasets/refs/heads/gwas/data/data_phenotypes_and_covariates/example1.covar"
+params.pheno_url = "https://raw.githubusercontent.com/nf-core/test-datasets/refs/heads/gwas/data/data_phenotypes_and_covariates/example1.pheno"
+params.vcf = "https://github.com/nf-core/test-datasets/raw/refs/heads/gwas/data/data_shrink_combined_4500/chr1_to_22_and_X.vcf.bgz"
+
+workflow {
+    download_data()
+    process_samplesheet()
+}
+
+process download_data {
+    output:
+    path "covar.csv"
+    path "pheno.csv"
+    path "vcf.csv"
+
+    script:
+    """
+    curl -sSL ${params.covar_url} -o covar.csv
+    curl -sSL ${params.pheno_url} -o pheno.csv
+    curl -sSL ${params.vcf} -o vcf.csv.bgz
+    """
+}
 
 workflow GWAS {
 

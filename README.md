@@ -29,11 +29,13 @@
 <!-- TODO nf-core: Include a figure that guides the user through the major workflow steps. Many nf-core
      workflows use the "tube map" design for that. See https://nf-co.re/docs/contributing/design_guidelines#examples for examples.   -->
 <!-- TODO nf-core: Fill in short bullet-pointed list of the default steps in the pipeline -->
-- Takes VCF files  
+- Takes VCF files
 - Filters VCF files
-- Build kinshio matrix 
-- Apply model 
-- Do exploratory Analysis 
+- Build kinshio matrix
+- Apply model
+- Do exploratory Analysis
+
+![Description of image](images/example.png)
 
 ## Usage
 
@@ -61,11 +63,12 @@ Now, you can run the pipeline using:
 <!-- TODO nf-core: update the following command to include all required parameters for a minimal example -->
 
 ```bash
-nextflow run nf-core/gwas \
+nextflow run nf-core/gwas --input samplesheet.csv
+```
+<!-- nextflow run nf-core/gwas \
    -profile <docker/singularity/.../institute> \
    --input samplesheet.csv \
-   --outdir <OUTDIR>
-```
+   --outdir <OUTDIR> -->
 
 > [!WARNING]
 > Please provide pipeline parameters via the CLI or Nextflow `-params-file` option. Custom config files including those provided by the `-c` Nextflow option can be used to provide any configuration _**except for parameters**_; see [docs](https://nf-co.re/docs/usage/getting_started/configuration#custom-configuration-files).
