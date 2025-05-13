@@ -35,7 +35,7 @@
 - Apply model
 - Do exploratory Analysis
 
-![Description of image](images/example.png)
+![Diagram](nf-core-gwas-diagram.png)
 
 ## Usage
 
