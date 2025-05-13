@@ -8,6 +8,7 @@ include { paramsSummaryMap       } from 'plugin/nf-schema'
 include { paramsSummaryMultiqc   } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { softwareVersionsToYAML } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { methodsDescriptionText } from '../subworkflows/local/utils_nfcore_gwas_pipeline'
+include { PLINK_VCF              } from '../modules/nf-core/plink/vcf/main'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -23,6 +24,20 @@ workflow GWAS {
 
     ch_versions = Channel.empty()
     ch_multiqc_files = Channel.empty()
+
+    // Prob multiMap is not necessary but I'll use it in case
+    // it's helpful in the future
+    ch_inputs = ch_samplesheet
+              | multiMap {
+                    meta, vcf, pheno, cov ->
+                    vcf   : [ meta,vcf ]
+                    pheno : [ meta, pheno]
+                    cov   : cov ? [ meta,cov ] : null
+              }
+
+    PLINK_VCF (
+        ch_inputs.vcf
+    )
 
     //
     // Collate and save software versions
