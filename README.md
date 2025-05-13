@@ -19,17 +19,21 @@
 
 ## Introduction
 
-**nf-core/gwas** is a bioinformatics pipeline that ...
-
 <!-- TODO nf-core:
    Complete this sentence with a 2-3 sentence summary of what types of data the pipeline ingests, a brief overview of the
    major pipeline sections and the types of output it produces. You're giving an overview to someone new
    to nf-core here, in 15-20 seconds. For an example, see https://github.com/nf-core/rnaseq/blob/master/README.md#introduction
 -->
+**nf-core/gwas** is a bioinformatics pipeline that aims to develop a scalable and automated pipeline for Genome-Wide Association Studies (GWAS). The pipeline is designed for reproducibility, efficiency, and compatibility with large-scale genomic datasets, supporting tools such as PLINK, and GEMMA. The pipeline facilitates streamlined analysis from VCF data to interpretable GWAS results.
 
 <!-- TODO nf-core: Include a figure that guides the user through the major workflow steps. Many nf-core
      workflows use the "tube map" design for that. See https://nf-co.re/docs/contributing/design_guidelines#examples for examples.   -->
-<!-- TODO nf-core: Fill in short bullet-pointed list of the default steps in the pipeline -->2. Present QC for raw reads ([`MultiQC`](http://multiqc.info/))
+<!-- TODO nf-core: Fill in short bullet-pointed list of the default steps in the pipeline -->
+- Takes VCF files  
+- Filters VCF files
+- Build kinshio matrix 
+- Apply model 
+- Do exploratory Analysis 
 
 ## Usage
 
