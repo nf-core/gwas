@@ -1,6 +1,6 @@
 process PLINK_VCF {
     tag "$meta.id"
-    label 'process_medium'
+    label 'process_low'
 
     conda "${moduleDir}/environment.yml"
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
@@ -9,6 +9,7 @@ process PLINK_VCF {
 
     input:
     tuple val(meta), path(vcf)
+    tuple val(meta2), path(pheno)
 
     output:
     tuple val(meta), path("*.bed"), emit: bed, optional: true
@@ -23,10 +24,12 @@ process PLINK_VCF {
     script:
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
+    def phenotype = pheno ? "--pheno ${pheno} --make-bed" : ''
 
     """
     plink \\
         --vcf ${vcf} \\
+        $phenotype \\
         $args \\
         --threads $task.cpus \\
         --out ${prefix}

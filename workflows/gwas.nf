@@ -9,6 +9,7 @@ include { paramsSummaryMultiqc   } from '../subworkflows/nf-core/utils_nfcore_pi
 include { softwareVersionsToYAML } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { methodsDescriptionText } from '../subworkflows/local/utils_nfcore_gwas_pipeline'
 include { PLINK_VCF              } from '../modules/nf-core/plink/vcf/main'
+include { PLINK_GWAS             } from '../modules/nf-core/plink/gwas/main'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -30,13 +31,34 @@ workflow GWAS {
     ch_inputs = ch_samplesheet
               | multiMap {
                     meta, vcf, pheno, cov ->
-                    vcf   : [ meta,vcf ]
+                    vcf   : [ meta, vcf ]
                     pheno : [ meta, pheno]
-                    cov   : cov ? [ meta,cov ] : null
+                    cov   : [ meta, cov ] // Might be worth adding ? : null
               }
 
     PLINK_VCF (
-        ch_inputs.vcf
+        ch_inputs.vcf,
+        ch_inputs.pheno
+    )
+
+    // Update input with plink binary coversion from vcf
+    new_ch_input = PLINK_VCF.out.bed
+                 | combine(PLINK_VCF.out.bim, by:0)
+                 | combine(PLINK_VCF.out.fam, by:0)
+                 | combine(ch_inputs.pheno, by:0)
+                 | combine(ch_inputs.cov, by:0)
+                 | multiMap {
+                        meta, bed, bim, fam, pheno, cov ->
+                        plink: [ meta, bed, bim, fam ]
+                        pheno: [ meta, pheno ]
+                        cov:   [ meta, cov ]
+                 }
+
+    PLINK_GWAS (
+        new_ch_input.plink,
+        [[],[]], // vcf if not converted to plink binary before
+        [[],[]], // bcf if not converted to plink birary before
+        [[],[]],
     )
 
     //
