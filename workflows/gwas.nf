@@ -10,6 +10,7 @@ include { softwareVersionsToYAML } from '../subworkflows/nf-core/utils_nfcore_pi
 include { methodsDescriptionText } from '../subworkflows/local/utils_nfcore_gwas_pipeline'
 include { PLINK_VCF              } from '../modules/nf-core/plink/vcf/main'
 include { PLINK_GWAS             } from '../modules/nf-core/plink/gwas/main'
+include { QQMAN                  } from '../modules/local/qqman/main'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -59,6 +60,10 @@ workflow GWAS {
         [[],[]], // vcf if not converted to plink binary before
         [[],[]], // bcf if not converted to plink birary before
         [[],[]],
+    )
+
+    QQMAN (
+        PLINK_GWAS.out.qassoc
     )
 
     //
