@@ -19,6 +19,8 @@
 
 ## Introduction
 
+REMOVE THIS LINE
+
 **nf-core/gwas** is a bioinformatics pipeline that ...
 
 <!-- TODO nf-core:
