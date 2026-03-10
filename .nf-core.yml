@@ -16,7 +16,6 @@ template:
   author: Chris Wyatt
   version: 1.0.0dev
   force: true
-  outdir: gwas
   skip_features:
     - igenomes
     - fastqc
