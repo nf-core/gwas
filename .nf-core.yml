@@ -1,22 +1,20 @@
-repository_type: pipeline
-
-nf_core_version: 3.2.1
-
 lint:
   files_exist:
     - conf/igenomes.config
     - conf/igenomes_ignored.config
     - conf/igenomes.config
     - conf/igenomes_ignored.config
-
+nf_core_version: 3.5.1
+repository_type: pipeline
 template:
-  org: nf-core
-  name: gwas
-  description: A pipeline for Genome Wide Association Studies
   author: Chris Wyatt
-  version: 1.0.0dev
-  force: true
+  description: A pipeline for Genome Wide Association Studies
+  force: false
+  is_nfcore: true
+  name: gwas
+  org: nf-core
+  outdir: .
   skip_features:
     - igenomes
     - fastqc
-  is_nfcore: true
+  version: 1.0.0dev
