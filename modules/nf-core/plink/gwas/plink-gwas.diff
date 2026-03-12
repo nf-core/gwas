@@ -1,0 +1,30 @@
+Changes in component 'nf-core/plink/gwas'
+'modules/nf-core/plink/gwas/environment.yml' is unchanged
+'modules/nf-core/plink/gwas/meta.yml' is unchanged
+Changes in 'plink/gwas/main.nf':
+--- modules/nf-core/plink/gwas/main.nf
++++ modules/nf-core/plink/gwas/main.nf
+@@ -1,6 +1,6 @@
+ process PLINK_GWAS {
+     tag "$meta.id"
+-    label 'process_low'
++    label 'process_medium'
+ 
+ 
+     conda "${moduleDir}/environment.yml"
+@@ -15,7 +15,8 @@
+     tuple val(meta4), path(phe)
+ 
+     output:
+-    tuple val(meta), path("*.assoc"),  emit: assoc
++    tuple val(meta), path("*.assoc"),  emit: assoc, optional:true
++    tuple val(meta), path("*.qassoc"), emit: qassoc, optional:true
+     tuple val(meta), path("*.log")  ,  emit: log
+     tuple val(meta), path("*.nosex"),  emit: nosex   , optional:true
+     path "versions.yml"             ,  emit: versions
+
+'modules/nf-core/plink/gwas/tests/pheno_name.config' is unchanged
+'modules/nf-core/plink/gwas/tests/main.nf.test.snap' is unchanged
+'modules/nf-core/plink/gwas/tests/nextflow.config' is unchanged
+'modules/nf-core/plink/gwas/tests/main.nf.test' is unchanged
+************************************************************
