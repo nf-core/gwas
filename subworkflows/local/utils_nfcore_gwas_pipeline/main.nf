@@ -167,7 +167,7 @@ workflow PIPELINE_COMPLETION {
 //
 def validateInputSamplesheet(input) {
     def (meta, vcf, pheno, cov) = input
-    
+
     return [ meta, vcf, pheno, cov ]
 }
 //
