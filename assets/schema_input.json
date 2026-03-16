@@ -7,7 +7,7 @@
     "items": {
         "type": "object",
         "properties": {
-            "id": {
+            "sample": {
                 "type": "string",
                 "pattern": "^\\S+$",
                 "errorMessage": "Sample name must be provided and cannot contain spaces",
@@ -32,6 +32,6 @@
                 "errorMessage": "FastQ file for reads 2 cannot contain spaces and must have extension '.fq.gz' or '.fastq.gz'"
             }
         },
-        "required": ["id", "vcf", "pheno"]
+        "required": ["sample", "vcf", "pheno"]
     }
 }
