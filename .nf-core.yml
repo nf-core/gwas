@@ -6,7 +6,7 @@ lint:
 nf_core_version: 3.5.1
 repository_type: pipeline
 template:
-  author: Chris Wyatt
+  author: Chris Wyatt, Fernando Duarte, Maxime Laurent
   description: A pipeline for Genome Wide Association Studies
   force: false
   is_nfcore: true
