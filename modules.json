@@ -5,6 +5,66 @@
         "https://github.com/nf-core/modules.git": {
             "modules": {
                 "nf-core": {
+                    "gcta/addgrms": {
+                        "branch": "master",
+                        "git_sha": "322f285e0947592f92b73ef416fcce281f7e42be",
+                        "installed_by": ["modules"]
+                    },
+                    "gcta/adjustgrm": {
+                        "branch": "master",
+                        "git_sha": "a40ca37fee7f38e1dc6a58635e6c066b8be143f9",
+                        "installed_by": ["modules"]
+                    },
+                    "gcta/bivariatereml": {
+                        "branch": "master",
+                        "git_sha": "08668fe26c00529d6e17d4419479f6bb99a80236",
+                        "installed_by": ["modules"]
+                    },
+                    "gcta/bivariateremlldms": {
+                        "branch": "master",
+                        "git_sha": "12b957f0599c720ed004d792db68330d32d43b9e",
+                        "installed_by": ["modules"]
+                    },
+                    "gcta/calculateldscores": {
+                        "branch": "master",
+                        "git_sha": "d9638aa098951f787be592b1cd8b0bc6190ac911",
+                        "installed_by": ["modules"]
+                    },
+                    "gcta/grmcutoff": {
+                        "branch": "master",
+                        "git_sha": "81ee454e5346e06c955d371586dc6478a987d236",
+                        "installed_by": ["modules"]
+                    },
+                    "gcta/keep": {
+                        "branch": "master",
+                        "git_sha": "a70e3c6922b068ed104a75364deb61c21a0164f2",
+                        "installed_by": ["modules"]
+                    },
+                    "gcta/makebksparse": {
+                        "branch": "master",
+                        "git_sha": "65e342c70141c64cd53cb8078abdcf0871900e57",
+                        "installed_by": ["modules"]
+                    },
+                    "gcta/makegrm": {
+                        "branch": "master",
+                        "git_sha": "8d62f188367734e425e921c327ad3c1c319e73ab",
+                        "installed_by": ["modules"]
+                    },
+                    "gcta/makegrmpart": {
+                        "branch": "master",
+                        "git_sha": "dde039f4668e0f086e8e057c9a0e011bc1af0a9f",
+                        "installed_by": ["modules"]
+                    },
+                    "gcta/reml": {
+                        "branch": "master",
+                        "git_sha": "14864d74a613753d64cf84aa55852237eb72dde8",
+                        "installed_by": ["modules"]
+                    },
+                    "gcta/remlldms": {
+                        "branch": "master",
+                        "git_sha": "55d6d1341fa866c42fd3909a5eb52167af75127b",
+                        "installed_by": ["modules"]
+                    },
                     "multiqc": {
                         "branch": "master",
                         "git_sha": "af27af1be706e6a2bb8fe454175b0cdf77f47b49",
