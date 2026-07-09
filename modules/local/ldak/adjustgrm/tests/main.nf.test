@@ -100,7 +100,21 @@ nextflow_process {
                     def commandText = grmBin.parent.resolve(".command.sh").text
                     assert commandText.contains("--mpheno 1")
                 },
-                { assert snapshot(sanitizeOutput(process.out)).match() }
+                {
+                    // adjusted_grm bundles the stable grm.id/grm.details/grm.adjust/grm.root
+                    // members with the non-deterministic grm.bin binary matrix (thread-count /
+                    // floating-point summation order sensitive), so the whole channel is
+                    // filename-only under sanitizeOutput; keep the stable members' content
+                    // covered separately.
+                    def adjustedTuple = process.out.adjusted_grm.get(0)
+                    assert snapshot(
+                        sanitizeOutput(process.out, unstableKeys: ["adjusted_grm"]),
+                        path(adjustedTuple.get(3)).readLines(),
+                        path(adjustedTuple.get(4)).readLines(),
+                        path(adjustedTuple.get(5)).readLines(),
+                        path(adjustedTuple.get(6)).readLines()
+                    ).match()
+                }
             )
         }
     }
@@ -144,7 +158,21 @@ nextflow_process {
                     assert path(adjustedTuple.get(6)).fileName.toString() == "ldak_grm_Y1_adj_fallback.grm.root"
                     assert commandText.contains("--mpheno 1")
                 },
-                { assert snapshot(sanitizeOutput(process.out)).match() }
+                {
+                    // adjusted_grm bundles the stable grm.id/grm.details/grm.adjust/grm.root
+                    // members with the non-deterministic grm.bin binary matrix (thread-count /
+                    // floating-point summation order sensitive), so the whole channel is
+                    // filename-only under sanitizeOutput; keep the stable members' content
+                    // covered separately.
+                    def adjustedTuple = process.out.adjusted_grm.get(0)
+                    assert snapshot(
+                        sanitizeOutput(process.out, unstableKeys: ["adjusted_grm"]),
+                        path(adjustedTuple.get(3)).readLines(),
+                        path(adjustedTuple.get(4)).readLines(),
+                        path(adjustedTuple.get(5)).readLines(),
+                        path(adjustedTuple.get(6)).readLines()
+                    ).match()
+                }
             )
         }
     }
