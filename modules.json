@@ -81,6 +81,26 @@
                         "git_sha": "81880787133db07d9b4c1febd152c090eb8325dc",
                         "installed_by": ["modules"],
                         "patch": "modules/nf-core/plink/vcf/plink-vcf.diff"
+                    },
+                    "regenie/runl0": {
+                        "branch": "master",
+                        "git_sha": "2bcf3f164e4656f1c1a4bfe427d104686f00ebde",
+                        "installed_by": ["modules"]
+                    },
+                    "regenie/splitl0": {
+                        "branch": "master",
+                        "git_sha": "ff3650867b4287a91cf3babafd54b86a94b1afb7",
+                        "installed_by": ["modules"]
+                    },
+                    "regenie/step1": {
+                        "branch": "master",
+                        "git_sha": "49b49db5d59e8ac144890682c35fbabe51f04c70",
+                        "installed_by": ["modules"]
+                    },
+                    "regenie/step2": {
+                        "branch": "master",
+                        "git_sha": "0679635c4e06105b33badaf8547926b62a8cf307",
+                        "installed_by": ["modules"]
                     }
                 }
             },
