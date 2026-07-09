@@ -87,6 +87,11 @@
                         "git_sha": "2bcf3f164e4656f1c1a4bfe427d104686f00ebde",
                         "installed_by": ["modules"]
                     },
+                    "regenie/runl1": {
+                        "branch": "master",
+                        "git_sha": "845f8561bf6e8e33954d8132ecaef4d10e9d8072",
+                        "installed_by": ["modules"]
+                    },
                     "regenie/splitl0": {
                         "branch": "master",
                         "git_sha": "ff3650867b4287a91cf3babafd54b86a94b1afb7",

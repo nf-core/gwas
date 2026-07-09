@@ -9,6 +9,8 @@ Initial release of nf-core/gwas, created with the [nf-core](https://nf-co.re/) t
 
 ### `Added`
 
+- Installed the `regenie/runl1` nf-core module.
+
 ### `Fixed`
 
 ### `Dependencies`
