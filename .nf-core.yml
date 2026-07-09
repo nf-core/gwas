@@ -2,8 +2,7 @@ lint:
   files_exist:
     - conf/igenomes.config
     - conf/igenomes_ignored.config
-
-nf_core_version: 3.5.2
+nf_core_version: 4.0.2
 repository_type: pipeline
 template:
   author: Chris Wyatt, Fernando Duarte, Maxime Laurent
