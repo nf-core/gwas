@@ -2,6 +2,12 @@
     "-profile test": {
         "content": [
             {
+                "PLINK_GWAS": {
+                    "plink": "1.90b6.21"
+                },
+                "PLINK_VCF": {
+                    "plink": "1.90b6.21"
+                },
                 "Workflow": {
                     "nf-core/gwas": "v1.0.0dev"
                 }
@@ -26,8 +32,7 @@
                 "plink_gwas",
                 "plink_gwas/gwas_test.log",
                 "plink_gwas/gwas_test.nosex",
-                "plink_gwas/gwas_test.qassoc",
-                "plink_gwas/versions.yml"
+                "plink_gwas/gwas_test.qassoc"
             ],
             [
                 "multiqc_citations.txt:md5,4c806e63a283ec1b7e78cdae3a923d4f",
@@ -35,14 +40,13 @@
                 "gwas_test.bim:md5,e12740fefcbb82b109160058b5a11873",
                 "gwas_test.fam:md5,e7509b8cb3837a74e9e1c6b7a886d496",
                 "gwas_test.nosex:md5,b1070bae19884e8c62af9e5cfc0e91f6",
-                "gwas_test.qassoc:md5,5139def55df276b4b96cdfb4f901b986",
-                "versions.yml:md5,1b9ad7a3b968a613e74cf214c1514075"
+                "gwas_test.qassoc:md5,5139def55df276b4b96cdfb4f901b986"
             ]
         ],
         "meta": {
             "nf-test": "0.9.3",
             "nextflow": "25.10.4"
         },
-        "timestamp": "2026-07-08T12:07:44.884542648"
+        "timestamp": "2026-07-09T12:01:02.392849789"
     }
 }

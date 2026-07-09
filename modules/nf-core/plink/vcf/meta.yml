@@ -24,9 +24,20 @@ input:
         type: file
         description: Variant calling file (vcf)
         pattern: "*.{vcf}"
+        ontologies: []
+  - - meta2:
+        type: map
+        description: |
+          Groovy Map containing phenotype information
+          e.g. [ id:'test', single_end:false ]
+    - pheno:
+        type: file
+        description: Phenotype file passed to `--pheno` to trigger `--make-bed` conversion
+        pattern: "*.{pheno,phe,txt}"
+        ontologies: []
 output:
-  - bed:
-      - meta:
+  bed:
+    - - meta:
           type: map
           description: |
             Groovy Map containing sample information
@@ -35,8 +46,9 @@ output:
           type: file
           description: PLINK binary biallelic genotype table
           pattern: "*.{bed}"
-  - bim:
-      - meta:
+          ontologies: []
+  bim:
+    - - meta:
           type: map
           description: |
             Groovy Map containing sample information
@@ -45,8 +57,9 @@ output:
           type: file
           description: PLINK extended MAP file
           pattern: "*.{bim}"
-  - fam:
-      - meta:
+          ontologies: []
+  fam:
+    - - meta:
           type: map
           description: |
             Groovy Map containing sample information
@@ -55,14 +68,31 @@ output:
           type: file
           description: PLINK sample information file
           pattern: "*.{fam}"
-  - versions:
-      - versions.yml:
-          type: file
-          description: File containing software versions
-          pattern: "versions.yml"
+          ontologies: []
+  versions_plink:
+    - - "${task.process}":
+          type: string
+          description: The name of the process
+      - plink:
+          type: string
+          description: The name of the tool
+      - "plink --version 2>&1 | sed 's/^PLINK v//;s/ .*//'":
+          type: eval
+          description: The expression to obtain the version of the tool
 authors:
   - "@Mxrcon"
   - "@abhi18av"
 maintainers:
   - "@Mxrcon"
   - "@abhi18av"
+topics:
+  versions:
+    - - "${task.process}":
+          type: string
+          description: The name of the process
+      - plink:
+          type: string
+          description: The name of the tool
+      - "plink --version 2>&1 | sed 's/^PLINK v//;s/ .*//'":
+          type: eval
+          description: The expression to obtain the version of the tool
