@@ -13,4 +13,6 @@ Initial release of nf-core/gwas, created with the [nf-core](https://nf-co.re/) t
 
 ### `Dependencies`
 
+- Updated the `plink/gwas` (`2d5c9c0`) and `plink/vcf` (`6d46786`) modules to the latest nf-core/modules version, preserving the pipeline's local patches (the `plink/vcf` `--pheno`/`--make-bed` phenotype input and the `plink/gwas` split `assoc`/`qassoc` outputs plus resource-label overrides).
+
 ### `Deprecated`

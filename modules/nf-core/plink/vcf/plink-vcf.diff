@@ -1,18 +1,21 @@
 Changes in component 'nf-core/plink/vcf'
-'modules/nf-core/plink/vcf/environment.yml' is unchanged
-'modules/nf-core/plink/vcf/meta.yml' is unchanged
 Changes in 'plink/vcf/main.nf':
 --- modules/nf-core/plink/vcf/main.nf
 +++ modules/nf-core/plink/vcf/main.nf
-@@ -1,6 +1,6 @@
+@@ -1,14 +1,15 @@
  process PLINK_VCF {
-     tag "$meta.id"
+-    tag "$meta.id"
 -    label 'process_medium'
++    tag "${meta.id}"
 +    label 'process_low'
  
      conda "${moduleDir}/environment.yml"
-     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-@@ -9,6 +9,7 @@
+-    container "${ workflow.containerEngine in ['singularity', 'apptainer'] && !task.ext.singularity_pull_docker_container ?
+-        'https://depot.galaxyproject.org/singularity/plink:1.90b6.21--h779adbc_1' :
+-        'quay.io/biocontainers/plink:1.90b6.21--h779adbc_1' }"
++    container "${workflow.containerEngine in ['singularity', 'apptainer'] && !task.ext.singularity_pull_docker_container
++        ? 'https://depot.galaxyproject.org/singularity/plink:1.90b6.21--h779adbc_1'
++        : 'quay.io/biocontainers/plink:1.90b6.21--h779adbc_1'}"
  
      input:
      tuple val(meta), path(vcf)
@@ -20,7 +23,7 @@ Changes in 'plink/vcf/main.nf':
  
      output:
      tuple val(meta), path("*.bed"), emit: bed, optional: true
-@@ -23,10 +24,12 @@
+@@ -23,12 +24,14 @@
      script:
      def args = task.ext.args ?: ''
      def prefix = task.ext.prefix ?: "${meta.id}"
@@ -29,12 +32,38 @@ Changes in 'plink/vcf/main.nf':
      """
      plink \\
          --vcf ${vcf} \\
-+        $phenotype \\
-         $args \\
-         --threads $task.cpus \\
+-        $args \\
+-        --threads $task.cpus \\
++        ${phenotype} \\
++        ${args} \\
++        --threads ${task.cpus} \\
          --out ${prefix}
+     """
+ 
 
+'modules/nf-core/plink/vcf/environment.yml' is unchanged
+Changes in 'plink/vcf/meta.yml':
+--- modules/nf-core/plink/vcf/meta.yml
++++ modules/nf-core/plink/vcf/meta.yml
+@@ -24,6 +24,16 @@
+         type: file
+         description: Variant calling file (vcf)
+         pattern: "*.{vcf}"
++        ontologies: []
++  - - meta2:
++        type: map
++        description: |
++          Groovy Map containing phenotype information
++          e.g. [ id:'test', single_end:false ]
++    - pheno:
++        type: file
++        description: Phenotype file passed to `--pheno` to trigger `--make-bed` conversion
++        pattern: "*.{pheno,phe,txt}"
+         ontologies: []
+ output:
+   bed:
+
+'modules/nf-core/plink/vcf/tests/main.nf.test' is unchanged
 'modules/nf-core/plink/vcf/tests/main.nf.test.snap' is unchanged
 'modules/nf-core/plink/vcf/tests/nextflow.config' is unchanged
-'modules/nf-core/plink/vcf/tests/main.nf.test' is unchanged
 ************************************************************
