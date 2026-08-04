@@ -1,0 +1,91 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
+name: plink_fit_regenie
+description: Fit REGENIE Step 1 prediction models from PLINK-format genotype bundles
+keywords:
+  - regenie
+  - gwas
+  - plink
+  - step1
+  - genotype
+components:
+  - regenie/step1
+  - regenie/splitl0
+  - regenie/runl0
+  - regenie/runl1
+input:
+  - meta:
+      type: map
+      description: Focal genotype metadata. Public outputs retain this map.
+  - plink_genotype_file:
+      type: file
+      description: Primary file in the PLINK semantic union; BED for PLINK 1 or PGEN for PLINK 2
+      pattern: "*.{bed,pgen}"
+      ontologies: []
+  - plink_variant_file:
+      type: file
+      description: Variant metadata matching the primary genotype file; BIM for PLINK 1 or PVAR for PLINK 2
+      pattern: "*.{bim,pvar,pvar.zst}"
+      ontologies: []
+  - plink_sample_file:
+      type: file
+      description: Sample metadata matching the primary genotype file; FAM for PLINK 1 or PSAM for PLINK 2
+      pattern: "*.{fam,psam}"
+      ontologies: []
+  - meta2:
+      type: map
+      description: Phenotype metadata in the second input tuple.
+  - pheno:
+      type: file
+      description: REGENIE phenotype file keyed by meta2.id
+      pattern: "*.{phe,pheno,txt,tsv}"
+      ontologies: []
+  - meta3:
+      type: map
+      description: Covariate metadata in the third input tuple.
+  - covar:
+      type: file
+      description: Optional REGENIE covariate file keyed by meta3.id; use [] when absent
+      pattern: "*.{covar,cov,txt,tsv}"
+      optional: true
+      ontologies: []
+  - meta4:
+      type: map
+      description: Step 1 block-size metadata in the fourth input tuple.
+  - bsize:
+      type: integer
+      description: Step 1 block size keyed by meta4.id
+  - meta5:
+      type: map
+      description: Step 1 execution-mode metadata in the fifth input tuple.
+  - step1_mode:
+      type: string
+      description: Step 1 execution mode keyed by meta5.id; use "standard" or "chunked"
+  - meta6:
+      type: map
+      description: L0 job-count metadata in the sixth input tuple.
+  - n_l0_jobs:
+      type: integer
+      description: L0 job count keyed by meta6.id for chunked Step 1; use [] for standard mode
+output:
+  - meta:
+      type: map
+      description: Unchanged focal genotype metadata.
+  - predictions:
+      type: file
+      description: REGENIE Step 1 prediction list
+      pattern: "*_pred.list"
+      ontologies: []
+  - loco:
+      type: file
+      description: REGENIE Step 1 leave-one-chromosome-out predictions
+      pattern: "*.loco.gz"
+      ontologies: []
+  - logs:
+      type: file
+      description: REGENIE log files from the selected Step 1 route
+      pattern: "*.log"
+      ontologies: []
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"

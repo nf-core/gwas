@@ -1,0 +1,56 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
+name: route_regenie_associations
+description: Route nf-core/gwas analyses through REGENIE while reusing scientifically identical Step 1 fits
+keywords:
+  - regenie
+  - genome-wide regression
+  - gwas
+  - association
+  - prediction reuse
+components:
+  - plink_fit_regenie
+  - attribute/regenie/predictions
+  - regenie/step2
+input:
+  - ch_analyses:
+      description: Canonical nf-core/gwas analysis records; public outputs retain each consuming analysis map
+      structure: "[map meta, path pgen, path psam, path pvar, path phenotype, path covariates|[]]"
+      pattern: "*.{pgen,psam,pvar,pvar.zst,phe,pheno,covar,cov,txt,tsv}"
+      ontologies: []
+  - step1_bsize:
+      description: REGENIE Step 1 block size
+      structure: integer
+  - step2_bsize:
+      description: REGENIE Step 2 block size
+      structure: integer
+  - step1_mode:
+      description: REGENIE Step 1 execution mode; standard or chunked
+      structure: string
+  - step1_jobs:
+      description: L0 job count for chunked Step 1; null for standard mode
+      structure: integer|null
+output:
+  - results:
+      description: REGENIE Step 2 association results
+      structure: [map meta, path results]
+      pattern: "*.regenie.gz"
+      ontologies: []
+  - logs:
+      description: REGENIE Step 1 and Step 2 logs
+      structure: [map meta, path log]
+      pattern: "*.log"
+      ontologies: []
+  - predictions:
+      description: REGENIE Step 1 prediction list attributed to each consuming analysis
+      structure: [map meta, path predictions]
+      pattern: "*_pred.list"
+      ontologies: []
+  - loco:
+      description: REGENIE Step 1 leave-one-chromosome-out predictions attributed to each consuming analysis
+      structure: [map meta, path loco]
+      pattern: "*.loco.gz"
+      ontologies: []
+authors:
+  - "@andongni"
+maintainers:
+  - "@andongni"

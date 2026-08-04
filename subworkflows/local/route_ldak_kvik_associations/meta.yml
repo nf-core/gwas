@@ -1,0 +1,76 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
+name: route_ldak_kvik_associations
+description: Route nf-core/gwas analyses through LDAK-KVIK while reusing scientifically identical Step 1 fits
+keywords:
+  - ldak
+  - kvik
+  - genome-wide association study
+  - prediction reuse
+components:
+  - ldak/thincommon
+  - ldak/kvikstep1
+  - ldak/kvikstep2
+input:
+  - ch_genotypes:
+      description: PLINK1 genotype bundle for each LDAK-KVIK analysis
+      structure: "[map meta, path bed, path bim, path fam]"
+      pattern: "*.{bed,bim,fam}"
+      ontologies: []
+  - ch_phenotypes:
+      description: Headerless phenotype and optional quantitative and categorical covariates for each analysis
+      structure: "[map meta, path phenotype, path quant_covariates|[], path cat_covariates|[]]"
+      pattern: "*.{txt,tsv,pheno,phe,covar,cov}"
+      ontologies: []
+  - ch_extract_policy:
+      description: Predictor subset resource and validated all, thin_common, or provided policy for each analysis
+      structure: "[map meta, path extract|[], val subset_policy]"
+      pattern: "*.in"
+      ontologies: []
+output:
+  - results:
+      description: LDAK-KVIK Step 2 association result files carrying each consuming analysis metadata map
+      structure: "[map meta, path assoc]"
+      pattern: "*.step2*.assoc"
+      ontologies: []
+  - harmonisation_input:
+      description: LDAK-KVIK association tables prepared for harmonisation
+      structure: "[map meta, path harmonisation_input]"
+      pattern: "*.step2*.harmonisation.tsv"
+      ontologies: []
+  - summaries:
+      description: Required LDAK-KVIK Step 2 summary-statistics files
+      structure: "[map meta, path summaries]"
+      pattern: "*.step2*.summaries"
+      ontologies: []
+  - pvalues:
+      description: Optional LDAK-KVIK Step 2 p-value files
+      structure: "[map meta, path pvalues]"
+      pattern: "*.step2*.pvalues"
+      optional: true
+      ontologies: []
+  - predictions:
+      description: LDAK-KVIK Step 1 prediction bundles, once per scientifically distinct shared fit
+      structure: "[map meta, path root, path loco_details, path loco_prs]"
+      pattern: "*.step1.{root,loco.details,loco.prs}"
+      ontologies: []
+  - effects:
+      description: Optional LDAK-KVIK Step 1 effect estimates, once per shared fit
+      structure: "[map meta, path effects]"
+      pattern: "*.step1.effects"
+      optional: true
+      ontologies: []
+  - progress:
+      description: ThinCommon progress files, once per shared thin_common fit
+      structure: "[map meta, path progress]"
+      pattern: "*.progress"
+      optional: true
+      ontologies: []
+  - logs:
+      description: LDAK-KVIK Step 1 and Step 2 log files
+      structure: "[map meta, path log]"
+      pattern: "*.step*.log"
+      ontologies: []
+authors:
+  - "@andongni"
+maintainers:
+  - "@andongni"
