@@ -168,7 +168,7 @@ jobs:
           path: pr-comment-fragments
           merge-multiple: true
 
-      # Build a comment for the shared pr-comment.yml poster to publish on the PR.
+      # Build a comment for the shared linting_comment.yml poster to publish on the PR.
       # Based on the fragments above (not needs.*.result) so non-blocking failures are still reported.
       - name: Prepare PR comment
         if: ${{ always() }}
