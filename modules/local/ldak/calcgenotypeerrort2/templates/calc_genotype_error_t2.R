@@ -6,29 +6,41 @@ he_across_file <- "$he_across_file"
 
 parse_he_file <- function(file_path) {
   if (!file.exists(file_path)) {
-    warning(paste("File does not exist:", file_path))
-    return(NULL)
+    stop("Required HE file does not exist: ", file_path, call. = FALSE)
   }
 
   lines <- readLines(file_path)
-  her_all_line <- grep("^Her_All", lines, value = TRUE)
+  her_all_line <- grep("^Her_All[[:space:]]", lines, value = TRUE)
 
-  if (length(her_all_line) == 0) {
-    warning(paste("Her_All line not found in file:", file_path))
-    return(NULL)
+  if (length(her_all_line) != 1L) {
+    stop(
+      "Expected exactly one Her_All row in required HE file ",
+      file_path,
+      "; found ",
+      length(her_all_line),
+      call. = FALSE
+    )
   }
 
   parts <- strsplit(her_all_line, "\\\\s+")[[1]]
 
-  if (length(parts) < 3) {
-    warning(paste("Invalid Her_All line format in file:", file_path))
-    return(NULL)
+  if (length(parts) < 3L) {
+    stop("Malformed Her_All row in required HE file: ", file_path, call. = FALSE)
+  }
+
+  estimates <- type.convert(parts[2:3], as.is = TRUE)
+  if (!is.numeric(estimates) || anyNA(estimates) || any(!is.finite(estimates))) {
+    stop(
+      "Her_All heritability and standard error must be finite numbers in required HE file: ",
+      file_path,
+      call. = FALSE
+    )
   }
 
   data.frame(
     file = basename(file_path),
-    heritability = as.numeric(parts[2]),
-    se = as.numeric(parts[3]),
+    heritability = estimates[1],
+    se = estimates[2],
     stringsAsFactors = FALSE
   )
 }
@@ -37,47 +49,22 @@ overall_result <- parse_he_file(he_overall_file)
 within_result <- parse_he_file(he_within_file)
 across_result <- parse_he_file(he_across_file)
 
-h2_overall <- NA_real_
-h2_overall_se <- NA_real_
-h2_same <- NA_real_
-h2_same_se <- NA_real_
-h2_diff <- NA_real_
-h2_diff_se <- NA_real_
-T2_statistic <- NA_real_
+h2_overall <- overall_result\$heritability
+h2_overall_se <- overall_result\$se
+h2_same <- within_result\$heritability
+h2_same_se <- within_result\$se
+h2_diff <- across_result\$heritability
+h2_diff_se <- across_result\$se
+
+T2_statistic <- h2_same - h2_diff
+mean_t2 <- T2_statistic
+sd_t2 <- sqrt(h2_same_se^2 + h2_diff_se^2)
 
 statistical_test_results <- list(
-  pvalue = NA_real_,
-  mean_T2samp = NA_real_,
-  sd_T2samp = NA_real_
+  pvalue = pnorm(0, mean = mean_t2, sd = sd_t2),
+  mean_T2samp = mean_t2,
+  sd_T2samp = sd_t2
 )
-
-if (!is.null(overall_result)) {
-  h2_overall <- overall_result\$heritability
-  h2_overall_se <- overall_result\$se
-}
-
-if (!is.null(within_result)) {
-  h2_same <- within_result\$heritability
-  h2_same_se <- within_result\$se
-}
-
-if (!is.null(across_result)) {
-  h2_diff <- across_result\$heritability
-  h2_diff_se <- across_result\$se
-}
-
-if (!is.na(h2_same) && !is.na(h2_diff)) {
-  T2_statistic <- h2_same - h2_diff
-}
-
-if (!is.na(h2_same) && !is.na(h2_same_se) && !is.na(h2_diff) && !is.na(h2_diff_se)) {
-  mean_t2 <- h2_same - h2_diff
-  sd_t2 <- sqrt(h2_same_se^2 + h2_diff_se^2)
-
-  statistical_test_results\$pvalue <- pnorm(0, mean = mean_t2, sd = sd_t2)
-  statistical_test_results\$mean_T2samp <- mean_t2
-  statistical_test_results\$sd_T2samp <- sd_t2
-}
 
 output_lines <- c(
   "LDAK Genotype Error Analysis Results (T2 Statistic)",
@@ -122,7 +109,7 @@ output_lines <- c(
       "  SIGNIFICANT: Genotype errors detected (p < 0.05)",
       "  NOT SIGNIFICANT: No strong evidence of genotype errors (p >= 0.05)"
     ),
-    "  Cannot determine (missing data)"
+    "  Cannot determine (analytical standard deviation is zero)"
   )
 )
 

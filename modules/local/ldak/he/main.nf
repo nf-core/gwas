@@ -7,13 +7,11 @@ process LDAK_HE {
         : 'community.wave.seqera.io/library/ldak6_r-base:452828f72b3c9129'}"
 
     input:
-    tuple val(meta), path(phenotype_file), val(mpheno)
-    tuple val(meta2), path(grm_bin), path(grm_id), path(grm_details), path(grm_adjust), path(grm_root)
+    tuple val(meta), path(phenotype_file)
+    tuple val(meta2), path(grm_files)
     tuple val(meta3), path(keep_file)
     tuple val(meta4), path(quant_covariates_file)
     tuple val(meta5), path(cat_covariates_file)
-    val subset_prefix
-    val subset_number
 
     output:
     tuple val(meta), path("${prefix}.he"), emit: he_results
@@ -29,6 +27,7 @@ process LDAK_HE {
     tuple val(meta), path("${prefix}.cross.across"), emit: cross_across, optional: true
     tuple val(meta), path("${prefix}.share.within"), emit: share_within, optional: true
     tuple val(meta), path("${prefix}.share.across"), emit: share_across, optional: true
+    tuple val(meta), path("${prefix}.log"), emit: log
     tuple val("${task.process}"), val("ldak6"), eval("ldak6 --version 2>&1 | grep -oP '(?<=^Version )[0-9.]+'"), emit: versions_ldak6, topic: versions
 
     when:
@@ -36,45 +35,40 @@ process LDAK_HE {
 
     script:
     def args = task.ext.args ?: ''
-    def grm_prefix = grm_bin.name.replaceFirst(/\.grm\.bin$/, '')
+    def grm_prefix = grm_files.find { grm_file -> grm_file.name.endsWith('.grm.bin') }.name.replaceFirst(/\.grm\.bin$/, '')
     prefix = task.ext.prefix ?: "${meta.id}"
-    def mpheno_arg = mpheno == null || (mpheno instanceof Collection && mpheno.isEmpty()) ? 1 : mpheno
-    def keep_arg = keep_file ? "--keep ${keep_file}" : ''
-    def quant_covar_arg = quant_covariates_file ? "--covar ${quant_covariates_file}" : ''
-    def cat_covar_arg = cat_covariates_file ? "--factors ${cat_covariates_file}" : ''
-    def subset_prefix_arg = subset_prefix ? "--subset-prefix ${subset_prefix}" : ''
-    def subset_number_arg = subset_number ? "--subset-number ${subset_number}" : ''
+    def keep_arg = keep_file ? "--keep \"${keep_file}\"" : ''
+    def quant_covar_arg = quant_covariates_file ? "--covar \"${quant_covariates_file}\"" : ''
+    def cat_covar_arg = cat_covariates_file ? "--factors \"${cat_covariates_file}\"" : ''
 
     """
-
-    ldak6 --he ${prefix} \\
-        --pheno ${phenotype_file} \\
-        --mpheno ${mpheno_arg} \\
-        --grm ${grm_prefix} \\
+    ldak6 --he "${prefix}" \\
+        --pheno "${phenotype_file}" \\
+        --grm "${grm_prefix}" \\
         ${keep_arg} \\
         ${quant_covar_arg} \\
         ${cat_covar_arg} \\
-        ${subset_prefix_arg} \\
-        ${subset_number_arg} \\
-        --max-threads ${task.cpus} \
-        ${args}
+        --max-threads "${task.cpus}" \\
+        ${args} \\
+        2>&1 | tee "${prefix}.log"
     """
 
     stub:
     prefix = task.ext.prefix ?: "${meta.id}"
     """
-    touch ${prefix}.he
-    touch ${prefix}.coeff
-    touch ${prefix}.combined
-    touch ${prefix}.cross
-    touch ${prefix}.progress
-    touch ${prefix}.share
-    touch ${prefix}.he.within
-    touch ${prefix}.he.across
-    touch ${prefix}.he.compare
-    touch ${prefix}.cross.within
-    touch ${prefix}.cross.across
-    touch ${prefix}.share.within
-    touch ${prefix}.share.across
+    touch "${prefix}.he"
+    touch "${prefix}.coeff"
+    touch "${prefix}.combined"
+    touch "${prefix}.cross"
+    touch "${prefix}.progress"
+    touch "${prefix}.share"
+    touch "${prefix}.he.within"
+    touch "${prefix}.he.across"
+    touch "${prefix}.he.compare"
+    touch "${prefix}.cross.within"
+    touch "${prefix}.cross.across"
+    touch "${prefix}.share.within"
+    touch "${prefix}.share.across"
+    touch "${prefix}.log"
     """
 }

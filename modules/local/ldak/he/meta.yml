@@ -19,54 +19,42 @@ input:
     - phenotype_file:
         type: file
         description: Headerless phenotype file passed to `--pheno`
-    - mpheno:
-        type: integer
-        description: Optional phenotype column index passed to `--mpheno`; pass [] to use fallback `1`
+        ontologies: []
   - - meta2:
         type: map
         description: |
           Groovy Map containing GRM metadata.
           Expected keys:
             - id (string): GRM identifier.
-    - grm_bin:
+    - grm_files:
         type: file
-        description: GRM binary matrix (`.grm.bin`)
-    - grm_id:
-        type: file
-        description: GRM sample identifiers (`.grm.id`)
-    - grm_details:
-        type: file
-        description: GRM details (`.grm.details`)
-    - grm_adjust:
-        type: file
-        description: GRM adjustment factors (`.grm.adjust`)
-    - grm_root:
-        type: file
-        description: Optional adjusted GRM root file (`.grm.root`); pass [] for non-adjusted GRM
+        description: GRM bundle (`.grm.bin`, `.grm.id`, `.grm.details`, `.grm.adjust`, `.grm.root`) produced by `ldak/adjustgrm`
+        pattern: "*.{grm.bin,grm.id,grm.details,grm.adjust,grm.root}"
+        ontologies: []
   - - meta3:
         type: map
         description: Metadata map paired with optional keep input.
     - keep_file:
         type: file
+        optional: true
         description: Optional keep file for sample filtering; pass [] when GRM is pre-filtered
+        ontologies: []
   - - meta4:
         type: map
         description: Metadata map paired with optional quantitative covariates input.
     - quant_covariates_file:
         type: file
+        optional: true
         description: Optional quantitative covariates file passed to `--covar`; pass [] when absent
+        ontologies: []
   - - meta5:
         type: map
         description: Metadata map paired with optional categorical covariates input.
     - cat_covariates_file:
         type: file
+        optional: true
         description: Optional categorical covariates file passed to `--factors`; pass [] when absent
-  - subset_prefix:
-      type: string
-      description: Optional subset prefix for batch-wise genotype error mode; pass '' when unused
-  - subset_number:
-      type: integer
-      description: Optional number of subsets for batch-wise mode; pass 0 when unused
+        ontologies: []
 output:
   he_results:
     - - meta:
@@ -75,90 +63,123 @@ output:
       - "${prefix}.he":
           type: file
           description: HE summary output (`<prefix>.he`)
+          ontologies: []
   coeff:
     - - meta:
           type: map
           description: Metadata map propagated from input
       - "${prefix}.coeff":
           type: file
+          optional: true
           description: Optional coefficient output (`<prefix>.coeff`)
+          ontologies: []
   combined:
     - - meta:
           type: map
           description: Metadata map propagated from input
       - "${prefix}.combined":
           type: file
+          optional: true
           description: Optional combined output (`<prefix>.combined`)
+          ontologies: []
   cross:
     - - meta:
           type: map
           description: Metadata map propagated from input
       - "${prefix}.cross":
           type: file
+          optional: true
           description: Optional cross output (`<prefix>.cross`)
+          ontologies: []
   progress:
     - - meta:
           type: map
           description: Metadata map propagated from input
       - "${prefix}.progress":
           type: file
+          optional: true
           description: Optional progress output (`<prefix>.progress`)
+          ontologies: []
   share:
     - - meta:
           type: map
           description: Metadata map propagated from input
       - "${prefix}.share":
           type: file
+          optional: true
           description: Optional share output (`<prefix>.share`)
+          ontologies: []
   he_within:
     - - meta:
           type: map
           description: Metadata map propagated from input
       - "${prefix}.he.within":
           type: file
+          optional: true
           description: Optional within-subset HE output (`<prefix>.he.within`)
+          ontologies: []
   he_across:
     - - meta:
           type: map
           description: Metadata map propagated from input
       - "${prefix}.he.across":
           type: file
+          optional: true
           description: Optional across-subset HE output (`<prefix>.he.across`)
+          ontologies: []
   he_compare:
     - - meta:
           type: map
           description: Metadata map propagated from input
       - "${prefix}.he.compare":
           type: file
+          optional: true
           description: Optional subset comparison output (`<prefix>.he.compare`)
+          ontologies: []
   cross_within:
     - - meta:
           type: map
           description: Metadata map propagated from input
       - "${prefix}.cross.within":
           type: file
+          optional: true
           description: Optional within-subset cross output (`<prefix>.cross.within`)
+          ontologies: []
   cross_across:
     - - meta:
           type: map
           description: Metadata map propagated from input
       - "${prefix}.cross.across":
           type: file
+          optional: true
           description: Optional across-subset cross output (`<prefix>.cross.across`)
+          ontologies: []
   share_within:
     - - meta:
           type: map
           description: Metadata map propagated from input
       - "${prefix}.share.within":
           type: file
+          optional: true
           description: Optional within-subset share output (`<prefix>.share.within`)
+          ontologies: []
   share_across:
     - - meta:
           type: map
           description: Metadata map propagated from input
       - "${prefix}.share.across":
           type: file
+          optional: true
           description: Optional across-subset share output (`<prefix>.share.across`)
+          ontologies: []
+  log:
+    - - meta:
+          type: map
+          description: Metadata map propagated from input
+      - "${prefix}.log":
+          type: file
+          description: LDAK Haseman-Elston (HE) log file (`<prefix>.log`)
+          ontologies: []
   versions_ldak6:
     - - ${task.process}:
           type: string

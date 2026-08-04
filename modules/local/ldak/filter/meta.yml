@@ -1,5 +1,6 @@
-name: ldak_filterrelatedness
-description: Filter related individuals from a linkage disequilibrium-adjusted kinship (LDAK) genomic relationship matrix (GRM) and create an unrelated subset GRM
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/modules/meta-schema.json
+name: "ldak_filter"
+description: Identify a maximal subset of unrelated individuals from a linkage disequilibrium-adjusted kinship (LDAK) genomic relationship matrix (GRM)
 keywords:
   - ldak
   - grm
@@ -10,55 +11,41 @@ tools:
       description: LDAK toolset for kinship, heritability, and association analyses
       homepage: https://dougspeed.com/ldak/
       documentation: https://dougspeed.com/ldak/
+      licence: ["GPL-3.0-or-later"]
 input:
   - - meta:
         type: map
         description: |
           Groovy Map containing GRM metadata.
-          Expected keys:
-            - id (string): Output prefix used for `.keep`, `.lose`, `.maxrel`, and `<id>_unrel.grm.*` files.
-    - grm_bin:
+          Only `meta.id` is required; it provides the default output prefix.
+    - grm_files:
         type: file
-        description: GRM binary matrix (`.grm.bin`) for the GRM prefix
-    - grm_id:
-        type: file
-        description: GRM sample identifiers (`.grm.id`) for the GRM prefix
-    - grm_details:
-        type: file
-        description: GRM details (`.grm.details`) for the GRM prefix
-    - grm_adjust:
-        type: file
-        description: GRM adjustment factors (`.grm.adjust`) for the GRM prefix
+        description: LDAK GRM bundle sharing a common basename, containing the binary
+          matrix, sample identifiers, details, and adjustment factor files
+        pattern: "*.{grm.bin,grm.id,grm.details,grm.adjust}"
+        ontologies: []
 output:
   filtered_list:
     - - meta:
           type: map
           description: Metadata map propagated from input
-      - "${prefix}.keep":
+      - "*.keep":
           type: file
           description: Sample identifiers retained after relatedness filtering (`<prefix>.keep`)
-      - "${prefix}.lose":
+          ontologies: []
+      - "*.lose":
           type: file
           description: Sample identifiers removed by relatedness filtering (`<prefix>.lose`)
-      - "${prefix}.maxrel":
-          type: file
-          description: Maximum pairwise relatedness summary (`<prefix>.maxrel`)
-  filtered_grm:
+          ontologies: []
+  maxrel:
     - - meta:
           type: map
           description: Metadata map propagated from input
-      - "${prefix}_unrel.grm.bin":
+      - "*.maxrel":
           type: file
-          description: Unrelated subset GRM binary matrix (`<prefix>_unrel.grm.bin`)
-      - "${prefix}_unrel.grm.id":
-          type: file
-          description: Unrelated subset GRM sample identifiers (`<prefix>_unrel.grm.id`)
-      - "${prefix}_unrel.grm.details":
-          type: file
-          description: Unrelated subset GRM details (`<prefix>_unrel.grm.details`)
-      - "${prefix}_unrel.grm.adjust":
-          type: file
-          description: Unrelated subset GRM adjustment factors (`<prefix>_unrel.grm.adjust`)
+          optional: true
+          description: Adaptive maximum-relatedness diagnostic; emitted only when LDAK chooses the threshold automatically
+          ontologies: []
   versions_ldak6:
     - - ${task.process}:
           type: string
@@ -80,6 +67,9 @@ topics:
       - ldak6 --version 2>&1 | grep -oP '(?<=^Version )[0-9.]+':
           type: eval
           description: The expression used to obtain the version of the tool
+notes: |
+  This module implements unrelated-sample selection only. LDAK's default relatedness rule is used unless a native `--max-rel <float>` selector is supplied through `task.ext.args`. LDAK 6.1 emits `.maxrel` only for the adaptive default, not when `--max-rel` is explicit.
+  Native `--min-rel` switches to related-sample selection and produces a different output family, so it is outside this component contract.
 authors:
   - "@lyh970817"
 maintainers:

@@ -5,96 +5,76 @@ quarter_files <- c($quarter_reml_files_r)
 
 parse_reml_file <- function(file_path) {
   if (!file.exists(file_path)) {
-    warning(paste("File does not exist:", file_path))
-    return(NULL)
+    stop("Required REML file does not exist: ", file_path, call. = FALSE)
   }
 
   lines <- readLines(file_path)
-  her_all_line <- grep("^Her_All", lines, value = TRUE)
+  her_all_line <- grep("^Her_All[[:space:]]", lines, value = TRUE)
 
-  if (length(her_all_line) == 0) {
-    warning(paste("Her_All line not found in file:", file_path))
-    return(NULL)
+  if (length(her_all_line) != 1L) {
+    stop(
+      "Expected exactly one Her_All row in required REML file ",
+      file_path,
+      "; found ",
+      length(her_all_line),
+      call. = FALSE
+    )
   }
 
   parts <- strsplit(her_all_line, "\\\\s+")[[1]]
-  if (length(parts) < 3) {
-    warning(paste("Invalid Her_All line format in file:", file_path))
-    return(NULL)
+  if (length(parts) < 3L) {
+    stop("Malformed Her_All row in required REML file: ", file_path, call. = FALSE)
+  }
+
+  estimates <- type.convert(parts[2:3], as.is = TRUE)
+  if (!is.numeric(estimates) || anyNA(estimates) || any(!is.finite(estimates))) {
+    stop(
+      "Her_All heritability and standard error must be finite numbers in required REML file: ",
+      file_path,
+      call. = FALSE
+    )
   }
 
   data.frame(
     file = basename(file_path),
-    heritability = as.numeric(parts[2]),
-    se = as.numeric(parts[3]),
+    heritability = estimates[1],
+    se = estimates[2],
     stringsAsFactors = FALSE
   )
 }
 
-quarter_results <- list()
-for (file in quarter_files) {
-  result <- parse_reml_file(file)
-  if (!is.null(result)) {
-    result\$type <- "quarter"
-    quarter_results[[length(quarter_results) + 1]] <- result
-  }
+if (length(quarter_files) < 2L) {
+  stop("At least two quarter REML files are required for the n - 1 inflation formula", call. = FALSE)
 }
 
-ldak_results <- list()
-ldak_result <- parse_reml_file(ldak_reml_file)
-if (!is.null(ldak_result)) {
-  ldak_result\$type <- "ldak"
-  ldak_results[[1]] <- ldak_result
-}
+quarter_results <- lapply(quarter_files, parse_reml_file)
+quarter_data <- do.call(rbind, quarter_results)
+quarter_data\$type <- "quarter"
 
-all_results <- do.call(rbind, c(quarter_results, ldak_results))
-if (is.null(all_results) || nrow(all_results) == 0) {
-  stop("No valid REML results found")
-}
+ldak_data <- parse_reml_file(ldak_reml_file)
+ldak_data\$type <- "ldak"
 
-quarter_data <- all_results[all_results\$type == "quarter", , drop = FALSE]
-ldak_data <- all_results[all_results\$type == "ldak", , drop = FALSE]
+all_results <- rbind(quarter_data, ldak_data)
 
-quarter_mean_h2 <- if (nrow(quarter_data) > 0) mean(quarter_data\$heritability, na.rm = TRUE) else NA_real_
-quarter_mean_se <- if (nrow(quarter_data) > 0) mean(quarter_data\$se, na.rm = TRUE) else NA_real_
-ldak_h2 <- if (nrow(ldak_data) > 0) ldak_data\$heritability[1] else NA_real_
-ldak_se <- if (nrow(ldak_data) > 0) ldak_data\$se[1] else NA_real_
+n_quarters <- nrow(quarter_data)
+quarter_mean_h2 <- mean(quarter_data\$heritability)
+quarter_mean_se <- mean(quarter_data\$se)
+ldak_h2 <- ldak_data\$heritability[1]
+ldak_se <- ldak_data\$se[1]
 
-inflation_T1 <- NA_real_
-inflation_factor <- NA_real_
+quarter_sum_h2 <- sum(quarter_data\$heritability)
+inflation_T1 <- (quarter_sum_h2 - ldak_h2) / (n_quarters - 1)
+inflation_factor <- quarter_mean_h2 / ldak_h2
 
-if (!is.na(quarter_mean_h2) && !is.na(ldak_h2) && nrow(quarter_data) > 0) {
-  n_quarters <- nrow(quarter_data)
-  quarter_sum_h2 <- sum(quarter_data\$heritability, na.rm = TRUE)
-  inflation_T1 <- (quarter_sum_h2 - ldak_h2) / (n_quarters - 1)
-  inflation_factor <- quarter_mean_h2 / ldak_h2
-}
+mean_t1 <- inflation_T1
+sd_t1 <- sqrt(sum(quarter_data\$se^2) + ldak_se^2) / (n_quarters - 1)
 
 statistical_test_results <- list(
-  n_quarters = 0,
-  pvalue = NA_real_,
-  mean_T1samp = NA_real_,
-  sd_T1samp = NA_real_
+  n_quarters = n_quarters,
+  pvalue = pnorm(0, mean = mean_t1, sd = sd_t1),
+  mean_T1samp = mean_t1,
+  sd_T1samp = sd_t1
 )
-
-if (!is.na(ldak_h2) && !is.na(ldak_se) && nrow(quarter_data) > 0) {
-  quarter_h2_values <- quarter_data\$heritability
-  quarter_se_values <- quarter_data\$se
-
-  valid_quarters <- !is.na(quarter_h2_values) & !is.na(quarter_se_values)
-  quarter_h2_values <- quarter_h2_values[valid_quarters]
-  quarter_se_values <- quarter_se_values[valid_quarters]
-
-  if (length(quarter_h2_values) > 1) {
-    mean_t1 <- (sum(quarter_h2_values) - ldak_h2) / (length(quarter_h2_values) - 1)
-    sd_t1 <- sqrt(sum(quarter_se_values^2) + ldak_se^2) / (length(quarter_h2_values) - 1)
-
-    statistical_test_results\$n_quarters <- length(quarter_h2_values)
-    statistical_test_results\$pvalue <- pnorm(0, mean = mean_t1, sd = sd_t1)
-    statistical_test_results\$mean_T1samp <- mean_t1
-    statistical_test_results\$sd_T1samp <- sd_t1
-  }
-}
 
 output_lines <- c(
   "LDAK Inflation Analysis Results",

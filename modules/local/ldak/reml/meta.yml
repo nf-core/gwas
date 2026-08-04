@@ -1,4 +1,5 @@
-name: ldak_reml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/modules/meta-schema.json
+name: "ldak_reml"
 description: Run linkage disequilibrium-adjusted kinship (LDAK) restricted maximum likelihood (REML) heritability estimation on a precomputed genomic relationship matrix (GRM) and phenotype
 keywords:
   - ldak
@@ -9,19 +10,18 @@ tools:
       description: LDAK toolset for kinship, heritability, and association analyses
       homepage: https://dougspeed.com/ldak/
       documentation: https://dougspeed.com/ldak/
+      licence: ["GPL-3.0-or-later"]
 input:
   - - meta:
         type: map
         description: |
           Groovy Map containing phenotype metadata.
-          Expected keys:
-            - id (string): Output prefix for REML artifacts.
+          Only `meta.id` is required; it provides the default output prefix.
     - phenotype_file:
         type: file
         description: Headerless phenotype file passed to `--pheno`
-    - mpheno:
-        type: integer
-        description: Optional phenotype column index passed to `--mpheno`; pass [] to use fallback `1`
+        pattern: "*.{phe,pheno,txt,tsv}"
+        ontologies: []
     - prevalence:
         type: float
         description: Optional disease prevalence passed to `--prevalence`; pass [] when absent
@@ -31,100 +31,153 @@ input:
           Groovy Map containing GRM metadata.
           Expected keys:
             - id (string): GRM identifier.
-    - grm_bin:
+    - grm_files:
         type: file
-        description: GRM binary matrix (`.grm.bin`)
-    - grm_id:
-        type: file
-        description: GRM sample identifiers (`.grm.id`)
-    - grm_details:
-        type: file
-        description: GRM details (`.grm.details`)
-    - grm_adjust:
-        type: file
-        description: GRM adjustment factors (`.grm.adjust`)
+        description: GRM bundle (`.grm.bin`, `.grm.id`, `.grm.details`, `.grm.adjust`) sharing a common basename
+        pattern: "*.{grm.bin,grm.id,grm.details,grm.adjust}"
+        ontologies: []
   - - meta3:
         type: map
         description: Metadata map paired with optional keep input.
     - keep_file:
         type: file
+        optional: true
         description: Optional keep file for sample filtering; pass [] when GRM is pre-filtered
+        ontologies: []
   - - meta4:
         type: map
         description: Metadata map paired with optional quantitative covariates input.
     - quant_covariates_file:
         type: file
+        optional: true
         description: Optional quantitative covariates file passed to `--covar`; pass [] when absent
+        ontologies: []
   - - meta5:
         type: map
         description: Metadata map paired with optional categorical covariates input.
     - cat_covariates_file:
         type: file
+        optional: true
         description: Optional categorical covariates file passed to `--factors`; pass [] when absent
+        ontologies: []
 output:
   reml_results:
     - - meta:
           type: map
           description: Metadata map propagated from input
-      - "${prefix}.reml":
+      - "*.reml":
           type: file
           description: REML summary output (`<prefix>.reml`)
+          ontologies: []
   coeff:
     - - meta:
           type: map
           description: Metadata map propagated from input
-      - "${prefix}.coeff":
+      - "*.coeff":
           type: file
-          description: Optional coefficient output (`<prefix>.coeff`)
+          description: Fixed-effect coefficient estimates (`<prefix>.coeff`)
+          ontologies: []
   combined:
     - - meta:
           type: map
           description: Metadata map propagated from input
-      - "${prefix}.combined":
+      - "*.combined":
           type: file
+          optional: true
           description: Optional combined output (`<prefix>.combined`)
+          ontologies: []
   cross:
     - - meta:
           type: map
           description: Metadata map propagated from input
-      - "${prefix}.cross":
+      - "*.cross":
           type: file
-          description: Optional cross output (`<prefix>.cross`)
+          description: REML cross-product diagnostics (`<prefix>.cross`)
+          ontologies: []
   indi_blp:
     - - meta:
           type: map
           description: Metadata map propagated from input
-      - "${prefix}.indi.blp":
+      - "*.indi.blp":
           type: file
-          description: Optional individual best linear prediction (BLP) output (`<prefix>.indi.blp`)
+          description: Individual best linear prediction (BLP) output (`<prefix>.indi.blp`)
+          ontologies: []
   indi_res:
     - - meta:
           type: map
           description: Metadata map propagated from input
-      - "${prefix}.indi.res":
+      - "*.indi.res":
           type: file
-          description: Optional individual residual output (`<prefix>.indi.res`)
+          description: Individual residual output (`<prefix>.indi.res`)
+          ontologies: []
   progress:
     - - meta:
           type: map
           description: Metadata map propagated from input
-      - "${prefix}.progress":
+      - "*.progress":
           type: file
-          description: Optional progress output (`<prefix>.progress`)
+          description: Optimisation progress output (`<prefix>.progress`)
+          ontologies: []
   share:
     - - meta:
           type: map
           description: Metadata map propagated from input
-      - "${prefix}.share":
+      - "*.share":
           type: file
-          description: Optional share output (`<prefix>.share`)
+          description: Heritability share estimates (`<prefix>.share`)
+          ontologies: []
   vars:
     - - meta:
           type: map
           description: Metadata map propagated from input
-      - "${prefix}.vars":
+      - "*.vars":
           type: file
-          description: Optional variance component output (`<prefix>.vars`)
+          description: Variance component output (`<prefix>.vars`)
+          ontologies: []
+  reml_liability:
+    - - meta:
+          type: map
+          description: Metadata map propagated from input
+      - "*.reml.liab":
+          type: file
+          optional: true
+          description: Liability-scale REML summary emitted when prevalence is supplied
+          ontologies: []
+  coeff_liability:
+    - - meta:
+          type: map
+          description: Metadata map propagated from input
+      - "*.coeff.liab":
+          type: file
+          optional: true
+          description: Liability-scale fixed-effect coefficients emitted when prevalence is supplied
+          ontologies: []
+  indi_blp_liability:
+    - - meta:
+          type: map
+          description: Metadata map propagated from input
+      - "*.indi.blp.liab":
+          type: file
+          optional: true
+          description: Liability-scale individual BLP output emitted when prevalence is supplied
+          ontologies: []
+  liability_factor:
+    - - meta:
+          type: map
+          description: Metadata map propagated from input
+      - "*.factor":
+          type: file
+          optional: true
+          description: Observed-to-liability conversion factor diagnostic emitted when prevalence is supplied
+          ontologies: []
+  log:
+    - - meta:
+          type: map
+          description: Metadata map propagated from input
+      - "*.log":
+          type: file
+          description: LDAK REML log file (`<prefix>.log`)
+          ontologies: []
   versions_ldak6:
     - - ${task.process}:
           type: string
@@ -146,6 +199,8 @@ topics:
       - ldak6 --version 2>&1 | grep -oP '(?<=^Version )[0-9.]+':
           type: eval
           description: The expression used to obtain the version of the tool
+notes: |
+  `task.ext.args` is passed directly to LDAK and can be used for optional phenotype-selection arguments such as `--mpheno`.
 authors:
   - "@lyh970817"
 maintainers:

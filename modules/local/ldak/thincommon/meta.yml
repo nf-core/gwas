@@ -1,10 +1,10 @@
-name: ldak_thinpredictors
-description: Run linkage disequilibrium (LD) pruning with linkage disequilibrium-adjusted kinship (LDAK) to create a thinned predictor list for weighted kinship workflows
+name: ldak_thincommon
+description: Select common, moderately linkage-disequilibrium-pruned predictors with LDAK for dense-data Step 1 analyses
 keywords:
   - ldak
   - thinning
   - predictors
-  - kinship
+  - association
 tools:
   - ldak6:
       description: LDAK toolset for kinship, heritability, and association analyses
@@ -16,7 +16,7 @@ input:
         description: |
           Groovy Map containing genotype-bundle metadata.
           Expected keys:
-            - id (string): Sample identifier used as thin output prefix (for example, 'plink_merged').
+            - id (string): Sample identifier
     - bed:
         type: file
         description: PLINK BED genotype file
@@ -29,20 +29,23 @@ input:
         type: file
         description: PLINK FAM sample file
         ontologies: []
-  - window_prune:
-      type: float
-      description: Correlation squared (r²) threshold passed to LDAK `--window-prune` (for example, 0.98)
-  - window_kb:
-      type: integer
-      description: Window size in kilobases passed to LDAK `--window-kb` (for example, 100)
 output:
-  thin_predictors:
+  predictors:
     - - meta:
           type: map
           description: Metadata map carried forward from input
       - "${prefix}.in":
           type: file
-          description: LDAK thinned predictor list emitted by `--thin`
+          description: Common predictors selected by LDAK for dense-data Step 1 analyses
+          ontologies: []
+  progress:
+    - - meta:
+          type: map
+          description: Metadata map carried forward from input
+      - "${prefix}.progress":
+          type: file
+          optional: true
+          description: LDAK progress log
           ontologies: []
   versions_ldak6:
     - - ${task.process}:
@@ -66,6 +69,6 @@ topics:
           type: eval
           description: The expression used to obtain the version of the tool
 authors:
-  - "@lyh970817"
+  - "@andongni"
 maintainers:
-  - "@lyh970817"
+  - "@andongni"

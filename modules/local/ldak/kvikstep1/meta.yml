@@ -40,6 +40,7 @@ input:
         description: |
           Groovy Map containing phenotype information
           Keep `id` as the phenotype-specific analysis identifier used for the step 1 output prefix
+          Optional phenotype selection such as `--mpheno 1` is supplied via `task.ext.args`
           e.g. `[ id:'Y1' ]`
     - phenotype_file:
         type: file
@@ -47,9 +48,6 @@ input:
         pattern: "*.{txt,tsv,pheno,phe}"
         ontologies:
           - edam: "http://edamontology.org/format_3475"
-    - mpheno:
-        type: integer
-        description: Optional phenotype column index passed to `--mpheno`; provide `[]` to use the module fallback of `1`
     - is_binary:
         type: boolean
         description: Optional trait-type flag; pass `true` to add `--binary YES`
@@ -80,13 +78,22 @@ input:
         pattern: "*.{txt,tsv,covar,cov}"
         ontologies:
           - edam: "http://edamontology.org/format_3475"
+  - - meta5:
+        type: map
+        description: |
+          Groovy Map containing predictor-subset information
+          e.g. `[ id:'thin_common' ]`
+    - extract_file:
+        type: file
+        optional: true
+        description: Optional predictor list passed to `--extract`; provide `[]` when absent
+        pattern: "*.{in,txt,list}"
+        ontologies: []
 output:
   predictions:
-    - - meta2:
+    - - meta:
           type: map
-          description: |
-            Groovy Map containing phenotype information
-            e.g. `[ id:'Y1' ]`
+          description: Metadata map carried forward from the focal genotype input
       - "${prefix}.step1.root":
           type: file
           description: LDAK-KVIK step 1 root file
@@ -104,22 +111,19 @@ output:
           pattern: "*.step1.loco.prs"
           ontologies: []
   effects:
-    - - meta2:
+    - - meta:
           type: map
-          description: |
-            Groovy Map containing phenotype information
-            e.g. `[ id:'Y1' ]`
+          description: Metadata map carried forward from the focal genotype input
       - "${prefix}.step1.effects":
           type: file
+          optional: true
           description: Optional LDAK-KVIK step 1 effects file produced for quantitative traits
           pattern: "*.step1.effects"
           ontologies: []
   log:
-    - - meta2:
+    - - meta:
           type: map
-          description: |
-            Groovy Map containing phenotype information
-            e.g. `[ id:'Y1' ]`
+          description: Metadata map carried forward from the focal genotype input
       - "${prefix}.step1.log":
           type: file
           description: LDAK-KVIK step 1 log file

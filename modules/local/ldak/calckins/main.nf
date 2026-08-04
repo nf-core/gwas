@@ -7,12 +7,12 @@ process LDAK_CALCKINS {
         : 'community.wave.seqera.io/library/ldak6_r-base:452828f72b3c9129'}"
 
     input:
-    tuple val(meta), path(bed), path(bim), path(fam)
+    tuple val(meta), path(bed), path(bim), path(fam), val(power)
     tuple val(meta2), path(weights_file)
-    val power
 
     output:
     tuple val(meta), path("${prefix}.grm.bin"), path("${prefix}.grm.id"), path("${prefix}.grm.details"), path("${prefix}.grm.adjust"), emit: ldak_grm
+    tuple val(meta), path("${prefix}.log"), emit: log
     tuple val("${task.process}"), val("ldak6"), eval("ldak6 --version 2>&1 | grep -oP '(?<=^Version )[0-9.]+'"), emit: versions_ldak6, topic: versions
 
     when:
@@ -21,27 +21,25 @@ process LDAK_CALCKINS {
     script:
     def args = task.ext.args ?: ''
     prefix = task.ext.prefix ?: "${meta.id}"
-    def weights_arg = weights_file ? "--weights ${weights_file}" : ''
-    def ignore_weights_arg = weights_file ? '' : "--ignore-weights YES"
-
+    def weights_arg = weights_file ? "--weights \"${weights_file}\"" : ''
     """
-
     ldak6 \\
-        --calc-kins-direct ${prefix} \\
-        --bfile ${bed.baseName} \\
-        --power ${power} \\
+        --calc-kins-direct "${prefix}" \\
+        --bfile "${bed.baseName}" \\
+        --power "${power}" \\
         ${weights_arg} \\
-        ${ignore_weights_arg} \\
-        --max-threads ${task.cpus} \
-        ${args}
+        --max-threads "${task.cpus}" \\
+        ${args} \\
+        2>&1 | tee "${prefix}.log"
     """
 
     stub:
     prefix = task.ext.prefix ?: "${meta.id}"
     """
-    touch ${prefix}.grm.bin
-    touch ${prefix}.grm.id
-    touch ${prefix}.grm.details
-    touch ${prefix}.grm.adjust
+    touch "${prefix}.grm.bin"
+    touch "${prefix}.grm.id"
+    touch "${prefix}.grm.details"
+    touch "${prefix}.grm.adjust"
+    touch "${prefix}.log"
     """
 }

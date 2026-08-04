@@ -1,4 +1,4 @@
-process LDAK_ADDGRMS {
+process LDAK_SUBGRM {
     tag "${meta.id}"
     label 'process_medium'
     conda "${moduleDir}/environment.yml"
@@ -7,10 +7,10 @@ process LDAK_ADDGRMS {
         : 'community.wave.seqera.io/library/ldak6_r-base:452828f72b3c9129'}"
 
     input:
-    tuple val(meta), path(mgrm_file), path(grm_files)
+    tuple val(meta), path(grm_files), path(keep)
 
     output:
-    tuple val(meta), path("${prefix}.grm.bin"), path("${prefix}.grm.id"), path("${prefix}.grm.details"), path("${prefix}.grm.adjust"), emit: combined_grm
+    tuple val(meta), path("${prefix}.grm.bin"), path("${prefix}.grm.id"), path("${prefix}.grm.details"), path("${prefix}.grm.adjust"), emit: sub_grm
     tuple val("${task.process}"), val("ldak6"), eval("ldak6 --version 2>&1 | grep -oP '(?<=^Version )[0-9.]+'"), emit: versions_ldak6, topic: versions
 
     when:
@@ -18,13 +18,14 @@ process LDAK_ADDGRMS {
 
     script:
     def args = task.ext.args ?: ''
+    def grm_prefix = grm_files.find { grm_file -> grm_file.name.endsWith('.grm.bin') }.name.replaceFirst(/\.grm\.bin$/, '')
     prefix = task.ext.prefix ?: "${meta.id}"
-
     """
-    ldak6 \
-        --add-grm "${prefix}" \
-        --mgrm "${mgrm_file}" \
-        --max-threads "${task.cpus}" \
+    ldak6 \\
+        --sub-grm "${prefix}" \\
+        --grm "${grm_prefix}" \\
+        --keep "${keep}" \\
+        --max-threads "${task.cpus}" \\
         ${args}
     """
 

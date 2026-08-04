@@ -20,21 +20,26 @@ input:
     - bed:
         type: file
         description: PLINK BED genotype file
+        ontologies: []
     - bim:
         type: file
         description: PLINK BIM variant file
+        ontologies: []
     - fam:
         type: file
         description: PLINK FAM sample file
+        ontologies: []
+    - power:
+        type: float
+        description: Required LDAK `--power` value controlling the predictor-scaling heritability model
   - - meta2:
         type: map
-        description: Metadata map paired with optional weights input.
+        description: Metadata map for the optional weights resource.
     - weights_file:
         type: file
-        description: Optional LDAK weights file passed to `--weights`; provide [] to skip. If absent, module sets `--ignore-weights YES`.
-  - power:
-      type: string
-      description: LDAK `--power` value controlling SNP weighting model (for example, '-.25' or '-1')
+        optional: true
+        description: Optional LDAK predictor weights file; use an empty list when absent.
+        ontologies: []
 output:
   ldak_grm:
     - - meta:
@@ -43,15 +48,27 @@ output:
       - "${prefix}.grm.bin":
           type: file
           description: LDAK genomic relationship matrix (GRM) binary matrix
+          ontologies: []
       - "${prefix}.grm.id":
           type: file
           description: LDAK GRM sample identifiers
+          ontologies: []
       - "${prefix}.grm.details":
           type: file
           description: LDAK GRM details file
+          ontologies: []
       - "${prefix}.grm.adjust":
           type: file
           description: LDAK GRM adjustment factors
+          ontologies: []
+  log:
+    - - meta:
+          type: map
+          description: Metadata map carried forward from input
+      - "${prefix}.log":
+          type: file
+          description: LDAK kinship calculation log file (`<prefix>.log`)
+          ontologies: []
   versions_ldak6:
     - - ${task.process}:
           type: string
