@@ -1,0 +1,44 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
+name: "prepare_cohort_genotypes"
+description: Prepare each distinct cohort's genotypes once into the canonical PLINK 2 bundle and fan it out to every analysis unit on that cohort
+keywords:
+  - plink2
+  - genotype
+  - cohort
+  - deduplication
+components:
+  - plink2/makebed
+  - plink2/makepgen
+  - plink2/vcf
+input:
+  - ch_analyses:
+      description: One analysis unit per element, carrying its cohort identity and the genotype files of the single populated encoding. Rows sharing a cohort must name the same files.
+      structure: "[map meta, list genotype_files]"
+      pattern: "*.{pgen,psam,pvar,bed,bim,fam,vcf,vcf.gz}"
+      ontologies:
+        - edam: "http://edamontology.org/format_2330"
+output:
+  - genotypes:
+      description: The prepared cohort bundle of each analysis unit, carrying the focal analysis metadata.
+      structure: [map meta, path pgen, path psam, path pvar]
+      pattern: "*.{pgen,psam,pvar}"
+      ontologies:
+        - edam: "http://edamontology.org/format_2330"
+  - cohort_genotypes:
+      description: One prepared bundle per distinct cohort, carrying cohort metadata with meta.id set to the cohort identifier.
+      structure: [map cohort_meta, path pgen, path psam, path pvar]
+      pattern: "*.{pgen,psam,pvar}"
+      ontologies:
+        - edam: "http://edamontology.org/format_2330"
+  - plink1_genotypes:
+      description: One lazy PLINK 1 derivative per analysis unit whose selected route requires it, carrying unchanged focal analysis metadata. Analyses on one cohort share one conversion.
+      structure: [map meta, path bed, path bim, path fam]
+      pattern: "*.{bed,bim,fam}"
+      ontologies:
+        - edam: "http://edamontology.org/format_3003"
+        - edam: "http://edamontology.org/format_3285"
+        - edam: "http://edamontology.org/format_3286"
+authors:
+  - "@andongni"
+maintainers:
+  - "@andongni"

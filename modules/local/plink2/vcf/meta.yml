@@ -1,0 +1,87 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/modules/meta-schema.json
+name: "plink2_vcf"
+description: Import VCF genotype data into a PLINK 2 PGEN/PVAR/PSAM fileset
+keywords:
+  - plink2
+  - vcf
+  - pgen
+  - genotype
+tools:
+  - "plink2":
+      description: "Whole genome association analysis toolset designed for large-scale genetic analyses."
+      homepage: "https://www.cog-genomics.org/plink/2.0/"
+      documentation: "https://www.cog-genomics.org/plink/2.0/input"
+      tool_dev_url: "https://github.com/chrchang/plink-ng"
+      licence: ["GPL-3.0-or-later"]
+      identifier: "biotools:plink"
+input:
+  - - meta:
+        type: map
+        description: |
+          Groovy map containing genotype metadata
+          e.g. `[ id:'plink_simulated' ]`
+    - vcf:
+        type: file
+        description: VCF genotype file, optionally gzip-compressed
+        pattern: "*.{vcf,vcf.gz}"
+        ontologies:
+          - edam: "http://edamontology.org/format_3016" # VCF
+output:
+  pgen:
+    - - meta:
+          type: map
+          description: |
+            Groovy map containing genotype metadata
+            e.g. `[ id:'plink_simulated' ]`
+      - "*.pgen":
+          type: file
+          description: PLINK 2 binary genotype file
+          pattern: "*.pgen"
+          ontologies: []
+      - "*.psam":
+          type: file
+          description: PLINK 2 sample information file
+          pattern: "*.psam"
+          ontologies: []
+      - "*.pvar":
+          type: file
+          description: Uncompressed PLINK 2 variant information file
+          pattern: "*.pvar"
+          ontologies: []
+  log:
+    - - meta:
+          type: map
+          description: |
+            Groovy map containing genotype metadata
+            e.g. `[ id:'plink_simulated' ]`
+      - "*.log":
+          type: file
+          description: PLINK 2 VCF import log
+          pattern: "*.log"
+          ontologies:
+            - edam: "http://edamontology.org/format_2330" # Text
+  versions_plink2:
+    - - "${task.process}":
+          type: string
+          description: The process the version was collected from
+      - "plink2":
+          type: string
+          description: The tool name
+      - "plink2 --version 2>&1 | sed 's/^PLINK v//; s/ 64.*\\$//'":
+          type: eval
+          description: The command used to retrieve the PLINK 2 version
+topics:
+  versions:
+    - - "${task.process}":
+          type: string
+          description: The process the version was collected from
+      - plink2:
+          type: string
+          description: The tool name
+      - "plink2 --version 2>&1 | sed 's/^PLINK v//; s/ 64.*\\$//'":
+          type: eval
+          description: The command used to retrieve the PLINK 2 version
+authors:
+  - "@nebfield"
+maintainers:
+  - "@nebfield"

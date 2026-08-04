@@ -1,0 +1,159 @@
+name: normalise_phenotypes
+description: Normalise one analysis unit's phenotype and covariate files into the canonical layout every association and heritability programme in the pipeline can read
+keywords:
+  - phenotype
+  - covariates
+  - gwas
+  - normalisation
+tools:
+  - python:
+      description: Python programming language runtime; the normaliser uses the standard library only
+      homepage: https://www.python.org/
+      documentation: https://docs.python.org/3/
+input:
+  - - meta:
+        type: map
+        description: |
+          Groovy Map describing the analysis unit.
+          Expected keys:
+            - id (string): Analysis identifier, used as the output prefix.
+            - phenotype_column (string): Name of the trait column in the phenotype file.
+            - is_binary (boolean): Whether the trait is binary.
+            - case_value (string): Source value denoting a case, on a binary trait.
+            - control_value (string): Source value denoting a control, on a binary trait.
+    - phenotype:
+        type: file
+        description: Phenotype file with an FID column, an IID column and one column per trait
+        pattern: "*.{pheno,phen,txt,tsv}"
+        ontologies:
+          - edam: "http://edamontology.org/format_3475" # TSV
+    - quant_covariates:
+        type: file
+        optional: true
+        description: Quantitative covariate file with an FID column, an IID column and one column per covariate; pass `[]` when the analysis unit has none
+        pattern: "*.{qcovar,covar,txt,tsv}"
+        ontologies:
+          - edam: "http://edamontology.org/format_3475" # TSV
+    - cat_covariates:
+        type: file
+        optional: true
+        description: Categorical covariate file with an FID column, an IID column and one column per covariate; pass `[]` when the analysis unit has none
+        pattern: "*.{catcovar,covar,txt,tsv}"
+        ontologies:
+          - edam: "http://edamontology.org/format_3475" # TSV
+output:
+  phenotype:
+    - - meta:
+          type: map
+          description: Metadata map propagated from input
+      - "${prefix}.pheno":
+          type: file
+          description: Headered phenotype file with the trait in column three under the constant name `PHENO`, for PLINK 2 and REGENIE
+          pattern: "*.pheno"
+          ontologies:
+            - edam: "http://edamontology.org/format_3475" # TSV
+  phenotype_headerless:
+    - - meta:
+          type: map
+          description: Metadata map propagated from input
+      - "${prefix}.noheader.pheno":
+          type: file
+          description: The phenotype file without its header line, for GCTA and LDAK
+          pattern: "*.noheader.pheno"
+          ontologies:
+            - edam: "http://edamontology.org/format_3475" # TSV
+  quant_covariates:
+    - - meta:
+          type: map
+          description: Metadata map propagated from input
+      - "${prefix}.qcovar":
+          type: file
+          optional: true
+          description: Headered quantitative covariate file, emitted only when the analysis unit supplied one
+          pattern: "*.qcovar"
+          ontologies:
+            - edam: "http://edamontology.org/format_3475" # TSV
+  quant_covariates_headerless:
+    - - meta:
+          type: map
+          description: Metadata map propagated from input
+      - "${prefix}.noheader.qcovar":
+          type: file
+          optional: true
+          description: The quantitative covariate file without its header line, for GCTA `--qcovar` and LDAK `--covar`
+          pattern: "*.noheader.qcovar"
+          ontologies:
+            - edam: "http://edamontology.org/format_3475" # TSV
+  cat_covariates:
+    - - meta:
+          type: map
+          description: Metadata map propagated from input
+      - "${prefix}.catcovar":
+          type: file
+          optional: true
+          description: Headered categorical covariate file, emitted only when the analysis unit supplied one
+          pattern: "*.catcovar"
+          ontologies:
+            - edam: "http://edamontology.org/format_3475" # TSV
+  cat_covariates_headerless:
+    - - meta:
+          type: map
+          description: Metadata map propagated from input
+      - "${prefix}.noheader.catcovar":
+          type: file
+          optional: true
+          description: The categorical covariate file without its header line, for GCTA `--covar` and LDAK `--factors`
+          pattern: "*.noheader.catcovar"
+          ontologies:
+            - edam: "http://edamontology.org/format_3475" # TSV
+  covariates:
+    - - meta:
+          type: map
+          description: Metadata map propagated from input
+      - "${prefix}.covar":
+          type: file
+          optional: true
+          description: Quantitative and categorical covariates in one headered file, inner-joined on FID and IID, for PLINK 2 `--covar` and REGENIE `--covarFile`
+          pattern: "*.covar"
+          ontologies:
+            - edam: "http://edamontology.org/format_3475" # TSV
+  adjustment_covariates:
+    - - meta:
+          type: map
+          description: Metadata map propagated from input
+      - "${prefix}.adjustcovar":
+          type: file
+          optional: true
+          description: Headerless numerical covariate design for LDAK matrix adjustment
+          pattern: "*.adjustcovar"
+          ontologies:
+            - edam: "http://edamontology.org/format_3475" # TSV
+  log:
+    - - meta:
+          type: map
+          description: Metadata map propagated from input
+      - "${prefix}.normalise.log":
+          type: file
+          description: Record of the source trait column and its position, the sample count, the case, control and missing tallies, and any sample-set mismatch warning
+          pattern: "*.normalise.log"
+          ontologies:
+            - edam: "http://edamontology.org/format_2330" # Text
+  versions:
+    - versions.yml:
+        type: file
+        description: File containing software versions
+        pattern: "versions.yml"
+        ontologies:
+          - edam: "http://edamontology.org/format_3750"
+topics:
+  versions:
+    - versions.yml:
+        type: file
+        description: File containing software versions
+        pattern: "versions.yml"
+        ontologies:
+          - edam: "http://edamontology.org/format_3750"
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"

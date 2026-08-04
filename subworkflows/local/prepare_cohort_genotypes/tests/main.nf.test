@@ -1,0 +1,143 @@
+nextflow_workflow {
+
+    name "Test subworkflow PREPARE_COHORT_GENOTYPES"
+    script "../main.nf"
+    workflow "PREPARE_COHORT_GENOTYPES"
+    tag "subworkflow"
+    tag "genotypes"
+
+    // The pipeline-level suite can see that a cohort was prepared once, because preparation runs a
+    // programme and therefore appears in the execution trace. It cannot yet see the other half of the
+    // claim — that every analysis unit on that cohort comes out the far side of the seam — because no
+    // route consumes the prepared bundle until the association tickets land. That half is measured
+    // here instead, at the seam itself, and it is the direct regression test for the operator:
+    // `join` would emit one analysis unit per cohort instead of all of them, and its
+    // `failOnDuplicate` form would abort on the second.
+
+    test("every analysis unit on a cohort receives that cohort's bundle") {
+
+        when {
+            workflow {
+                """
+                def fixtures = '${FIXTURES.base(projectDir)}results/fixtures/genotypes/'
+                def bundle = { names -> names.collect { name -> file(fixtures + name, checkIfExists: true) } }
+
+                input[0] = channel.fromList([
+                    [[id: 'vcf_qt1', cohort: 'cohort_vcf', genotype_format: 'vcf'], bundle(['example_all.vcf.gz'])],
+                    [[id: 'vcf_qt2', cohort: 'cohort_vcf', genotype_format: 'vcf'], bundle(['example_all.vcf.gz'])],
+                    [[id: 'vcf_qt3', cohort: 'cohort_vcf', genotype_format: 'vcf'], bundle(['example_all.vcf.gz'])],
+                    [[id: 'vcf_qt4', cohort: 'cohort_vcf', genotype_format: 'vcf'], bundle(['example_all.vcf.gz'])],
+                    [[id: 'plink1_qt', cohort: 'cohort_plink1', genotype_format: 'plink1'], bundle(['example_all.bed', 'example_all.bim', 'example_all.fam'])],
+                ])
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                // Nothing after the first analysis unit on cohort_vcf is dropped, and nothing is
+                // duplicated: one bundle out per analysis unit in, keyed by the focal analysis
+                // identifier rather than by the cohort.
+                { assert workflow.out.genotypes.collect { meta, _pgen, _psam, _pvar -> meta.id }.sort() ==
+                    ['plink1_qt', 'vcf_qt1', 'vcf_qt2', 'vcf_qt3', 'vcf_qt4'] },
+                // The cohort side is a reduction of that same set: two distinct cohorts, two bundles.
+                { assert workflow.out.cohort_genotypes.collect { meta, _pgen, _psam, _pvar -> meta.id }.sort() ==
+                    ['cohort_plink1', 'cohort_vcf'] },
+                // Four analysis units on cohort_vcf, one conversion.
+                { assert TRACE.count(workflow, 'PLINK2_VCF') == 1 },
+                { assert TRACE.count(workflow, 'PLINK2_MAKEPGEN') == 1 },
+            )
+        }
+    }
+
+    test("all three genotype encodings converge on the same canonical bundle") {
+
+        when {
+            workflow {
+                """
+                def fixtures = '${FIXTURES.base(projectDir)}results/fixtures/genotypes/'
+                def bundle = { names -> names.collect { name -> file(fixtures + name, checkIfExists: true) } }
+
+                input[0] = channel.fromList([
+                    [[id: 'plink2_qt', cohort: 'cohort_plink2', genotype_format: 'plink2'], bundle(['example_all.pgen', 'example_all.psam', 'example_all.pvar'])],
+                    [[id: 'plink1_qt', cohort: 'cohort_plink1', genotype_format: 'plink1'], bundle(['example_all.bed', 'example_all.bim', 'example_all.fam'])],
+                    [[id: 'vcf_qt', cohort: 'cohort_vcf', genotype_format: 'vcf'], bundle(['example_all.vcf.gz'])],
+                ])
+                """
+            }
+        }
+
+        then {
+            // A canonical bundle is a PLINK 2 fileset whose three members share one basename: every
+            // downstream component derives its `--pfile` prefix from that basename, so a bundle that
+            // did not satisfy this would not be usable by any route.
+            def shapes = workflow.out.cohort_genotypes.collect { meta, pgen, psam, pvar ->
+                [meta.id, [pgen, psam, pvar].collect { member -> member.tokenize('/').last() }]
+            }
+            assertAll(
+                { assert workflow.success },
+                { assert shapes.size() == 3 },
+                { assert shapes.every { _cohort, members ->
+                    members.collect { member -> member.tokenize('.').last() } == ['pgen', 'psam', 'pvar']
+                } },
+                { assert shapes.every { _cohort, members ->
+                    members.collect { member -> member.substring(0, member.lastIndexOf('.')) }.unique().size() == 1
+                } },
+                // Every analysis unit is served, one from each encoding.
+                { assert workflow.out.genotypes.collect { meta, _pgen, _psam, _pvar -> meta.id }.sort() ==
+                    ['plink1_qt', 'plink2_qt', 'vcf_qt'] },
+                // The PLINK 2 cohort is already canonical, so it is passed through rather than
+                // converted: only the other two encodings run a conversion.
+                { assert TRACE.count(workflow, 'PLINK2_MAKEPGEN') == 1 },
+                { assert TRACE.count(workflow, 'PLINK2_VCF') == 1 },
+            )
+        }
+    }
+
+    test("only PLINK 1 consumers receive one shared cohort derivative") {
+
+        when {
+            workflow {
+                """
+                def fixtures = '${FIXTURES.base(projectDir)}results/fixtures/genotypes/'
+                def bundle = { names -> names.collect { name -> file(fixtures + name, checkIfExists: true) } }
+                def genotypes = bundle(['example_all.pgen', 'example_all.psam', 'example_all.pvar'])
+
+                input[0] = channel.fromList([
+                    [[id: 'ldak_kvik', cohort: 'cohort_plink2', genotype_format: 'plink2', association_methods: ['ldak_kvik'], heritability_methods: []], genotypes],
+                    [[id: 'ldak_reml', cohort: 'cohort_plink2', genotype_format: 'plink2', association_methods: [], heritability_methods: ['ldak_reml']], genotypes],
+                    [[id: 'gcta_greml_ldms', cohort: 'cohort_plink2', genotype_format: 'plink2', association_methods: [], heritability_methods: ['gcta_greml_ldms']], genotypes],
+                    [[id: 'plink2_glm', cohort: 'cohort_plink2', genotype_format: 'plink2', association_methods: ['plink2'], heritability_methods: []], genotypes],
+                    [[id: 'gcta_greml', cohort: 'cohort_plink2', genotype_format: 'plink2', association_methods: [], heritability_methods: ['gcta_greml']], genotypes],
+                ])
+                """
+            }
+        }
+
+        then {
+            def derivatives = workflow.out.plink1_genotypes.collect { meta, bed, bim, fam ->
+                [
+                    meta,
+                    [bed, bim, fam].collect { member -> member.tokenize('/').last() },
+                ]
+            }
+            assertAll(
+                { assert workflow.success },
+                // The derivative is analysis-facing and retains focal identity. GCTA GREML-LDMS joins
+                // both LDAK route families at this seam, while unrelated methods receive no bundle.
+                { assert derivatives.collect { meta, _members -> meta.id }.sort() == ['gcta_greml_ldms', 'ldak_kvik', 'ldak_reml'] },
+                { assert derivatives.every { meta, _members -> meta.cohort == 'cohort_plink2' } },
+                // Each derivative is a complete PLINK 1 fileset with one shared basename.
+                { assert derivatives.every { _meta, members ->
+                    members.collect { member -> member.tokenize('.').last() } == ['bed', 'bim', 'fam']
+                } },
+                { assert derivatives.every { _meta, members ->
+                    members.collect { member -> member.substring(0, member.lastIndexOf('.')) }.unique().size() == 1
+                } },
+                // All three consumers reuse one cohort conversion.
+                { assert TRACE.count(workflow, 'PLINK2_MAKEBED') == 1 },
+            )
+        }
+    }
+}
