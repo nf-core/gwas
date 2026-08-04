@@ -1,0 +1,194 @@
+{
+    "versions": {
+        "content": [
+            {
+                "CUSTOM_GCTACREATEMGRMMANIFEST": {
+                    "coreutils": 9.5
+                },
+                "CUSTOM_GCTAMERGEGRMPARTS": {
+                    "coreutils": 9.5
+                },
+                "CUSTOM_GCTASTRATIFYLDSCORES": {
+                    "r-base": "4.2.1"
+                },
+                "GCTA_CALCULATELDSCORES": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_FASTGWA": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_MAKEBKSPARSE": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_MAKEGRMPART": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_REML": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_REMLLDMS": {
+                    "gcta": "1.94.1"
+                },
+                "GWASLAB_HARMONIZE": {
+                    "gwaslab": "4.1.9",
+                    "python": "3.12.13"
+                },
+                "LDAK_ADJUSTGRM": {
+                    "ldak6": 6
+                },
+                "LDAK_CALCKINS": {
+                    "ldak6": 6
+                },
+                "LDAK_FILTER": {
+                    "ldak6": 6
+                },
+                "LDAK_HE": {
+                    "ldak6": 6
+                },
+                "LDAK_KVIKSTEP1": {
+                    "ldak6": 6
+                },
+                "LDAK_KVIKSTEP2": {
+                    "ldak6": 6
+                },
+                "LDAK_PCGC": {
+                    "ldak6": 6
+                },
+                "LDAK_REML": {
+                    "ldak6": 6
+                },
+                "LDAK_SUBGRM": {
+                    "ldak6": 6
+                },
+                "LDAK_THINCOMMON": {
+                    "ldak6": 6
+                },
+                "NORMALISE_PHENOTYPES": {
+                    "python": "3.14.5"
+                },
+                "PLINK2_GLM": {
+                    "plink2": "2.0.0-a.6.9LM"
+                },
+                "PLINK2_MAKEBED": {
+                    "plink2": "2.0.0-a.6.9LM"
+                },
+                "PLINK2_MAKEPGEN": {
+                    "plink2": "2.0.0-a.6.9LM"
+                },
+                "PLINK2_VCF": {
+                    "plink2": "2.0.0-a.6.9LM"
+                },
+                "REGENIE_STEP1": {
+                    "regenie": "4.1.2"
+                },
+                "REGENIE_STEP2": {
+                    "regenie": "4.1.2"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-02T08:15:59.60450159"
+    },
+    "association": {
+        "content": [
+            [
+                "gcta_fastgwa",
+                "gcta_fastgwa/example_bfile_qt",
+                "gcta_fastgwa/example_bfile_qt/example_bfile_qt.gcta_fastgwa.fastGWA",
+                "ldak_kvik",
+                "ldak_kvik/example_vcf_qt",
+                "ldak_kvik/example_vcf_qt/example_vcf_qt.ldak_kvik.step2.assoc",
+                "plink2",
+                "plink2/example_pgen_bt",
+                "plink2/example_pgen_bt/example_pgen_bt.plink2.glm.logistic.hybrid",
+                "plink2/example_pgen_qt",
+                "plink2/example_pgen_qt/example_pgen_qt.plink2.glm.linear",
+                "regenie",
+                "regenie/example_pgen_qt",
+                "regenie/example_pgen_qt/example_pgen_qt.regenie.gz"
+            ],
+            [
+                "example_bfile_qt.gcta_fastgwa.fastGWA:md5,aeb97ade7c85552eed84b2e327570474",
+                "example_vcf_qt.ldak_kvik.step2.assoc:md5,42f9f2469c109c8767e5e5a137ed7dc3",
+                "example_pgen_bt.plink2.glm.logistic.hybrid:md5,83d85cc0bda51b829ba43323abfd3530",
+                "example_pgen_qt.plink2.glm.linear:md5,ea3c5efee75bd852b546b6be5d07db5c",
+                "example_pgen_qt.regenie.gz:md5,a59cfaeda6eff9edbdab84bc681cf2e9"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-07-30T20:23:36.346205334"
+    },
+    "summary_statistics": {
+        "content": [
+            [
+                "example_bfile_qt",
+                "example_bfile_qt/example_bfile_qt.gcta_fastgwa.gwaslab.tsv.gz",
+                "example_pgen_bt",
+                "example_pgen_bt/example_pgen_bt.plink2.gwaslab.tsv.gz",
+                "example_pgen_qt",
+                "example_pgen_qt/example_pgen_qt.plink2.gwaslab.tsv.gz",
+                "example_pgen_qt/example_pgen_qt.regenie.gwaslab.tsv.gz",
+                "example_vcf_qt",
+                "example_vcf_qt/example_vcf_qt.ldak_kvik.gwaslab.tsv.gz"
+            ],
+            [
+                "example_bfile_qt.gcta_fastgwa.gwaslab.tsv.gz:md5,e56779fbcdc3da7bc2d9191e11db935d",
+                "example_pgen_bt.plink2.gwaslab.tsv.gz:md5,ccae9196e519b10d8e913e39923d6ee7",
+                "example_pgen_qt.plink2.gwaslab.tsv.gz:md5,3ffa035c02e5caa6dfb48f0d0f9ea5e5",
+                "example_pgen_qt.regenie.gwaslab.tsv.gz:md5,026092dd880ca8d9cd4b22d5cbbf67e8",
+                "example_vcf_qt.ldak_kvik.gwaslab.tsv.gz:md5,c9769c091473179fb7c4590f6beae818"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-07-30T20:23:36.433393804"
+    },
+    "heritability": {
+        "content": [
+            [
+                "gcta_greml",
+                "gcta_greml/example_pgen_qt",
+                "gcta_greml/example_pgen_qt/example_pgen_qt.gcta_greml.hsq",
+                "gcta_greml_ldms",
+                "gcta_greml_ldms/example_bfile_qt",
+                "gcta_greml_ldms/example_bfile_qt/example_bfile_qt.gcta_greml_ldms.hsq",
+                "ldak_he",
+                "ldak_he/example_pgen_qt",
+                "ldak_he/example_pgen_qt/example_pgen_qt.ldak_he.he",
+                "ldak_pcgc",
+                "ldak_pcgc/example_pgen_bt",
+                "ldak_pcgc/example_pgen_bt/example_pgen_bt.ldak_pcgc.pcgc",
+                "ldak_pcgc/example_pgen_bt/example_pgen_bt.ldak_pcgc.pcgc.marginal",
+                "ldak_reml",
+                "ldak_reml/example_pgen_bt",
+                "ldak_reml/example_pgen_bt/example_pgen_bt.ldak_reml.reml",
+                "ldak_reml/example_pgen_bt/example_pgen_bt.ldak_reml.reml.liab"
+            ],
+            [
+                "example_pgen_qt.gcta_greml.hsq:md5,45be7eb46e7ddff5b0f7dc59dba85fcd",
+                "example_bfile_qt.gcta_greml_ldms.hsq:md5,31b0a64809d6afba4e05f395b7c6e808",
+                "example_pgen_qt.ldak_he.he:md5,4d37607facb7888ea6c3775e1ac8afa1",
+                "example_pgen_bt.ldak_pcgc.pcgc:md5,2820c375054af4f7c1a27cd19b21902e",
+                "example_pgen_bt.ldak_pcgc.pcgc.marginal:md5,cc4834a5e113646b409054d15af53c3f",
+                "example_pgen_bt.ldak_reml.reml:md5,1744160f45fcde1c55bb48c4e02a6820",
+                "example_pgen_bt.ldak_reml.reml.liab:md5,b5bcc753f927482353574195158ef0e8"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-07-30T20:23:36.38815838"
+    }
+}

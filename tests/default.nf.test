@@ -4,6 +4,10 @@ nextflow_pipeline {
     script "../main.nf"
     tag "pipeline"
 
+    tag "default"
+
+    // The profile owns its portable fixture-backed samplesheet. Keeping `outdir` as the only test
+    // override means this exercises the same public configuration a researcher invokes directly.
     test("-profile test") {
 
         when {
@@ -13,20 +17,64 @@ nextflow_pipeline {
         }
 
         then {
-            // stable_path: All files + folders in ${params.outdir}/ with a stable path (including file name)
-            def stable_path = getAllFilesFromDir(params.outdir, relative: true, includeDir: true, ignore: ['pipeline_info/*.{html,json,txt}'])
-            // stable_content: All files in ${params.outdir}/ with stable content
-            def stable_content = getAllFilesFromDir(params.outdir, ignoreFile: 'tests/.nftignore')
-            assert workflow.success
+            def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
+            def multiqc_report = new File("${params.outdir}/multiqc/multiqc_report.html")
+            def analysis_plan = new File("${params.outdir}/multiqc/multiqc_data/multiqc_nf-core-gwas-analysis-plan-table.txt")
+            def stable_name_association = getAllFilesFromDir("${params.outdir}/association", relative: true, includeDir: true).findAll { path -> path.toString() }
+            def stable_path_association = getAllFilesFromDir("${params.outdir}/association", ignoreFile: 'tests/.nftignore')
+            def stable_name_heritability = getAllFilesFromDir("${params.outdir}/heritability", relative: true, includeDir: true).findAll { path -> path.toString() }
+            def stable_path_heritability = getAllFilesFromDir("${params.outdir}/heritability", ignoreFile: 'tests/.nftignore')
+            def stable_name_summary_statistics = getAllFilesFromDir("${params.outdir}/summary_statistics", relative: true, includeDir: true).findAll { path -> path.toString() }
+            def stable_path_summary_statistics = getAllFilesFromDir("${params.outdir}/summary_statistics", ignoreFile: 'tests/.nftignore')
+            def stable_name_multiqc = getAllFilesFromDir("${params.outdir}/multiqc", relative: true, includeDir: true).findAll { path -> path.toString() }
+            def stable_path_multiqc = getAllFilesFromDir(
+                "${params.outdir}",
+                ignoreFile: 'tests/.nftignore',
+                include: ['multiqc/**'],
+            ).findAll { path -> path.toString() }
+            def stable_name_pipeline_info = getAllFilesFromDir(
+                "${params.outdir}/pipeline_info",
+                relative: true,
+                includeDir: true,
+                ignore: ['*.{html,json,txt}'],
+            ).findAll { path -> path.toString() }
+            def stable_path_pipeline_info = getAllFilesFromDir(
+                "${params.outdir}",
+                ignoreFile: 'tests/.nftignore',
+                include: ['pipeline_info/**'],
+            ).findAll { path -> path.toString() }
             assertAll(
-                { assert snapshot(
-                    // pipeline versions.yml file for multiqc from which Nextflow version is removed because we test pipelines on multiple Nextflow versions
-                    removeNextflowVersion("$outputDir/pipeline_info/nf_core_gwas_software_mqc_versions.yml"),
-                    // All stable path name, with a relative path
-                    stable_path,
-                    // All files with stable contents
-                    stable_content
-                ).match() }
+                { assert workflow.success },
+                // The routine profile deliberately exercises only the fast route set: one PLINK 2
+                // association, its GWASLab harmonisation and one GCTA GREML estimate. Every expensive
+                // route has an individually runnable profile of its own.
+                { assert new File("${params.outdir}").list().toList().sort() == ['association', 'heritability', 'multiqc', 'pipeline_info', 'summary_statistics'] },
+                { assert TRACE.count(workflow, 'PLINK2_GLM') == 1 },
+                { assert TRACE.count(workflow, 'GWASLAB_HARMONIZE') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_REML') == 1 },
+                { assert TRACE.count(workflow, 'REGENIE_STEP1') == 0 },
+                { assert TRACE.count(workflow, 'GCTA_FASTGWA') == 0 },
+                { assert TRACE.count(workflow, 'GCTA_REMLLDMS') == 0 },
+                { assert TRACE.count(workflow, 'LDAK_KVIKSTEP1') == 0 },
+                { assert TRACE.count(workflow, 'LDAK_REML') == 0 },
+                { assert TRACE.count(workflow, 'LDAK_HE') == 0 },
+                { assert TRACE.count(workflow, 'LDAK_PCGC') == 0 },
+                { assert analysis_plan.text.readLines() == [
+                    'Sample\tcohort\ttrait\ttrait_type\tgenome_build\tancestry\tassociation_methods\theritability_methods',
+                    'example_chr1_qt\texample_chr1\tQT\tquantitative\tGRCh37\tEUR\tplink2\tgcta_greml',
+                ] },
+                { assert multiqc_report.text.contains('This table describes the run plan, not per-method completion or scientific results.') },
+                { assert multiqc_report.text.contains('Analysis ID') },
+                { assert multiqc_report.text.contains('Association testing was performed with PLINK 2') },
+                { assert multiqc_report.text.contains('SNP-based heritability was estimated with GCTA GREML') },
+                { assert multiqc_report.text.contains('title="nf-core/gwas"') },
+                { assert multiqc_report.text.contains('class="custom_logo') },
+                { assert snapshot(removeNextflowVersion(versions.toString())).match('versions') },
+                { assert snapshot(stable_name_association, stable_path_association).match('association') },
+                { assert snapshot(stable_name_heritability, stable_path_heritability).match('heritability') },
+                { assert snapshot(stable_name_summary_statistics, stable_path_summary_statistics).match('summary_statistics') },
+                { assert snapshot(stable_name_multiqc, stable_path_multiqc).match('multiqc') },
+                { assert snapshot(stable_name_pipeline_info, stable_path_pipeline_info).match('pipeline_info') },
             )
         }
     }
