@@ -1,0 +1,89 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/modules/meta-schema.json
+name: "custom_gctastratifyldscores"
+description: Stratify GCTA individual-SNP LD scores into explicit LD-by-MAF predictor groups
+keywords:
+  - gcta
+  - genome-wide complex trait analysis
+  - greml-ldms
+  - ld score
+  - linkage disequilibrium
+  - maf
+  - minor allele frequency
+tools:
+  - custom:
+      description: Checked-in R adapter implementing deterministic GCTA GREML-LDMS stratification
+      homepage: "https://github.com/nf-core/modules"
+      documentation: "https://yanglab.westlake.edu.cn/software/gcta/#GREML-LDMS"
+      licence: ["MIT"]
+      identifier: ""
+input:
+  - - meta:
+        type: map
+        description: Groovy map containing analysis information, for example `[ id:'test' ]`
+    - ld_scores:
+        type: file
+        description: GCTA LD-score table containing SNP, native allele-frequency freq and individual-SNP ldscore_SNP columns; MAF is derived as min(freq, 1-freq)
+        pattern: "*.score.ld"
+        ontologies: []
+    - ld_bins:
+        type: integer
+        description: Positive number of quantile-based individual-SNP LD-score bins
+    - maf_edges:
+        type: list
+        description: Strictly increasing numeric MAF interval boundaries spanning 0 to 0.5 and covering every predictor
+output:
+  strata_bundle:
+    - - meta:
+          type: map
+          description: Groovy map propagated without interpretation from the LD-score input
+      - "${prefix}.strata.tsv":
+          type: file
+          description: Ordered LD-by-MAF stratum bounds, predictor counts and group filenames
+          pattern: "*.strata.tsv"
+          ontologies:
+            - edam: "http://edamontology.org/format_3475" # TSV
+      - "${prefix}_snp_group*.txt":
+          type: file
+          description: Predictor identifiers for each non-empty LD-by-MAF stratum listed in the manifest
+          pattern: "*_snp_group*.txt"
+          ontologies:
+            - edam: "http://edamontology.org/format_2330" # Textual format
+  versions_r_base:
+    - - "${task.process}":
+          type: string
+          description: The process the version was collected from
+      - r-base:
+          type: string
+          description: The tool name
+      - "Rscript -e 'cat(as.character(getRversion()))'":
+          type: eval
+          description: The command used to retrieve the R version
+topics:
+  versions:
+    - - "${task.process}":
+          type: string
+          description: The process the version was collected from
+      - r-base:
+          type: string
+          description: The tool name
+      - "Rscript -e 'cat(as.character(getRversion()))'":
+          type: eval
+          description: The command used to retrieve the R version
+containers:
+  conda:
+    linux/amd64:
+      lock_file: "modules/nf-core/custom/gctastratifyldscores/.conda-lock/linux_amd64-bd-b0b5476e2e7a0872_1.txt"
+  docker:
+    linux/amd64:
+      build_id: "bd-b0b5476e2e7a0872_1"
+      name: "community.wave.seqera.io/library/r-base:4.2.1--b0b5476e2e7a0872"
+      scan_id: "sc-1664dc2f5dcda4ab_1"
+  singularity:
+    linux/amd64:
+      build_id: "bd-c5658ade82adbaf6_1"
+      name: "oras://community.wave.seqera.io/library/r-base:4.2.1--c5658ade82adbaf6"
+      https: "https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/48/483e9d9b3b07e5658792d579e230ad40ed18daf7b9ebfb4323c08570f92fd1d5/data"
+authors:
+  - "@andongni"
+maintainers:
+  - "@andongni"
