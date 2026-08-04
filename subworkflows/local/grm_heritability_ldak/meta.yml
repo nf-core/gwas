@@ -1,0 +1,116 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
+name: grm_heritability_ldak
+description: Estimate SNP heritability from a pre-built LDAK genetic relationship matrix with REML, Haseman-Elston or PCGC
+keywords:
+  - ldak
+  - heritability
+  - reml
+  - haseman-elston
+  - pcgc
+  - grm
+components:
+  - ldak/adjustgrm
+  - ldak/reml
+  - ldak/he
+  - ldak/pcgc
+input:
+  - ch_grm:
+      description: Pre-built LDAK GRM bundle for the focal analysis; matrix construction belongs to the caller. Public outputs retain meta.
+      structure: [map meta, path grm_files]
+      pattern: "*.grm.{bin,id,details,adjust}"
+      ontologies: []
+  - ch_pheno:
+      description: Phenotype file and optional disease prevalence in the second metadata-bearing tuple; prevalence is [] when unused and required by PCGC.
+      structure: "[map meta2, path phenotype_file, number prevalence|[]]"
+      pattern: "*.{txt,tsv,pheno,phe}"
+      ontologies: []
+  - ch_qcovar:
+      description: Optional quantitative-covariate file in the third metadata-bearing tuple; use [] when absent.
+      structure: "[map meta3, path quant_covariates_file|[]]"
+      pattern: "*.{txt,tsv,covar,cov}"
+      optional: true
+      ontologies: []
+  - ch_covar:
+      description: Optional categorical-covariate file in the fourth metadata-bearing tuple; use [] when absent.
+      structure: "[map meta4, path cat_covariates_file|[]]"
+      pattern: "*.{txt,tsv,covar,cov}"
+      optional: true
+      ontologies: []
+  - ch_keep:
+      description: Optional sample list restricting the analysis in the fifth metadata-bearing tuple; use [] when absent. It is applied to the covariate adjustment of the kinship matrix as well as to the estimator, so a subset analysis adjusts on the kept samples only.
+      structure: "[map meta5, path keep_file|[]]"
+      pattern: "*.{txt,tsv,keep}"
+      optional: true
+      ontologies: []
+  - ch_estimator:
+      description: "Per-analysis heritability estimator selector in the sixth metadata-bearing tuple: reml, he or pcgc. Haseman-Elston and PCGC read a covariate-adjusted matrix whenever a covariate file is present."
+      structure: [map meta6, string estimator]
+  - ch_adjust_covar:
+      description: Optional numerical covariate design for LDAK matrix adjustment; use [] when absent. Categorical factors are treatment-coded because LDAK adjust-grm accepts covar but rejects factors.
+      structure: "[map meta7, path adjustment_covariates_file|[]]"
+      pattern: "*.{txt,tsv,covar,cov,adjustcovar}"
+      optional: true
+      ontologies: []
+output:
+  - meta:
+      type: map
+      description: Unchanged focal GRM metadata.
+  - reml_results:
+      type: file
+      description: LDAK REML heritability estimates for analyses routed to REML
+      pattern: "*.reml"
+      ontologies: []
+  - reml_liability:
+      type: file
+      description: LDAK REML liability-scale estimates for REML analyses given a prevalence
+      pattern: "*.reml.liab"
+      ontologies: []
+  - he_results:
+      type: file
+      description: LDAK Haseman-Elston heritability estimates for analyses routed to Haseman-Elston
+      pattern: "*.he"
+      ontologies: []
+  - pcgc_results:
+      type: file
+      description: LDAK PCGC heritability estimates for analyses routed to PCGC
+      pattern: "*.pcgc"
+      ontologies: []
+  - pcgc_marginal:
+      type: file
+      description: Optional LDAK PCGC marginal estimates
+      pattern: "*.pcgc.marginal"
+      ontologies: []
+  - adjusted_grm:
+      type: file
+      description: Covariate-adjusted GRM bundle for Haseman-Elston and PCGC analyses that declared covariates
+      pattern: "*.grm.{bin,id,details,adjust,root}"
+      ontologies: []
+  - coeff:
+      type: file
+      description: Fixed-effect coefficient estimates from the executed estimators
+      pattern: "*.coeff"
+      ontologies: []
+  - cross:
+      type: file
+      description: Cross-validation summaries from the executed estimators
+      pattern: "*.cross"
+      ontologies: []
+  - share:
+      type: file
+      description: Variance-share summaries from the executed estimators
+      pattern: "*.share"
+      ontologies: []
+  - progress:
+      type: file
+      description: Solver progress reports from the executed estimators
+      pattern: "*.progress"
+      ontologies: []
+  - logs:
+      type: file
+      description: LDAK estimator and GRM covariate-adjustment log files
+      pattern: "*.log"
+      ontologies: []
+authors:
+  - "@andongni"
+maintainers:
+  - "@andongni"

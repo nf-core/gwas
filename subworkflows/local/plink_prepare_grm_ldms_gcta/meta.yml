@@ -1,0 +1,49 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
+name: "plink_prepare_grm_ldms_gcta"
+description: Build LD-by-MAF-stratified GCTA genetic relationship matrices and an MGRM manifest
+keywords:
+  - gcta
+  - ldms
+  - linkage disequilibrium by minor allele frequency stratification
+  - genome relationship matrix
+  - grm
+  - scatter gather
+components:
+  - gcta/calculateldscores
+  - custom/gctastratifyldscores
+  - plink_prepare_grm_gcta
+  - custom/gctacreatemgrmmanifest
+input:
+  - ch_genotypes:
+      description: PLINK1 multi-file bundle for the focal analysis. Public outputs retain meta.
+      structure: [map meta, path mfile, path bed, path bim, path fam]
+      pattern: "*.mbfile, *.bed, *.bim, *.fam"
+      ontologies:
+        - edam: "http://edamontology.org/format_3003"
+        - edam: "http://edamontology.org/format_2330"
+  - ch_ld_score_region_kb:
+      description: LD-score region size in kilobases in the second metadata-bearing tuple.
+      structure: [map meta2, integer ld_score_region_kb]
+  - ch_ld_bins:
+      description: Number of LD-score quantile bins in the third metadata-bearing tuple.
+      structure: [map meta3, integer ld_bins]
+  - ch_maf_edges:
+      description: MAF boundaries in the fourth metadata-bearing tuple.
+      structure: [map meta4, list maf_edges]
+  - ch_n_parts:
+      description: Requested GRM part count in the fifth metadata-bearing tuple.
+      structure: [map meta5, integer requested_parts]
+output:
+  - mgrm_bundle:
+      description: MGRM manifest and merged stratum GRM bundles for each focal analysis.
+      structure: [map meta, path mgrm_manifest, path grm_files]
+      pattern: "*.mgrm, *.grm.{bin,N.bin,id}"
+      ontologies:
+        - edam: "http://edamontology.org/format_2330"
+  - strata:
+      description: Model and stratum provenance for each focal analysis.
+      structure: [map meta, string model_key, string stratum_key, map provenance]
+authors:
+  - "@andongni"
+maintainers:
+  - "@andongni"

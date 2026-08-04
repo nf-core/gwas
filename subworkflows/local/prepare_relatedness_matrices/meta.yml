@@ -1,0 +1,72 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
+name: "prepare_relatedness_matrices"
+description: Build each distinct relatedness matrix once under a content-derived reuse key and fan it out to every analysis unit that needs one
+keywords:
+  - relatedness
+  - grm
+  - kinship
+  - deduplication
+# The helper functions are listed alongside the subworkflow because `nf-core subworkflows lint`
+# compares every `include` in main.nf against this list, and it lowercases the include name without
+# lowercasing the entry it is matched against — so a camel-cased function name here is reported as
+# missing. Function entries are therefore spelled lowercase.
+components:
+  - plink_prepare_grm_gcta
+  - plink_prepare_grm_ldms_gcta
+  - plink_prepare_grm_ldak
+  - gcta/makebksparse
+  - ldakweightsidentity
+  - methodresourceidentity
+  - relatednessmatrixkinds
+  - relatednessmatrixrequest
+input:
+  - ch_analyses:
+      description: One analysis unit per element, carrying its cohort identity, selected methods, genotype files and optional LDAK weights Path. Validated GCTA family options, including the optional extraction resource, are carried in meta.method_options.
+      structure: "[map meta, list genotype_files, path ldak_weights|[]]"
+      pattern: "*.{pgen,psam,pvar,bed,bim,fam,vcf,vcf.gz,weights}"
+      ontologies:
+        - edam: "http://edamontology.org/format_2330"
+  - ch_cohort_genotypes:
+      description: One prepared PLINK 2 bundle per distinct cohort, carrying cohort metadata with meta.id set to the cohort identifier.
+      structure: [map cohort_meta, path pgen, path psam, path pvar]
+      pattern: "*.{pgen,psam,pvar}"
+      ontologies:
+        - edam: "http://edamontology.org/format_2330"
+  - ch_plink1_genotypes:
+      description: Lazy PLINK 1 derivatives for analyses whose selected route requires them. Analyses on one cohort share one conversion upstream.
+      structure: [map meta, path bed, path bim, path fam]
+      pattern: "*.{bed,bim,fam}"
+      ontologies:
+        - edam: "http://edamontology.org/format_3003"
+  - gcta_grm_parts:
+      description: Run/profile partition count used for every GCTA matrix build.
+      structure: integer
+output:
+  - gcta_dense:
+      description: The merged dense GCTA relatedness matrix of each requesting analysis unit, carrying the focal analysis metadata. One element per analysis unit that selected a method needing a dense GCTA matrix, however many analysis units share the underlying build.
+      structure: [map meta, list grm_files]
+      pattern: "*.grm.{bin,N.bin,id}"
+      ontologies:
+        - edam: "http://edamontology.org/format_2330"
+  - gcta_sparse:
+      description: The sparse GCTA relatedness matrix of each requesting fastGWA analysis, carrying focal analysis metadata.
+      structure: [map meta, list sparse_grm_files]
+      pattern: "*.grm.{id,sp}"
+      ontologies:
+        - edam: "http://edamontology.org/format_2330"
+  - gcta_ldms:
+      description: The LD-by-MAF-stratified GCTA matrix family of each requesting GREML-LDMS analysis, carrying focal analysis metadata.
+      structure: [map meta, path mgrm_manifest, list grm_files]
+      pattern: "*.mgrm, *.grm.{bin,N.bin,id}"
+      ontologies:
+        - edam: "http://edamontology.org/format_2330"
+  - ldak_kinship:
+      description: The filtered or unfiltered LDAK kinship matrix requested by each analysis unit, carrying its optional unrelated-sample keep list.
+      structure: "[map meta, list grm_files, path keep|[]]"
+      pattern: "*.{grm.bin,grm.id,grm.details,grm.adjust,keep}"
+      ontologies:
+        - edam: "http://edamontology.org/format_2330"
+authors:
+  - "@andongni"
+maintainers:
+  - "@andongni"

@@ -1,0 +1,62 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
+name: "grm_heritability_gcta"
+description: Estimate heritability with GCTA GREML or GCTA GREML-LDMS from a pre-built genetic relationship matrix
+keywords:
+  - gcta
+  - greml
+  - ldms
+  - heritability
+  - variance components
+  - grm
+components:
+  - gcta/reml
+  - gcta/remlldms
+input:
+  - ch_grm:
+      description: Pre-built GCTA relatedness matrix for the focal analysis; the MGRM manifest is [] on the greml route and required on the greml_ldms route. Public outputs retain meta.
+      structure: "[map meta, path mgrm_manifest|[], path grm_files]"
+      pattern: "*.mgrm, *.grm.{bin,N.bin,id}"
+      ontologies:
+        - edam: "http://edamontology.org/format_2330"
+  - ch_pheno:
+      description: Phenotype file for the focal analysis in the second metadata-bearing tuple.
+      structure: [map meta2, path phenotypes_file]
+      pattern: "*.{txt,tsv,phe,pheno}"
+      ontologies:
+        - edam: "http://edamontology.org/format_2330"
+  - ch_qcovar:
+      description: Optional quantitative-covariate file in the third metadata-bearing tuple; use [] when absent.
+      structure: "[map meta3, path quant_covariates_file|[]]"
+      pattern: "*.{txt,tsv,covar,cov}"
+      optional: true
+      ontologies:
+        - edam: "http://edamontology.org/format_2330"
+  - ch_covar:
+      description: Optional categorical-covariate file in the fourth metadata-bearing tuple; use [] when absent.
+      structure: "[map meta4, path cat_covariates_file|[]]"
+      pattern: "*.{txt,tsv,covar,cov}"
+      optional: true
+      ontologies:
+        - edam: "http://edamontology.org/format_2330"
+  - ch_estimator:
+      description: "Per-analysis estimator selector in the fifth metadata-bearing tuple: greml or greml_ldms."
+      structure: [map meta5, string estimator]
+output:
+  - heritability:
+      description: GCTA variance-component estimates for each focal analysis, from whichever estimator was selected.
+      structure: [map meta, path hsq]
+      pattern: "*.hsq"
+      ontologies:
+        - edam: "http://edamontology.org/format_2330"
+  - logs:
+      description: GCTA run logs for each focal analysis.
+      structure: [map meta, path log]
+      pattern: "*.log"
+      ontologies: []
+  - versions:
+      description: Distinct [process, tool, version] tuples from executed components.
+      structure: [string process, string tool, string version]
+authors:
+  - "@andongni"
+maintainers:
+  - "@andongni"
