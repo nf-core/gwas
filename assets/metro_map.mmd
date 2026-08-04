@@ -1,0 +1,58 @@
+%%metro title: nf-core/gwas
+%%metro style: light
+%%metro file: cohort_manifest | CSV
+%%metro file: analysis_manifest | CSV
+%%metro file: native_results | Native results
+%%metro file: standardised_results | Standardised summary statistics
+%%metro file: heritability_results | Heritability estimates
+%%metro line: plink2 | Association: PLINK 2 | #1f77b4
+%%metro line: regenie | Association: REGENIE | #2ca02c
+%%metro line: fastgwa | Association: GCTA fastGWA | #9467bd
+%%metro line: kvik | Association: LDAK-KVIK | #ff7f0e
+%%metro line: gcta_greml | Heritability: GCTA GREML | #17becf
+%%metro line: gcta_ldms | Heritability: GCTA GREML-LDMS | #0f8b8d
+%%metro line: ldak_reml | Heritability: LDAK REML | #d62728
+%%metro line: ldak_he | Heritability: LDAK HE | #e377c2
+%%metro line: ldak_pcgc | Heritability: LDAK PCGC | #8c564b
+%%metro legend: br
+
+graph LR
+    subgraph inputs [Linked inputs]
+        cohort_manifest[ ]
+        analysis_manifest[ ]
+        validate[Validate and join manifests]
+
+        cohort_manifest -->|plink2,regenie,fastgwa,kvik,gcta_greml,gcta_ldms,ldak_reml,ldak_he,ldak_pcgc| validate
+        analysis_manifest -->|plink2,regenie,fastgwa,kvik,gcta_greml,gcta_ldms,ldak_reml,ldak_he,ldak_pcgc| validate
+    end
+
+    subgraph preparation [Shared preparation]
+        association_inputs[Prepare association inputs]
+        heritability_inputs[Prepare heritability inputs and matrices]
+
+        validate -->|plink2,regenie,fastgwa,kvik| association_inputs
+        validate -->|gcta_greml,gcta_ldms,ldak_reml,ldak_he,ldak_pcgc| heritability_inputs
+    end
+
+    subgraph analysis [Selected analysis routes]
+        association[Association testing]
+        heritability[Heritability estimation]
+
+        association_inputs -->|plink2,regenie,fastgwa,kvik| association
+        heritability_inputs -->|gcta_greml,gcta_ldms,ldak_reml,ldak_he,ldak_pcgc| heritability
+    end
+
+    subgraph outputs [Published results]
+        native_results[ ]
+        gwaslab[GWASLab harmonisation]
+        standardised_results[ ]
+        heritability_results[ ]
+        routes_complete[Selected routes complete]
+
+        association -->|plink2,regenie,fastgwa,kvik| native_results
+        native_results -->|plink2,regenie,fastgwa,kvik| gwaslab
+        gwaslab -->|plink2,regenie,fastgwa,kvik| standardised_results
+        heritability -->|gcta_greml,gcta_ldms,ldak_reml,ldak_he,ldak_pcgc| heritability_results
+        standardised_results -->|plink2,regenie,fastgwa,kvik| routes_complete
+        heritability_results -->|gcta_greml,gcta_ldms,ldak_reml,ldak_he,ldak_pcgc| routes_complete
+    end
