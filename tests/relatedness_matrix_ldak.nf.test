@@ -1,0 +1,324 @@
+nextflow_pipeline {
+
+    name "Test LDAK relatedness matrix build and reuse"
+    script "../main.nf"
+    tag "pipeline"
+    tag "relatedness"
+    tag "ldak"
+
+    def value = { file, name ->
+        new File(file.toString())
+            .readLines()
+            .find { line -> line.startsWith("${name} ") }
+            .tokenize()[1]
+    }
+
+    def calckinsCommands = { output ->
+        def commands = []
+        def work = new File(new File(output.toString()).parentFile, 'work')
+        work.eachFileRecurse { candidate ->
+            if (candidate.name == '.command.sh' && candidate.text.contains('--calc-kins-direct')) {
+                commands << candidate.text.replaceAll(/\s+/, ' ')
+            }
+        }
+        return commands
+    }
+
+    def executionModes = [
+        [suffix: '', stub: false],
+        [suffix: ' - stub', stub: true],
+    ]
+
+    def stubAssertions = { workflow, matrices, heritability, matrixKeys, analysisIds, routeCounts ->
+        return [
+            { assert workflow.success },
+            { assert TRACE.count(workflow, 'PLINK2_MAKEBED') == 1 },
+            { assert TRACE.count(workflow, 'NORMALISE_PHENOTYPES') == analysisIds.size() },
+            { assert TRACE.count(workflow, 'LDAK_CALCKINS') == matrixKeys.size() },
+            { assert TRACE.count(workflow, 'LDAK_FILTER') == routeCounts.filter },
+            { assert TRACE.count(workflow, 'LDAK_SUBGRM') == routeCounts.subgrm },
+            { assert TRACE.count(workflow, 'LDAK_REML') == analysisIds.size() },
+            { assert TRACE.count(workflow, 'MULTIQC') == 1 },
+            { assert matrices.list().toList().sort() == matrixKeys.sort() },
+            { assert heritability.list().toList().sort() == analysisIds.sort() },
+            { assert analysisIds.every { id -> new File(heritability, "${id}/${id}.ldak_reml.reml").isFile() } },
+        ]
+    }
+
+    // Each scenario loads its same-named registered profile config directly because nf-test 0.9.3
+    // exposes profile selection only at suite scope. The configs own immutable matrix-identity rows;
+    // `outdir` remains the only parameter assigned in a test body.
+    executionModes.each { mode ->
+        test("filtered and unfiltered analyses have distinct LDAK matrix identities${mode.suffix}") {
+
+            config "../conf/test_ldak_relatedness_shared.config"
+            tag "ldak_relatedness_shared"
+            if (mode.stub) {
+                options "-stub"
+            }
+
+            when {
+                params {
+                    outdir = "$outputDir"
+                }
+            }
+
+            then {
+                def matrices = new File("${params.outdir}/quality_control/relatedness_matrices")
+                def heritability = new File("${params.outdir}/heritability/individual/ldak_reml")
+                def unrestricted = new File(heritability, 'example_pgen_bt_all/example_pgen_bt_all.ldak_reml.reml')
+                def restricted = new File(heritability, 'example_pgen_bt_unrelated/example_pgen_bt_unrelated.ldak_reml.reml')
+                if (mode.stub) {
+                    assertAll(*stubAssertions(
+                        workflow,
+                        matrices,
+                        heritability,
+                        ['5f8579a3a568', 'ede2bfa4c2e8'],
+                        ['example_pgen_bt_all', 'example_pgen_bt_unrelated'],
+                        [filter: 1, subgrm: 1],
+                    ))
+                } else {
+                    def commands = calckinsCommands(params.outdir)
+                    def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
+                    def stable_name_matrices = getAllFilesFromDir(
+                        matrices.toString(),
+                        relative: true,
+                        includeDir: true,
+                    ).findAll { path -> path.toString() }
+                    def stable_path_matrices = getAllFilesFromDir(
+                        matrices.toString(),
+                        ignoreFile: 'tests/.nftignore',
+                    )
+                    def stable_name_heritability = getAllFilesFromDir(
+                        heritability.toString(),
+                        relative: true,
+                        includeDir: true,
+                    ).findAll { path -> path.toString() }
+                    def stable_path_heritability = getAllFilesFromDir(
+                        heritability.toString(),
+                        ignoreFile: 'tests/.nftignore',
+                    )
+                    assertAll(
+                        { assert workflow.success },
+                        // Filtering is matrix-defining: unrestricted and unrelated-subset rows build under
+                        // distinct content identities, while only the filtered request derives a submatrix.
+                        { assert TRACE.count(workflow, 'LDAK_CALCKINS') == 2 },
+                        { assert TRACE.count(workflow, 'LDAK_FILTER') == 1 },
+                        { assert TRACE.count(workflow, 'LDAK_SUBGRM') == 1 },
+                        { assert TRACE.count(workflow, 'LDAK_REML') == 2 },
+                        { assert matrices.list().toList().sort() == ['5f8579a3a568', 'ede2bfa4c2e8'] },
+                        { assert new File(matrices, '5f8579a3a568').list().toList().sort() == [
+                            'example_pgen.ldak_kinship.5f8579a3a568.grm.adjust',
+                            'example_pgen.ldak_kinship.5f8579a3a568.grm.bin',
+                            'example_pgen.ldak_kinship.5f8579a3a568.grm.details',
+                            'example_pgen.ldak_kinship.5f8579a3a568.grm.id',
+                        ] },
+                        { assert new File(matrices, 'ede2bfa4c2e8').list().toList().sort() == [
+                            'example_pgen.ldak_kinship.ede2bfa4c2e8.grm.adjust',
+                            'example_pgen.ldak_kinship.ede2bfa4c2e8.grm.bin',
+                            'example_pgen.ldak_kinship.ede2bfa4c2e8.grm.details',
+                            'example_pgen.ldak_kinship.ede2bfa4c2e8.grm.id',
+                        ] },
+                        { assert heritability.list().toList().sort() == ['example_pgen_bt_all', 'example_pgen_bt_unrelated'] },
+                        { assert value(unrestricted, 'Total_Samples') == '500' },
+                        { assert value(restricted, 'Total_Samples') == '222' },
+                        { assert commands.size() == 2 },
+                        { assert commands.every { command -> command.contains('--ignore-weights YES') } },
+                        { assert commands.every { command -> !command.contains('--weights ') } },
+                        { assert snapshot(removeNextflowVersion(versions.toString())).match('versions') },
+                    )
+                }
+            }
+        }
+    }
+
+    executionModes.each { mode ->
+        test("changing either LDAK model or power forks the matrix key${mode.suffix}") {
+
+            config "../conf/test_ldak_relatedness_distinct.config"
+            tag "ldak_relatedness_distinct"
+            if (mode.stub) {
+                options "-stub"
+            }
+
+            when {
+                params {
+                    outdir = "$outputDir"
+                }
+            }
+
+            then {
+                def matrices = new File("${params.outdir}/quality_control/relatedness_matrices")
+                def heritability = new File("${params.outdir}/heritability/individual/ldak_reml")
+                if (mode.stub) {
+                    assertAll(*stubAssertions(
+                        workflow,
+                        matrices,
+                        heritability,
+                        ['5f8579a3a568', 'a677a0c52d65', 'f299aab0058a'],
+                        ['example_pgen_bt_human', 'example_pgen_bt_custom_model', 'example_pgen_bt_custom_power'],
+                        [filter: 0, subgrm: 0],
+                    ))
+                } else {
+                    def stable_name_matrices = getAllFilesFromDir(
+                        matrices.toString(),
+                        relative: true,
+                        includeDir: true,
+                    ).findAll { path -> path.toString() }
+                    def stable_path_matrices = getAllFilesFromDir(
+                        matrices.toString(),
+                        ignoreFile: 'tests/.nftignore',
+                    )
+                    def stable_name_heritability = getAllFilesFromDir(
+                        heritability.toString(),
+                        relative: true,
+                        includeDir: true,
+                    ).findAll { path -> path.toString() }
+                    def stable_path_heritability = getAllFilesFromDir(
+                        heritability.toString(),
+                        ignoreFile: 'tests/.nftignore',
+                    )
+                    assertAll(
+                        { assert workflow.success },
+                        { assert TRACE.count(workflow, 'LDAK_CALCKINS') == 3 },
+                        { assert TRACE.count(workflow, 'LDAK_FILTER') == 0 },
+                        { assert TRACE.count(workflow, 'LDAK_SUBGRM') == 0 },
+                        // Independently derived from the documented canonical strings with `sha256sum`.
+                        { assert matrices.list().toList().sort() == ['5f8579a3a568', 'a677a0c52d65', 'f299aab0058a'] },
+                        { assert TRACE.count(workflow, 'LDAK_REML') == 3 },
+                        { assert snapshot(stable_name_matrices, stable_path_matrices).match('distinct-relatedness-matrices') },
+                        { assert snapshot(stable_name_heritability, stable_path_heritability).match('distinct-heritability') },
+                    )
+                }
+            }
+        }
+    }
+
+    executionModes.each { mode ->
+        test("identical weight bytes at different paths share one matrix${mode.suffix}") {
+
+            config "../conf/test_ldak_relatedness_same_weights.config"
+            tag "ldak_relatedness_same_weights"
+            if (mode.stub) {
+                options "-stub"
+            }
+
+            when {
+                params {
+                    outdir = "$outputDir"
+                }
+            }
+
+            then {
+                def matrices = new File("${params.outdir}/quality_control/relatedness_matrices")
+                def heritability = new File("${params.outdir}/heritability/individual/ldak_reml")
+                if (mode.stub) {
+                    assertAll(*stubAssertions(
+                        workflow,
+                        matrices,
+                        heritability,
+                        ['48be9b05b317'],
+                        ['example_pgen_bt_first', 'example_pgen_bt_second'],
+                        [filter: 0, subgrm: 0],
+                    ))
+                } else {
+                    def commands = calckinsCommands(params.outdir)
+                    def stable_name_matrices = getAllFilesFromDir(
+                        matrices.toString(),
+                        relative: true,
+                        includeDir: true,
+                    ).findAll { path -> path.toString() }
+                    def stable_path_matrices = getAllFilesFromDir(
+                        matrices.toString(),
+                        ignoreFile: 'tests/.nftignore',
+                    )
+                    def stable_name_heritability = getAllFilesFromDir(
+                        heritability.toString(),
+                        relative: true,
+                        includeDir: true,
+                    ).findAll { path -> path.toString() }
+                    def stable_path_heritability = getAllFilesFromDir(
+                        heritability.toString(),
+                        ignoreFile: 'tests/.nftignore',
+                    )
+                    assertAll(
+                        { assert workflow.success },
+                        { assert TRACE.count(workflow, 'LDAK_CALCKINS') == 1 },
+                        { assert TRACE.count(workflow, 'LDAK_REML') == 2 },
+                        // Independently derived from the generated weight bytes and canonical settings string.
+                        { assert matrices.list().toList() == ['48be9b05b317'] },
+                        { assert commands.size() == 1 },
+                        { assert commands.first().contains('--weights "example_all.pvar"') },
+                        { assert !commands.first().contains('--ignore-weights YES') },
+                        { assert snapshot(stable_name_matrices, stable_path_matrices).match('same-weights-relatedness-matrices') },
+                        { assert snapshot(stable_name_heritability, stable_path_heritability).match('same-weights-heritability') },
+                    )
+                }
+            }
+        }
+    }
+
+    executionModes.each { mode ->
+        test("different weight bytes with the same basename fork matrices${mode.suffix}") {
+
+            config "../conf/test_ldak_relatedness_different_weights.config"
+            tag "ldak_relatedness_different_weights"
+            if (mode.stub) {
+                options "-stub"
+            }
+
+            when {
+                params {
+                    outdir = "$outputDir"
+                }
+            }
+
+            then {
+                def matrices = new File("${params.outdir}/quality_control/relatedness_matrices")
+                def heritability = new File("${params.outdir}/heritability/individual/ldak_reml")
+                if (mode.stub) {
+                    assertAll(*stubAssertions(
+                        workflow,
+                        matrices,
+                        heritability,
+                        ['48be9b05b317', '9048b62d7d3c'],
+                        ['example_pgen_bt_first', 'example_pgen_bt_second'],
+                        [filter: 0, subgrm: 0],
+                    ))
+                } else {
+                    def commands = calckinsCommands(params.outdir)
+                    def stable_name_matrices = getAllFilesFromDir(
+                        matrices.toString(),
+                        relative: true,
+                        includeDir: true,
+                    ).findAll { path -> path.toString() }
+                    def stable_path_matrices = getAllFilesFromDir(
+                        matrices.toString(),
+                        ignoreFile: 'tests/.nftignore',
+                    )
+                    def stable_name_heritability = getAllFilesFromDir(
+                        heritability.toString(),
+                        relative: true,
+                        includeDir: true,
+                    ).findAll { path -> path.toString() }
+                    def stable_path_heritability = getAllFilesFromDir(
+                        heritability.toString(),
+                        ignoreFile: 'tests/.nftignore',
+                    )
+                    assertAll(
+                        { assert workflow.success },
+                        { assert TRACE.count(workflow, 'LDAK_CALCKINS') == 2 },
+                        { assert TRACE.count(workflow, 'LDAK_REML') == 2 },
+                        // Same basename, different content digests, therefore two independently derived keys.
+                        { assert matrices.list().toList().sort() == ['48be9b05b317', '9048b62d7d3c'] },
+                        { assert commands.size() == 2 },
+                        { assert commands.every { command -> command.contains('--weights "example_all.pvar"') } },
+                        { assert commands.every { command -> !command.contains('--ignore-weights YES') } },
+                        { assert snapshot(stable_name_matrices, stable_path_matrices).match('different-weights-relatedness-matrices') },
+                        { assert snapshot(stable_name_heritability, stable_path_heritability).match('different-weights-heritability') },
+                    )
+                }
+            }
+        }
+    }
+}

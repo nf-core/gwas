@@ -1,0 +1,89 @@
+nextflow_pipeline {
+
+    name "Test LDAK HE and PCGC heritability routes"
+    script "../main.nf"
+    tag "pipeline"
+    tag "heritability"
+    tag "ldak"
+
+    def executionModes = [
+        [suffix: '', stub: false],
+        [suffix: ' - stub', stub: true],
+    ]
+
+    def commands = { outputDir ->
+        def scripts = []
+        new File(new File(outputDir.toString()).parentFile, 'work').eachFileRecurse { entry ->
+            if (entry.isFile() && entry.name == '.command.sh') {
+                scripts << entry.text
+            }
+        }
+        return scripts
+    }
+
+    executionModes.each { mode ->
+        test("LDAK estimators publish independently and adjust matrices only for covariate-bearing analyses${mode.suffix}") {
+
+            config "../conf/test_ldak_estimators.config"
+            tag "ldak_estimators"
+            if (mode.stub) {
+                options "-stub"
+            }
+
+            when {
+                params {
+                    outdir = "$outputDir"
+                }
+            }
+
+            then {
+                def individual = new File("${params.outdir}/heritability/individual")
+                def hePlain = new File(individual, 'ldak_he/ldak_he_plain/ldak_he_plain.ldak_he.he')
+                def heAdjusted = new File(individual, 'ldak_he/ldak_all_covariates/ldak_all_covariates.ldak_he.he')
+                def pcgc = new File(individual, 'ldak_pcgc/ldak_all_covariates/ldak_all_covariates.ldak_pcgc.pcgc')
+                def reml = new File(individual, 'ldak_reml/ldak_all_covariates/ldak_all_covariates.ldak_reml.reml')
+                def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
+                assertAll(
+                    { assert workflow.success },
+                    { assert TRACE.count(workflow, 'LDAK_CALCKINS') == 1 },
+                    { assert TRACE.count(workflow, 'LDAK_ADJUSTGRM') == 2 },
+                    { assert TRACE.count(workflow, 'LDAK_HE') == 2 },
+                    { assert TRACE.count(workflow, 'LDAK_PCGC') == 1 },
+                    { assert TRACE.count(workflow, 'LDAK_REML') == 1 },
+                    { assert individual.list().toList().sort() == ['ldak_he', 'ldak_pcgc', 'ldak_reml'] },
+                    { assert hePlain.isFile() },
+                    { assert heAdjusted.isFile() },
+                    { assert pcgc.isFile() },
+                    { assert reml.isFile() },
+                )
+                if (!mode.stub) {
+                    def runCommands = commands(params.outdir)
+                    def adjustmentCommands = runCommands.findAll { command -> command.contains('ldak6 --adjust-grm') }
+                    def adjustedEstimatorCommands = runCommands.findAll { command ->
+                        (command.contains('ldak6 --he') || command.contains('ldak6 --pcgc')) &&
+                            command.contains('--grm "ldak_all_covariates.adjusted"')
+                    }
+                    def stableName = getAllFilesFromDir(
+                        individual.toString(),
+                        relative: true,
+                        includeDir: true,
+                    ).findAll { path -> path.toString() }
+                    def stablePath = getAllFilesFromDir(
+                        individual.toString(),
+                        ignoreFile: 'tests/.nftignore',
+                    )
+                    assertAll(
+                        { assert adjustmentCommands.size() == 2 },
+                        { assert adjustmentCommands.every { command -> command.contains('--covar "ldak_all_covariates.adjustcovar"') } },
+                        { assert adjustmentCommands.every { command -> !command.contains('--factors ') } },
+                        { assert adjustedEstimatorCommands.size() == 2 },
+                        { assert adjustedEstimatorCommands.every { command -> command.contains('--covar "ldak_all_covariates.adjustcovar"') } },
+                        { assert adjustedEstimatorCommands.every { command -> !command.contains('--factors ') } },
+                        { assert snapshot(removeNextflowVersion(versions.toString())).match('versions') },
+                        { assert snapshot(stableName, stablePath).match('heritability') },
+                    )
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,57 @@
+{
+    "versions": {
+        "content": [
+            {
+                "LDAK_CALCKINS": {
+                    "ldak6": 6
+                },
+                "LDAK_FILTER": {
+                    "ldak6": 6
+                },
+                "LDAK_REML": {
+                    "ldak6": 6
+                },
+                "LDAK_SUBGRM": {
+                    "ldak6": 6
+                },
+                "NORMALISE_PHENOTYPES": {
+                    "python": "3.14.5"
+                },
+                "PLINK2_MAKEBED": {
+                    "plink2": "2.0.0-a.6.9LM"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-07-30T00:18:22.481233028"
+    },
+    "heritability": {
+        "content": [
+            [
+                "individual",
+                "individual/ldak_reml",
+                "individual/ldak_reml/example_pgen_bt",
+                "individual/ldak_reml/example_pgen_bt/example_pgen_bt.ldak_reml.reml",
+                "individual/ldak_reml/example_pgen_bt/example_pgen_bt.ldak_reml.reml.liab",
+                "individual/ldak_reml/example_pgen_qt",
+                "individual/ldak_reml/example_pgen_qt/example_pgen_qt.ldak_reml.reml"
+            ],
+            [
+                "example_pgen_bt.ldak_reml.reml:md5,1744160f45fcde1c55bb48c4e02a6820",
+                "example_pgen_bt.ldak_reml.reml.liab:md5,b5bcc753f927482353574195158ef0e8",
+                "example_pgen_qt.ldak_reml.reml:md5,8a0dc85c52e78b9b01c410d8209b12fe"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-07-30T00:18:22.432334398"
+    }
+}

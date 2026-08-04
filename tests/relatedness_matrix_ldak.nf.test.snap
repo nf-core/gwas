@@ -1,0 +1,201 @@
+{
+    "distinct-relatedness-matrices": {
+        "content": [
+            [
+                "5f8579a3a568",
+                "5f8579a3a568/example_pgen.ldak_kinship.5f8579a3a568.grm.adjust",
+                "5f8579a3a568/example_pgen.ldak_kinship.5f8579a3a568.grm.bin",
+                "5f8579a3a568/example_pgen.ldak_kinship.5f8579a3a568.grm.details",
+                "5f8579a3a568/example_pgen.ldak_kinship.5f8579a3a568.grm.id",
+                "a677a0c52d65",
+                "a677a0c52d65/example_pgen.ldak_kinship.a677a0c52d65.grm.adjust",
+                "a677a0c52d65/example_pgen.ldak_kinship.a677a0c52d65.grm.bin",
+                "a677a0c52d65/example_pgen.ldak_kinship.a677a0c52d65.grm.details",
+                "a677a0c52d65/example_pgen.ldak_kinship.a677a0c52d65.grm.id",
+                "f299aab0058a",
+                "f299aab0058a/example_pgen.ldak_kinship.f299aab0058a.grm.adjust",
+                "f299aab0058a/example_pgen.ldak_kinship.f299aab0058a.grm.bin",
+                "f299aab0058a/example_pgen.ldak_kinship.f299aab0058a.grm.details",
+                "f299aab0058a/example_pgen.ldak_kinship.f299aab0058a.grm.id"
+            ],
+            [
+                "example_pgen.ldak_kinship.5f8579a3a568.grm.adjust:md5,d8773dbb58e81ca2d93ac36481e9cbcc",
+                "example_pgen.ldak_kinship.5f8579a3a568.grm.bin:md5,027182556b6852ec47fd2e2bd47ccf09",
+                "example_pgen.ldak_kinship.5f8579a3a568.grm.details:md5,3a01574e3ebe28ef7d905074c2725c1b",
+                "example_pgen.ldak_kinship.5f8579a3a568.grm.id:md5,12905f467d6cf136b1983905580fda22",
+                "example_pgen.ldak_kinship.a677a0c52d65.grm.adjust:md5,42ccfbe36530578d6c44d16663ad172d",
+                "example_pgen.ldak_kinship.a677a0c52d65.grm.bin:md5,3c17e50840083e0391c5f83b26d4f24a",
+                "example_pgen.ldak_kinship.a677a0c52d65.grm.details:md5,f13c6d1bd89bdd8849bc3b2178589247",
+                "example_pgen.ldak_kinship.a677a0c52d65.grm.id:md5,12905f467d6cf136b1983905580fda22",
+                "example_pgen.ldak_kinship.f299aab0058a.grm.adjust:md5,42ccfbe36530578d6c44d16663ad172d",
+                "example_pgen.ldak_kinship.f299aab0058a.grm.bin:md5,3c17e50840083e0391c5f83b26d4f24a",
+                "example_pgen.ldak_kinship.f299aab0058a.grm.details:md5,f13c6d1bd89bdd8849bc3b2178589247",
+                "example_pgen.ldak_kinship.f299aab0058a.grm.id:md5,12905f467d6cf136b1983905580fda22"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-07-30T06:12:58.242279991"
+    },
+    "same-weights-relatedness-matrices": {
+        "content": [
+            [
+                "48be9b05b317",
+                "48be9b05b317/example_pgen.ldak_kinship.48be9b05b317.grm.adjust",
+                "48be9b05b317/example_pgen.ldak_kinship.48be9b05b317.grm.bin",
+                "48be9b05b317/example_pgen.ldak_kinship.48be9b05b317.grm.details",
+                "48be9b05b317/example_pgen.ldak_kinship.48be9b05b317.grm.id"
+            ],
+            [
+                "example_pgen.ldak_kinship.48be9b05b317.grm.adjust:md5,d8773dbb58e81ca2d93ac36481e9cbcc",
+                "example_pgen.ldak_kinship.48be9b05b317.grm.bin:md5,027182556b6852ec47fd2e2bd47ccf09",
+                "example_pgen.ldak_kinship.48be9b05b317.grm.details:md5,3a01574e3ebe28ef7d905074c2725c1b",
+                "example_pgen.ldak_kinship.48be9b05b317.grm.id:md5,12905f467d6cf136b1983905580fda22"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-07-31T17:06:31.403616689"
+    },
+    "versions": {
+        "content": [
+            {
+                "LDAK_CALCKINS": {
+                    "ldak6": 6
+                },
+                "LDAK_FILTER": {
+                    "ldak6": 6
+                },
+                "LDAK_REML": {
+                    "ldak6": 6
+                },
+                "LDAK_SUBGRM": {
+                    "ldak6": 6
+                },
+                "NORMALISE_PHENOTYPES": {
+                    "python": "3.14.5"
+                },
+                "PLINK2_MAKEBED": {
+                    "plink2": "2.0.0-a.6.9LM"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-07-30T01:49:56.66030107"
+    },
+    "different-weights-heritability": {
+        "content": [
+            [
+                "example_pgen_bt_first",
+                "example_pgen_bt_first/example_pgen_bt_first.ldak_reml.reml",
+                "example_pgen_bt_first/example_pgen_bt_first.ldak_reml.reml.liab",
+                "example_pgen_bt_second",
+                "example_pgen_bt_second/example_pgen_bt_second.ldak_reml.reml",
+                "example_pgen_bt_second/example_pgen_bt_second.ldak_reml.reml.liab"
+            ],
+            [
+                "example_pgen_bt_first.ldak_reml.reml:md5,acca20f7a9fdf33a965d347358b12bc8",
+                "example_pgen_bt_first.ldak_reml.reml.liab:md5,9e4fa5c6a9b7cff86469002fba202182",
+                "example_pgen_bt_second.ldak_reml.reml:md5,ddb3c085538aee6d75db11f4c6886a49",
+                "example_pgen_bt_second.ldak_reml.reml.liab:md5,1d6b42d6510a259b28b506b7b032ef77"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-07-30T06:14:00.860071681"
+    },
+    "different-weights-relatedness-matrices": {
+        "content": [
+            [
+                "48be9b05b317",
+                "48be9b05b317/example_pgen.ldak_kinship.48be9b05b317.grm.adjust",
+                "48be9b05b317/example_pgen.ldak_kinship.48be9b05b317.grm.bin",
+                "48be9b05b317/example_pgen.ldak_kinship.48be9b05b317.grm.details",
+                "48be9b05b317/example_pgen.ldak_kinship.48be9b05b317.grm.id",
+                "9048b62d7d3c",
+                "9048b62d7d3c/example_pgen.ldak_kinship.9048b62d7d3c.grm.adjust",
+                "9048b62d7d3c/example_pgen.ldak_kinship.9048b62d7d3c.grm.bin",
+                "9048b62d7d3c/example_pgen.ldak_kinship.9048b62d7d3c.grm.details",
+                "9048b62d7d3c/example_pgen.ldak_kinship.9048b62d7d3c.grm.id"
+            ],
+            [
+                "example_pgen.ldak_kinship.48be9b05b317.grm.adjust:md5,d8773dbb58e81ca2d93ac36481e9cbcc",
+                "example_pgen.ldak_kinship.48be9b05b317.grm.bin:md5,027182556b6852ec47fd2e2bd47ccf09",
+                "example_pgen.ldak_kinship.48be9b05b317.grm.details:md5,3a01574e3ebe28ef7d905074c2725c1b",
+                "example_pgen.ldak_kinship.48be9b05b317.grm.id:md5,12905f467d6cf136b1983905580fda22",
+                "example_pgen.ldak_kinship.9048b62d7d3c.grm.adjust:md5,3de06cb113cfd6b2db4a087dafd7ba1e",
+                "example_pgen.ldak_kinship.9048b62d7d3c.grm.bin:md5,027182556b6852ec47fd2e2bd47ccf09",
+                "example_pgen.ldak_kinship.9048b62d7d3c.grm.details:md5,6df05b0054e59e9f414fe91cd27a74ec",
+                "example_pgen.ldak_kinship.9048b62d7d3c.grm.id:md5,12905f467d6cf136b1983905580fda22"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-07-31T17:07:09.618914286"
+    },
+    "distinct-heritability": {
+        "content": [
+            [
+                "example_pgen_bt_custom_model",
+                "example_pgen_bt_custom_model/example_pgen_bt_custom_model.ldak_reml.reml",
+                "example_pgen_bt_custom_model/example_pgen_bt_custom_model.ldak_reml.reml.liab",
+                "example_pgen_bt_custom_power",
+                "example_pgen_bt_custom_power/example_pgen_bt_custom_power.ldak_reml.reml",
+                "example_pgen_bt_custom_power/example_pgen_bt_custom_power.ldak_reml.reml.liab",
+                "example_pgen_bt_human",
+                "example_pgen_bt_human/example_pgen_bt_human.ldak_reml.reml",
+                "example_pgen_bt_human/example_pgen_bt_human.ldak_reml.reml.liab"
+            ],
+            [
+                "example_pgen_bt_custom_model.ldak_reml.reml:md5,3f6cc7fdf459a17bdd7ba63564cb8e8c",
+                "example_pgen_bt_custom_model.ldak_reml.reml.liab:md5,26d0fd34032502581153cb999bfab65b",
+                "example_pgen_bt_custom_power.ldak_reml.reml:md5,468736a9cfa4816f739025acb53caa1a",
+                "example_pgen_bt_custom_power.ldak_reml.reml.liab:md5,7ec14772289f06baffc24094ad8c0094",
+                "example_pgen_bt_human.ldak_reml.reml:md5,b8a2629a236f64d841976ebbde885473",
+                "example_pgen_bt_human.ldak_reml.reml.liab:md5,a6b0a965c5a88ec7bcd13656bab1f349"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-07-30T06:12:58.275537036"
+    },
+    "same-weights-heritability": {
+        "content": [
+            [
+                "example_pgen_bt_first",
+                "example_pgen_bt_first/example_pgen_bt_first.ldak_reml.reml",
+                "example_pgen_bt_first/example_pgen_bt_first.ldak_reml.reml.liab",
+                "example_pgen_bt_second",
+                "example_pgen_bt_second/example_pgen_bt_second.ldak_reml.reml",
+                "example_pgen_bt_second/example_pgen_bt_second.ldak_reml.reml.liab"
+            ],
+            [
+                "example_pgen_bt_first.ldak_reml.reml:md5,acca20f7a9fdf33a965d347358b12bc8",
+                "example_pgen_bt_first.ldak_reml.reml.liab:md5,9e4fa5c6a9b7cff86469002fba202182",
+                "example_pgen_bt_second.ldak_reml.reml:md5,43e9c6fae02c015005b3701dcee150c0",
+                "example_pgen_bt_second.ldak_reml.reml.liab:md5,d8a972b14a339d2503593f2a9a566fa2"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-07-30T06:13:30.506158312"
+    }
+}

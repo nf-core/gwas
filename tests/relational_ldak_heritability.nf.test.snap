@@ -1,0 +1,78 @@
+{
+    "versions": {
+        "content": [
+            {
+                "LDAK_ADJUSTGRM": {
+                    "ldak6": 6
+                },
+                "LDAK_CALCKINS": {
+                    "ldak6": 6
+                },
+                "LDAK_HE": {
+                    "ldak6": 6
+                },
+                "LDAK_PCGC": {
+                    "ldak6": 6
+                },
+                "LDAK_REML": {
+                    "ldak6": 6
+                },
+                "NORMALISE_PHENOTYPES": {
+                    "python": "3.14.5"
+                },
+                "PLINK2_MAKEBED": {
+                    "plink2": "2.0.0-a.6.9LM"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-07-31T19:47:33.393764671"
+    },
+    "heritability": {
+        "content": [
+            [
+                "ldak_he",
+                "ldak_he/binary_all_estimators",
+                "ldak_he/binary_all_estimators/binary_all_estimators.ldak_he.he",
+                "ldak_he/binary_without_prevalence",
+                "ldak_he/binary_without_prevalence/binary_without_prevalence.ldak_he.he",
+                "ldak_he/example_pgen_qt",
+                "ldak_he/example_pgen_qt/example_pgen_qt.ldak_he.he",
+                "ldak_pcgc",
+                "ldak_pcgc/binary_all_estimators",
+                "ldak_pcgc/binary_all_estimators/binary_all_estimators.ldak_pcgc.pcgc",
+                "ldak_pcgc/binary_all_estimators/binary_all_estimators.ldak_pcgc.pcgc.marginal",
+                "ldak_reml",
+                "ldak_reml/binary_all_estimators",
+                "ldak_reml/binary_all_estimators/binary_all_estimators.ldak_reml.reml",
+                "ldak_reml/binary_all_estimators/binary_all_estimators.ldak_reml.reml.liab",
+                "ldak_reml/binary_without_prevalence",
+                "ldak_reml/binary_without_prevalence/binary_without_prevalence.ldak_reml.reml",
+                "ldak_reml/example_pgen_qt",
+                "ldak_reml/example_pgen_qt/example_pgen_qt.ldak_reml.reml"
+            ],
+            [
+                "binary_all_estimators.ldak_he.he:md5,bf5f0e93431823be0b39201ca40fa1c6",
+                "binary_without_prevalence.ldak_he.he:md5,30c7bb894d61b59bf6494067148a7d05",
+                "example_pgen_qt.ldak_he.he:md5,4d37607facb7888ea6c3775e1ac8afa1",
+                "binary_all_estimators.ldak_pcgc.pcgc:md5,24575e2f234197d756c8641e478742f5",
+                "binary_all_estimators.ldak_pcgc.pcgc.marginal:md5,48554f7f78b8a2e37725dd42b12dd297",
+                "binary_all_estimators.ldak_reml.reml:md5,26104aabdb17e59433bf6469776d96d7",
+                "binary_all_estimators.ldak_reml.reml.liab:md5,38f8c1e37889750da12aaf8858fc5f3d",
+                "binary_without_prevalence.ldak_reml.reml:md5,893193c8e7940b0bf0a4a6c06e6afd0d",
+                "example_pgen_qt.ldak_reml.reml:md5,8a0dc85c52e78b9b01c410d8209b12fe"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-07-31T19:47:33.34320114"
+    }
+}

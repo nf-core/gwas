@@ -1,0 +1,69 @@
+{
+    "versions": {
+        "content": [
+            {
+                "LDAK_ADJUSTGRM": {
+                    "ldak6": 6
+                },
+                "LDAK_CALCKINS": {
+                    "ldak6": 6
+                },
+                "LDAK_HE": {
+                    "ldak6": 6
+                },
+                "LDAK_PCGC": {
+                    "ldak6": 6
+                },
+                "LDAK_REML": {
+                    "ldak6": 6
+                },
+                "NORMALISE_PHENOTYPES": {
+                    "python": "3.14.5"
+                },
+                "PLINK2_MAKEBED": {
+                    "plink2": "2.0.0-a.6.9LM"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-07-30T20:14:19.147861638"
+    },
+    "heritability": {
+        "content": [
+            [
+                "ldak_he",
+                "ldak_he/ldak_all_covariates",
+                "ldak_he/ldak_all_covariates/ldak_all_covariates.ldak_he.he",
+                "ldak_he/ldak_he_plain",
+                "ldak_he/ldak_he_plain/ldak_he_plain.ldak_he.he",
+                "ldak_pcgc",
+                "ldak_pcgc/ldak_all_covariates",
+                "ldak_pcgc/ldak_all_covariates/ldak_all_covariates.ldak_pcgc.pcgc",
+                "ldak_pcgc/ldak_all_covariates/ldak_all_covariates.ldak_pcgc.pcgc.marginal",
+                "ldak_reml",
+                "ldak_reml/ldak_all_covariates",
+                "ldak_reml/ldak_all_covariates/ldak_all_covariates.ldak_reml.reml",
+                "ldak_reml/ldak_all_covariates/ldak_all_covariates.ldak_reml.reml.liab"
+            ],
+            [
+                "ldak_all_covariates.ldak_he.he:md5,a5e2af6c089918e670fa655d5a3da7ba",
+                "ldak_he_plain.ldak_he.he:md5,cdbc04077f4afe6cfefc83df0b4a0ab5",
+                "ldak_all_covariates.ldak_pcgc.pcgc:md5,f56bf2ee6c6982a2160d65f3eab21db8",
+                "ldak_all_covariates.ldak_pcgc.pcgc.marginal:md5,78335e4ab33760eb99ff0766394e9111",
+                "ldak_all_covariates.ldak_reml.reml:md5,15b2de1ec1db70400e03badaeadd92a4",
+                "ldak_all_covariates.ldak_reml.reml.liab:md5,b54bcf93f1d1da7c56e0817decaf02a7"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-07-30T17:30:17.01012821"
+    }
+}
