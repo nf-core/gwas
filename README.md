@@ -21,48 +21,61 @@
 
 ## Introduction
 
-**nf-core/gwas** is a bioinformatics pipeline that ...
+**nf-core/gwas** is a bioinformatics pipeline for association and individual-level heritability analysis of prepared human genotype, phenotype and covariate data. A cohort manifest owns genotype facts and an analysis manifest links traits and selected methods to those cohorts. The pipeline reuses cohort preparation and relatedness matrices across compatible analyses, retains native results, and produces comparable GWASLab-standardised summary statistics.
 
-<!-- TODO nf-core:
-   Complete this sentence with a 2-3 sentence summary of what types of data the pipeline ingests, a brief overview of the
-   major pipeline sections and the types of output it produces. You're giving an overview to someone new
-   to nf-core here, in 15-20 seconds. For an example, see https://github.com/nf-core/rnaseq/blob/master/README.md#introduction
--->
+Genotype quality control is not performed by the pipeline. Input genotypes must already have suitable samples, variants, alleles, coordinates, genome build and analysis filters.
 
-<!-- TODO nf-core: Include a figure that guides the user through the major workflow steps. Many nf-core
-     workflows use the "tube map" design for that. See https://nf-co.re/docs/community/brand/workflow-schematics#examples for examples.   -->
-<!-- TODO nf-core: Fill in short bullet-pointed list of the default steps in the pipeline -->2. Present QC for raw reads ([`MultiQC`](http://multiqc.info/))
+![Overview of the nf-core/gwas analysis routes](docs/images/nf-core-gwas_metro_map.svg)
+
+## Pipeline summary
+
+1. Validate and join the cohort and analysis manifests.
+2. Prepare each distinct cohort once from PLINK 2, PLINK 1 or VCF input.
+3. Normalise the selected phenotype and optional quantitative and categorical covariates.
+4. Run selected association routes:
+   - PLINK 2 `--glm`
+   - REGENIE
+   - GCTA fastGWA-MLM
+   - LDAK-KVIK
+5. Standardise every association result with GWASLab while preserving the native result.
+6. Build and reuse relatedness matrices for selected heritability routes:
+   - GCTA GREML
+   - GCTA GREML-LDMS
+   - LDAK REML
+   - LDAK Haseman-Elston regression
+   - LDAK PCGC
+7. Collect run and software provenance with MultiQC and Nextflow reports.
 
 ## Usage
 
 > [!NOTE]
 > If you are new to Nextflow and nf-core, please refer to [this page](https://nf-co.re/docs/get_started/environment_setup/overview) on how to set-up Nextflow. Make sure to [test your setup](https://nf-co.re/docs/get_started/run-your-first-pipeline) with `-profile test` before running the workflow on actual data.
 
-<!-- TODO nf-core: Describe the minimum required steps to execute the pipeline, e.g. how to prepare samplesheets.
-     Explain what rows and columns represent. For instance (please edit as appropriate):
+Prepare a cohort manifest and an analysis manifest linked by `cohort_id`. Advanced per-analysis
+scientific settings and stageable resources may be supplied in an optional method-options JSON
+document.
 
-First, prepare a samplesheet with your input data that looks as follows:
-
-`samplesheet.csv`:
-
-```csv
-sample,fastq_1,fastq_2
-CONTROL_REP1,AEG588A1_S1_L002_R1_001.fastq.gz,AEG588A1_S1_L002_R2_001.fastq.gz
+```csv title="cohorts.csv"
+cohort_id,genome_build,ancestry,pgen,psam,pvar,bed,bim,fam,vcf
+my_cohort,GRCh37,EUR,/data/my_cohort.pgen,/data/my_cohort.psam,/data/my_cohort.pvar,,,,
 ```
 
-Each row represents a fastq file (single-end) or a pair of fastq files (paired end).
+```csv title="analyses.csv"
+analysis_id,cohort_id,trait_id,trait_type,phenotype,phenotype_column,control_value,case_value,quant_covariates,cat_covariates,association_methods,heritability_methods,population_prevalence
+height,my_cohort,height,quantitative,/data/phenotypes.tsv,height,,,,,plink2,,
+```
 
--->
+Runnable minimal and heterogeneous examples are available under [`assets/examples/relational/`](assets/examples/relational/).
 
-Now, you can run the pipeline using:
-
-<!-- TODO nf-core: update the following command to include all required parameters for a minimal example -->
+Then run:
 
 ```bash
 nextflow run nf-core/gwas \
-   -profile <docker/singularity/.../institute> \
-   --input samplesheet.csv \
-   --outdir <OUTDIR>
+    -r <VERSION> \
+    -profile docker \
+    --cohort_manifest cohorts.csv \
+    --analysis_manifest analyses.csv \
+    --outdir results
 ```
 
 > [!WARNING]
@@ -72,9 +85,9 @@ For more details and further functionality, please refer to the [usage documenta
 
 ## Pipeline output
 
-To see the results of an example test run with a full size dataset refer to the [results](https://nf-co.re/gwas/results) tab on the nf-core website pipeline page.
-For more details about the output files and reports, please refer to the
-[output documentation](https://nf-co.re/gwas/output).
+Native association results are published under `association/<method>/<analysis_id>/`, comparable GWASLab tables under `summary_statistics/<analysis_id>/`, and individual-level heritability estimates under `heritability/individual/<method>/<analysis_id>/`. Intermediates such as prepared genotypes, normalised phenotypes, relatedness matrices and REGENIE predictions are unpublished unless their save controls are enabled.
+
+For exact filenames, provenance lookup and optional output, see the [output documentation](https://nf-co.re/gwas/output).
 
 ## Credits
 
@@ -82,7 +95,7 @@ nf-core/gwas was originally written by Chris Wyatt, Fernando Duarte, Maxime Laur
 
 We thank the following people for their extensive assistance in the development of this pipeline:
 
-<!-- TODO nf-core: If applicable, make list of people who have also contributed -->
+- [lyh970817](https://github.com/lyh970817)
 
 ## Contributions and Support
 
@@ -92,10 +105,8 @@ For further information or help, don't hesitate to get in touch on the [Slack `#
 
 ## Citations
 
-<!-- TODO nf-core: Add citation for pipeline after first release. Uncomment lines below and update Zenodo doi and badge at the top of this file. -->
+<!-- TODO nf-core: Add the pipeline citation when a Zenodo DOI is available, then update the badge above. -->
 <!-- If you use nf-core/gwas for your analysis, please cite it using the following doi: [10.5281/zenodo.XXXXXX](https://doi.org/10.5281/zenodo.XXXXXX) -->
-
-<!-- TODO nf-core: Add bibliography of tools and data used in your pipeline -->
 
 An extensive list of references for the tools used by the pipeline can be found in the [`CITATIONS.md`](CITATIONS.md) file.
 
