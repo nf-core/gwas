@@ -1,0 +1,116 @@
+name: "gwaslab_harmonize"
+description: Standardise and optionally reference-harmonise human GWAS summary statistics
+keywords:
+  - gwas
+  - summary statistics
+  - harmonisation
+tools:
+  - "gwaslab":
+      description: A Python package for processing and analysing GWAS summary statistics
+      homepage: "https://cloufield.github.io/gwaslab/"
+      documentation: "https://cloufield.github.io/gwaslab/Harmonization/"
+      tool_dev_url: "https://github.com/Cloufield/gwaslab"
+      doi: "10.1093/bioinformatics/btae074"
+      licence:
+        - "GPL-3.0-only"
+input:
+  - - meta:
+        type: map
+        description: Groovy Map containing summary-statistics information
+    - sumstats:
+        type: file
+        description: GWAS summary-statistics table
+        pattern: "*"
+        ontologies: []
+    - input_format:
+        type: string
+        description: GWASLab format name or JSON object mapping GWASLab field names to input columns
+    - genome_build:
+        type: string
+        description: Human reference build, GRCh37 or GRCh38
+  - - meta2:
+        type: map
+        description: Groovy Map containing reference FASTA information
+    - reference_fasta:
+        type: file
+        optional: true
+        description: Optional human reference FASTA
+        pattern: "*.{fa,fasta,fa.gz,fasta.gz}"
+        ontologies:
+          - edam: "http://edamontology.org/format_1929" # FASTA
+    - reference_fasta_fai:
+        type: file
+        optional: true
+        description: Optional FASTA index
+        pattern: "*.fai"
+        ontologies: []
+  - - meta3:
+        type: map
+        description: Groovy Map containing rsID reference information
+    - rsid_reference_vcf:
+        type: file
+        optional: true
+        description: Optional indexed VCF or BCF used to assign rsIDs
+        pattern: "*.{vcf,vcf.gz,bcf}"
+        ontologies:
+          - edam: "http://edamontology.org/format_3016" # VCF
+          - edam: "http://edamontology.org/format_3014" # BCF
+    - rsid_reference_vcf_index:
+        type: file
+        optional: true
+        description: Optional rsID-reference VCF or BCF index
+        pattern: "*.{tbi,csi}"
+        ontologies: []
+  - - meta4:
+        type: map
+        description: Groovy Map containing strand reference information
+    - strand_reference_vcf:
+        type: file
+        optional: true
+        description: Optional indexed VCF or BCF used for strand inference
+        pattern: "*.{vcf,vcf.gz,bcf}"
+        ontologies:
+          - edam: "http://edamontology.org/format_3016" # VCF
+          - edam: "http://edamontology.org/format_3014" # BCF
+    - strand_reference_vcf_index:
+        type: file
+        optional: true
+        description: Optional strand-reference VCF or BCF index
+        pattern: "*.{tbi,csi}"
+        ontologies: []
+output:
+  sumstats:
+    - - meta:
+          type: map
+          description: Groovy Map containing summary-statistics information
+      - "*.gwaslab.tsv.gz":
+          type: file
+          description: Canonical compressed GWASLab summary statistics retaining status fields
+          pattern: "*.gwaslab.tsv.gz"
+          ontologies: []
+  log:
+    - - meta:
+          type: map
+          description: Groovy Map containing summary-statistics information
+      - "*.gwaslab.log":
+          type: file
+          description: GWASLab processing and export log
+          pattern: "*.gwaslab.log"
+          ontologies: []
+  versions:
+    - "versions.yml":
+        type: file
+        description: File containing software versions
+        pattern: "versions.yml"
+        ontologies: []
+topics:
+  versions:
+    - "versions.yml":
+        type: file
+        description: File containing software versions
+        pattern: "versions.yml"
+        ontologies: []
+authors:
+  - "@andongni"
+maintainers:
+  - "@andongni"
