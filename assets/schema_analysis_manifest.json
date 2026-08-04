@@ -1,0 +1,108 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://raw.githubusercontent.com/nf-core/gwas/master/assets/schema_analysis_manifest.json",
+    "title": "nf-core/gwas pipeline - analysis manifest schema",
+    "description": "Schema for the analysis manifest provided with params.analysis_manifest. One row declares one cohort and trait analysis unit.",
+    "type": "array",
+    "items": {
+        "type": "object",
+        "properties": {
+            "analysis_id": {
+                "type": "string",
+                "pattern": "^\\S+$",
+                "description": "Unique identifier for the analysis unit and the focal identifier used in output paths and filenames.",
+                "errorMessage": "Analysis ID must be provided, must be unique across the analysis manifest and cannot contain spaces",
+                "meta": ["id"]
+            },
+            "cohort_id": {
+                "type": "string",
+                "pattern": "^\\S+$",
+                "description": "Identifier of the cohort declared in the cohort manifest.",
+                "errorMessage": "Cohort ID must be provided and cannot contain spaces",
+                "meta": ["cohort"]
+            },
+            "trait_id": {
+                "type": "string",
+                "pattern": "^\\S+$",
+                "description": "Identifier of the trait under analysis.",
+                "errorMessage": "Trait ID must be provided and cannot contain spaces",
+                "meta": ["trait"]
+            },
+            "trait_type": {
+                "type": "string",
+                "enum": ["quantitative", "binary"],
+                "description": "Declared trait type, which is never inferred from phenotype values.",
+                "errorMessage": "Trait type must be one of 'quantitative' or 'binary'",
+                "meta": ["trait_type"]
+            },
+            "phenotype": {
+                "type": "string",
+                "format": "file-path",
+                "exists": true,
+                "pattern": "^\\S+$",
+                "description": "Headered phenotype file containing the named trait column.",
+                "errorMessage": "Phenotype file must be provided, cannot contain spaces and must exist"
+            },
+            "phenotype_column": {
+                "type": "string",
+                "pattern": "^\\S+$",
+                "description": "Name of the phenotype column holding this trait.",
+                "errorMessage": "Phenotype column must be provided and cannot contain spaces",
+                "meta": ["phenotype_column"]
+            },
+            "control_value": {
+                "type": ["string", "number"],
+                "pattern": "^\\S+$",
+                "description": "Optional source value used for controls on a binary trait.",
+                "errorMessage": "Control value must be a single token without spaces, for example '1' or 'Control'",
+                "meta": ["control_value"]
+            },
+            "case_value": {
+                "type": ["string", "number"],
+                "pattern": "^\\S+$",
+                "description": "Optional source value used for cases on a binary trait.",
+                "errorMessage": "Case value must be a single token without spaces, for example '2' or 'Case'",
+                "meta": ["case_value"]
+            },
+            "quant_covariates": {
+                "type": "string",
+                "format": "file-path",
+                "exists": true,
+                "pattern": "^\\S+$",
+                "description": "Optional headered file of quantitative covariates.",
+                "errorMessage": "Quantitative covariate file cannot contain spaces and must exist"
+            },
+            "cat_covariates": {
+                "type": "string",
+                "format": "file-path",
+                "exists": true,
+                "pattern": "^\\S+$",
+                "description": "Optional headered file of categorical covariates.",
+                "errorMessage": "Categorical covariate file cannot contain spaces and must exist"
+            },
+            "association_methods": {
+                "type": "string",
+                "pattern": "^[a-z0-9_]+(,[a-z0-9_]+)*$",
+                "description": "Comma-delimited supported association methods selected for this analysis.",
+                "errorMessage": "Association methods must be a comma-delimited list of lowercase tokens with no spaces",
+                "meta": ["association_methods"]
+            },
+            "heritability_methods": {
+                "type": "string",
+                "pattern": "^[a-z0-9_]+(,[a-z0-9_]+)*$",
+                "description": "Comma-delimited supported heritability methods selected for this analysis.",
+                "errorMessage": "Heritability methods must be a comma-delimited list of lowercase tokens with no spaces",
+                "meta": ["heritability_methods"]
+            },
+            "population_prevalence": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "exclusiveMaximum": 1,
+                "description": "Optional population prevalence for binary-trait heritability methods that consume liability-scale prevalence.",
+                "errorMessage": "Population prevalence must be a number strictly between 0 and 1",
+                "meta": ["population_prevalence"]
+            }
+        },
+        "required": ["analysis_id", "cohort_id", "trait_id", "trait_type", "phenotype", "phenotype_column"]
+    }
+}

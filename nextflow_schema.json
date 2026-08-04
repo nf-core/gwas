@@ -2,7 +2,7 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://raw.githubusercontent.com/nf-core/gwas/master/nextflow_schema.json",
     "title": "nf-core/gwas pipeline parameters",
-    "description": "A pipeline for Genome Wide Association Studies",
+    "description": "A pipeline for Genome Wide Association Studies.",
     "type": "object",
     "$defs": {
         "input_output_options": {
@@ -10,18 +10,39 @@
             "type": "object",
             "fa_icon": "fas fa-terminal",
             "description": "Define where the pipeline should find input data and save output data.",
-            "required": ["input", "outdir"],
+            "required": ["cohort_manifest", "analysis_manifest", "outdir"],
             "properties": {
-                "input": {
+                "cohort_manifest": {
                     "type": "string",
                     "format": "file-path",
                     "exists": true,
-                    "schema": "assets/schema_input.json",
+                    "schema": "assets/schema_cohort_manifest.json",
                     "mimetype": "text/csv",
                     "pattern": "^\\S+\\.csv$",
-                    "description": "Path to comma-separated file containing information about the samples in the experiment.",
-                    "help_text": "You will need to create a design file with information about the samples in your experiment before running the pipeline. Use this parameter to specify its location. It has to be a comma-separated file with 3 columns, and a header row. See [usage docs](https://nf-co.re/gwas/usage#samplesheet-input).",
-                    "fa_icon": "fas fa-file-csv"
+                    "description": "Path to the cohort manifest declaring cohort-owned genotype facts.",
+                    "help_text": "Supply together with `analysis_manifest`. Each unique `cohort_id` declares one complete PLINK 2, PLINK 1 or VCF genotype representation.",
+                    "fa_icon": "fas fa-users"
+                },
+                "analysis_manifest": {
+                    "type": "string",
+                    "format": "file-path",
+                    "exists": true,
+                    "schema": "assets/schema_analysis_manifest.json",
+                    "mimetype": "text/csv",
+                    "pattern": "^\\S+\\.csv$",
+                    "description": "Path to the analysis manifest declaring cohort and trait analysis units.",
+                    "help_text": "Supply together with `cohort_manifest`. Each unique `analysis_id` references one declared `cohort_id`, names the trait and phenotype inputs, and selects association or heritability methods.",
+                    "fa_icon": "fas fa-file-medical-alt"
+                },
+                "method_options": {
+                    "type": "string",
+                    "format": "file-path",
+                    "exists": true,
+                    "mimetype": "application/json",
+                    "pattern": "^\\S+\\.json$",
+                    "description": "Optional structured per-analysis scientific method options and stageable resources.",
+                    "help_text": "The JSON root is keyed by `analysis_id`; each analysis contains optional `gcta`, `ldak` and `regenie` method-family maps. Operational partitioning and task sizing belong to run/profile configuration, not this document.",
+                    "fa_icon": "fas fa-sliders-h"
                 },
                 "outdir": {
                     "type": "string",
@@ -40,6 +61,130 @@
                     "type": "string",
                     "description": "MultiQC report title. Printed as page header, used for filename if not otherwise specified.",
                     "fa_icon": "fas fa-file-signature"
+                }
+            }
+        },
+        "save_controls": {
+            "title": "Save controls",
+            "type": "object",
+            "fa_icon": "fas fa-save",
+            "description": "Publish intermediates that are otherwise kept out of the results directory.",
+            "help_text": "Intermediates are unpublished by default so that a large run does not fill your storage with files you did not ask for. Each save control turns one family of intermediates back on.",
+            "properties": {
+                "save_prepared_genotypes": {
+                    "type": "boolean",
+                    "description": "Save the canonical PLINK 2 genotype bundle prepared for each cohort.",
+                    "help_text": "Prepared bundles are published to `<outdir>/genotypes/<cohort_id>/` so that you can inspect them or reuse them outside the pipeline. Only bundles the pipeline built are saved: a cohort supplied as PLINK 2 `pgen`/`psam`/`pvar` is already canonical and is used exactly as given, so there is nothing to save for it.",
+                    "fa_icon": "fas fa-download"
+                },
+                "save_normalised_phenotypes": {
+                    "type": "boolean",
+                    "description": "Save the normalised phenotype and covariate files prepared for each analysis unit.",
+                    "help_text": "Normalised files are published to `<outdir>/phenotypes/<analysis_id>/` so that you can check how your trait was recoded before an association or heritability run consumed it. The set is the headered phenotype file, the separate quantitative and categorical covariate files, and the merged covariate file; the headerless serialisations and the normalisation log are never published.",
+                    "fa_icon": "fas fa-download"
+                },
+                "save_relatedness_matrices": {
+                    "type": "boolean",
+                    "description": "Save reusable GCTA and LDAK relatedness-matrix bundles built for heritability and mixed-model routes.",
+                    "help_text": "Matrices are published to `<outdir>/quality_control/relatedness_matrices/<key>/`, where `<key>` is the content-derived reuse key of the matrix: a digest over the cohort identity and every construction setting that changes the matrix. The path is key-addressed rather than cohort-addressed because one cohort can carry several distinct matrices, and because a matrix that several analyses share belongs to none of them. Only the merged bundle is saved; the per-partition files it was built from are not.",
+                    "fa_icon": "fas fa-download"
+                },
+                "save_association_predictions": {
+                    "type": "boolean",
+                    "description": "Save reusable REGENIE and LDAK-KVIK Step 1 prediction bundles.",
+                    "help_text": "Prediction bundles are absent from published output by default. Enable this control to publish analysis-attributed bundles under `<outdir>/intermediates/association_predictions/<method>/<analysis_id>/`.",
+                    "fa_icon": "fas fa-download"
+                }
+            }
+        },
+        "gcta_run_options": {
+            "title": "GCTA run configuration",
+            "type": "object",
+            "fa_icon": "fas fa-cogs",
+            "description": "Configure operational GCTA task partitioning independently of scientific analysis metadata.",
+            "properties": {
+                "gcta_grm_parts": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Number of operational partitions used to construct each GCTA relatedness matrix."
+                }
+            }
+        },
+        "regenie_options": {
+            "title": "REGENIE run configuration",
+            "type": "object",
+            "fa_icon": "fas fa-chart-line",
+            "description": "Configure operational REGENIE execution independently of per-analysis scientific method options.",
+            "properties": {
+                "regenie_step2_bsize": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Number of variants in each REGENIE Step 2 block."
+                },
+                "regenie_step1_mode": {
+                    "type": "string",
+                    "enum": ["standard", "chunked"],
+                    "description": "Run Step 1 in one task or through REGENIE's split-L0/run-L0/run-L1 execution family."
+                },
+                "regenie_step1_jobs": {
+                    "type": ["integer", "null"],
+                    "minimum": 1,
+                    "description": "Requested maximum number of L0 jobs for chunked Step 1. Required only when `regenie_step1_mode` is `chunked`."
+                },
+                "regenie_lowmem": {
+                    "type": "boolean",
+                    "description": "Use REGENIE's low-memory Step 1 implementation, keeping temporary predictions in the task work directory."
+                }
+            }
+        },
+        "harmonisation_options": {
+            "title": "Harmonisation options",
+            "type": "object",
+            "fa_icon": "fas fa-align-left",
+            "description": "Optional reference resources used when standardising summary statistics with GWASLab.",
+            "help_text": "Every association result is standardised by GWASLab whether or not these are supplied. Supplying them additionally allows GWASLab to check and flip alleles against the reference sequence, assign rsIDs, and infer the strand of palindromic variants. They are selected by the genome build declared for the analysis cohort, so a run mixing builds configures each build independently and an analysis on a build with no configured resource is standardised without one. Indexes are resolved automatically as `.fai`, `.tbi` or `.csi` sidecars.",
+            "properties": {
+                "gwaslab_reference_fasta_grch37": {
+                    "type": "string",
+                    "format": "file-path",
+                    "exists": true,
+                    "description": "Reference sequence FASTA for GRCh37 analyses.",
+                    "fa_icon": "fas fa-file"
+                },
+                "gwaslab_reference_fasta_grch38": {
+                    "type": "string",
+                    "format": "file-path",
+                    "exists": true,
+                    "description": "Reference sequence FASTA for GRCh38 analyses.",
+                    "fa_icon": "fas fa-file"
+                },
+                "gwaslab_rsid_vcf_grch37": {
+                    "type": "string",
+                    "format": "file-path",
+                    "exists": true,
+                    "description": "Indexed VCF or BCF used to assign rsIDs to GRCh37 analyses.",
+                    "fa_icon": "fas fa-file"
+                },
+                "gwaslab_rsid_vcf_grch38": {
+                    "type": "string",
+                    "format": "file-path",
+                    "exists": true,
+                    "description": "Indexed VCF or BCF used to assign rsIDs to GRCh38 analyses.",
+                    "fa_icon": "fas fa-file"
+                },
+                "gwaslab_strand_vcf_grch37": {
+                    "type": "string",
+                    "format": "file-path",
+                    "exists": true,
+                    "description": "Indexed VCF or BCF used to infer the strand of palindromic variants in GRCh37 analyses.",
+                    "fa_icon": "fas fa-file"
+                },
+                "gwaslab_strand_vcf_grch38": {
+                    "type": "string",
+                    "format": "file-path",
+                    "exists": true,
+                    "description": "Indexed VCF or BCF used to infer the strand of palindromic variants in GRCh38 analyses.",
+                    "fa_icon": "fas fa-file"
                 }
             }
         },
@@ -150,7 +295,7 @@
                 },
                 "multiqc_logo": {
                     "type": "string",
-                    "description": "Custom logo file to supply to MultiQC. File name must also be set in the MultiQC config file",
+                    "description": "Custom logo file to supply to MultiQC. File name must also be set in the MultiQC config file.",
                     "fa_icon": "fas fa-image",
                     "hidden": true
                 },
@@ -161,7 +306,7 @@
                 },
                 "validate_params": {
                     "type": "boolean",
-                    "description": "Boolean whether to validate parameters against the schema at runtime",
+                    "description": "Boolean whether to validate parameters against the schema at runtime.",
                     "default": true,
                     "fa_icon": "fas fa-check-square",
                     "hidden": true
@@ -169,8 +314,8 @@
                 "pipelines_testdata_base_path": {
                     "type": "string",
                     "fa_icon": "far fa-check-circle",
-                    "description": "Base URL or local path to location of pipeline test dataset files",
-                    "default": "https://raw.githubusercontent.com/nf-core/test-datasets/",
+                    "description": "Base URL or local path to location of pipeline test dataset files.",
+                    "default": "https://raw.githubusercontent.com/nf-core/test-datasets/gwas/",
                     "hidden": true
                 },
                 "trace_report_suffix": {
@@ -197,6 +342,18 @@
     "allOf": [
         {
             "$ref": "#/$defs/input_output_options"
+        },
+        {
+            "$ref": "#/$defs/save_controls"
+        },
+        {
+            "$ref": "#/$defs/gcta_run_options"
+        },
+        {
+            "$ref": "#/$defs/regenie_options"
+        },
+        {
+            "$ref": "#/$defs/harmonisation_options"
         },
         {
             "$ref": "#/$defs/institutional_config_options"

@@ -1,0 +1,90 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://raw.githubusercontent.com/nf-core/gwas/master/assets/schema_cohort_manifest.json",
+    "title": "nf-core/gwas pipeline - cohort manifest schema",
+    "description": "Schema for the cohort manifest provided with params.cohort_manifest. One row declares one cohort-owned PLINK 2, PLINK 1 or VCF genotype representation.",
+    "type": "array",
+    "items": {
+        "type": "object",
+        "properties": {
+            "cohort_id": {
+                "type": "string",
+                "pattern": "^\\S+$",
+                "description": "Unique identifier for the cohort and the key used by the analysis manifest.",
+                "errorMessage": "Cohort ID must be provided, must be unique across the cohort manifest and cannot contain spaces",
+                "meta": ["cohort"]
+            },
+            "genome_build": {
+                "type": "string",
+                "enum": ["GRCh37", "GRCh38"],
+                "description": "Genome build of the cohort genotypes.",
+                "errorMessage": "Genome build must be one of 'GRCh37' or 'GRCh38'",
+                "meta": ["build"]
+            },
+            "ancestry": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$",
+                "description": "Case-sensitive ancestry label carried through to output provenance.",
+                "errorMessage": "Ancestry must start with a letter or digit and contain only letters, digits, underscores, dots and dashes",
+                "meta": ["ancestry"]
+            },
+            "pgen": {
+                "type": "string",
+                "format": "file-path",
+                "exists": true,
+                "pattern": "^\\S+\\.pgen$",
+                "description": "PLINK 2 genotype file for the cohort.",
+                "errorMessage": "PLINK 2 genotype file cannot contain spaces, must exist and must have extension '.pgen'"
+            },
+            "psam": {
+                "type": "string",
+                "format": "file-path",
+                "exists": true,
+                "pattern": "^\\S+\\.psam$",
+                "description": "PLINK 2 sample file accompanying pgen.",
+                "errorMessage": "PLINK 2 sample file cannot contain spaces, must exist and must have extension '.psam'"
+            },
+            "pvar": {
+                "type": "string",
+                "format": "file-path",
+                "exists": true,
+                "pattern": "^\\S+\\.pvar(\\.zst)?$",
+                "description": "PLINK 2 variant file accompanying pgen.",
+                "errorMessage": "PLINK 2 variant file cannot contain spaces, must exist and must have extension '.pvar' or '.pvar.zst'"
+            },
+            "bed": {
+                "type": "string",
+                "format": "file-path",
+                "exists": true,
+                "pattern": "^\\S+\\.bed$",
+                "description": "PLINK 1 genotype file for the cohort. Supply together with bim and fam.",
+                "errorMessage": "PLINK 1 genotype file cannot contain spaces, must exist and must have extension '.bed'"
+            },
+            "bim": {
+                "type": "string",
+                "format": "file-path",
+                "exists": true,
+                "pattern": "^\\S+\\.bim$",
+                "description": "PLINK 1 variant file accompanying bed.",
+                "errorMessage": "PLINK 1 variant file cannot contain spaces, must exist and must have extension '.bim'"
+            },
+            "fam": {
+                "type": "string",
+                "format": "file-path",
+                "exists": true,
+                "pattern": "^\\S+\\.fam$",
+                "description": "PLINK 1 sample file accompanying bed.",
+                "errorMessage": "PLINK 1 sample file cannot contain spaces, must exist and must have extension '.fam'"
+            },
+            "vcf": {
+                "type": "string",
+                "format": "file-path",
+                "exists": true,
+                "pattern": "^\\S+\\.vcf(\\.gz|\\.bgz)?$",
+                "description": "VCF genotype file for the cohort, converted once to canonical PLINK 2.",
+                "errorMessage": "VCF file cannot contain spaces, must exist and must have extension '.vcf', '.vcf.gz' or '.vcf.bgz'"
+            }
+        },
+        "required": ["cohort_id", "genome_build", "ancestry"]
+    }
+}
