@@ -1,0 +1,184 @@
+nextflow_pipeline {
+
+    name "Test relational GCTA GREML method configuration"
+    script "../main.nf"
+    tag "pipeline"
+    tag "relational"
+    tag "heritability"
+    tag "gcta"
+
+
+    test("linked quantitative and binary analyses use GREML defaults and retain trait identity") {
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, 'gcta_greml_defaults')
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, 'gcta_greml_defaults', { rows ->
+                    def binary = RELATIONAL.analysis(projectDir, 'example_pgen_bt')
+                    binary.population_prevalence = 0.1
+                    rows << binary
+                    rows.each { row ->
+                        row.association_methods = ''
+                        row.heritability_methods = 'gcta_greml'
+                    }
+                })
+                gcta_grm_parts = 1
+            }
+        }
+
+        then {
+            def root = new File("${params.outdir}/heritability/individual/gcta_greml")
+            def binary = new File(root, 'example_pgen_bt/example_pgen_bt.gcta_greml.hsq').text
+            def quantitative = new File(root, 'example_pgen_qt/example_pgen_qt.gcta_greml.hsq').text
+            def stableNameHeritability = getAllFilesFromDir(
+                root.toString(),
+                relative: true,
+                includeDir: true,
+            ).findAll { path -> path.toString() }
+            def stablePathHeritability = getAllFilesFromDir(
+                root.toString(),
+                ignoreFile: 'tests/.nftignore',
+            )
+            def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'GCTA_MAKEGRMPART') == 1 },
+                { assert TRACE.count(workflow, 'CUSTOM_GCTAMERGEGRMPARTS') == 1 },
+                { assert TRACE.tags(workflow, 'GCTA_REML').sort() == ['example_pgen_bt_example_pgen_bt', 'example_pgen_qt_example_pgen_qt'] },
+                { assert binary.contains('V(G)/Vp_L') },
+                { assert !quantitative.contains('V(G)/Vp_L') },
+                { assert snapshot(stableNameHeritability, stablePathHeritability).match('heritability') },
+                { assert snapshot(removeNextflowVersion(versions.toString())).match('versions') },
+            )
+        }
+    }
+
+    test("analysis-specific matrix and estimator overrides have separate reuse identities") {
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, 'gcta_greml_overrides')
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, 'gcta_greml_overrides', { rows ->
+                    def binary = RELATIONAL.analysis(projectDir, 'example_pgen_bt')
+                    rows << binary
+                    def estimatorOnly = new LinkedHashMap(rows[0])
+                    estimatorOnly.analysis_id = 'qt_unconstrained'
+                    rows << estimatorOnly
+                    rows.each { row ->
+                        row.association_methods = ''
+                        row.heritability_methods = 'gcta_greml'
+                    }
+                })
+                method_options = RELATIONAL.methodOptions(outputDir, 'gcta_greml_overrides', [
+                    example_pgen_bt: [gcta: [grm_maf: 0.01]],
+                    qt_unconstrained: [gcta: [reml_no_constrain: true]],
+                ])
+                gcta_grm_parts = 1
+                save_relatedness_matrices = true
+            }
+        }
+
+        then {
+            def matrices = new File("${params.outdir}/quality_control/relatedness_matrices")
+            def results = new File("${params.outdir}/heritability/individual/gcta_greml")
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'GCTA_MAKEGRMPART') == 2 },
+                { assert TRACE.count(workflow, 'CUSTOM_GCTAMERGEGRMPARTS') == 2 },
+                { assert TRACE.count(workflow, 'GCTA_REML') == 3 },
+                { assert matrices.list().size() == 2 },
+                { assert results.list().toList().sort() == ['example_pgen_bt', 'example_pgen_qt', 'qt_unconstrained'] },
+            )
+        }
+    }
+
+    def invalidOptions = [
+        [
+            name: 'malformed document',
+            options: '{"example_pgen_qt":',
+            expected: ["analysis_id '<document>'", "option '<root>'", 'malformed JSON'],
+        ],
+        [
+            name: 'unknown analysis',
+            options: [missing_analysis: [gcta: [reml_no_constrain: true]]],
+            expected: ["analysis_id 'missing_analysis'", "option '<analysis>'", 'not declared in the analysis manifest'],
+        ],
+        [
+            name: 'unknown option',
+            options: [example_pgen_qt: [gcta: [mystery: true]]],
+            expected: ["analysis_id 'example_pgen_qt'", "option 'gcta.mystery'", 'unknown option'],
+        ],
+        [
+            name: 'invalid scalar type',
+            options: [example_pgen_qt: [gcta: [grm_maf: 'small']]],
+            expected: ["analysis_id 'example_pgen_qt'", "option 'gcta.grm_maf'", 'number between 0 and 0.5'],
+        ],
+        [
+            name: 'invalid resource',
+            options: [example_pgen_qt: [gcta: [grm_extract: '/definitely/missing/extract.txt']]],
+            expected: ["analysis_id 'example_pgen_qt'", "option 'gcta.grm_extract'", 'does not exist'],
+        ],
+        [
+            name: 'unselected family',
+            options: [example_pgen_qt: [gcta: [reml_no_constrain: true]]],
+            unselected: true,
+            expected: ["analysis_id 'example_pgen_qt'", "option 'gcta.reml_no_constrain'", "does not select a GCTA method"],
+        ],
+        [
+            name: 'dense MAF option on fastGWA',
+            options: [example_pgen_qt: [gcta: [grm_maf: 0.01]]],
+            associationMethod: 'gcta_fastgwa',
+            heritabilityMethod: '',
+            expected: ["analysis_id 'example_pgen_qt'", "option 'gcta.grm_maf'", "consumed by 'gcta_greml' only"],
+        ],
+        [
+            name: 'dense extract resource on fastGWA',
+            resourceOption: true,
+            associationMethod: 'gcta_fastgwa',
+            heritabilityMethod: '',
+            expected: ["analysis_id 'example_pgen_qt'", "option 'gcta.grm_extract'", "consumed by 'gcta_greml' only"],
+        ],
+        [
+            name: 'operational partition in document',
+            options: [example_pgen_qt: [gcta: [gcta_grm_parts: 2]]],
+            expected: ["analysis_id 'example_pgen_qt'", "option 'gcta.gcta_grm_parts'", 'run/profile configuration'],
+        ],
+    ]
+
+    invalidOptions.each { scenario ->
+        test("method-options rejects ${scenario.name} before matrix construction") {
+            when {
+                params {
+                    outdir = "$outputDir"
+                    cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, "gcta_options_${scenario.name.replace(' ', '_')}")
+                    analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, "gcta_options_${scenario.name.replace(' ', '_')}", { rows ->
+                        rows[0].association_methods = scenario.containsKey('associationMethod')
+                            ? scenario.associationMethod
+                            : scenario.unselected ? 'plink2' : ''
+                        rows[0].heritability_methods = scenario.containsKey('heritabilityMethod')
+                            ? scenario.heritabilityMethod
+                            : scenario.unselected ? '' : 'gcta_greml'
+                    })
+                    method_options = RELATIONAL.methodOptions(
+                        outputDir,
+                        "gcta_options_${scenario.name.replace(' ', '_')}",
+                        scenario.resourceOption
+                            ? [example_pgen_qt: [gcta: [grm_extract: RELATIONAL.resource(outputDir, 'fastgwa-unused-extract.txt', 'rs1\n')]]]
+                            : scenario.options,
+                    )
+                    gcta_grm_parts = 1
+                }
+            }
+
+            then {
+                def report = VALIDATION.report(outputDir, workflow.stdout)
+                assertAll(
+                    { assert !workflow.success },
+                    { assert report.contains(params.method_options.toString()) },
+                    { assert scenario.expected.every { fragment -> report.contains(fragment) } },
+                    { assert TRACE.count(workflow, 'GCTA_MAKEGRMPART') == 0 },
+                )
+            }
+        }
+    }
+}

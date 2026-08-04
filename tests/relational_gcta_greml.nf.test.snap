@@ -1,0 +1,47 @@
+{
+    "versions": {
+        "content": [
+            {
+                "CUSTOM_GCTAMERGEGRMPARTS": {
+                    "coreutils": 9.5
+                },
+                "GCTA_MAKEGRMPART": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_REML": {
+                    "gcta": "1.94.1"
+                },
+                "NORMALISE_PHENOTYPES": {
+                    "python": "3.14.5"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-07-31T19:44:46.147060468"
+    },
+    "heritability": {
+        "content": [
+            [
+                "example_pgen_bt",
+                "example_pgen_bt/example_pgen_bt.gcta_greml.hsq",
+                "example_pgen_qt",
+                "example_pgen_qt/example_pgen_qt.gcta_greml.hsq"
+            ],
+            [
+                "example_pgen_bt.gcta_greml.hsq:md5,95af41a60a74ab268f51277a0013ef96",
+                "example_pgen_qt.gcta_greml.hsq:md5,45be7eb46e7ddff5b0f7dc59dba85fcd"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-07-31T19:44:46.11444435"
+    }
+}

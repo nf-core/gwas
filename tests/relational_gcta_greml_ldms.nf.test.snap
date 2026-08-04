@@ -1,0 +1,59 @@
+{
+    "versions": {
+        "content": [
+            {
+                "CUSTOM_GCTACREATEMGRMMANIFEST": {
+                    "coreutils": 9.5
+                },
+                "CUSTOM_GCTAMERGEGRMPARTS": {
+                    "coreutils": 9.5
+                },
+                "CUSTOM_GCTASTRATIFYLDSCORES": {
+                    "r-base": "4.2.1"
+                },
+                "GCTA_CALCULATELDSCORES": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_MAKEGRMPART": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_REMLLDMS": {
+                    "gcta": "1.94.1"
+                },
+                "NORMALISE_PHENOTYPES": {
+                    "python": "3.14.5"
+                },
+                "PLINK2_MAKEBED": {
+                    "plink2": "2.0.0-a.6.9LM"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-07-31T19:59:24.64803387"
+    },
+    "heritability": {
+        "content": [
+            [
+                "example_pgen_bt",
+                "example_pgen_bt/example_pgen_bt.gcta_greml_ldms.hsq",
+                "example_pgen_qt",
+                "example_pgen_qt/example_pgen_qt.gcta_greml_ldms.hsq"
+            ],
+            [
+                "example_pgen_bt.gcta_greml_ldms.hsq:md5,7371eff1054a8015a432a2e9191c760b",
+                "example_pgen_qt.gcta_greml_ldms.hsq:md5,285357c9f0c7dc35dc5dd16dd97b17d1"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-07-31T19:59:24.645751588"
+    }
+}
