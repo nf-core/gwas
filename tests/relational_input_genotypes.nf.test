@@ -1,0 +1,197 @@
+nextflow_pipeline {
+
+    name "Test linked-manifest cohort genotype representations"
+    script "../main.nf"
+    tag "pipeline"
+    tag "input"
+    tag "relational"
+    tag "genotypes"
+
+    def encodings = [
+        plink2: [cohort: 'example_pgen', conversion: null],
+        plink1: [cohort: 'example_bfile', conversion: 'PLINK2_MAKEPGEN'],
+        vcf: [cohort: 'example_vcf', conversion: 'PLINK2_VCF'],
+    ]
+
+    encodings.each { encoding, fixture ->
+        test("a ${encoding} cohort completes a PLINK 2 association through linked manifests") {
+
+            when {
+                params {
+                    outdir = "$outputDir"
+                    cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, "${encoding}_association", { rows ->
+                        rows[0] = RELATIONAL.cohort(fixture.cohort)
+                    })
+                    analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, "${encoding}_association", { rows ->
+                        rows[0].analysis_id = "${fixture.cohort}_relational_qt"
+                        rows[0].cohort_id = fixture.cohort
+                    })
+                }
+            }
+
+            then {
+                def analysisId = "${fixture.cohort}_relational_qt"
+                def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
+                def stable_name_association = getAllFilesFromDir(
+                    "${params.outdir}/association",
+                    relative: true,
+                    includeDir: true,
+                ).findAll { path -> path.toString() }
+                def stable_path_association = getAllFilesFromDir(
+                    "${params.outdir}/association",
+                    ignoreFile: 'tests/.nftignore',
+                )
+                assertAll(
+                    { assert workflow.success },
+                    { assert TRACE.tags(workflow, 'NORMALISE_PHENOTYPES') == [analysisId] },
+                    { assert TRACE.count(workflow, 'PLINK2_GLM') == 1 },
+                    { assert TRACE.count(workflow, 'PLINK2_MAKEPGEN') == (fixture.conversion == 'PLINK2_MAKEPGEN' ? 1 : 0) },
+                    { assert TRACE.count(workflow, 'PLINK2_VCF') == (fixture.conversion == 'PLINK2_VCF' ? 1 : 0) },
+                    { assert snapshot(stable_name_association, stable_path_association).match("${encoding}-association") },
+                    { assert snapshot(removeNextflowVersion(versions.toString())).match("${encoding}-versions") },
+                )
+            }
+        }
+    }
+
+    test("one VCF cohort is converted once and fans out to every linked analysis") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, "vcf_fanout", { rows ->
+                    rows[0] = RELATIONAL.cohort('example_vcf')
+                })
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, "vcf_fanout", { rows ->
+                    def template = rows[0]
+                    rows.clear()
+                    (1..4).each { index ->
+                        def analysis = new LinkedHashMap(template)
+                        analysis.analysis_id = "example_vcf_qt${index}"
+                        analysis.cohort_id = 'example_vcf'
+                        analysis.trait_id = "QT${index}"
+                        rows << analysis
+                    }
+                })
+            }
+        }
+
+        then {
+            def expected = (1..4).collect { index -> "example_vcf_qt${index}" }
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'PLINK2_VCF') == 1 },
+                { assert TRACE.count(workflow, 'PLINK2_MAKEPGEN') == 0 },
+                { assert TRACE.tags(workflow, 'NORMALISE_PHENOTYPES').sort() == expected },
+                { assert TRACE.count(workflow, 'PLINK2_GLM') == expected.size() },
+                { assert new File("${params.outdir}/association/plink2").list().toList().sort() == expected },
+            )
+        }
+    }
+
+    def invalidRepresentations = [
+        [
+            name: 'no genotype representation',
+            mutate: { rows -> ['pgen', 'psam', 'pvar'].each { field -> rows[0][field] = '' } },
+            fields: ['pgen', 'psam', 'pvar', 'bed', 'bim', 'fam', 'vcf'],
+            message: 'no genotype group is populated',
+        ],
+        [
+            name: 'more than one genotype representation',
+            mutate: { rows ->
+                rows[0].bed = rows[0].pgen.toString().replaceFirst(/\.pgen$/, '.bed')
+                rows[0].bim = rows[0].pvar.toString().replaceFirst(/\.pvar$/, '.bim')
+                rows[0].fam = rows[0].psam.toString().replaceFirst(/\.psam$/, '.fam')
+            },
+            fields: ['bed'],
+            message: 'a second genotype group is populated',
+        ],
+        [
+            name: 'an incomplete multi-file representation',
+            mutate: { rows -> rows[0].psam = '' },
+            fields: ['psam'],
+            message: "genotype group 'plink2' is only partly populated",
+        ],
+    ]
+
+    invalidRepresentations.eachWithIndex { invalid, index ->
+        test("${invalid.name} is rejected before task submission") {
+
+            when {
+                params {
+                    outdir = "$outputDir"
+                    cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, "invalid_genotypes_${index}", invalid.mutate)
+                    analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, "invalid_genotypes_${index}")
+                }
+            }
+
+            then {
+                def report = VALIDATION.report(outputDir, workflow.stdout)
+                assertAll(
+                    { assert !workflow.success },
+                    { assert report.contains(params.cohort_manifest.toString()) },
+                    { assert report.contains("row 2 (cohort_id 'example_pgen')") },
+                    { invalid.fields.each { field -> assert report.contains("'${field}'") } },
+                    { assert report.contains(invalid.message) },
+                    { assert TRACE.count(workflow, 'NORMALISE_PHENOTYPES') == 0 },
+                    { assert TRACE.count(workflow, 'PLINK2_MAKEPGEN') == 0 },
+                    { assert TRACE.count(workflow, 'PLINK2_VCF') == 0 },
+                )
+            }
+        }
+    }
+
+    test("vcf_index is rejected because it is absent from the cohort contract") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.appendColumn(
+                    RELATIONAL.cohorts(projectDir, outputDir, "unexpected_vcf_index"),
+                    'vcf_index',
+                    'unused.vcf.gz.tbi',
+                )
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, "unexpected_vcf_index")
+            }
+        }
+
+        then {
+            def report = VALIDATION.report(outputDir, workflow.stdout)
+            assertAll(
+                { assert !workflow.success },
+                { assert report.contains(params.cohort_manifest.toString()) },
+                { assert report.contains('header row 1') },
+                { assert report.contains("unexpected column headers: 'vcf_index'") },
+                { assert TRACE.count(workflow, 'NORMALISE_PHENOTYPES') == 0 },
+            )
+        }
+    }
+
+    test("a conflicting duplicate cohort definition fails before task submission") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, "conflicting_duplicate_cohort", { rows ->
+                    def duplicate = new LinkedHashMap(rows[0])
+                    duplicate.ancestry = 'AFR'
+                    rows << duplicate
+                })
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, "conflicting_duplicate_cohort")
+            }
+        }
+
+        then {
+            def report = VALIDATION.report(outputDir, workflow.stdout)
+            assertAll(
+                { assert !workflow.success },
+                { assert report.contains(params.cohort_manifest.toString()) },
+                { assert report.contains("row 3 (cohort_id 'example_pgen')") },
+                { assert report.contains("field 'cohort_id'") },
+                { assert report.contains("duplicate cohort_id 'example_pgen' conflicts with row 2") },
+                { assert report.contains("field 'ancestry'") },
+                { assert TRACE.count(workflow, 'NORMALISE_PHENOTYPES') == 0 },
+            )
+        }
+    }
+}

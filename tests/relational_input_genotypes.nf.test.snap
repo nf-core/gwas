@@ -1,0 +1,131 @@
+{
+    "vcf-association": {
+        "content": [
+            [
+                "plink2",
+                "plink2/example_vcf_relational_qt",
+                "plink2/example_vcf_relational_qt/example_vcf_relational_qt.plink2.glm.linear"
+            ],
+            [
+                "example_vcf_relational_qt.plink2.glm.linear:md5,ea3c5efee75bd852b546b6be5d07db5c"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-07-31T20:14:38.606212176"
+    },
+    "vcf-versions": {
+        "content": [
+            {
+                "GWASLAB_HARMONIZE": {
+                    "gwaslab": "4.1.9",
+                    "python": "3.12.13"
+                },
+                "NORMALISE_PHENOTYPES": {
+                    "python": "3.14.5"
+                },
+                "PLINK2_GLM": {
+                    "plink2": "2.0.0-a.6.9LM"
+                },
+                "PLINK2_VCF": {
+                    "plink2": "2.0.0-a.6.9LM"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-02T08:21:57.233256706"
+    },
+    "plink2-versions": {
+        "content": [
+            {
+                "GWASLAB_HARMONIZE": {
+                    "gwaslab": "4.1.9",
+                    "python": "3.12.13"
+                },
+                "NORMALISE_PHENOTYPES": {
+                    "python": "3.14.5"
+                },
+                "PLINK2_GLM": {
+                    "plink2": "2.0.0-a.6.9LM"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-02T08:21:11.735358896"
+    },
+    "plink2-association": {
+        "content": [
+            [
+                "plink2",
+                "plink2/example_pgen_relational_qt",
+                "plink2/example_pgen_relational_qt/example_pgen_relational_qt.plink2.glm.linear"
+            ],
+            [
+                "example_pgen_relational_qt.plink2.glm.linear:md5,ea3c5efee75bd852b546b6be5d07db5c"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-07-31T20:13:56.253012216"
+    },
+    "plink1-association": {
+        "content": [
+            [
+                "plink2",
+                "plink2/example_bfile_relational_qt",
+                "plink2/example_bfile_relational_qt/example_bfile_relational_qt.plink2.glm.linear"
+            ],
+            [
+                "example_bfile_relational_qt.plink2.glm.linear:md5,8551bb467bfe6e7462e5375730bcb6af"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-07-31T20:14:17.15503642"
+    },
+    "plink1-versions": {
+        "content": [
+            {
+                "GWASLAB_HARMONIZE": {
+                    "gwaslab": "4.1.9",
+                    "python": "3.12.13"
+                },
+                "NORMALISE_PHENOTYPES": {
+                    "python": "3.14.5"
+                },
+                "PLINK2_GLM": {
+                    "plink2": "2.0.0-a.6.9LM"
+                },
+                "PLINK2_MAKEPGEN": {
+                    "plink2": "2.0.0-a.6.9LM"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-02T08:22:41.018229047"
+    }
+}

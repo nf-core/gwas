@@ -1,0 +1,52 @@
+{
+    "versions": {
+        "content": [
+            {
+                "GWASLAB_HARMONIZE": {
+                    "gwaslab": "4.1.9",
+                    "python": "3.12.13"
+                },
+                "NORMALISE_PHENOTYPES": {
+                    "python": "3.14.5"
+                },
+                "PLINK2_GLM": {
+                    "plink2": "2.0.0-a.6.9LM"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-02T08:23:34.055490838"
+    },
+    "association": {
+        "content": [
+            [
+                "plink2",
+                "plink2/example_pgen_bt",
+                "plink2/example_pgen_bt/example_pgen_bt.plink2.glm.logistic.hybrid",
+                "plink2/example_pgen_bt_no_covariates",
+                "plink2/example_pgen_bt_no_covariates/example_pgen_bt_no_covariates.plink2.glm.logistic.hybrid",
+                "plink2/example_pgen_qt",
+                "plink2/example_pgen_qt/example_pgen_qt.plink2.glm.linear",
+                "plink2/example_pgen_qt_no_covariates",
+                "plink2/example_pgen_qt_no_covariates/example_pgen_qt_no_covariates.plink2.glm.linear"
+            ],
+            [
+                "example_pgen_bt.plink2.glm.logistic.hybrid:md5,83d85cc0bda51b829ba43323abfd3530",
+                "example_pgen_bt_no_covariates.plink2.glm.logistic.hybrid:md5,192821bb0fe11c6999a7b72fe7fd4f92",
+                "example_pgen_qt.plink2.glm.linear:md5,ea3c5efee75bd852b546b6be5d07db5c",
+                "example_pgen_qt_no_covariates.plink2.glm.linear:md5,cad6b357287faf0606c24fc9ad5cf09c"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-07-31T20:04:43.52544375"
+    }
+}
