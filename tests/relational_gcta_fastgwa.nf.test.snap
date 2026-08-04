@@ -1,0 +1,60 @@
+{
+    "versions": {
+        "content": [
+            {
+                "CUSTOM_GCTAMERGEGRMPARTS": {
+                    "coreutils": 9.5
+                },
+                "GCTA_FASTGWA": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_MAKEBKSPARSE": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_MAKEGRMPART": {
+                    "gcta": "1.94.1"
+                },
+                "GWASLAB_HARMONIZE": {
+                    "gwaslab": "4.1.9",
+                    "python": "3.12.13"
+                },
+                "NORMALISE_PHENOTYPES": {
+                    "python": "3.14.5"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-02T08:19:22.317815409"
+    },
+    "association": {
+        "content": [
+            [
+                "example_pgen_qt",
+                "example_pgen_qt/example_pgen_qt.gcta_fastgwa.fastGWA",
+                "fastgwa_binary",
+                "fastgwa_binary/fastgwa_binary.gcta_fastgwa.fastGWA",
+                "fastgwa_different",
+                "fastgwa_different/fastgwa_different.gcta_fastgwa.fastGWA",
+                "fastgwa_equivalent",
+                "fastgwa_equivalent/fastgwa_equivalent.gcta_fastgwa.fastGWA"
+            ],
+            [
+                "example_pgen_qt.gcta_fastgwa.fastGWA:md5,aeb97ade7c85552eed84b2e327570474",
+                "fastgwa_binary.gcta_fastgwa.fastGWA:md5,2e5aec6ca5f73f58acaf2dbb1d3b8ab3",
+                "fastgwa_different.gcta_fastgwa.fastGWA:md5,aeb97ade7c85552eed84b2e327570474",
+                "fastgwa_equivalent.gcta_fastgwa.fastGWA:md5,aeb97ade7c85552eed84b2e327570474"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-07-31T19:58:18.286372226"
+    }
+}

@@ -1,0 +1,227 @@
+nextflow_pipeline {
+
+    name "Test relational LDAK-KVIK method configuration"
+    script "../main.nf"
+    tag "pipeline"
+    tag "relational"
+    tag "association"
+    tag "ldak"
+
+
+    test("linked quantitative and binary analyses use KVIK defaults and retain output attribution") {
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, 'ldak_kvik_defaults', { rows ->
+                    def bundle = RELATIONAL.twoChromosomePlink1(projectDir, outputDir, 'ldak_kvik_defaults')
+                    rows[0].cohort_id = 'example_bfile'
+                    ['pgen', 'psam', 'pvar', 'vcf'].each { field -> rows[0][field] = '' }
+                    rows[0].bed = bundle.bed
+                    rows[0].bim = bundle.bim
+                    rows[0].fam = bundle.fam
+                })
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, 'ldak_kvik_defaults', { rows ->
+                    rows[0] = RELATIONAL.analysis(projectDir, 'example_bfile_qt')
+                    def binary = RELATIONAL.analysis(projectDir, 'example_pgen_bt')
+                    binary.cohort_id = rows[0].cohort_id
+                    rows << binary
+                    rows.each { row ->
+                        row.association_methods = 'ldak_kvik'
+                        row.heritability_methods = ''
+                    }
+                })
+            }
+        }
+
+        then {
+            def nativeRoot = new File("${params.outdir}/association/ldak_kvik")
+            def harmonisedRoot = new File("${params.outdir}/summary_statistics")
+            def stableNameAssociation = getAllFilesFromDir(
+                nativeRoot.toString(),
+                relative: true,
+                includeDir: true,
+            ).findAll { path -> path.toString() }
+            def stablePathAssociation = getAllFilesFromDir(
+                nativeRoot.toString(),
+                ignoreFile: 'tests/.nftignore',
+            )
+            def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'LDAK_KVIKSTEP1') == 2 },
+                { assert TRACE.count(workflow, 'LDAK_KVIKSTEP2') == 2 },
+                { assert TRACE.count(workflow, 'GWASLAB_HARMONIZE') == 2 },
+                { assert new File(harmonisedRoot, 'example_bfile_qt/example_bfile_qt.ldak_kvik.gwaslab.tsv.gz').exists() },
+                { assert new File(harmonisedRoot, 'example_pgen_bt/example_pgen_bt.ldak_kvik.gwaslab.tsv.gz').exists() },
+                { assert snapshot(stableNameAssociation, stablePathAssociation).match('association') },
+                { assert snapshot(removeNextflowVersion(versions.toString())).match('versions') },
+            )
+        }
+    }
+
+    test("KVIK predictor policies and resource content define prediction reuse without changing focal identity") {
+        tag "association_predictions"
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, 'ldak_kvik_prediction_identity', { rows ->
+                    def bundle = RELATIONAL.twoChromosomePlink1(projectDir, outputDir, 'ldak_kvik_prediction_identity')
+                    rows[0].cohort_id = 'example_bfile'
+                    ['pgen', 'psam', 'pvar', 'vcf'].each { field -> rows[0][field] = '' }
+                    rows[0].bed = bundle.bed
+                    rows[0].bim = bundle.bim
+                    rows[0].fam = bundle.fam
+                })
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, 'ldak_kvik_prediction_identity', { rows ->
+                    rows[0] = RELATIONAL.analysis(projectDir, 'example_bfile_qt')
+                    ['all_reuse', 'thin_common', 'provided_a', 'provided_b', 'provided_changed'].each { analysisId ->
+                        def analysis = new LinkedHashMap(rows[0])
+                        analysis.analysis_id = analysisId
+                        rows << analysis
+                    }
+                    rows.each { row ->
+                        row.association_methods = 'ldak_kvik'
+                        row.heritability_methods = ''
+                    }
+                })
+                method_options = RELATIONAL.methodOptions(outputDir, 'ldak_kvik_prediction_identity', [
+                    thin_common: [ldak: [kvik_step1_subset: 'thin_common']],
+                    provided_a: [ldak: [kvik_step1_subset: 'provided', predictor_extract: RELATIONAL.predictors(projectDir, outputDir, 'provided-a.in', 8)]],
+                    provided_b: [ldak: [kvik_step1_subset: 'provided', predictor_extract: RELATIONAL.predictors(projectDir, outputDir, 'provided-b.in', 8)]],
+                    provided_changed: [ldak: [kvik_step1_subset: 'provided', predictor_extract: RELATIONAL.predictors(projectDir, outputDir, 'provided-changed.in', 9)]],
+                ])
+                save_association_predictions = true
+            }
+        }
+
+        then {
+            def nativeRoot = new File("${params.outdir}/association/ldak_kvik")
+            def predictionRoot = new File("${params.outdir}/intermediates/association_predictions/ldak_kvik")
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'LDAK_THINCOMMON') == 1 },
+                { assert TRACE.count(workflow, 'LDAK_KVIKSTEP1') == 4 },
+                { assert TRACE.count(workflow, 'LDAK_KVIKSTEP2') == 6 },
+                { assert TRACE.count(workflow, 'GWASLAB_HARMONIZE') == 6 },
+                { assert nativeRoot.list().toList().sort() == ['all_reuse', 'example_bfile_qt', 'provided_a', 'provided_b', 'provided_changed', 'thin_common'] },
+                { assert predictionRoot.list().toList().sort() == ['all_reuse', 'example_bfile_qt', 'provided_a', 'provided_b', 'provided_changed', 'thin_common'] },
+                { assert predictionRoot.listFiles().every { directory -> directory.list().size() == 3 } },
+            )
+        }
+    }
+
+    def invalidOptions = [
+        [
+            name: 'unknown option',
+            options: [ldak: [mystery: true]],
+            expected: ["option 'ldak.mystery'", 'unknown option'],
+        ],
+        [
+            name: 'invalid model',
+            options: [ldak: [model: 'animal']],
+            expected: ["option 'ldak.model'", "'human_default' or 'custom'"],
+        ],
+        [
+            name: 'human model with custom power',
+            options: [ldak: [power: -0.5]],
+            expected: ["option 'ldak.power'", "model 'human_default' fixes power at -0.25"],
+        ],
+        [
+            name: 'invalid weights policy',
+            options: [ldak: [weights_policy: 'automatic']],
+            expected: ["option 'ldak.weights_policy'", "'equal', 'default' or 'provided'"],
+        ],
+        [
+            name: 'KVIK irrelevant equal weights policy',
+            options: [ldak: [weights_policy: 'equal']],
+            expected: ["option 'ldak.weights_policy'", 'consumed by LDAK kinship methods only'],
+        ],
+        [
+            name: 'KVIK irrelevant default weights policy',
+            options: [ldak: [weights_policy: 'default']],
+            expected: ["option 'ldak.weights_policy'", 'consumed by LDAK kinship methods only'],
+        ],
+        [
+            name: 'provided weights without resource',
+            options: [ldak: [weights_policy: 'provided']],
+            expected: ["option 'ldak.weights'", "weights_policy is 'provided'"],
+        ],
+        [
+            name: 'irrelevant weights resource for equal policy',
+            options: [ldak: [weights_policy: 'equal', weights: '/definitely/missing/weights.txt']],
+            expected: ["option 'ldak.weights'", "only accepted when weights_policy is 'provided'"],
+        ],
+        [
+            name: 'KVIK irrelevant provided weights',
+            options: [ldak: [weights_policy: 'provided', weights: { projectDir, outputDir -> RELATIONAL.resource(outputDir, 'weights.txt', 'rs1 1\n') }]],
+            expected: ["option 'ldak.weights'", "consumed by LDAK kinship methods only"],
+        ],
+        [
+            name: 'provided predictor subset without resource',
+            options: [ldak: [kvik_step1_subset: 'provided']],
+            expected: ["option 'ldak.predictor_extract'", "kvik_step1_subset is 'provided'"],
+        ],
+        [
+            name: 'irrelevant predictor resource for all policy',
+            options: [ldak: [kvik_step1_subset: 'all', predictor_extract: '/definitely/missing/predictors.in']],
+            expected: ["option 'ldak.predictor_extract'", "only accepted when kvik_step1_subset is 'provided'"],
+        ],
+        [
+            name: 'missing predictor resource',
+            options: [ldak: [kvik_step1_subset: 'provided', predictor_extract: '/definitely/missing/predictors.in']],
+            expected: ["option 'ldak.predictor_extract'", 'does not exist'],
+        ],
+        [
+            name: 'invalid predictor policy',
+            options: [ldak: [kvik_step1_subset: 'random']],
+            expected: ["option 'ldak.kvik_step1_subset'", "'all', 'thin_common' or 'provided'"],
+        ],
+        [
+            name: 'KVIK irrelevant relatedness filtering',
+            options: [ldak: [relatedness_filter: true]],
+            expected: ["option 'ldak.relatedness_filter'", 'consumed by LDAK kinship methods only'],
+        ],
+        [
+            name: 'operational tuning in document',
+            options: [ldak: [threads: 2]],
+            expected: ["option 'ldak.threads'", 'run/profile configuration'],
+        ],
+    ]
+
+    invalidOptions.each { scenario ->
+        test("method-options rejects ${scenario.name} before LDAK tasks") {
+            when {
+                params {
+                    outdir = "$outputDir"
+                    cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, "ldak_options_${scenario.name.replace(' ', '_')}")
+                    analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, "ldak_options_${scenario.name.replace(' ', '_')}", { rows ->
+                        rows[0].association_methods = 'ldak_kvik'
+                        rows[0].heritability_methods = ''
+                    })
+                    method_options = RELATIONAL.methodOptions(
+                        outputDir,
+                        "ldak_options_${scenario.name.replace(' ', '_')}",
+                        [example_pgen_qt: scenario.options.collectEntries { family, options ->
+                            [(family): options.collectEntries { option, value ->
+                                [(option): value instanceof Closure ? value(projectDir, outputDir) : value]
+                            }]
+                        }],
+                    )
+                }
+            }
+
+            then {
+                def report = VALIDATION.report(outputDir, workflow.stdout)
+                assertAll(
+                    { assert !workflow.success },
+                    { assert report.contains(params.method_options.toString()) },
+                    { assert report.contains("analysis_id 'example_pgen_qt'") },
+                    { assert scenario.expected.every { fragment -> report.contains(fragment) } },
+                    { assert TRACE.count(workflow, 'LDAK_THINCOMMON') == 0 },
+                    { assert TRACE.count(workflow, 'LDAK_KVIKSTEP1') == 0 },
+                    { assert TRACE.count(workflow, 'LDAK_CALCKINS') == 0 },
+                )
+            }
+        }
+    }
+}

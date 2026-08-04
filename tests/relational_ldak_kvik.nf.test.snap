@@ -1,0 +1,54 @@
+{
+    "versions": {
+        "content": [
+            {
+                "GWASLAB_HARMONIZE": {
+                    "gwaslab": "4.1.9",
+                    "python": "3.12.13"
+                },
+                "LDAK_KVIKSTEP1": {
+                    "ldak6": 6
+                },
+                "LDAK_KVIKSTEP2": {
+                    "ldak6": 6
+                },
+                "NORMALISE_PHENOTYPES": {
+                    "python": "3.14.5"
+                },
+                "PLINK2_MAKEBED": {
+                    "plink2": "2.0.0-a.6.9LM"
+                },
+                "PLINK2_MAKEPGEN": {
+                    "plink2": "2.0.0-a.6.9LM"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-02T08:26:28.954943139"
+    },
+    "association": {
+        "content": [
+            [
+                "example_bfile_qt",
+                "example_bfile_qt/example_bfile_qt.ldak_kvik.step2.assoc",
+                "example_pgen_bt",
+                "example_pgen_bt/example_pgen_bt.ldak_kvik.step2.assoc"
+            ],
+            [
+                "example_bfile_qt.ldak_kvik.step2.assoc:md5,0b69df7a991fdef52860d13401833485",
+                "example_pgen_bt.ldak_kvik.step2.assoc:md5,20415317512c12d4b29e614bc35ac784"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-07-31T20:08:57.397230018"
+    }
+}

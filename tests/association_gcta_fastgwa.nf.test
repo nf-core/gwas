@@ -1,0 +1,144 @@
+nextflow_pipeline {
+
+    name "Test GCTA fastGWA-MLM association route"
+    script "../main.nf"
+    tag "pipeline"
+    tag "association"
+    tag "gcta"
+    tag "gcta_fastgwa"
+    profile "test_gcta_fastgwa"
+
+    def work_files = { output_dir ->
+        def files = []
+        new File(new File(output_dir.toString()).parentFile, 'work').eachFileRecurse { entry ->
+            if (entry.isFile()) {
+                files << entry
+            }
+        }
+        return files
+    }
+
+    def gzip_rows = { entry ->
+        return new java.util.zip.GZIPInputStream(new FileInputStream(entry))
+            .withReader('UTF-8') { reader -> reader.readLines() }
+    }
+
+    def analysis_ids = [
+        'fastgwa_and_greml',
+        'fastgwa_binary',
+        'fastgwa_different',
+        'fastgwa_same_1',
+        'fastgwa_same_2',
+    ]
+
+    def executionModes = [
+        [suffix: '', stub: false],
+        [suffix: ' - stub', stub: true],
+    ]
+
+    executionModes.each { mode ->
+        test("profile routes quantitative and binary fastGWA with matrix reuse and GREML separation${mode.suffix}") {
+
+            if (mode.stub) {
+                options "-stub"
+            }
+
+            when {
+                params {
+                    outdir = "$outputDir"
+                }
+            }
+
+            then {
+                def association = new File("${params.outdir}/association/gcta_fastgwa")
+                def summary_statistics = new File("${params.outdir}/summary_statistics")
+                def greml = new File("${params.outdir}/heritability/individual/gcta_greml/fastgwa_and_greml/fastgwa_and_greml.gcta_greml.hsq")
+                def native_results = analysis_ids.collect { analysis_id ->
+                    new File(association, "${analysis_id}/${analysis_id}.gcta_fastgwa.fastGWA")
+                }
+                def harmonised_results = analysis_ids.collect { analysis_id ->
+                    new File(summary_statistics, "${analysis_id}/${analysis_id}.gcta_fastgwa.gwaslab.tsv.gz")
+                }
+
+                if (mode.stub) {
+                    assertAll(
+                        { assert workflow.success },
+                        // Two cutoff-specific sparse families and one independent dense GREML family.
+                        { assert TRACE.count(workflow, 'GCTA_MAKEGRMPART') == 3 },
+                        { assert TRACE.count(workflow, 'CUSTOM_GCTAMERGEGRMPARTS') == 3 },
+                        { assert TRACE.count(workflow, 'GCTA_MAKEBKSPARSE') == 2 },
+                        { assert TRACE.count(workflow, 'GCTA_FASTGWA') == 5 },
+                        { assert TRACE.count(workflow, 'GWASLAB_HARMONIZE') == 5 },
+                        { assert TRACE.count(workflow, 'GCTA_REML') == 1 },
+                        { assert association.list().toList().sort() == analysis_ids },
+                        { assert summary_statistics.list().toList().sort() == analysis_ids },
+                        { assert native_results.every { result -> result.isFile() } },
+                        { assert harmonised_results.every { result -> result.isFile() } },
+                        { assert greml.isFile() },
+                    )
+                } else {
+                    def command_files = work_files(outputDir).findAll { entry -> entry.name == '.command.sh' }
+                    def fastgwa_commands = command_files.findAll { entry ->
+                        entry.text.contains('--grm-sparse') && entry.text.contains('--fastGWA-mlm')
+                    }
+                    def binary_command_file = fastgwa_commands.find { entry -> entry.text.contains('--fastGWA-mlm-binary') }
+                    def binary_published = new File(association, 'fastgwa_binary/fastgwa_binary.gcta_fastgwa.fastGWA')
+                    def binary_written = binary_command_file == null
+                        ? null
+                        : new File(binary_command_file.parentFile, 'fastgwa_binary.gcta_fastgwa.fastGWA')
+                    def binary_header = binary_published.readLines().first().split('\t').toList()
+                    def harmonised_tables = harmonised_results.collect { result ->
+                        def rows = gzip_rows(result)
+                        def header = rows.first().split('\t').toList()
+                        [rows: rows, header: header]
+                    }
+                    def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
+                    def stable_name_association = getAllFilesFromDir("${params.outdir}/association", relative: true, includeDir: true).findAll { path -> path.toString() }
+                    def stable_path_association = getAllFilesFromDir("${params.outdir}/association", ignoreFile: 'tests/.nftignore')
+                    def stable_name_summary_statistics = getAllFilesFromDir("${params.outdir}/summary_statistics", relative: true, includeDir: true).findAll { path -> path.toString() }
+                    def stable_path_summary_statistics = getAllFilesFromDir("${params.outdir}/summary_statistics", ignoreFile: 'tests/.nftignore')
+                    assertAll(
+                        { assert workflow.success },
+                        // Four declarations canonicalise to cutoff 0.05; the fifth requests 0.025.
+                        { assert TRACE.count(workflow, 'GCTA_MAKEGRMPART') == 3 },
+                        { assert TRACE.count(workflow, 'CUSTOM_GCTAMERGEGRMPARTS') == 3 },
+                        { assert TRACE.count(workflow, 'GCTA_MAKEBKSPARSE') == 2 },
+                        { assert TRACE.count(workflow, 'GCTA_FASTGWA') == 5 },
+                        { assert TRACE.count(workflow, 'GWASLAB_HARMONIZE') == 5 },
+                        // GREML gets its own dense build rather than reusing a fastGWA sparse family.
+                        { assert TRACE.count(workflow, 'GCTA_REML') == 1 },
+                        { assert association.list().toList().sort() == analysis_ids },
+                        { assert summary_statistics.list().toList().sort() == analysis_ids },
+                        { assert greml.isFile() },
+                        { assert fastgwa_commands.size() == 5 },
+                        { assert fastgwa_commands.count { entry -> entry.text.contains('--fastGWA-mlm-binary') } == 1 },
+                        { assert fastgwa_commands.every { entry -> entry.text.contains('--grm-sparse') } },
+                        { assert fastgwa_commands.every { entry -> !entry.text.contains('--fastGWA-lr') } },
+                        { assert binary_command_file != null },
+                        { assert binary_command_file.text.contains('--fastGWA-mlm-binary') },
+                        // GCTA 1.94.1 reports the log-odds effect as BETA even on its binary MLM route.
+                        { assert binary_header == ['CHR', 'SNP', 'POS', 'A1', 'A2', 'N', 'AF1', 'T', 'SE_T', 'P_noSPA', 'BETA', 'SE', 'P', 'CONVERGE'] },
+                        { assert binary_written != null },
+                        { assert binary_written.isFile() },
+                        { assert binary_published.bytes == binary_written.bytes },
+                        // GWASLab preserves a canonical BETA and a populated sample count for every row.
+                        { assert harmonised_tables.every { table -> table.header.containsAll(['BETA', 'N']) } },
+                        { assert harmonised_tables.every { table ->
+                            def beta = table.header.indexOf('BETA')
+                            def n = table.header.indexOf('N')
+                            table.rows.tail().every { row ->
+                                def columns = row.split('\t')
+                                columns[beta] && columns[n]
+                            }
+                        } },
+                        { assert versions.text.contains('GCTA_FASTGWA') },
+                        { assert versions.text.contains('GWASLAB_HARMONIZE') },
+                        { assert snapshot(stable_name_association, stable_path_association).match('association') },
+                        { assert snapshot(stable_name_summary_statistics, stable_path_summary_statistics).match('summary_statistics') },
+                        { assert snapshot(removeNextflowVersion(versions.toString())).match('versions') },
+                    )
+                }
+            }
+        }
+    }
+}
