@@ -1,55 +1,147 @@
 %%metro title: nf-core/gwas
 %%metro style: light
-%%metro file: cohort_manifest | CSV
-%%metro file: analysis_manifest | CSV
-%%metro file: native_results | Native results
-%%metro file: standardised_results | Standardised summary statistics
-%%metro file: heritability_results | Heritability estimates
-%%metro line: plink2 | Association: PLINK 2 | #1f77b4
-%%metro line: regenie | Association: REGENIE | #2ca02c
-%%metro line: fastgwa | Association: GCTA fastGWA | #9467bd
-%%metro line: kvik | Association: LDAK-KVIK | #ff7f0e
-%%metro line: gcta_greml | Heritability: GCTA GREML | #17becf
-%%metro line: gcta_ldms | Heritability: GCTA GREML-LDMS | #0f8b8d
-%%metro line: ldak_reml | Heritability: LDAK REML | #d62728
-%%metro line: ldak_he | Heritability: LDAK HE | #e377c2
-%%metro line: ldak_pcgc | Heritability: LDAK PCGC | #8c564b
-%%metro legend: br
+%%metro file: plink1_in | BED | PLINK 1 bundle (BED/BIM/FAM)
+%%metro file: vcf_in | VCF | VCF/VCF.GZ
+%%metro file: plink2_in | PGEN | PLINK 2 bundle (PGEN/PVAR/PSAM)
+%%metro file: phenotype_in | TSV | Phenotype
+%%metro file: covariates_in | TSV | Covariates
+%%metro file: manifests_in | CTRL | Cohort + analysis manifests
+%%metro file: harmonised_out | TSV.GZ | Harmonised GWAS
+%%metro file: multiqc_out | HTML | MultiQC
+%%metro line: plink2 | PLINK 2 | #0570b0
+%%metro line: regenie | REGENIE | #2db572
+%%metro line: gcta | GCTA | #756bb1
+%%metro line: ldak | LDAK | #e6550d
+%%metro line: ldak_filtered | LDAK + relatedness filter | #f28e2b
+%%metro line: reporting | Shared products | #555555
+%%metro legend: bl
+%%metro compact_offsets: true
+%%metro grid: preparation | 0,0,1,2
+%%metro grid: association | 1,0,1,1
+%%metro grid: gcta_heritability | 1,1,1,1
+%%metro grid: ldak_heritability | 2,1,1,1
+%%metro grid: products | 2,0,1,1
 
 graph LR
-    subgraph inputs [Linked inputs]
-        cohort_manifest[ ]
-        analysis_manifest[ ]
-        validate[Validate and join manifests]
+    subgraph preparation [Inputs and preparation]
+        %%metro exit: right | plink2, regenie, gcta, ldak
+        plink1_in[ ]
+        vcf_in[ ]
+        plink2_in[ ]
+        phenotype_in[ ]
+        covariates_in[ ]
+        manifests_in[ ]
+        plink1_import[PLINK 2 --make-pgen (PLINK 1 only)]
+        vcf_import[PLINK 2 VCF import]
+        normalise[Phenotype and covariate normalisation]
+        makebed[PLINK 2 --make-bed]
+        _genotypes_ready[hidden]
+        _analysis_ready[hidden]
 
-        cohort_manifest -->|plink2,regenie,fastgwa,kvik,gcta_greml,gcta_ldms,ldak_reml,ldak_he,ldak_pcgc| validate
-        analysis_manifest -->|plink2,regenie,fastgwa,kvik,gcta_greml,gcta_ldms,ldak_reml,ldak_he,ldak_pcgc| validate
+        plink1_in -->|plink2,regenie,gcta,ldak| plink1_import
+        plink1_import -->|plink2,regenie,gcta,ldak| _genotypes_ready
+        vcf_in -->|plink2,regenie,gcta,ldak| vcf_import
+        vcf_import -->|plink2,regenie,gcta,ldak| _genotypes_ready
+        plink2_in -->|plink2,regenie,gcta,ldak| _genotypes_ready
+
+        phenotype_in -->|plink2,regenie,gcta,ldak| normalise
+        covariates_in -->|plink2,regenie,gcta,ldak| normalise
+        manifests_in -->|plink2,regenie,gcta,ldak| _analysis_ready
+        _genotypes_ready -->|plink2,regenie,gcta,ldak| _analysis_ready
+        normalise -->|plink2,regenie,gcta,ldak| _analysis_ready
+        _analysis_ready -->|gcta,ldak| makebed
     end
 
-    subgraph association_route [Association route]
-        association_inputs[Prepare association inputs]
-        association[Association testing]
-        native_results[ ]
+    subgraph association [Association methods]
+        %%metro entry: left | plink2, regenie, gcta, ldak
+        %%metro exit: right | plink2, regenie, gcta, ldak
+        plink2_glm[PLINK 2 --glm]
+        regenie_step1[REGENIE Step 1]
+        regenie_step2[REGENIE Step 2]
+        gcta_grm[GCTA GRM]
+        gcta_sparse[GCTA sparse GRM]
+        fastgwa[GCTA fastGWA-MLM]
+        ldak_thin[LDAK predictor selection]
+        kvik_step1[LDAK-KVIK Step 1]
+        kvik_step2[LDAK-KVIK Step 2]
         gwaslab[GWASLab harmonisation]
-        standardised_results[ ]
 
-        validate -->|plink2,regenie,fastgwa,kvik| association_inputs
-        association_inputs -->|plink2,regenie,fastgwa,kvik| association
-        association -->|plink2,regenie,fastgwa,kvik| native_results
-        native_results -->|plink2,regenie,fastgwa,kvik| gwaslab
-        gwaslab -->|plink2,regenie,fastgwa,kvik| standardised_results
+        _analysis_ready -->|plink2| plink2_glm
+        _analysis_ready -->|regenie| regenie_step1
+        regenie_step1 -->|regenie| regenie_step2
+        makebed -->|gcta| gcta_grm
+        gcta_grm -->|gcta| gcta_sparse
+        gcta_sparse -->|gcta| fastgwa
+        makebed -->|ldak| ldak_thin
+        ldak_thin -->|ldak| kvik_step1
+        kvik_step1 -->|ldak| kvik_step2
+
+        plink2_glm -->|plink2| gwaslab
+        regenie_step2 -->|regenie| gwaslab
+        fastgwa -->|gcta| gwaslab
+        kvik_step2 -->|ldak| gwaslab
     end
 
-    subgraph heritability_route [Heritability route]
-        heritability_inputs[Prepare inputs and matrices]
-        heritability[Heritability estimation]
-        heritability_results[ ]
-        _h1[hidden]
-        _h2[hidden]
+    subgraph gcta_heritability [GCTA heritability]
+        %%metro entry: left | gcta
+        %%metro exit: top | gcta
+        gcta_dense[GCTA dense GRM]
+        greml[GCTA GREML]
+        gcta_ldms[GCTA LDMS GRMs]
+        greml_ldms[GCTA GREML-LDMS]
+        gcta_estimates[GCTA heritability estimates]
 
-        validate -->|gcta_greml,gcta_ldms,ldak_reml,ldak_he,ldak_pcgc| heritability_inputs
-        heritability_inputs -->|gcta_greml,gcta_ldms,ldak_reml,ldak_he,ldak_pcgc| heritability
-        heritability -->|gcta_greml,gcta_ldms,ldak_reml,ldak_he,ldak_pcgc| _h1
-        _h1 -->|gcta_greml,gcta_ldms,ldak_reml,ldak_he,ldak_pcgc| _h2
-        _h2 -->|gcta_greml,gcta_ldms,ldak_reml,ldak_he,ldak_pcgc| heritability_results
+        makebed -->|gcta| gcta_dense
+        gcta_dense -->|gcta| greml
+        makebed -->|gcta| gcta_ldms
+        gcta_ldms -->|gcta| greml_ldms
+        greml -->|gcta| gcta_estimates
+        greml_ldms -->|gcta| gcta_estimates
+    end
+
+    subgraph ldak_heritability [LDAK heritability]
+        %%metro entry: left | ldak
+        %%metro exit: right | ldak
+        ldak_kinship[LDAK kinship]
+        ldak_filter[LDAK relatedness filter / sub-GRM (optional)]
+        ldak_reml[LDAK REML]
+        ldak_adjust[LDAK adjust-GRM]
+        ldak_he[LDAK Haseman-Elston]
+        ldak_pcgc[LDAK PCGC]
+        ldak_estimates[LDAK heritability estimates]
+        _ldak_ready[hidden]
+
+        makebed -->|ldak| ldak_kinship
+        ldak_kinship -->|ldak_filtered| ldak_filter
+        ldak_kinship -->|ldak| _ldak_ready
+        ldak_filter -->|ldak_filtered| _ldak_ready
+        _ldak_ready -->|ldak,ldak_filtered| ldak_reml
+        _ldak_ready -->|ldak,ldak_filtered| ldak_adjust
+        ldak_adjust -->|ldak,ldak_filtered| ldak_he
+        ldak_adjust -->|ldak,ldak_filtered| ldak_pcgc
+        ldak_reml -->|ldak,ldak_filtered| ldak_estimates
+        ldak_he -->|ldak,ldak_filtered| ldak_estimates
+        ldak_pcgc -->|ldak,ldak_filtered| ldak_estimates
+    end
+
+    subgraph products [Products and reporting]
+        %%metro entry: left | gcta, ldak, reporting
+        harmonised_out[ ]
+        reporting[Run metadata, method summaries and logs]
+        multiqc[MultiQC]
+        multiqc_out[ ]
+        _reporting_1[hidden]
+        _reporting_2[hidden]
+        _reporting_3[hidden]
+        _reporting_4[hidden]
+
+        gwaslab -->|reporting| harmonised_out
+        reporting -->|reporting| _reporting_1
+        _reporting_1 -->|reporting| _reporting_2
+        _reporting_2 -->|reporting| _reporting_3
+        _reporting_3 -->|reporting| _reporting_4
+        _reporting_4 -->|reporting| multiqc
+        gcta_estimates -->|gcta| multiqc
+        ldak_estimates -->|ldak| multiqc
+        multiqc -->|reporting| multiqc_out
     end
