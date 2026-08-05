@@ -2,9 +2,9 @@
 %%metro style: light
 %%metro file: plink1_in | BED | PLINK 1 bundle (BED/BIM/FAM)
 %%metro file: vcf_in | VCF | VCF/VCF.GZ
-%%metro file: plink2_in | PGEN | PLINK 2 bundle (PGEN/PVAR/PSAM)
 %%metro file: phenotype_in | TSV | Phenotype
 %%metro file: covariates_in | TSV | Covariates
+%%metro file: plink2_in | PGEN | PLINK 2 bundle (PGEN/PVAR/PSAM)
 %%metro file: manifests_in | CTRL | Cohort + analysis manifests
 %%metro file: harmonised_out | TSV.GZ | Harmonised GWAS
 %%metro file: multiqc_out | HTML | MultiQC
@@ -27,9 +27,9 @@ graph LR
         %%metro exit: right | plink2, regenie, gcta, ldak
         plink1_in[ ]
         vcf_in[ ]
-        plink2_in[ ]
         phenotype_in[ ]
         covariates_in[ ]
+        plink2_in[ ]
         manifests_in[ ]
         plink1_import[PLINK 2 --make-pgen (PLINK 1 only)]
         vcf_import[PLINK 2 VCF import]
