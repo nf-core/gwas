@@ -1,11 +1,13 @@
 lint:
   files_exist:
+    - conf/igenomes.config
+    - conf/igenomes_ignored.config
     # The single module config is split into per-method-family files under `conf/modules/`, so that a
     # new association or heritability route adds a file instead of editing a shared one. Both this
     # `files_exist` entry and the `modules_config` toggle below are required: the first stops lint
     # demanding the deleted file, the second stops the `withName:` check reading it.
     - conf/modules.config
-    # nf-core/tools 4.1.0 still requires the former workflow name even though this repository uses
+    # nf-core/tools 4.0.3 requires the canonical workflow name even though this repository uses
     # `.github/workflows/linting_comment.yml`; exempt it rather than restoring a duplicate workflow.
     - .github/workflows/pr-comment.yml
   files_unchanged:
@@ -16,7 +18,7 @@ lint:
   # absent from `nextflow_schema.json`; listing it here keeps the diagnostic without restoring the contract.
   nextflow_config:
     - params.input
-nf_core_version: 4.0.2
+nf_core_version: 4.0.3
 repository_type: pipeline
 template:
   author: Chris Wyatt, Fernando Duarte, Maxime Laurent
