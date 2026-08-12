@@ -8,7 +8,7 @@ nextflow_pipeline {
     tag "gcta"
     tag "gcta_greml_ldms"
 
-    test("linked quantitative and binary analyses use LDMS defaults and retain trait identity") {
+    test("linked quantitative and binary analyses use compact LDMS settings and retain trait identity") {
         when {
             params {
                 outdir = "$outputDir"
@@ -22,6 +22,21 @@ nextflow_pipeline {
                         row.heritability_methods = 'gcta_greml_ldms'
                     }
                 })
+                // Production LDMS defaults define many variance components. The compact execution fixture
+                // uses one populated all-MAF stratum here; focused LDMS coverage below proves multi-stratum
+                // construction separately without asking REML to fit nine components from 200 samples.
+                method_options = RELATIONAL.methodOptions(outputDir, 'gcta_greml_ldms_defaults', [
+                    example_pgen_qt: [gcta: [
+                        ld_score_region_kb: 50,
+                        ld_bins: 1,
+                        ldms_maf_edges: [0, 0.5],
+                    ]],
+                    example_pgen_bt: [gcta: [
+                        ld_score_region_kb: 50,
+                        ld_bins: 1,
+                        ldms_maf_edges: [0, 0.5],
+                    ]],
+                ])
                 gcta_grm_parts = 1
             }
         }
@@ -60,7 +75,7 @@ nextflow_pipeline {
                 outdir = "$outputDir"
                 cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, 'gcta_greml_ldms_overrides')
                 analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, 'gcta_greml_ldms_overrides', { rows ->
-                    ['same_defaults', 'different_region', 'different_bins', 'different_edges'].each { analysis_id ->
+                    ['same_settings', 'different_region', 'different_bins', 'different_edges'].each { analysis_id ->
                         def analysis = new LinkedHashMap(rows[0])
                         analysis.analysis_id = analysis_id
                         rows << analysis
@@ -71,14 +86,31 @@ nextflow_pipeline {
                     }
                 })
                 method_options = RELATIONAL.methodOptions(outputDir, 'gcta_greml_ldms_overrides', [
-                    same_defaults: [gcta: [
-                        ld_score_region_kb: 200,
-                        ld_bins: 4,
-                        ldms_maf_edges: [0, 0.01, 0.05, 0.2, 0.5],
+                    example_pgen_qt: [gcta: [
+                        ld_score_region_kb: 50,
+                        ld_bins: 1,
+                        ldms_maf_edges: [0, 0.5],
                     ]],
-                    different_region: [gcta: [ld_score_region_kb: 100]],
-                    different_bins: [gcta: [ld_bins: 2]],
-                    different_edges: [gcta: [ldms_maf_edges: [0, 0.05, 0.5]]],
+                    same_settings: [gcta: [
+                        ld_score_region_kb: 50,
+                        ld_bins: 1,
+                        ldms_maf_edges: [0, 0.5],
+                    ]],
+                    different_region: [gcta: [
+                        ld_score_region_kb: 100,
+                        ld_bins: 1,
+                        ldms_maf_edges: [0, 0.5],
+                    ]],
+                    different_bins: [gcta: [
+                        ld_score_region_kb: 50,
+                        ld_bins: 2,
+                        ldms_maf_edges: [0, 0.5],
+                    ]],
+                    different_edges: [gcta: [
+                        ld_score_region_kb: 50,
+                        ld_bins: 1,
+                        ldms_maf_edges: [0, 0.2, 0.5],
+                    ]],
                 ])
                 gcta_grm_parts = 1
                 save_relatedness_matrices = true
@@ -90,14 +122,14 @@ nextflow_pipeline {
             def results = new File("${params.outdir}/heritability/individual/gcta_greml_ldms")
             assertAll(
                 { assert workflow.success },
-                // The implicit defaults and the explicitly equivalent settings share one family. Each
-                // single-setting scientific change creates one further content-derived family.
+                // The two explicitly equivalent compact settings share one family. Each single-setting
+                // scientific change creates one further content-derived family.
                 { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 4 },
                 { assert TRACE.count(workflow, 'CUSTOM_GCTASTRATIFYLDSCORES') == 4 },
                 { assert TRACE.count(workflow, 'CUSTOM_GCTACREATEMGRMMANIFEST') == 4 },
                 { assert TRACE.count(workflow, 'GCTA_REMLLDMS') == 5 },
                 { assert matrices.list().size() == 4 },
-                { assert results.list().toList().sort() == ['different_bins', 'different_edges', 'different_region', 'example_pgen_qt', 'same_defaults'] },
+                { assert results.list().toList().sort() == ['different_bins', 'different_edges', 'different_region', 'example_pgen_qt', 'same_settings'] },
             )
         }
     }

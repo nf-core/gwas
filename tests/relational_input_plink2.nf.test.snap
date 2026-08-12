@@ -37,16 +37,16 @@
                 "plink2/example_pgen_qt_no_covariates/example_pgen_qt_no_covariates.plink2.glm.linear"
             ],
             [
-                "example_pgen_bt.plink2.glm.logistic.hybrid:md5,83d85cc0bda51b829ba43323abfd3530",
-                "example_pgen_bt_no_covariates.plink2.glm.logistic.hybrid:md5,192821bb0fe11c6999a7b72fe7fd4f92",
-                "example_pgen_qt.plink2.glm.linear:md5,ea3c5efee75bd852b546b6be5d07db5c",
-                "example_pgen_qt_no_covariates.plink2.glm.linear:md5,cad6b357287faf0606c24fc9ad5cf09c"
+                "example_pgen_bt.plink2.glm.logistic.hybrid:md5,07b1fa1fdd9005f879fb11ec2b9cc28c",
+                "example_pgen_bt_no_covariates.plink2.glm.logistic.hybrid:md5,f6802bccc1f209ccd8522f15cac0ee5c",
+                "example_pgen_qt.plink2.glm.linear:md5,e7a2df794ed53292921b94b05582d6e8",
+                "example_pgen_qt_no_covariates.plink2.glm.linear:md5,d90113562b608a71d4f69f961b6ddfcb"
             ]
         ],
         "meta": {
             "nf-test": "0.9.3",
             "nextflow": "25.10.4"
         },
-        "timestamp": "2026-07-31T20:04:43.52544375"
+        "timestamp": "2026-08-12T22:16:08.323589874"
     }
 }

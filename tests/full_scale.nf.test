@@ -62,7 +62,7 @@ nextflow_pipeline {
                 .toSet()
             assertAll(
                 { assert workflow.success },
-                { assert chromosomes == (1..22).collect { chromosome -> chromosome.toString() }.toSet() },
+                { assert chromosomes == ['1', '2'].toSet() },
                 { assert association.list().toList().sort() == ['gcta_fastgwa', 'ldak_kvik', 'plink2', 'regenie'] },
                 { assert heritability.list().toList().sort() == ['gcta_greml', 'gcta_greml_ldms', 'ldak_he', 'ldak_pcgc', 'ldak_reml'] },
                 { assert TRACE.count(workflow, 'PLINK2_GLM') == 2 },

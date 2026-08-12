@@ -100,6 +100,8 @@ jobs:
           profile: ${{ matrix.profile }}
           shard: ${{ matrix.shard }}
           total_shards: ${{ env.TOTAL_SHARDS }}
+          # Use the public companion fixture PR until its compact commit is merged into test-datasets:gwas.
+          fixture_source: https://raw.githubusercontent.com/nf-core/test-datasets/refs/pull/2198/head/
 
       - name: Report test status
         if: ${{ always() }}

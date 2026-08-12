@@ -40,14 +40,14 @@
                 "plink2/example_chr1_qt/example_chr1_qt.plink2.glm.linear"
             ],
             [
-                "example_chr1_qt.plink2.glm.linear:md5,6f4d274e63a2087d7d017291a5a45ba1"
+                "example_chr1_qt.plink2.glm.linear:md5,b8f4498472d62258508bdb3727773b2d"
             ]
         ],
         "meta": {
             "nf-test": "0.9.3",
             "nextflow": "25.10.4"
         },
-        "timestamp": "2026-07-30T17:47:58.111769225"
+        "timestamp": "2026-08-12T21:09:59.509575002"
     },
     "summary_statistics": {
         "content": [
@@ -56,14 +56,14 @@
                 "example_chr1_qt/example_chr1_qt.plink2.gwaslab.tsv.gz"
             ],
             [
-                "example_chr1_qt.plink2.gwaslab.tsv.gz:md5,316183cabcaba860bc1a711860e3a43a"
+                "example_chr1_qt.plink2.gwaslab.tsv.gz:md5,9f5f9ce89c91f130e8cb57f2858c7427"
             ]
         ],
         "meta": {
             "nf-test": "0.9.3",
             "nextflow": "25.10.4"
         },
-        "timestamp": "2026-07-30T17:47:58.135772653"
+        "timestamp": "2026-08-12T21:09:59.526612721"
     },
     "multiqc": {
         "content": [
@@ -106,14 +106,14 @@
                 "individual/gcta_greml/example_chr1_qt/example_chr1_qt.gcta_greml.hsq"
             ],
             [
-                "example_chr1_qt.gcta_greml.hsq:md5,746c9473b00781276023c98c2294950c"
+                "example_chr1_qt.gcta_greml.hsq:md5,79ca052b0c4713f0b5d42df5eb39f9b8"
             ]
         ],
         "meta": {
             "nf-test": "0.9.3",
             "nextflow": "25.10.4"
         },
-        "timestamp": "2026-07-30T17:47:58.123748588"
+        "timestamp": "2026-08-12T21:09:59.517768416"
     },
     "pipeline_info": {
         "content": [

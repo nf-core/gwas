@@ -114,18 +114,18 @@
                 "regenie/example_pgen_qt/example_pgen_qt.regenie.gz"
             ],
             [
-                "example_bfile_qt.gcta_fastgwa.fastGWA:md5,aeb97ade7c85552eed84b2e327570474",
-                "example_vcf_qt.ldak_kvik.step2.assoc:md5,42f9f2469c109c8767e5e5a137ed7dc3",
-                "example_pgen_bt.plink2.glm.logistic.hybrid:md5,83d85cc0bda51b829ba43323abfd3530",
-                "example_pgen_qt.plink2.glm.linear:md5,ea3c5efee75bd852b546b6be5d07db5c",
-                "example_pgen_qt.regenie.gz:md5,a59cfaeda6eff9edbdab84bc681cf2e9"
+                "example_bfile_qt.gcta_fastgwa.fastGWA:md5,d756c893ac9fc977735a6dc3b7ba4dd7",
+                "example_vcf_qt.ldak_kvik.step2.assoc:md5,d900ec29ee8c14586bf8d9045f315d1b",
+                "example_pgen_bt.plink2.glm.logistic.hybrid:md5,07b1fa1fdd9005f879fb11ec2b9cc28c",
+                "example_pgen_qt.plink2.glm.linear:md5,e7a2df794ed53292921b94b05582d6e8",
+                "example_pgen_qt.regenie.gz:md5,87c65e520bab6bc45ba60955fc8214cd"
             ]
         ],
         "meta": {
             "nf-test": "0.9.3",
             "nextflow": "25.10.4"
         },
-        "timestamp": "2026-07-30T20:23:36.346205334"
+        "timestamp": "2026-08-12T21:11:16.913612724"
     },
     "summary_statistics": {
         "content": [
@@ -141,18 +141,18 @@
                 "example_vcf_qt/example_vcf_qt.ldak_kvik.gwaslab.tsv.gz"
             ],
             [
-                "example_bfile_qt.gcta_fastgwa.gwaslab.tsv.gz:md5,e56779fbcdc3da7bc2d9191e11db935d",
-                "example_pgen_bt.plink2.gwaslab.tsv.gz:md5,ccae9196e519b10d8e913e39923d6ee7",
-                "example_pgen_qt.plink2.gwaslab.tsv.gz:md5,3ffa035c02e5caa6dfb48f0d0f9ea5e5",
-                "example_pgen_qt.regenie.gwaslab.tsv.gz:md5,026092dd880ca8d9cd4b22d5cbbf67e8",
-                "example_vcf_qt.ldak_kvik.gwaslab.tsv.gz:md5,c9769c091473179fb7c4590f6beae818"
+                "example_bfile_qt.gcta_fastgwa.gwaslab.tsv.gz:md5,a4d5535f646d99afb20e750f74719340",
+                "example_pgen_bt.plink2.gwaslab.tsv.gz:md5,62794b64abe9fc77601590673da654ee",
+                "example_pgen_qt.plink2.gwaslab.tsv.gz:md5,66b4ab9971e39fa562c6867ddf47f9c2",
+                "example_pgen_qt.regenie.gwaslab.tsv.gz:md5,8e8917ae15ced801d8280a2085975769",
+                "example_vcf_qt.ldak_kvik.gwaslab.tsv.gz:md5,643227e19ccaebab66fa2e8e0983b02b"
             ]
         ],
         "meta": {
             "nf-test": "0.9.3",
             "nextflow": "25.10.4"
         },
-        "timestamp": "2026-07-30T20:23:36.433393804"
+        "timestamp": "2026-08-12T21:11:16.965201105"
     },
     "heritability": {
         "content": [
@@ -176,19 +176,19 @@
                 "ldak_reml/example_pgen_bt/example_pgen_bt.ldak_reml.reml.liab"
             ],
             [
-                "example_pgen_qt.gcta_greml.hsq:md5,45be7eb46e7ddff5b0f7dc59dba85fcd",
-                "example_bfile_qt.gcta_greml_ldms.hsq:md5,31b0a64809d6afba4e05f395b7c6e808",
-                "example_pgen_qt.ldak_he.he:md5,4d37607facb7888ea6c3775e1ac8afa1",
-                "example_pgen_bt.ldak_pcgc.pcgc:md5,2820c375054af4f7c1a27cd19b21902e",
-                "example_pgen_bt.ldak_pcgc.pcgc.marginal:md5,cc4834a5e113646b409054d15af53c3f",
-                "example_pgen_bt.ldak_reml.reml:md5,1744160f45fcde1c55bb48c4e02a6820",
-                "example_pgen_bt.ldak_reml.reml.liab:md5,b5bcc753f927482353574195158ef0e8"
+                "example_pgen_qt.gcta_greml.hsq:md5,3475afa4e0119452ee59e94502a1ccd7",
+                "example_bfile_qt.gcta_greml_ldms.hsq:md5,ff2119a764a5ea8a83ac498a2a7a377a",
+                "example_pgen_qt.ldak_he.he:md5,eb3111bd7c17313f6519f359d9881c64",
+                "example_pgen_bt.ldak_pcgc.pcgc:md5,23a496b7aed509edaa9285d1ba67e2a5",
+                "example_pgen_bt.ldak_pcgc.pcgc.marginal:md5,e401c1b95adced6dfbe4c560a353cfc8",
+                "example_pgen_bt.ldak_reml.reml:md5,ce7dd94b4ab9da8b9681aa34d1ccd092",
+                "example_pgen_bt.ldak_reml.reml.liab:md5,718dc678b6da7644dfdeaedf8f976eb2"
             ]
         ],
         "meta": {
             "nf-test": "0.9.3",
             "nextflow": "25.10.4"
         },
-        "timestamp": "2026-07-30T20:23:36.38815838"
+        "timestamp": "2026-08-12T23:11:55.549259896"
     }
 }

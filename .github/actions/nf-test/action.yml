@@ -16,6 +16,10 @@ inputs:
   tags:
     description: "Tags to pass as argument for nf-test --tag parameter"
     required: false
+  fixture_source:
+    description: "Public root containing the four canonical nf-core/test-datasets GWAS fixtures"
+    required: false
+    default: "https://raw.githubusercontent.com/nf-core/test-datasets/gwas/"
 runs:
   using: "composite"
   steps:
@@ -55,6 +59,15 @@ runs:
         channels: conda-forge
         channel-priority: strict
         conda-remove-defaults: true
+
+    - name: Materialize GWAS test fixtures
+      shell: bash
+      env:
+        NFT_WORKDIR: ${{ env.NFT_WORKDIR }}
+        GWAS_FIXTURE_SOURCE: ${{ inputs.fixture_source }}
+      run: |
+        fixture_root=$(tests/fixtures/materialize.sh --profile "${{ inputs.profile }}")
+        echo "GWAS_TEST_FIXTURES=$fixture_root" >> "$GITHUB_ENV"
 
     - name: Run nf-test
       shell: bash

@@ -67,14 +67,19 @@ Once you have made your changes, run the pipeline with nf-test to test them loca
 For additional information, use the `--verbose` flag to view the Nextflow console log output.
 
 ```bash
-nf-test test --tag test --profile +docker --verbose
+tests/fixtures/nf-test.sh test --tag test --profile +docker --verbose
 ```
+
+The wrapper materializes the canonical VCF and phenotype/covariate sidecars into the PLINK layouts used by the
+test profiles, then sets `GWAS_TEST_FIXTURES` to the verified content-addressed cache entry. To test an unmerged
+fixture checkout or public companion branch, set `GWAS_FIXTURE_SOURCE` to that local directory or raw-content
+URL; `GWAS_TEST_FIXTURES` is reserved for the complete materialized runtime bundle.
 
 If you have added new functionality, ensure you update the test assertions in the `.nf.test` files in the `tests/` directory.
 Update the snapshots with the following command:
 
 ```bash
-nf-test test --tag test --profile +docker --verbose --update-snapshots
+tests/fixtures/nf-test.sh test --tag test --profile +docker --verbose --update-snapshot
 ```
 
 When you create a pull request with changes, GitHub Actions will run automatic tests.

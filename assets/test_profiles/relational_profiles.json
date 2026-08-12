@@ -938,7 +938,7 @@
                 "gcta": {
                     "ld_score_region_kb": 50,
                     "ld_bins": 1,
-                    "ldms_maf_edges": [0.0, 0.01, 0.5]
+                    "ldms_maf_edges": [0.0, 0.2, 0.5]
                 }
             },
             "ldms_different_bins": {

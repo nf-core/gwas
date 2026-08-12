@@ -115,13 +115,13 @@ nextflow run nf-core/gwas \
 | `kvik_step1_subset`  | String; `all`                   | `ldak_kvik` only; `all`, `thin_common`, or `provided`.                                                                        |
 | `predictor_extract`  | Resource path or absent; absent | `ldak_kvik` only; required exactly with `kvik_step1_subset: provided`.                                                        |
 
-| REGENIE option       | Type and default              | Consumer and constraints                                                                                  |
-| -------------------- | ----------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `step1_bsize`        | Positive integer; `1000`      | Step 1 fitted-model block size; participates in prediction-reuse identity.                               |
-| `firth`              | Boolean; `true`               | Binary traits only; enable Firth fallback in Step 2.                                                      |
-| `firth_approx`       | Boolean; `true`               | Binary traits only; requires `firth` when explicitly enabled.                                            |
-| `firth_p_threshold`  | Number; `0.01`                | Binary traits only; greater than `0` and at most `1`, and requires `firth` when explicitly supplied.      |
-| `min_mac`            | Number or `null`; `null`      | Optional Step 2 minimum minor allele count; `null` leaves REGENIE's built-in behavior in effect.          |
+| REGENIE option      | Type and default         | Consumer and constraints                                                                             |
+| ------------------- | ------------------------ | ---------------------------------------------------------------------------------------------------- |
+| `step1_bsize`       | Positive integer; `1000` | Step 1 fitted-model block size; participates in prediction-reuse identity.                           |
+| `firth`             | Boolean; `true`          | Binary traits only; enable Firth fallback in Step 2.                                                 |
+| `firth_approx`      | Boolean; `true`          | Binary traits only; requires `firth` when explicitly enabled.                                        |
+| `firth_p_threshold` | Number; `0.01`           | Binary traits only; greater than `0` and at most `1`, and requires `firth` when explicitly supplied. |
+| `min_mac`           | Number or `null`; `null` | Optional Step 2 minimum minor allele count; `null` leaves REGENIE's built-in behavior in effect.     |
 
 For example, this changes the fitted-model block size and Step 2 policy for one binary REGENIE analysis while every unlisted analysis retains the defaults:
 
@@ -154,14 +154,14 @@ remain distinct for tools with separate native interfaces.
 
 ### Run-level defaults
 
-| Parameter or behaviour                                                     | Default and rationale                                                                                                                                                                                                                                                                      |
-| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| PLINK 2 binary association                                                 | Firth fallback is enabled so separated or sparse binary-trait tests can still produce estimates. Binary phenotypes are passed with `--1` because the common normalised coding is `0`/`1`/`NA`; covariates are variance-standardised to prevent numerical failure when their scales differ. |
-| `--regenie_step1_mode`                                                     | `standard`, the simplest one-task Step 1. Use `chunked` with `--regenie_step1_jobs` when a large cohort needs REGENIE's split-L0/run-L0/run-L1 execution family.                                                                                                                           |
-| `--regenie_lowmem`                                                         | `true`, keeping Step 1's temporary prediction blocks in the task work directory to reduce memory use.                                                                                                                                                                                      |
-| REGENIE scientific method options                                          | Per-analysis `regenie.*` defaults enable approximate Firth fallback below `0.01` for binary traits and leave `min_mac` unset so REGENIE's own versioned policy applies.                                                                                                                     |
-| GWASLab reference parameters                                               | Unset. Every association output is still standardised; reference-dependent allele checks, rsID assignment and strand inference run only when you provide the corresponding build-specific FASTA or VCF resource.                                                                           |
-| Save controls                                                              | Off. Intermediates stay out of the results directory unless explicitly requested, avoiding unexpectedly large published output.                                                                                                                                                            |
+| Parameter or behaviour            | Default and rationale                                                                                                                                                                                                                                                                      |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| PLINK 2 binary association        | Firth fallback is enabled so separated or sparse binary-trait tests can still produce estimates. Binary phenotypes are passed with `--1` because the common normalised coding is `0`/`1`/`NA`; covariates are variance-standardised to prevent numerical failure when their scales differ. |
+| `--regenie_step1_mode`            | `standard`, the simplest one-task Step 1. Use `chunked` with `--regenie_step1_jobs` when a large cohort needs REGENIE's split-L0/run-L0/run-L1 execution family.                                                                                                                           |
+| `--regenie_lowmem`                | `true`, keeping Step 1's temporary prediction blocks in the task work directory to reduce memory use.                                                                                                                                                                                      |
+| REGENIE scientific method options | Per-analysis `regenie.*` defaults enable approximate Firth fallback below `0.01` for binary traits and leave `min_mac` unset so REGENIE's own versioned policy applies.                                                                                                                    |
+| GWASLab reference parameters      | Unset. Every association output is still standardised; reference-dependent allele checks, rsID assignment and strand inference run only when you provide the corresponding build-specific FASTA or VCF resource.                                                                           |
+| Save controls                     | Off. Intermediates stay out of the results directory unless explicitly requested, avoiding unexpectedly large published output.                                                                                                                                                            |
 
 The four opt-in save controls are:
 

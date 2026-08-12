@@ -73,7 +73,7 @@ nextflow_pipeline {
                     assertAll(
                         { assert workflow.success },
                         // The equivalent 0;0.5 and 0.0;0.50 declarations share one build. A different
-                        // edge list and a different LD-bin count each fork the scientific matrix key.
+                        // populated MAF edge list and a different LD-bin count each fork the scientific matrix key.
                         { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 3 },
                         { assert TRACE.count(workflow, 'CUSTOM_GCTASTRATIFYLDSCORES') == 3 },
                         { assert TRACE.count(workflow, 'GCTA_MAKEGRMPART') == 10 },

@@ -51,18 +51,18 @@
                 "gcta_fastgwa/fastgwa_same_2/fastgwa_same_2.gcta_fastgwa.fastGWA"
             ],
             [
-                "fastgwa_and_greml.gcta_fastgwa.fastGWA:md5,aeb97ade7c85552eed84b2e327570474",
-                "fastgwa_binary.gcta_fastgwa.fastGWA:md5,2e5aec6ca5f73f58acaf2dbb1d3b8ab3",
-                "fastgwa_different.gcta_fastgwa.fastGWA:md5,aeb97ade7c85552eed84b2e327570474",
-                "fastgwa_same_1.gcta_fastgwa.fastGWA:md5,aeb97ade7c85552eed84b2e327570474",
-                "fastgwa_same_2.gcta_fastgwa.fastGWA:md5,aeb97ade7c85552eed84b2e327570474"
+                "fastgwa_and_greml.gcta_fastgwa.fastGWA:md5,d756c893ac9fc977735a6dc3b7ba4dd7",
+                "fastgwa_binary.gcta_fastgwa.fastGWA:md5,75c148759d97f6b14999db7bd00bf7fe",
+                "fastgwa_different.gcta_fastgwa.fastGWA:md5,d756c893ac9fc977735a6dc3b7ba4dd7",
+                "fastgwa_same_1.gcta_fastgwa.fastGWA:md5,d756c893ac9fc977735a6dc3b7ba4dd7",
+                "fastgwa_same_2.gcta_fastgwa.fastGWA:md5,d756c893ac9fc977735a6dc3b7ba4dd7"
             ]
         ],
         "meta": {
             "nf-test": "0.9.3",
             "nextflow": "25.10.4"
         },
-        "timestamp": "2026-07-30T02:39:39.69441627"
+        "timestamp": "2026-08-12T20:40:30.428715423"
     },
     "summary_statistics": {
         "content": [
@@ -79,17 +79,17 @@
                 "fastgwa_same_2/fastgwa_same_2.gcta_fastgwa.gwaslab.tsv.gz"
             ],
             [
-                "fastgwa_and_greml.gcta_fastgwa.gwaslab.tsv.gz:md5,e56779fbcdc3da7bc2d9191e11db935d",
-                "fastgwa_binary.gcta_fastgwa.gwaslab.tsv.gz:md5,a6d7b0150116bc82ea1834a76eeb6d19",
-                "fastgwa_different.gcta_fastgwa.gwaslab.tsv.gz:md5,e56779fbcdc3da7bc2d9191e11db935d",
-                "fastgwa_same_1.gcta_fastgwa.gwaslab.tsv.gz:md5,e56779fbcdc3da7bc2d9191e11db935d",
-                "fastgwa_same_2.gcta_fastgwa.gwaslab.tsv.gz:md5,e56779fbcdc3da7bc2d9191e11db935d"
+                "fastgwa_and_greml.gcta_fastgwa.gwaslab.tsv.gz:md5,a4d5535f646d99afb20e750f74719340",
+                "fastgwa_binary.gcta_fastgwa.gwaslab.tsv.gz:md5,b23f4a0e8f13104f9394d4b93638a210",
+                "fastgwa_different.gcta_fastgwa.gwaslab.tsv.gz:md5,a4d5535f646d99afb20e750f74719340",
+                "fastgwa_same_1.gcta_fastgwa.gwaslab.tsv.gz:md5,a4d5535f646d99afb20e750f74719340",
+                "fastgwa_same_2.gcta_fastgwa.gwaslab.tsv.gz:md5,a4d5535f646d99afb20e750f74719340"
             ]
         ],
         "meta": {
             "nf-test": "0.9.3",
             "nextflow": "25.10.4"
         },
-        "timestamp": "2026-07-30T02:39:39.793031363"
+        "timestamp": "2026-08-12T20:40:30.467619896"
     }
 }

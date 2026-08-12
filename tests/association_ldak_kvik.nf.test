@@ -324,8 +324,12 @@ nextflow_pipeline {
                         { assert step1.contains('--binary YES') },
                         { assert !step2.contains('--binary') },
                         { assert harmonised_rows.first() == ['SNPID', 'CHR', 'POS', 'EA', 'NEA', 'STATUS', 'EAF', 'BETA', 'SE', 'P', 'N'] },
+                        // LDAK reports an approximate effective sample size for binary KVIK. Its
+                        // textual value may be integral or fractional depending on the case/control
+                        // balance, so the contract is a positive numeric value preserved exactly by
+                        // the harmonisation adapter, not integer formatting.
                         { assert expected_n_by_predictor.values().every { value ->
-                            new BigDecimal(value).stripTrailingZeros().scale() <= 0
+                            new BigDecimal(value) > BigDecimal.ZERO
                         } },
                         { assert harmonised_rows.drop(1).every { row -> row.last() == expected_n_by_predictor[row.first()] } },
                         { assert snapshot(stable_name_native, stable_path_native).match('binary-native') },

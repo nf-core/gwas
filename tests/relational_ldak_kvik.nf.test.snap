@@ -41,14 +41,14 @@
                 "example_pgen_bt/example_pgen_bt.ldak_kvik.step2.assoc"
             ],
             [
-                "example_bfile_qt.ldak_kvik.step2.assoc:md5,0b69df7a991fdef52860d13401833485",
-                "example_pgen_bt.ldak_kvik.step2.assoc:md5,20415317512c12d4b29e614bc35ac784"
+                "example_bfile_qt.ldak_kvik.step2.assoc:md5,4816d78bedcc79038bb8d85bbc84f6ce",
+                "example_pgen_bt.ldak_kvik.step2.assoc:md5,12125ca377a08730f7f0faab6b8791e7"
             ]
         ],
         "meta": {
             "nf-test": "0.9.3",
             "nextflow": "25.10.4"
         },
-        "timestamp": "2026-07-31T20:08:57.397230018"
+        "timestamp": "2026-08-12T22:23:47.5251591"
     }
 }

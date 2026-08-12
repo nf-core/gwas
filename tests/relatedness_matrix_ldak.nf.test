@@ -120,8 +120,8 @@ nextflow_pipeline {
                             'example_pgen.ldak_kinship.ede2bfa4c2e8.grm.id',
                         ] },
                         { assert heritability.list().toList().sort() == ['example_pgen_bt_all', 'example_pgen_bt_unrelated'] },
-                        { assert value(unrestricted, 'Total_Samples') == '500' },
-                        { assert value(restricted, 'Total_Samples') == '222' },
+                        { assert value(unrestricted, 'Total_Samples') == '200' },
+                        { assert value(restricted, 'Total_Samples') == '194' },
                         { assert commands.size() == 2 },
                         { assert commands.every { command -> command.contains('--ignore-weights YES') } },
                         { assert commands.every { command -> !command.contains('--weights ') } },
@@ -217,7 +217,7 @@ nextflow_pipeline {
                         workflow,
                         matrices,
                         heritability,
-                        ['48be9b05b317'],
+                        ['d9895671716c'],
                         ['example_pgen_bt_first', 'example_pgen_bt_second'],
                         [filter: 0, subgrm: 0],
                     ))
@@ -246,7 +246,7 @@ nextflow_pipeline {
                         { assert TRACE.count(workflow, 'LDAK_CALCKINS') == 1 },
                         { assert TRACE.count(workflow, 'LDAK_REML') == 2 },
                         // Independently derived from the generated weight bytes and canonical settings string.
-                        { assert matrices.list().toList() == ['48be9b05b317'] },
+                        { assert matrices.list().toList() == ['d9895671716c'] },
                         { assert commands.size() == 1 },
                         { assert commands.first().contains('--weights "example_all.pvar"') },
                         { assert !commands.first().contains('--ignore-weights YES') },
@@ -281,7 +281,7 @@ nextflow_pipeline {
                         workflow,
                         matrices,
                         heritability,
-                        ['48be9b05b317', '9048b62d7d3c'],
+                        ['42d2f4fd59b1', 'd9895671716c'],
                         ['example_pgen_bt_first', 'example_pgen_bt_second'],
                         [filter: 0, subgrm: 0],
                     ))
@@ -310,7 +310,7 @@ nextflow_pipeline {
                         { assert TRACE.count(workflow, 'LDAK_CALCKINS') == 2 },
                         { assert TRACE.count(workflow, 'LDAK_REML') == 2 },
                         // Same basename, different content digests, therefore two independently derived keys.
-                        { assert matrices.list().toList().sort() == ['48be9b05b317', '9048b62d7d3c'] },
+                        { assert matrices.list().toList().sort() == ['42d2f4fd59b1', 'd9895671716c'] },
                         { assert commands.size() == 2 },
                         { assert commands.every { command -> command.contains('--weights "example_all.pvar"') } },
                         { assert commands.every { command -> !command.contains('--ignore-weights YES') } },

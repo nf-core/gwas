@@ -45,16 +45,16 @@
                 "fastgwa_equivalent/fastgwa_equivalent.gcta_fastgwa.fastGWA"
             ],
             [
-                "example_pgen_qt.gcta_fastgwa.fastGWA:md5,aeb97ade7c85552eed84b2e327570474",
-                "fastgwa_binary.gcta_fastgwa.fastGWA:md5,2e5aec6ca5f73f58acaf2dbb1d3b8ab3",
-                "fastgwa_different.gcta_fastgwa.fastGWA:md5,aeb97ade7c85552eed84b2e327570474",
-                "fastgwa_equivalent.gcta_fastgwa.fastGWA:md5,aeb97ade7c85552eed84b2e327570474"
+                "example_pgen_qt.gcta_fastgwa.fastGWA:md5,d756c893ac9fc977735a6dc3b7ba4dd7",
+                "fastgwa_binary.gcta_fastgwa.fastGWA:md5,75c148759d97f6b14999db7bd00bf7fe",
+                "fastgwa_different.gcta_fastgwa.fastGWA:md5,d756c893ac9fc977735a6dc3b7ba4dd7",
+                "fastgwa_equivalent.gcta_fastgwa.fastGWA:md5,d756c893ac9fc977735a6dc3b7ba4dd7"
             ]
         ],
         "meta": {
             "nf-test": "0.9.3",
             "nextflow": "25.10.4"
         },
-        "timestamp": "2026-07-31T19:58:18.286372226"
+        "timestamp": "2026-08-12T21:18:48.52958823"
     }
 }
