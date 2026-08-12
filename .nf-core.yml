@@ -7,9 +7,6 @@ lint:
     # `files_exist` entry and the `modules_config` toggle below are required: the first stops lint
     # demanding the deleted file, the second stops the `withName:` check reading it.
     - conf/modules.config
-    # nf-core/tools 4.0.3 requires the canonical workflow name even though this repository uses
-    # `.github/workflows/linting_comment.yml`; exempt it rather than restoring a duplicate workflow.
-    - .github/workflows/pr-comment.yml
   files_unchanged:
     - .github/workflows/branch.yml
     - .github/workflows/linting.yml
