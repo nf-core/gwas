@@ -2,15 +2,6 @@
     "versions": {
         "content": [
             {
-                "CUSTOM_GCTAMERGEGRMPARTS": {
-                    "coreutils": 9.5
-                },
-                "GCTA_MAKEGRMPART": {
-                    "gcta": "1.94.1"
-                },
-                "GCTA_REML": {
-                    "gcta": "1.94.1"
-                },
                 "GWASLAB_HARMONIZE": {
                     "gwaslab": "4.1.9",
                     "python": "3.12.13"
@@ -19,6 +10,9 @@
                     "python": "3.14.5"
                 },
                 "PLINK2_GLM": {
+                    "plink2": "2.0.0-a.6.9LM"
+                },
+                "PLINK2_VCF": {
                     "plink2": "2.0.0-a.6.9LM"
                 },
                 "Workflow": {
@@ -30,40 +24,40 @@
             "nf-test": "0.9.3",
             "nextflow": "25.10.4"
         },
-        "timestamp": "2026-08-02T08:15:24.246432458"
+        "timestamp": "2026-08-13T13:52:30.56079848"
     },
     "association": {
         "content": [
             [
                 "plink2",
-                "plink2/example_chr1_qt",
-                "plink2/example_chr1_qt/example_chr1_qt.plink2.glm.linear"
+                "plink2/example_quantitative",
+                "plink2/example_quantitative/example_quantitative.plink2.glm.linear"
             ],
             [
-                "example_chr1_qt.plink2.glm.linear:md5,b8f4498472d62258508bdb3727773b2d"
+                "example_quantitative.plink2.glm.linear:md5,d90113562b608a71d4f69f961b6ddfcb"
             ]
         ],
         "meta": {
             "nf-test": "0.9.3",
             "nextflow": "25.10.4"
         },
-        "timestamp": "2026-08-12T21:09:59.509575002"
+        "timestamp": "2026-08-13T13:52:30.582773734"
     },
     "summary_statistics": {
         "content": [
             [
-                "example_chr1_qt",
-                "example_chr1_qt/example_chr1_qt.plink2.gwaslab.tsv.gz"
+                "example_quantitative",
+                "example_quantitative/example_quantitative.plink2.gwaslab.tsv.gz"
             ],
             [
-                "example_chr1_qt.plink2.gwaslab.tsv.gz:md5,9f5f9ce89c91f130e8cb57f2858c7427"
+                "example_quantitative.plink2.gwaslab.tsv.gz:md5,01862a0efeb87930a5908e13bffc7683"
             ]
         ],
         "meta": {
             "nf-test": "0.9.3",
             "nextflow": "25.10.4"
         },
-        "timestamp": "2026-08-12T21:09:59.526612721"
+        "timestamp": "2026-08-13T13:52:30.597696141"
     },
     "multiqc": {
         "content": [
@@ -88,41 +82,21 @@
             ],
             [
                 "multiqc_citations.txt:md5,4c806e63a283ec1b7e78cdae3a923d4f",
-                "multiqc_nf-core-gwas-analysis-plan-table.txt:md5,35ad285e8f9738defb689dc110b27784"
+                "multiqc_nf-core-gwas-analysis-plan-table.txt:md5,8e693726660f64ba09e7e037818b986b"
             ]
         ],
         "meta": {
             "nf-test": "0.9.3",
             "nextflow": "25.10.4"
         },
-        "timestamp": "2026-08-04T22:30:08.330471846"
-    },
-    "heritability": {
-        "content": [
-            [
-                "individual",
-                "individual/gcta_greml",
-                "individual/gcta_greml/example_chr1_qt",
-                "individual/gcta_greml/example_chr1_qt/example_chr1_qt.gcta_greml.hsq"
-            ],
-            [
-                "example_chr1_qt.gcta_greml.hsq:md5,79ca052b0c4713f0b5d42df5eb39f9b8"
-            ]
-        ],
-        "meta": {
-            "nf-test": "0.9.3",
-            "nextflow": "25.10.4"
-        },
-        "timestamp": "2026-08-12T21:09:59.517768416"
+        "timestamp": "2026-08-13T13:52:30.611629782"
     },
     "pipeline_info": {
         "content": [
             [
                 "nf_core_gwas_software_mqc_versions.yml"
             ],
-            [
-
-            ]
+            []
         ],
         "meta": {
             "nf-test": "0.9.3",

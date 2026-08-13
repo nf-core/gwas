@@ -18,40 +18,41 @@ workflow GRM_HERITABILITY_GCTA {
         if (!['greml', 'greml_ldms'].contains(estimator)) {
             error("[nf-core/gwas] ERROR: GRM_HERITABILITY_GCTA estimator must be 'greml' or 'greml_ldms', got '${estimator}'")
         }
-        tuple(meta5.id, estimator)
+        tuple([meta5.id, meta5.gcta_estimator], estimator)
     }
 
     ch_routes = ch_grm
-        .map { meta, mgrm_manifest, grm_files -> tuple(meta.id, tuple(meta, mgrm_manifest, grm_files)) }
+        .map { meta, mgrm_manifest, grm_files -> tuple([meta.id, meta.gcta_estimator], tuple(meta, mgrm_manifest, grm_files)) }
         .join(
-            ch_pheno.map { meta2, phenotypes_file -> tuple(meta2.id, tuple(meta2, phenotypes_file)) },
+            ch_pheno.map { meta2, phenotypes_file -> tuple([meta2.id, meta2.gcta_estimator], tuple(meta2, phenotypes_file)) },
             by: 0,
             failOnDuplicate: true,
             failOnMismatch: true,
         )
         .join(
-            ch_qcovar.map { meta3, quant_covariates_file -> tuple(meta3.id, tuple(meta3, quant_covariates_file)) },
+            ch_qcovar.map { meta3, quant_covariates_file -> tuple([meta3.id, meta3.gcta_estimator], tuple(meta3, quant_covariates_file)) },
             by: 0,
             failOnDuplicate: true,
             failOnMismatch: true,
         )
         .join(
-            ch_covar.map { meta4, cat_covariates_file -> tuple(meta4.id, tuple(meta4, cat_covariates_file)) },
+            ch_covar.map { meta4, cat_covariates_file -> tuple([meta4.id, meta4.gcta_estimator], tuple(meta4, cat_covariates_file)) },
             by: 0,
             failOnDuplicate: true,
             failOnMismatch: true,
         )
         .join(ch_estimators, by: 0, failOnDuplicate: true, failOnMismatch: true)
-        .map { analysis_id, grm, pheno, qcovar, covar, estimator ->
+        .map { route_key, grm, pheno, qcovar, covar, estimator ->
+            def analysis_id = route_key[0]
             if (estimator == 'greml_ldms' && !grm[1]) {
                 error("[nf-core/gwas] ERROR: GRM_HERITABILITY_GCTA estimator 'greml_ldms' requires an MGRM manifest, none given for '${analysis_id}'")
             }
             if (estimator == 'greml' && grm[1]) {
                 error("[nf-core/gwas] ERROR: GRM_HERITABILITY_GCTA estimator 'greml' takes a single GRM bundle, an MGRM manifest was given for '${analysis_id}'")
             }
-            tuple(analysis_id, grm, pheno, qcovar, covar, estimator)
+            tuple(route_key, grm, pheno, qcovar, covar, estimator)
         }
-        .branch { _analysis_id, grm, pheno, qcovar, covar, estimator ->
+        .branch { _route_key, grm, pheno, qcovar, covar, estimator ->
             greml: estimator == 'greml'
             return tuple(tuple(grm[0], grm[2]), pheno, qcovar, covar)
             greml_ldms: estimator == 'greml_ldms'

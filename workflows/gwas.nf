@@ -294,13 +294,14 @@ workflow GWAS {
         )
 
     def ch_greml_inputs = ch_greml_matrices
-        .join(ch_gcta_phenotypes, failOnDuplicate: true)
+        .combine(ch_gcta_phenotypes, by: 0)
         .multiMap { meta, mgrm, grm_files, estimator, phenotype, quant_covariates, cat_covariates ->
-            grm: [meta, mgrm, grm_files]
-            pheno: [meta, phenotype]
-            qcovar: [meta, quant_covariates]
-            covar: [meta, cat_covariates]
-            estimator: [meta, estimator]
+            def route_meta = meta + [gcta_estimator: estimator]
+            grm: [route_meta, mgrm, grm_files]
+            pheno: [route_meta, phenotype]
+            qcovar: [route_meta, quant_covariates]
+            covar: [route_meta, cat_covariates]
+            estimator: [route_meta, estimator]
         }
 
     GRM_HERITABILITY_GCTA(

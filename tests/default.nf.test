@@ -58,7 +58,7 @@ nextflow_pipeline {
                 { assert TRACE.count(workflow, 'LDAK_PCGC') == 0 },
                 { assert analysis_plan.text.readLines() == [
                     'Sample\tcohort\ttrait\ttrait_type\tgenome_build\tancestry\tassociation_methods\theritability_methods',
-                    'example_quantitative\texample_cohort\tQT\tquantitative\tGRCh37\tEUR\tplink2\t',
+                    'example_quantitative\texample_cohort\tQT\tquantitative\tGRCh37\tEUR\tplink2\t-',
                 ] },
                 { assert multiqc_report.text.contains('This table describes the run plan, not per-method completion or scientific results.') },
                 { assert multiqc_report.text.contains('Analysis ID') },
