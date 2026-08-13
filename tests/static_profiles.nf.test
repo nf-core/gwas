@@ -17,11 +17,13 @@ nextflow_pipeline {
         }
 
         then {
+            def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
             assertAll(
                 { assert workflow.success },
                 { assert TRACE.count(workflow, 'PLINK2_GLM') == 1 },
                 { assert TRACE.count(workflow, 'GWASLAB_HARMONIZE') >= 1 },
                 { assert new File("${params.outdir}/association/plink2/example_binary").isDirectory() },
+                { assert snapshot(removeNextflowVersion(versions.toString())).match('binary-versions') },
             )
         }
     }
@@ -38,6 +40,7 @@ nextflow_pipeline {
         }
 
         then {
+            def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
             assertAll(
                 { assert workflow.success },
                 { assert TRACE.count(workflow, 'PLINK2_GLM') == 1 },
@@ -45,6 +48,7 @@ nextflow_pipeline {
                 { assert TRACE.count(workflow, 'GCTA_FASTGWA') == 1 },
                 { assert TRACE.count(workflow, 'LDAK_KVIKSTEP2') == 1 },
                 { assert TRACE.count(workflow, 'GWASLAB_HARMONIZE') >= 4 },
+                { assert snapshot(removeNextflowVersion(versions.toString())).match('association-versions') },
             )
         }
     }
@@ -61,6 +65,7 @@ nextflow_pipeline {
         }
 
         then {
+            def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
             assertAll(
                 { assert workflow.success },
                 { assert TRACE.count(workflow, 'GCTA_REML') == 1 },
@@ -68,6 +73,7 @@ nextflow_pipeline {
                 { assert TRACE.count(workflow, 'LDAK_REML') == 1 },
                 { assert TRACE.count(workflow, 'LDAK_HE') == 1 },
                 { assert TRACE.count(workflow, 'LDAK_PCGC') == 1 },
+                { assert snapshot(removeNextflowVersion(versions.toString())).match('heritability-versions') },
             )
         }
     }

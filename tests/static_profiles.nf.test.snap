@@ -1,0 +1,142 @@
+{
+    "binary-versions": {
+        "content": [
+            {
+                "GWASLAB_HARMONIZE": {
+                    "gwaslab": "4.1.9",
+                    "python": "3.12.13"
+                },
+                "NORMALISE_PHENOTYPES": {
+                    "python": "3.14.5"
+                },
+                "PLINK2_GLM": {
+                    "plink2": "2.0.0-a.6.9LM"
+                },
+                "PLINK2_VCF": {
+                    "plink2": "2.0.0-a.6.9LM"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-13T14:21:47.835600181"
+    },
+    "association-versions": {
+        "content": [
+            {
+                "CUSTOM_GCTAMERGEGRMPARTS": {
+                    "coreutils": 9.5
+                },
+                "GCTA_FASTGWA": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_MAKEBKSPARSE": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_MAKEGRMPART": {
+                    "gcta": "1.94.1"
+                },
+                "GWASLAB_HARMONIZE": {
+                    "gwaslab": "4.1.9",
+                    "python": "3.12.13"
+                },
+                "LDAK_KVIKSTEP1": {
+                    "ldak6": 6
+                },
+                "LDAK_KVIKSTEP2": {
+                    "ldak6": 6
+                },
+                "NORMALISE_PHENOTYPES": {
+                    "python": "3.14.5"
+                },
+                "PLINK2_GLM": {
+                    "plink2": "2.0.0-a.6.9LM"
+                },
+                "PLINK2_MAKEBED": {
+                    "plink2": "2.0.0-a.6.9LM"
+                },
+                "PLINK2_VCF": {
+                    "plink2": "2.0.0-a.6.9LM"
+                },
+                "REGENIE_STEP1": {
+                    "regenie": "4.1.2"
+                },
+                "REGENIE_STEP2": {
+                    "regenie": "4.1.2"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-13T14:22:34.14460938"
+    },
+    "heritability-versions": {
+        "content": [
+            {
+                "CUSTOM_GCTACREATEMGRMMANIFEST": {
+                    "coreutils": 9.5
+                },
+                "CUSTOM_GCTAMERGEGRMPARTS": {
+                    "coreutils": 9.5
+                },
+                "CUSTOM_GCTASTRATIFYLDSCORES": {
+                    "r-base": "4.2.1"
+                },
+                "GCTA_CALCULATELDSCORES": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_MAKEGRMPART": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_REML": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_REMLLDMS": {
+                    "gcta": "1.94.1"
+                },
+                "LDAK_ADJUSTGRM": {
+                    "ldak6": 6
+                },
+                "LDAK_CALCKINS": {
+                    "ldak6": 6
+                },
+                "LDAK_HE": {
+                    "ldak6": 6
+                },
+                "LDAK_PCGC": {
+                    "ldak6": 6
+                },
+                "LDAK_REML": {
+                    "ldak6": 6
+                },
+                "NORMALISE_PHENOTYPES": {
+                    "python": "3.14.5"
+                },
+                "PLINK2_MAKEBED": {
+                    "plink2": "2.0.0-a.6.9LM"
+                },
+                "PLINK2_VCF": {
+                    "plink2": "2.0.0-a.6.9LM"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-13T14:23:18.962636656"
+    }
+}
