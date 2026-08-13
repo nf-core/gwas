@@ -70,6 +70,16 @@ canonical_files=(
     results/fixtures/pheno_cov/example.pheno
     results/fixtures/pheno_cov/example.qcovar
     results/fixtures/pheno_cov/example.catcovar
+    results/fixtures/relational/cohort_manifest.csv
+    results/fixtures/relational/analysis_manifest_quantitative.csv
+    results/fixtures/relational/analysis_manifest_binary.csv
+    results/fixtures/relational/analysis_manifest_association_only.csv
+    results/fixtures/relational/analysis_manifest_heritability_only.csv
+    results/fixtures/relational/analysis_manifest_heterogeneous.csv
+    results/fixtures/relational/method_options_heterogeneous.json
+    results/fixtures/relational/resources/gcta_grm_extract.txt
+    results/fixtures/relational/resources/ldak_predictor_extract.txt
+    results/fixtures/relational/resources/ldak_weights.txt
 )
 
 copy_canonical() {
@@ -120,6 +130,7 @@ for contract_file in "${contract_files[@]}"; do
     sha256_value "$contract_file" >> "$digest_input"
 done
 printf '%s\n' "$profile" >> "$digest_input"
+printf '%s\n' "$cache_dir" >> "$digest_input"
 digest=$(sha256_value "$digest_input")
 rm -f -- "$digest_input"
 
@@ -186,6 +197,15 @@ run_root=$(mktemp -d "$cache_dir/.$digest.run.XXXXXX")
 for relative_path in "${canonical_files[@]}"; do
     mkdir -p "$(dirname "$published_root/$relative_path")"
     cp "$download_root/$relative_path" "$published_root/$relative_path"
+done
+
+# The documents remain the static nf-core/test-datasets examples. During tests against an unmerged fixture
+# source, relocate only their canonical root so every embedded input and resource resolves from the same verified
+# cache entry; rows, method selections, option values and resource contents are unchanged.
+canonical_url=https://raw.githubusercontent.com/nf-core/test-datasets/gwas/results/fixtures
+local_url="$final_root/results/fixtures"
+for document in "$published_root"/results/fixtures/relational/*.csv "$published_root"/results/fixtures/relational/*.json; do
+    sed -i "s|$canonical_url|$local_url|g" "$document"
 done
 
 (

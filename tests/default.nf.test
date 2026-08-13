@@ -22,8 +22,6 @@ nextflow_pipeline {
             def analysis_plan = new File("${params.outdir}/multiqc/multiqc_data/multiqc_nf-core-gwas-analysis-plan-table.txt")
             def stable_name_association = getAllFilesFromDir("${params.outdir}/association", relative: true, includeDir: true).findAll { path -> path.toString() }
             def stable_path_association = getAllFilesFromDir("${params.outdir}/association", ignoreFile: 'tests/.nftignore')
-            def stable_name_heritability = getAllFilesFromDir("${params.outdir}/heritability", relative: true, includeDir: true).findAll { path -> path.toString() }
-            def stable_path_heritability = getAllFilesFromDir("${params.outdir}/heritability", ignoreFile: 'tests/.nftignore')
             def stable_name_summary_statistics = getAllFilesFromDir("${params.outdir}/summary_statistics", relative: true, includeDir: true).findAll { path -> path.toString() }
             def stable_path_summary_statistics = getAllFilesFromDir("${params.outdir}/summary_statistics", ignoreFile: 'tests/.nftignore')
             def stable_name_multiqc = getAllFilesFromDir("${params.outdir}/multiqc", relative: true, includeDir: true).findAll { path -> path.toString() }
@@ -45,13 +43,12 @@ nextflow_pipeline {
             ).findAll { path -> path.toString() }
             assertAll(
                 { assert workflow.success },
-                // The routine profile deliberately exercises only the fast route set: one PLINK 2
-                // association, its GWASLab harmonisation and one GCTA GREML estimate. Every expensive
-                // route has an individually runnable profile of its own.
-                { assert new File("${params.outdir}").list().toList().sort() == ['association', 'heritability', 'multiqc', 'pipeline_info', 'summary_statistics'] },
+                // The routine profile executes the public minimal quantitative example. Broader static
+                // association, heritability and heterogeneous examples have their own named profiles.
+                { assert new File("${params.outdir}").list().toList().sort() == ['association', 'multiqc', 'pipeline_info', 'summary_statistics'] },
                 { assert TRACE.count(workflow, 'PLINK2_GLM') == 1 },
                 { assert TRACE.count(workflow, 'GWASLAB_HARMONIZE') == 1 },
-                { assert TRACE.count(workflow, 'GCTA_REML') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_REML') == 0 },
                 { assert TRACE.count(workflow, 'REGENIE_STEP1') == 0 },
                 { assert TRACE.count(workflow, 'GCTA_FASTGWA') == 0 },
                 { assert TRACE.count(workflow, 'GCTA_REMLLDMS') == 0 },
@@ -61,17 +58,16 @@ nextflow_pipeline {
                 { assert TRACE.count(workflow, 'LDAK_PCGC') == 0 },
                 { assert analysis_plan.text.readLines() == [
                     'Sample\tcohort\ttrait\ttrait_type\tgenome_build\tancestry\tassociation_methods\theritability_methods',
-                    'example_chr1_qt\texample_chr1\tQT\tquantitative\tGRCh37\tEUR\tplink2\tgcta_greml',
+                    'example_quantitative\texample_cohort\tQT\tquantitative\tGRCh37\tEUR\tplink2\t',
                 ] },
                 { assert multiqc_report.text.contains('This table describes the run plan, not per-method completion or scientific results.') },
                 { assert multiqc_report.text.contains('Analysis ID') },
                 { assert multiqc_report.text.contains('Association testing was performed with PLINK 2') },
-                { assert multiqc_report.text.contains('SNP-based heritability was estimated with GCTA GREML') },
+                { assert !multiqc_report.text.contains('SNP-based heritability was estimated') },
                 { assert multiqc_report.text.contains('title="nf-core/gwas"') },
                 { assert multiqc_report.text.contains('class="custom_logo') },
                 { assert snapshot(removeNextflowVersion(versions.toString())).match('versions') },
                 { assert snapshot(stable_name_association, stable_path_association).match('association') },
-                { assert snapshot(stable_name_heritability, stable_path_heritability).match('heritability') },
                 { assert snapshot(stable_name_summary_statistics, stable_path_summary_statistics).match('summary_statistics') },
                 { assert snapshot(stable_name_multiqc, stable_path_multiqc).match('multiqc') },
                 { assert snapshot(stable_name_pipeline_info, stable_path_pipeline_info).match('pipeline_info') },

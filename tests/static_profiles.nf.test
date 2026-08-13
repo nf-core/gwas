@@ -1,0 +1,74 @@
+nextflow_pipeline {
+
+    name "Test static public profiles"
+    script "../main.nf"
+    tag "pipeline"
+    tag "static_profiles"
+
+    test("the binary profile executes the static binary manifest") {
+
+        config "../conf/test_binary.config"
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'PLINK2_GLM') == 1 },
+                { assert TRACE.count(workflow, 'GWASLAB_HARMONIZE') >= 1 },
+                { assert new File("${params.outdir}/association/plink2/example_binary").isDirectory() },
+            )
+        }
+    }
+
+    test("the association profile executes every route in the static association manifest") {
+
+        config "../conf/test_association.config"
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'PLINK2_GLM') == 1 },
+                { assert TRACE.count(workflow, 'REGENIE_STEP2') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_FASTGWA') == 1 },
+                { assert TRACE.count(workflow, 'LDAK_KVIKSTEP2') == 1 },
+                { assert TRACE.count(workflow, 'GWASLAB_HARMONIZE') >= 4 },
+            )
+        }
+    }
+
+    test("the heritability profile executes every route in the static heritability manifest") {
+
+        config "../conf/test_heritability.config"
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'GCTA_REML') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_REMLLDMS') == 1 },
+                { assert TRACE.count(workflow, 'LDAK_REML') == 1 },
+                { assert TRACE.count(workflow, 'LDAK_HE') == 1 },
+                { assert TRACE.count(workflow, 'LDAK_PCGC') == 1 },
+            )
+        }
+    }
+}
