@@ -6,14 +6,14 @@
                 "example_vcf_qt/example_vcf_qt.ldak_kvik.step2.assoc"
             ],
             [
-                "example_vcf_qt.ldak_kvik.step2.assoc:md5,efd0d5e1dbb23dcd80c13bbfd87ce66f"
+                "example_vcf_qt.ldak_kvik.step2.assoc:md5,d900ec29ee8c14586bf8d9045f315d1b"
             ]
         ],
         "meta": {
             "nf-test": "0.9.3",
             "nextflow": "25.10.4"
         },
-        "timestamp": "2026-08-12T20:43:23.901201701"
+        "timestamp": "2026-08-13T14:01:52.673670082"
     },
     "thin-common-native": {
         "content": [
@@ -135,14 +135,14 @@
                 "example_vcf_qt/example_vcf_qt.ldak_kvik.gwaslab.tsv.gz"
             ],
             [
-                "example_vcf_qt/example_vcf_qt.ldak_kvik.gwaslab.tsv.gz:md5,a98586ed5327e821eeb99c774578727a"
+                "example_vcf_qt/example_vcf_qt.ldak_kvik.gwaslab.tsv.gz:md5,06495c6743f296a1503271f24216d27c"
             ]
         ],
         "meta": {
             "nf-test": "0.9.3",
             "nextflow": "25.10.4"
         },
-        "timestamp": "2026-08-12T20:43:23.929616383"
+        "timestamp": "2026-08-13T14:01:52.685175938"
     },
     "all-native": {
         "content": [
