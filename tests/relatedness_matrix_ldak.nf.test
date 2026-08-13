@@ -29,6 +29,61 @@ nextflow_pipeline {
         [suffix: ' - stub', stub: true],
     ]
 
+    def inputs = { output_dir, project_dir, String scenario ->
+        def definitions = [
+            ldak_relatedness_shared: [
+                ids: ['example_pgen_bt_all', 'example_pgen_bt_unrelated'],
+                ldak: [
+                    example_pgen_bt_all: [model: 'custom', power: -0.5, relatedness_filter: false],
+                    example_pgen_bt_unrelated: [model: 'custom', power: -0.5, relatedness_filter: true],
+                ],
+            ],
+            ldak_relatedness_distinct: [
+                ids: ['example_pgen_bt_human', 'example_pgen_bt_custom_model', 'example_pgen_bt_custom_power'],
+                ldak: [
+                    example_pgen_bt_human: [model: 'human_default', power: -0.25, relatedness_filter: false],
+                    example_pgen_bt_custom_model: [model: 'custom', power: -0.25, relatedness_filter: false],
+                    example_pgen_bt_custom_power: [model: 'custom', power: -0.5, relatedness_filter: false],
+                ],
+            ],
+            ldak_relatedness_same_weights: [
+                ids: ['example_pgen_bt_first', 'example_pgen_bt_second'],
+                weight_values: [1, 1],
+            ],
+            ldak_relatedness_different_weights: [
+                ids: ['example_pgen_bt_first', 'example_pgen_bt_second'],
+                weight_values: [1, 2],
+            ],
+        ]
+        def definition = definitions[scenario]
+        def analyses = RELATIONAL.analyses(project_dir, output_dir, scenario, { rows ->
+            rows.clear()
+            definition.ids.each { id ->
+                def row = RELATIONAL.analysis(project_dir, 'example_pgen_bt')
+                row.analysis_id = id
+                row.association_methods = ''
+                row.heritability_methods = 'ldak_reml'
+                row.population_prevalence = '0.3'
+                rows << row
+            }
+        })
+        def options = definition.ids.withIndex().collectEntries { id, index ->
+            def ldak = definition.ldak
+                ? new LinkedHashMap(definition.ldak[id])
+                : [model: 'custom', power: -0.5, relatedness_filter: false, weights_policy: 'provided']
+            if (definition.weight_values) {
+                def directory = "${scenario}-${index}"
+                ldak.weights = RELATIONAL.weights(project_dir, output_dir, "${directory}/example_all.pvar", definition.weight_values[index])
+            }
+            [(id): [ldak: ldak]]
+        }
+        return [
+            cohort: RELATIONAL.cohorts(project_dir, output_dir, scenario),
+            analysis: analyses,
+            options: RELATIONAL.methodOptions(output_dir, scenario, options),
+        ]
+    }
+
     def stubAssertions = { workflow, matrices, heritability, matrixKeys, analysisIds, routeCounts ->
         return [
             { assert workflow.success },
@@ -45,9 +100,8 @@ nextflow_pipeline {
         ]
     }
 
-    // Each scenario loads its same-named registered profile config directly because nf-test 0.9.3
-    // exposes profile selection only at suite scope. The configs own immutable matrix-identity rows;
-    // `outdir` remains the only parameter assigned in a test body.
+    // Each focused identity scenario builds its linked inputs locally and loads only deterministic
+    // publication/resource settings from its test config.
     executionModes.each { mode ->
         test("filtered and unfiltered analyses have distinct LDAK matrix identities${mode.suffix}") {
 
@@ -60,6 +114,10 @@ nextflow_pipeline {
             when {
                 params {
                     outdir = "$outputDir"
+                    def linked = inputs(outputDir, projectDir, 'ldak_relatedness_shared')
+                    cohort_manifest = linked.cohort
+                    analysis_manifest = linked.analysis
+                    method_options = linked.options
                 }
             }
 
@@ -144,6 +202,10 @@ nextflow_pipeline {
             when {
                 params {
                     outdir = "$outputDir"
+                    def linked = inputs(outputDir, projectDir, 'ldak_relatedness_distinct')
+                    cohort_manifest = linked.cohort
+                    analysis_manifest = linked.analysis
+                    method_options = linked.options
                 }
             }
 
@@ -206,6 +268,10 @@ nextflow_pipeline {
             when {
                 params {
                     outdir = "$outputDir"
+                    def linked = inputs(outputDir, projectDir, 'ldak_relatedness_same_weights')
+                    cohort_manifest = linked.cohort
+                    analysis_manifest = linked.analysis
+                    method_options = linked.options
                 }
             }
 
@@ -270,6 +336,10 @@ nextflow_pipeline {
             when {
                 params {
                     outdir = "$outputDir"
+                    def linked = inputs(outputDir, projectDir, 'ldak_relatedness_different_weights')
+                    cohort_manifest = linked.cohort
+                    analysis_manifest = linked.analysis
+                    method_options = linked.options
                 }
             }
 

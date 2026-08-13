@@ -6,7 +6,35 @@ nextflow_pipeline {
     tag "association"
     tag "gcta"
     tag "gcta_fastgwa"
-    profile "test_gcta_fastgwa"
+    config "../conf/test_gcta_fastgwa.config"
+
+    def inputs = { output_dir, project_dir ->
+        def ids = ['fastgwa_same_1', 'fastgwa_same_2', 'fastgwa_different', 'fastgwa_and_greml']
+        def analyses = RELATIONAL.analyses(project_dir, output_dir, 'gcta_fastgwa', { rows ->
+            rows.clear()
+            ids.each { id ->
+                def row = RELATIONAL.analysis(project_dir, 'example_pgen_qt')
+                row.analysis_id = id
+                row.association_methods = 'gcta_fastgwa'
+                row.heritability_methods = id == 'fastgwa_and_greml' ? 'gcta_greml' : ''
+                rows << row
+            }
+            def binary = RELATIONAL.analysis(project_dir, 'example_pgen_bt')
+            binary.analysis_id = 'fastgwa_binary'
+            binary.association_methods = 'gcta_fastgwa'
+            rows << binary
+        })
+        def options = RELATIONAL.methodOptions(output_dir, 'gcta_fastgwa', [
+            fastgwa_same_2: [gcta: [sparse_cutoff: 0.05]],
+            fastgwa_different: [gcta: [sparse_cutoff: 0.025]],
+            fastgwa_and_greml: [gcta: [sparse_cutoff: 0.05]],
+        ])
+        return [
+            cohort: RELATIONAL.cohorts(project_dir, output_dir, 'gcta_fastgwa'),
+            analysis: analyses,
+            options: options,
+        ]
+    }
 
     def work_files = { output_dir ->
         def files = []
@@ -46,6 +74,10 @@ nextflow_pipeline {
             when {
                 params {
                     outdir = "$outputDir"
+                    def linked = inputs(outputDir, projectDir)
+                    cohort_manifest = linked.cohort
+                    analysis_manifest = linked.analysis
+                    method_options = linked.options
                 }
             }
 

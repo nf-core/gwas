@@ -18,8 +18,28 @@ nextflow_pipeline {
         [suffix: ' - stub', stub: true],
     ]
 
-    // The registered profile config owns the immutable quantitative and binary rows. It is loaded
-    // directly because nf-test 0.9.3 exposes profile selection only at suite scope.
+    def inputs = { output_dir, project_dir ->
+        def analyses = RELATIONAL.analyses(project_dir, output_dir, 'ldak_reml', { rows ->
+            rows[0].association_methods = ''
+            rows[0].heritability_methods = 'ldak_reml'
+            def binary = RELATIONAL.analysis(project_dir, 'example_pgen_bt')
+            binary.association_methods = ''
+            binary.heritability_methods = 'ldak_reml'
+            binary.population_prevalence = '0.3'
+            rows << binary
+        })
+        return [
+            cohort: RELATIONAL.cohorts(project_dir, output_dir, 'ldak_reml'),
+            analysis: analyses,
+            options: RELATIONAL.methodOptions(output_dir, 'ldak_reml', [
+                example_pgen_qt: [ldak: [model: 'human_default', power: -0.25, relatedness_filter: false]],
+                example_pgen_bt: [ldak: [model: 'custom', power: -0.5, relatedness_filter: true]],
+            ]),
+        ]
+    }
+
+    // This focused test builds its quantitative and binary relationship locally; the config owns only
+    // deterministic process resources and is not a public named profile.
     executionModes.each { mode ->
         test("rows selecting LDAK REML publish native observed and liability-scale results${mode.suffix}") {
 
@@ -32,6 +52,10 @@ nextflow_pipeline {
             when {
                 params {
                     outdir = "$outputDir"
+                    def linked = inputs(outputDir, projectDir)
+                    cohort_manifest = linked.cohort
+                    analysis_manifest = linked.analysis
+                    method_options = linked.options
                 }
             }
 

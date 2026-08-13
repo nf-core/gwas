@@ -6,7 +6,33 @@ nextflow_pipeline {
     tag "heritability"
     tag "gcta"
     tag "gcta_greml_ldms"
-    profile "test_gcta_greml_ldms"
+    config "../conf/test_gcta_greml_ldms.config"
+
+    def inputs = { output_dir, project_dir ->
+        def analyses = RELATIONAL.analyses(project_dir, output_dir, 'gcta_greml_ldms', { rows ->
+            rows.clear()
+            ['ldms_same_1', 'ldms_same_2', 'ldms_different_edges', 'ldms_different_bins'].each { id ->
+                def row = RELATIONAL.analysis(project_dir, 'example_bfile_qt')
+                row.analysis_id = id
+                row.association_methods = ''
+                row.heritability_methods = 'gcta_greml_ldms'
+                rows << row
+            }
+        })
+        def options = RELATIONAL.methodOptions(output_dir, 'gcta_greml_ldms', [
+            ldms_same_1: [gcta: [ld_score_region_kb: 50, ld_bins: 1, ldms_maf_edges: [0.0, 0.5]]],
+            ldms_same_2: [gcta: [ld_score_region_kb: 50, ld_bins: 1, ldms_maf_edges: [0.0, 0.5]]],
+            ldms_different_edges: [gcta: [ld_score_region_kb: 50, ld_bins: 1, ldms_maf_edges: [0.0, 0.2, 0.5]]],
+            ldms_different_bins: [gcta: [ld_score_region_kb: 50, ld_bins: 2, ldms_maf_edges: [0.0, 0.5]]],
+        ])
+        return [
+            cohort: RELATIONAL.cohorts(project_dir, output_dir, 'gcta_greml_ldms', { rows ->
+                rows[0] = RELATIONAL.cohort('example_bfile')
+            }),
+            analysis: analyses,
+            options: options,
+        ]
+    }
 
     def executionModes = [
         [suffix: '', stub: false],
@@ -23,6 +49,10 @@ nextflow_pipeline {
             when {
                 params {
                     outdir = "$outputDir"
+                    def linked = inputs(outputDir, projectDir)
+                    cohort_manifest = linked.cohort
+                    analysis_manifest = linked.analysis
+                    method_options = linked.options
                 }
             }
 

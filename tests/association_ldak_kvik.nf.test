@@ -46,9 +46,28 @@ nextflow_pipeline {
         [suffix: ' - stub', stub: true],
     ]
 
-    // Each scenario loads its same-named registered profile config directly because nf-test 0.9.3
-    // exposes profile selection only at suite scope. Registered profiles materialise immutable linked
-    // manifests and method options; `outdir` remains the only parameter assigned in a test body.
+    def inputs = { output_dir, project_dir, String scenario, String subset, boolean binary = false ->
+        def analysis_id = binary ? 'example_pgen_bt' : 'example_vcf_qt'
+        def cohort_id = binary ? 'example_pgen' : 'example_vcf'
+        def analyses = RELATIONAL.analyses(project_dir, output_dir, scenario, { rows ->
+            rows[0] = RELATIONAL.analysis(project_dir, analysis_id)
+            rows[0].association_methods = 'ldak_kvik'
+        })
+        def ldak = [kvik_step1_subset: subset]
+        if (subset == 'provided') {
+            ldak.predictor_extract = RELATIONAL.predictors(project_dir, output_dir, 'kvik_provided.in', 220)
+        }
+        return [
+            cohort: RELATIONAL.cohorts(project_dir, output_dir, scenario, { rows ->
+                rows[0] = RELATIONAL.cohort(cohort_id)
+            }),
+            analysis: analyses,
+            options: RELATIONAL.methodOptions(output_dir, scenario, [(analysis_id): [ldak: ldak]]),
+        ]
+    }
+
+    // These focused policy tests build their linked inputs locally and load only deterministic process
+    // settings from scenario configs. They are intentionally not public named profiles.
     execution_modes.each { mode ->
         test("the all-predictors policy runs KVIK and harmonises its native result${mode.suffix}") {
 
@@ -65,6 +84,10 @@ nextflow_pipeline {
             when {
                 params {
                     outdir = "$outputDir"
+                    def linked = inputs(outputDir, projectDir, 'ldak_kvik_all', 'all')
+                    cohort_manifest = linked.cohort
+                    analysis_manifest = linked.analysis
+                    method_options = linked.options
                 }
             }
 
@@ -181,6 +204,10 @@ nextflow_pipeline {
             when {
                 params {
                     outdir = "$outputDir"
+                    def linked = inputs(outputDir, projectDir, 'ldak_kvik_thin_common', 'thin_common')
+                    cohort_manifest = linked.cohort
+                    analysis_manifest = linked.analysis
+                    method_options = linked.options
                 }
             }
 
@@ -232,6 +259,10 @@ nextflow_pipeline {
             when {
                 params {
                     outdir = "$outputDir"
+                    def linked = inputs(outputDir, projectDir, 'ldak_kvik_provided', 'provided')
+                    cohort_manifest = linked.cohort
+                    analysis_manifest = linked.analysis
+                    method_options = linked.options
                 }
             }
 
@@ -283,6 +314,10 @@ nextflow_pipeline {
             when {
                 params {
                     outdir = "$outputDir"
+                    def linked = inputs(outputDir, projectDir, 'ldak_kvik_binary', 'all', true)
+                    cohort_manifest = linked.cohort
+                    analysis_manifest = linked.analysis
+                    method_options = linked.options
                 }
             }
 

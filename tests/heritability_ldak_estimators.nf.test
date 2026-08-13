@@ -21,6 +21,30 @@ nextflow_pipeline {
         return scripts
     }
 
+    def inputs = { output_dir, project_dir ->
+        def analyses = RELATIONAL.analyses(project_dir, output_dir, 'ldak_estimators', { rows ->
+            rows[0].analysis_id = 'ldak_he_plain'
+            rows[0].quant_covariates = ''
+            rows[0].cat_covariates = ''
+            rows[0].association_methods = ''
+            rows[0].heritability_methods = 'ldak_he'
+            def adjusted = RELATIONAL.analysis(project_dir, 'example_pgen_bt')
+            adjusted.analysis_id = 'ldak_all_covariates'
+            adjusted.association_methods = ''
+            adjusted.heritability_methods = 'ldak_reml,ldak_he,ldak_pcgc'
+            adjusted.population_prevalence = '0.3'
+            rows << adjusted
+        })
+        return [
+            cohort: RELATIONAL.cohorts(project_dir, output_dir, 'ldak_estimators'),
+            analysis: analyses,
+            options: RELATIONAL.methodOptions(output_dir, 'ldak_estimators', [
+                ldak_he_plain: [ldak: [model: 'human_default', power: -0.25, relatedness_filter: false]],
+                ldak_all_covariates: [ldak: [model: 'human_default', power: -0.25, relatedness_filter: false]],
+            ]),
+        ]
+    }
+
     executionModes.each { mode ->
         test("LDAK estimators publish independently and adjust matrices only for covariate-bearing analyses${mode.suffix}") {
 
@@ -33,6 +57,10 @@ nextflow_pipeline {
             when {
                 params {
                     outdir = "$outputDir"
+                    def linked = inputs(outputDir, projectDir)
+                    cohort_manifest = linked.cohort
+                    analysis_manifest = linked.analysis
+                    method_options = linked.options
                 }
             }
 

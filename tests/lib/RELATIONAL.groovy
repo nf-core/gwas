@@ -191,10 +191,22 @@ class RELATIONAL {
         return resource(outputDir, name, predictors.join('\n') + '\n')
     }
 
+    static String weights(Object projectDir, Object outputDir, String name, int value) {
+        def source = cohort('example_pgen').pvar
+        def fixture = source.toString().replace(FIXTURES.UPSTREAM, FIXTURES.base(projectDir))
+        def lines = fixture.startsWith('http') ? new URL(fixture).readLines() : new File(fixture).readLines()
+        def content = lines
+            .findAll { line -> line && !line.startsWith('#') }
+            .collect { line -> "${line.tokenize()[2]} ${value}" }
+            .join('\n') + '\n'
+        return resource(outputDir, name, content)
+    }
+
     static String resource(Object outputDir, String name, String content) {
         def directory = new File(new File(outputDir.toString()).parentFile, 'resources')
         directory.mkdirs()
         def resource = new File(directory, name)
+        resource.parentFile.mkdirs()
         resource.text = content
         return resource.absolutePath
     }
