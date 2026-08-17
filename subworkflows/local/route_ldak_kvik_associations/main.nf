@@ -9,7 +9,8 @@ include { LDAK_KVIKSTEP2                  } from '../../../modules/local/ldak/kv
 include { ATTRIBUTE_LDAK_KVIK_PREDICTIONS } from '../../../modules/local/attribute_ldak_kvik_predictions/main'
 
 // FUNCTION: Local to the pipeline
-include { buildKvikPredictionKey          } from '../utils_nfcore_gwas_pipeline'
+include { digestFileBytes                 } from '../utils_nfcore_gwas_pipeline'
+include { buildCanonicalPredictionKey     } from '../utils_nfcore_gwas_pipeline'
 
 workflow ROUTE_LDAK_KVIK_ASSOCIATIONS {
     take:
@@ -98,4 +99,29 @@ workflow ROUTE_LDAK_KVIK_ASSOCIATIONS {
     effects             = LDAK_KVIKSTEP1.out.effects // channel: [ val(meta), path(effects) ], optional per shared fit
     progress            = LDAK_THINCOMMON.out.progress // channel: [ val(meta), path(progress) ], only for thin_common fits
     logs                = LDAK_KVIKSTEP1.out.log.mix(LDAK_KVIKSTEP2.out.log) // channel: [ val(meta), path(log) ]
+}
+
+/*
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    FUNCTIONS
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+*/
+
+// LDAK-KVIK Step 1 reuse additionally depends on predictor policy and optional predictor-list bytes.
+def buildKvikPredictionKey(meta, phenotype, quant_covariates, cat_covariates, subset_policy, predictor_extract) {
+    def identity = [
+        cohort: meta.cohort,
+        trait: meta.trait,
+        is_binary: meta.is_binary,
+        phenotype: getPredictionInputIdentity(phenotype),
+        quant_covariates: getPredictionInputIdentity(quant_covariates),
+        cat_covariates: getPredictionInputIdentity(cat_covariates),
+        subset_policy: subset_policy,
+        predictor_extract: getPredictionInputIdentity(predictor_extract),
+    ]
+    return buildCanonicalPredictionKey(identity)
+}
+
+def getPredictionInputIdentity(input_file) {
+    return input_file ? digestFileBytes(input_file) : 'absent'
 }

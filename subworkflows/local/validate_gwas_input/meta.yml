@@ -1,0 +1,34 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
+name: "validate_gwas_input"
+description: Validate linked cohort and analysis manifests and emit canonical nf-core/gwas analysis records
+keywords:
+  - validation
+  - manifest
+  - gwas
+  - method options
+components:
+  - samplesheettolist
+input:
+  - cohort_manifest:
+      description: Cohort manifest declaring cohort identity, genome build, ancestry and exactly one genotype representation
+      structure: path cohort_manifest
+      pattern: "*.csv"
+  - analysis_manifest:
+      description: Analysis manifest declaring cohort-linked traits, covariates and selected association or heritability methods
+      structure: path analysis_manifest
+      pattern: "*.csv"
+  - method_options:
+      description: Optional JSON document containing validated scientific method options keyed by analysis identifier
+      structure: "path method_options|[]"
+      pattern: "*.json"
+output:
+  - analyses:
+      description: Canonical analysis tuples with joined cohort metadata, resolved method options and stageable scientific resources
+      structure: "[map meta, list genotype_files, path phenotype, path quant_covariates|[], path cat_covariates|[], path predictor_extract|[], path ldak_weights|[]]"
+      pattern: "*.{pgen,psam,pvar,bed,bim,fam,vcf,vcf.gz,txt,tsv,json}"
+      ontologies:
+        - edam: "http://edamontology.org/format_2330"
+authors:
+  - "@andongni"
+maintainers:
+  - "@andongni"

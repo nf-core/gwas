@@ -15,10 +15,9 @@ components:
   - plink_prepare_grm_ldms_gcta
   - plink_prepare_grm_ldak
   - gcta/makebksparse
-  - ldakweightsidentity
-  - methodresourceidentity
-  - relatednessmatrixkinds
-  - relatednessmatrixrequest
+  - digestfilebytes
+  - digestidentitytext
+  - getmethodcapabilities
 input:
   - ch_analyses:
       description: One analysis unit per element, carrying its cohort identity, selected methods, genotype files and optional LDAK weights Path. Validated GCTA family options, including the optional extraction resource, are carried in meta.method_options.

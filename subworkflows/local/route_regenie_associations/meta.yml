@@ -11,6 +11,8 @@ components:
   - plink_fit_regenie
   - attribute/regenie/predictions
   - regenie/step2
+  - digestfilebytes
+  - buildcanonicalpredictionkey
 input:
   - ch_analyses:
       description: Canonical nf-core/gwas analysis records; public outputs retain each consuming analysis map

@@ -1,0 +1,256 @@
+nextflow_function {
+
+    name "Test linked GWAS input contract functions"
+    script "../main.nf"
+    tag "function"
+    tag "input"
+
+    test("quantitative fastGWA maps the native beta and sample-count columns") {
+        function "getAssociationColumnMappingJson"
+
+        when {
+            function {
+                """
+                input[0] = 'gcta_fastgwa'
+                input[1] = false
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert new groovy.json.JsonSlurper().parseText(function.result) == [
+                    snpid: 'SNP',
+                    chrom: 'CHR',
+                    pos: 'POS',
+                    ea: 'A1',
+                    nea: 'A2',
+                    eaf: 'AF1',
+                    n: 'N',
+                    beta: 'BETA',
+                    se: 'SE',
+                    p: 'P',
+                ] },
+            )
+        }
+    }
+
+    test("binary fastGWA retains the native beta mapping without inventing an odds-ratio column") {
+        function "getAssociationColumnMappingJson"
+
+        when {
+            function {
+                """
+                input[0] = 'gcta_fastgwa'
+                input[1] = true
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert new groovy.json.JsonSlurper().parseText(function.result) == [
+                    snpid: 'SNP',
+                    chrom: 'CHR',
+                    pos: 'POS',
+                    ea: 'A1',
+                    nea: 'A2',
+                    eaf: 'AF1',
+                    n: 'N',
+                    beta: 'BETA',
+                    se: 'SE',
+                    p: 'P',
+                ] },
+            )
+        }
+    }
+
+    test("quantitative KVIK maps its A1 frequency and effective analysis size without an extra Z field") {
+        function "getAssociationColumnMappingJson"
+        tag "kvik_mapping"
+
+        when {
+            function {
+                """
+                input[0] = 'ldak_kvik'
+                input[1] = false
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert new groovy.json.JsonSlurper().parseText(function.result) == [
+                    snpid: 'Predictor',
+                    chrom: 'Chromosome',
+                    pos: 'Basepair',
+                    ea: 'A1',
+                    nea: 'A2',
+                    eaf: 'EAF',
+                    neff: 'N',
+                    p: 'Wald_P',
+                    beta: 'Effect',
+                    se: 'SE',
+                ] },
+            )
+        }
+    }
+
+    test("the association mapping registry preserves its established public projection") {
+        function "getAssociationColumnMappings"
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result.keySet().toList() == ['plink2', 'regenie', 'gcta_fastgwa', 'ldak_kvik'] },
+                { assert function.result.values().every { mapping -> mapping.keySet().every { section -> section in ['common', 'quantitative', 'binary'] } } },
+                { assert function.result.plink2.keySet().toList() == ['common'] },
+                { assert function.result.ldak_kvik.keySet().toList() == ['common', 'quantitative', 'binary'] },
+            )
+        }
+    }
+
+    test("method capabilities retain selector, matrix, prevalence and citation knowledge") {
+        function "getMethodCapabilities"
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result.keySet().toList() == [
+                    'plink2',
+                    'regenie',
+                    'gcta_fastgwa',
+                    'ldak_kvik',
+                    'gcta_greml',
+                    'gcta_greml_ldms',
+                    'ldak_reml',
+                    'ldak_he',
+                    'ldak_pcgc',
+                ] },
+                { assert function.result.gcta_fastgwa.matrix_kind == 'gcta_sparse' },
+                { assert function.result.gcta_greml.matrix_kind == 'gcta_dense' },
+                { assert function.result.gcta_greml_ldms.matrix_kind == 'gcta_ldms' },
+                { assert function.result.ldak_reml.matrix_kind == 'ldak_kinship' },
+                { assert function.result.ldak_pcgc.requires_population_prevalence },
+                { assert function.result.ldak_he.citation_key == function.result.ldak_pcgc.citation_key },
+            )
+        }
+    }
+
+    test("method option defaults have one canonical resolved shape") {
+        function "getMethodOptionDefaults"
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result.gcta == [
+                    grm_maf: null,
+                    grm_extract: [],
+                    reml_no_constrain: false,
+                    sparse_cutoff: 0.05,
+                    ld_score_region_kb: 200,
+                    ld_bins: 4,
+                    ldms_maf_edges: [0, 0.01, 0.05, 0.2, 0.5],
+                ] },
+                { assert function.result.ldak == [
+                    model: 'human_default',
+                    power: -0.25,
+                    weights_policy: 'equal',
+                    weights: [],
+                    relatedness_filter: false,
+                    kvik_step1_subset: 'all',
+                    predictor_extract: [],
+                ] },
+                { assert function.result.regenie == [
+                    step1_bsize: 1000,
+                    firth: true,
+                    firth_approx: true,
+                    firth_p_threshold: 0.01,
+                    min_mac: null,
+                ] },
+            )
+        }
+    }
+
+    test("method-family object errors retain GCTA-first attribution") {
+        function "validateMethodOptions"
+
+        when {
+            function {
+                """
+                input[0] = file('${RELATIONAL.methodOptions(outputDir, 'family_object_order', [
+                    example: [regenie: [], ldak: [], gcta: []],
+                ])}', checkIfExists: true)
+                input[1] = [[[id: 'example', association_methods: 'regenie,gcta_fastgwa', heritability_methods: 'ldak_reml', trait_type: 'quantitative']]]
+                """
+            }
+        }
+
+        then {
+            def report = function.stdout.join('\n')
+            assertAll(
+                { assert function.failed },
+                { assert report.contains("option 'gcta': expected an option object") },
+                { assert !report.contains("option 'ldak': expected an option object") },
+                { assert !report.contains("option 'regenie': expected an option object") },
+            )
+        }
+    }
+
+    test("unknown options retain REGENIE-first attribution") {
+        function "validateMethodOptions"
+
+        when {
+            function {
+                """
+                input[0] = file('${RELATIONAL.methodOptions(outputDir, 'unknown_option_order', [
+                    example: [gcta: [mystery: true], ldak: [mystery: true], regenie: [mystery: true]],
+                ])}', checkIfExists: true)
+                input[1] = [[[id: 'example', association_methods: 'regenie,gcta_fastgwa', heritability_methods: 'ldak_reml', trait_type: 'quantitative']]]
+                """
+            }
+        }
+
+        then {
+            def report = function.stdout.join('\n')
+            assertAll(
+                { assert function.failed },
+                { assert report.contains("option 'regenie.mystery': unknown option") },
+                { assert !report.contains("option 'gcta.mystery': unknown option") },
+                { assert !report.contains("option 'ldak.mystery': unknown option") },
+            )
+        }
+    }
+
+    test("invalid resolved values retain REGENIE-first attribution") {
+        function "validateMethodOptions"
+
+        when {
+            function {
+                """
+                input[0] = file('${RELATIONAL.methodOptions(outputDir, 'resolution_order', [
+                    example: [
+                        gcta: [sparse_cutoff: 2],
+                        ldak: [power: 'not-a-number'],
+                        regenie: [step1_bsize: 1.5],
+                    ],
+                ])}', checkIfExists: true)
+                input[1] = [[[id: 'example', association_methods: 'regenie,gcta_fastgwa', heritability_methods: 'ldak_reml', trait_type: 'quantitative']]]
+                """
+            }
+        }
+
+        then {
+            def report = function.stdout.join('\n')
+            assertAll(
+                { assert function.failed },
+                { assert report.contains("option 'regenie.step1_bsize': expected one positive integer") },
+                { assert !report.contains("option 'gcta.sparse_cutoff'") },
+                { assert !report.contains("option 'ldak.power'") },
+            )
+        }
+    }
+}

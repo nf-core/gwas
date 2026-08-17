@@ -21,7 +21,7 @@ include { PREPARE_COHORT_GENOTYPES                            } from '../subwork
 include { PREPARE_RELATEDNESS_MATRICES                        } from '../subworkflows/local/prepare_relatedness_matrices'
 include { ROUTE_LDAK_KVIK_ASSOCIATIONS                        } from '../subworkflows/local/route_ldak_kvik_associations'
 include { ROUTE_REGENIE_ASSOCIATIONS                          } from '../subworkflows/local/route_regenie_associations'
-include { getAssociationColumnMappingJson                     } from '../subworkflows/local/utils_nfcore_gwas_pipeline'
+include { getAssociationColumnMappingJson                     } from '../subworkflows/local/validate_gwas_input'
 include { getGwaslabReferences                                } from '../subworkflows/local/utils_nfcore_gwas_pipeline'
 include { analysisPlanJson                                    } from '../subworkflows/local/utils_nfcore_gwas_pipeline'
 include { methodsDescriptionText                              } from '../subworkflows/local/utils_nfcore_gwas_pipeline'

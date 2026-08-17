@@ -12,7 +12,8 @@ include { ATTRIBUTE_REGENIE_PREDICTIONS } from '../../../modules/local/attribute
 include { REGENIE_STEP2                 } from '../../../modules/nf-core/regenie/step2/main'
 
 // FUNCTION: Local to the pipeline
-include { buildRegeniePredictionKey     } from '../utils_nfcore_gwas_pipeline'
+include { digestFileBytes               } from '../utils_nfcore_gwas_pipeline'
+include { buildCanonicalPredictionKey   } from '../utils_nfcore_gwas_pipeline'
 
 workflow ROUTE_REGENIE_ASSOCIATIONS {
     take:
@@ -90,4 +91,28 @@ workflow ROUTE_REGENIE_ASSOCIATIONS {
     logs        = PLINK_FIT_REGENIE.out.logs.mix(REGENIE_STEP2.out.log) // channel: [ val(meta), path(log) ]
     predictions = ch_attributed_predictions.map { meta, predictions, _loco -> [meta, predictions] } // channel: [ val(meta), path(predictions) ]
     loco        = ch_attributed_predictions.map { meta, _predictions, loco -> [meta, loco] } // channel: [ val(meta), path(loco) ]
+}
+
+/*
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    FUNCTIONS
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+*/
+
+// REGENIE Step 1 reuse requires every cohort-defining and scientific input to agree. Execution-only
+// controls are absent; Step 1 block size remains because it changes the fitted model.
+def buildRegeniePredictionKey(meta, phenotype, covariates, step1_bsize) {
+    def identity = [
+        cohort: meta.cohort,
+        trait: meta.trait,
+        is_binary: meta.is_binary,
+        phenotype: getPredictionInputIdentity(phenotype),
+        covariates: getPredictionInputIdentity(covariates),
+        step1_bsize: step1_bsize,
+    ]
+    return buildCanonicalPredictionKey(identity)
+}
+
+def getPredictionInputIdentity(input_file) {
+    return input_file ? digestFileBytes(input_file) : 'absent'
 }

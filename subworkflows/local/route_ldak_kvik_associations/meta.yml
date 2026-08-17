@@ -10,6 +10,8 @@ components:
   - ldak/thincommon
   - ldak/kvikstep1
   - ldak/kvikstep2
+  - digestfilebytes
+  - buildcanonicalpredictionkey
 input:
   - ch_genotypes:
       description: PLINK1 genotype bundle for each LDAK-KVIK analysis

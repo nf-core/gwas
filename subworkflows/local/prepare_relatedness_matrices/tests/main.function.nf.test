@@ -1,106 +1,9 @@
 nextflow_function {
 
-    name "Test relatedness matrix reuse key functions"
+    name "Test relatedness matrix identity functions"
     script "../main.nf"
     tag "function"
     tag "relatedness"
-
-    test("quantitative fastGWA maps the native beta and sample-count columns") {
-
-        function "getAssociationColumnMappingJson"
-
-        when {
-            function {
-                """
-                input[0] = 'gcta_fastgwa'
-                input[1] = false
-                """
-            }
-        }
-
-        then {
-            assertAll(
-                { assert function.success },
-                { assert new groovy.json.JsonSlurper().parseText(function.result) == [
-                    snpid: 'SNP',
-                    chrom: 'CHR',
-                    pos: 'POS',
-                    ea: 'A1',
-                    nea: 'A2',
-                    eaf: 'AF1',
-                    n: 'N',
-                    beta: 'BETA',
-                    se: 'SE',
-                    p: 'P',
-                ] },
-            )
-        }
-    }
-
-    test("binary fastGWA retains the native beta mapping without inventing an odds-ratio column") {
-
-        function "getAssociationColumnMappingJson"
-
-        when {
-            function {
-                """
-                input[0] = 'gcta_fastgwa'
-                input[1] = true
-                """
-            }
-        }
-
-        then {
-            assertAll(
-                { assert function.success },
-                { assert new groovy.json.JsonSlurper().parseText(function.result) == [
-                    snpid: 'SNP',
-                    chrom: 'CHR',
-                    pos: 'POS',
-                    ea: 'A1',
-                    nea: 'A2',
-                    eaf: 'AF1',
-                    n: 'N',
-                    beta: 'BETA',
-                    se: 'SE',
-                    p: 'P',
-                ] },
-            )
-        }
-    }
-
-    test("quantitative KVIK maps its A1 frequency and effective analysis size without an extra Z field") {
-
-        function "getAssociationColumnMappingJson"
-        tag "kvik_mapping"
-
-        when {
-            function {
-                """
-                input[0] = 'ldak_kvik'
-                input[1] = false
-                """
-            }
-        }
-
-        then {
-            assertAll(
-                { assert function.success },
-                { assert new groovy.json.JsonSlurper().parseText(function.result) == [
-                    snpid: 'Predictor',
-                    chrom: 'Chromosome',
-                    pos: 'Basepair',
-                    ea: 'A1',
-                    nea: 'A2',
-                    eaf: 'EAF',
-                    neff: 'N',
-                    p: 'Wald_P',
-                    beta: 'Effect',
-                    se: 'SE',
-                ] },
-            )
-        }
-    }
 
     // The reuse key decides how many relatedness matrices a run builds, and two of its properties
     // cannot be observed from a pipeline run today.
@@ -117,7 +20,7 @@ nextflow_function {
     // So they are asserted here instead, against the functions that implement them, rather than left
     // unasserted until a later route lands or faked with a synthetic samplesheet column. What a
     // pipeline run can still show — that one cohort's traits share a build and two cohorts do not, and
-    // that the published path segment is this key — is in tests/relatedness_matrix.nf.test.
+    // that the published path segment is this key — is in tests/relatedness_matrix_ldak.nf.test.
 
     test("canonicalisation renders equal-meaning numbers alike whatever spelled them") {
 
@@ -602,6 +505,70 @@ nextflow_function {
             assertAll(
                 { assert function.success },
                 { assert function.result == [cutoff: 0.025] },
+            )
+        }
+    }
+
+    test("an absent GCTA extraction resource retains the all-variants identity") {
+
+        function "getMethodResourceIdentity"
+
+        when {
+            function {
+                """
+                input[0] = []
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == [mode: 'all'] },
+            )
+        }
+    }
+
+    ['method-resource-a.txt', 'renamed-method-resource.txt'].each { resource_name ->
+        test("GCTA extraction resource identity ignores the path ${resource_name}") {
+
+            function "getMethodResourceIdentity"
+
+            when {
+                function {
+                    """
+                    input[0] = file('${RELATIONAL.resource(outputDir, resource_name, 'rs1\nrs2\n')}', checkIfExists: true)
+                    """
+                }
+            }
+
+            then {
+                assertAll(
+                    { assert function.success },
+                    { assert function.result == [mode: 'file', sha256: '3f11acf34ac2ee2c8a8005373a55b7f08cd39014cef30511a4213081f221add3'] },
+                    { assert !function.result.toString().contains(resource_name) },
+                )
+            }
+        }
+    }
+
+    test("changed GCTA extraction resource bytes change the identity") {
+
+        function "getMethodResourceIdentity"
+
+        when {
+            function {
+                """
+                input[0] = file('${RELATIONAL.resource(outputDir, 'changed-method-resource.txt', 'rs1\nrs3\n')}', checkIfExists: true)
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == [mode: 'file', sha256: '36e37838599ebe28544a66c30985821d0d8ef333475cbb4c164178ce37d72bb9'] },
+                { assert function.result.sha256 != '3f11acf34ac2ee2c8a8005373a55b7f08cd39014cef30511a4213081f221add3' },
             )
         }
     }

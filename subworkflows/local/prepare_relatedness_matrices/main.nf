@@ -2,18 +2,17 @@
 // Every component reports on the run-wide versions topic, so this subworkflow emits no versions.
 
 // SUBWORKFLOW: Consisting of a mix of local and nf-core/modules
-include { PLINK_PREPARE_GRM_GCTA        } from '../plink_prepare_grm_gcta/main'
-include { PLINK_PREPARE_GRM_LDMS_GCTA   } from '../plink_prepare_grm_ldms_gcta/main'
-include { PLINK_PREPARE_GRM_LDAK        } from '../plink_prepare_grm_ldak/main'
+include { PLINK_PREPARE_GRM_GCTA      } from '../plink_prepare_grm_gcta/main'
+include { PLINK_PREPARE_GRM_LDMS_GCTA } from '../plink_prepare_grm_ldms_gcta/main'
+include { PLINK_PREPARE_GRM_LDAK      } from '../plink_prepare_grm_ldak/main'
 
 // MODULE: Local to the pipeline
-include { GCTA_MAKEBKSPARSE             } from '../../../modules/local/gcta/makebksparse/main'
+include { GCTA_MAKEBKSPARSE           } from '../../../modules/local/gcta/makebksparse/main'
 
 // FUNCTION: Local to the pipeline
-include { getLdakWeightsIdentity        } from '../utils_nfcore_gwas_pipeline'
-include { getMethodResourceIdentity     } from '../utils_nfcore_gwas_pipeline'
-include { getRelatednessMatrixKinds     } from '../utils_nfcore_gwas_pipeline'
-include { buildRelatednessMatrixRequest } from '../utils_nfcore_gwas_pipeline'
+include { digestFileBytes             } from '../utils_nfcore_gwas_pipeline'
+include { digestIdentityText          } from '../utils_nfcore_gwas_pipeline'
+include { getMethodCapabilities       } from '../validate_gwas_input'
 
 workflow PREPARE_RELATEDNESS_MATRICES {
     take:
@@ -275,4 +274,142 @@ workflow PREPARE_RELATEDNESS_MATRICES {
     gcta_sparse  = ch_gcta_sparse // channel: [ val(meta), path(sparse_grm_files) ]
     gcta_ldms    = ch_gcta_ldms // channel: [ val(meta), path(mgrm), path(grm_files) ]
     ldak_kinship = ch_ldak_kinship // channel: [ val(meta), path(grm_files), path(keep) ]
+}
+
+/*
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    FUNCTIONS
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+*/
+
+// Declared scientific values use numeric canonicalisation so equal quantities share one matrix.
+def canonicaliseDeclaredValue(value) {
+    if (value == null) {
+        return 'null'
+    }
+    if (value instanceof Boolean) {
+        return value ? 'true' : 'false'
+    }
+    if (value instanceof Map) {
+        return '{' + value.sort { entry -> entry.key }.collect { name, entry -> "${name}=${canonicaliseDeclaredValue(entry)}" }.join(',') + '}'
+    }
+    if (value instanceof Collection) {
+        return '[' + value.collect { entry -> canonicaliseDeclaredValue(entry) }.join(',') + ']'
+    }
+    if (value instanceof Number) {
+        return new BigDecimal(value.toString()).stripTrailingZeros().toPlainString()
+    }
+    def text = value.toString().trim()
+    return text ==~ /^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/
+        ? new BigDecimal(text).stripTrailingZeros().toPlainString()
+        : text
+}
+
+// Identifiers are names, not quantities: cohorts `01` and `1` must never collapse onto one matrix.
+def canonicaliseIdentifier(value) {
+    if (value == null) {
+        return 'null'
+    }
+    if (value instanceof Map) {
+        return '{' + value.sort { entry -> entry.key }.collect { name, entry -> "${name}=${canonicaliseIdentifier(entry)}" }.join(',') + '}'
+    }
+    if (value instanceof Collection) {
+        return '[' + value.collect { entry -> canonicaliseIdentifier(entry) }.join(',') + ']'
+    }
+    return value.toString().trim()
+}
+
+// Relatedness keys retain their exact identity/settings serialisation and delegate only the SHA primitive.
+def buildRelatednessMatrixKey(identity, settings) {
+    def rendered = identity.collectEntries { name, value -> [(name): canonicaliseIdentifier(value)] } + [settings: canonicaliseDeclaredValue(settings)]
+    def canonical = rendered
+        .sort { entry -> entry.key }
+        .collect { name, text -> "${name}=${text}" }
+        .join('\n')
+    return digestIdentityText(canonical)
+}
+
+def getRelatednessMatrixKinds(meta) {
+    def capabilities = getMethodCapabilities()
+    def selected = ((meta.association_methods ?: []) + (meta.heritability_methods ?: [])) as Set
+    return ['gcta_dense', 'gcta_ldms', 'gcta_sparse', 'ldak_kinship'].findAll { kind ->
+        selected.any { method -> capabilities[method] && capabilities[method].matrix_kind == kind }
+    }
+}
+
+// Absence policy remains relatedness-specific; present resources share the common byte digest.
+def getLdakWeightsIdentity(weights_file, weights_policy = 'equal') {
+    if (!weights_file) {
+        return [mode: weights_policy]
+    }
+    return [mode: 'provided', sha256: digestFileBytes(weights_file)]
+}
+
+def getMethodResourceIdentity(resource) {
+    if (!resource) {
+        return [mode: 'all']
+    }
+    return [mode: 'file', sha256: digestFileBytes(resource)]
+}
+
+// Matrix settings contain every scientific construction input and exclude estimator/execution controls.
+def getRelatednessMatrixSettings(meta, kind, weights_identity = [mode: 'equal'], gcta_extract_identity = [mode: 'all']) {
+    def method_options = meta.method_options
+    def ldak_options = method_options.ldak
+    if (kind == 'gcta_dense') {
+        def settings = [:]
+        if (method_options.gcta.grm_maf != null) {
+            settings.maf = method_options.gcta.grm_maf
+        }
+        if (gcta_extract_identity.mode == 'file') {
+            settings.extract = gcta_extract_identity
+        }
+        return settings
+    }
+    if (kind == 'gcta_ldms') {
+        return [
+            ld_score_region_kb: method_options.gcta.ld_score_region_kb,
+            ld_bins: method_options.gcta.ld_bins,
+            maf_edges: method_options.gcta.ldms_maf_edges,
+        ]
+    }
+    if (kind == 'gcta_sparse') {
+        return [cutoff: method_options.gcta.sparse_cutoff]
+    }
+    if (kind == 'ldak_kinship') {
+        def settings = [
+            model: ldak_options.model,
+            power: ldak_options.power,
+            weights: weights_identity,
+        ]
+        if (ldak_options.relatedness_filter) {
+            settings.relatedness_filter = true
+        }
+        return settings
+    }
+    error("[nf-core/gwas] ERROR: no relatedness matrix settings are registered for kind '${kind}' requested by analysis unit '${meta.id}'")
+}
+
+def buildRelatednessMatrixRequest(meta, genotype_files, kind, weights_identity = [mode: 'equal'], gcta_extract_identity = [mode: 'all']) {
+    def method_options = meta.method_options
+    def settings = getRelatednessMatrixSettings(meta, kind, weights_identity, gcta_extract_identity)
+    def identity = [
+        cohort: meta.cohort,
+        genotype_format: meta.genotype_format,
+        genotypes: genotype_files.collect { genotype_file -> genotype_file.name }.sort(),
+        kind: kind,
+    ]
+    def request = [
+        kind: kind,
+        cohort: meta.cohort,
+        settings: settings,
+        key: buildRelatednessMatrixKey(identity, settings),
+    ]
+    if (kind == 'gcta_dense') {
+        request.gcta_extract = method_options.gcta.grm_extract
+    }
+    if (kind == 'ldak_kinship') {
+        request.filter_relatedness = method_options.ldak.relatedness_filter
+    }
+    return request
 }
