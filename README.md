@@ -44,7 +44,7 @@ Genotype quality control is not performed by the pipeline. Input genotypes must 
    - LDAK REML
    - LDAK Haseman-Elston regression
    - LDAK PCGC
-7. Run declared same-cohort pairs with dense GCTA bivariate REML, retaining native output plus normalized heritability, genetic-covariance, genetic-correlation, diagnostics and request provenance.
+7. Run declared same-cohort pairs with dense or LDMS GCTA bivariate REML, retaining native output plus normalized heritability, genetic-covariance, genetic-correlation, diagnostics and request provenance.
 8. Collect run and software provenance with MultiQC and Nextflow reports.
 
 ## Usage
@@ -68,7 +68,7 @@ height,my_cohort,height,quantitative,/data/phenotypes.tsv,height,,,,,plink2,,
 
 Runnable minimal and heterogeneous examples are available under [`assets/examples/relational/`](assets/examples/relational/).
 
-To request pairwise analysis, add the optional eight-column relationship manifest. This first route accepts two distinct analysis IDs from the same cohort and the method token `gcta_bivariate_reml`; no pair is inferred.
+To request pairwise analysis, add the optional eight-column relationship manifest. GCTA pairs accept two distinct analysis IDs from the same cohort and select `gcta_bivariate_reml`, `gcta_bivariate_reml_ldms` or both; no pair is inferred.
 
 Then run:
 
@@ -89,7 +89,7 @@ For more details and further functionality, please refer to the [usage documenta
 
 ## Pipeline output
 
-Native association results are published under `association/<method>/<analysis_id>/`, comparable GWASLab tables under `summary_statistics/<analysis_id>/`, and individual-level heritability estimates under `heritability/individual/<method>/<analysis_id>/`. A declared GCTA pair publishes native and request provenance under `requests/gcta_bivariate_reml/<request_id>/` plus normalized estimand views under `heritability/`, `genetic_covariance/` and `genetic_correlation/`. Intermediates such as prepared genotypes, normalised phenotypes, relatedness matrices and REGENIE predictions are unpublished unless their save controls are enabled.
+Native association results are published under `association/<method>/<analysis_id>/`, comparable GWASLab tables under `summary_statistics/<analysis_id>/`, and individual-level heritability estimates under `heritability/individual/<method>/<analysis_id>/`. A declared GCTA pair publishes native and request provenance under `requests/<method>/<request_id>/` plus normalized estimand views under `heritability/`, `genetic_covariance/` and `genetic_correlation/`. Intermediates such as prepared genotypes, normalised phenotypes, relatedness matrices and REGENIE predictions are unpublished unless their save controls are enabled.
 
 For exact filenames, provenance lookup and optional output, see the [output documentation](https://nf-co.re/gwas/output).
 

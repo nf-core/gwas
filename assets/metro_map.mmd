@@ -85,18 +85,24 @@ graph LR
     subgraph gcta_heritability [GCTA heritability]
         %%metro entry: left | gcta
         %%metro exit: top | gcta
-        gcta_dense[GCTA dense GRM]
-        greml[GCTA GREML]
-        gcta_ldms[GCTA LDMS GRMs]
-        greml_ldms[GCTA GREML-LDMS]
-        gcta_estimates[GCTA heritability estimates]
+        gcta_dense[Dense GRM]
+        greml[GREML]
+        bivariate_reml[Bivariate REML]
+        gcta_ldms[LDMS GRMs]
+        greml_ldms[GREML-LDMS]
+        bivariate_reml_ldms[Bivariate REML-LDMS]
+        gcta_estimates[Heritability estimates]
 
         makebed -->|gcta| gcta_dense
         gcta_dense -->|gcta| greml
+        gcta_dense -->|gcta| bivariate_reml
         makebed -->|gcta| gcta_ldms
         gcta_ldms -->|gcta| greml_ldms
+        gcta_ldms -->|gcta| bivariate_reml_ldms
         greml -->|gcta| gcta_estimates
+        bivariate_reml -->|gcta| gcta_estimates
         greml_ldms -->|gcta| gcta_estimates
+        bivariate_reml_ldms -->|gcta| gcta_estimates
     end
 
     subgraph ldak_heritability [LDAK heritability]

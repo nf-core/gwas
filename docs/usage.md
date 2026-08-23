@@ -66,7 +66,7 @@ At least one unary method selector must be populated unless the analysis is refe
 
 ### Relationship manifest fields
 
-The optional relationship manifest has exactly eight columns. The first release implements only the primary dense `gcta_bivariate_reml` route; the summary-statistics endpoint columns are reserved for later methods and must remain blank for this route.
+The optional relationship manifest has exactly eight columns. The implemented individual-level pair routes are `gcta_bivariate_reml` and `gcta_bivariate_reml_ldms`; the summary-statistics endpoint columns remain reserved for later methods and must be blank for these routes.
 
 | Column                       | Required | Description                                                                                                                                          |
 | ---------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -75,7 +75,7 @@ The optional relationship manifest has exactly eight columns. The first release 
 | `right_analysis_id`          | GCTA     | Analysis ID for native trait 2.                                                                                                                       |
 | `left_summary_statistics_id` | No       | Reserved summary-statistics endpoint; leave blank in this release.                                                                                   |
 | `right_summary_statistics_id` | No       | Reserved summary-statistics endpoint; leave blank in this release.                                                                                   |
-| `relationship_methods`       | Yes      | Comma-delimited pairwise selector; currently `gcta_bivariate_reml`.                                                                                   |
+| `relationship_methods`       | Yes      | Comma-delimited pairwise selector: `gcta_bivariate_reml`, `gcta_bivariate_reml_ldms` or both.                                                          |
 | `pair_quant_covariates`      | No       | Relationship-owned headered quantitative covariates beginning with `FID` and `IID`.                                                                  |
 | `pair_cat_covariates`        | No       | Relationship-owned headered categorical covariates beginning with `FID` and `IID`.                                                                   |
 
@@ -85,6 +85,7 @@ The pair phenotype is a deterministic full union of the two normalized endpoint 
 
 ```text
 gcta_bivariate_reml--<relationship_id>
+gcta_bivariate_reml_ldms--<relationship_id>
 ```
 
 ### Runnable examples
@@ -112,7 +113,7 @@ nextflow run nf-core/gwas \
     --outdir results
 ```
 
-The [relationship manifest example](../assets/examples/relational/relationship_manifest.csv) binds the heterogeneous quantitative and binary analyses. For the deliberately small fixture, use the [namespaced method-options example](../assets/examples/relational/method_options_heterogeneous_bivariate.json), which retains the unary settings, raises GCTA's native REML iteration allowance and deliberately drops the residual-covariance component for this compact test request. These are explicit example-specific native choices, not defaults of the pair route:
+The [relationship manifest example](../assets/examples/relational/relationship_manifest.csv) binds the heterogeneous quantitative and binary analyses and selects both GCTA pair estimators. For the deliberately small fixture, use the [namespaced method-options example](../assets/examples/relational/method_options_heterogeneous_bivariate.json), which retains the unary settings, uses one populated LDMS stratum, raises GCTA's native REML iteration allowance and deliberately drops the residual-covariance component. These are explicit example-specific choices, not pair-route defaults:
 
 ```bash
 nextflow run nf-core/gwas \
@@ -129,13 +130,19 @@ nextflow run nf-core/gwas \
 
 `--method_options` is optional. The established form keeps its JSON root keyed by `analysis_id`; each value may contain `gcta`, `ldak` and/or `regenie`. It remains supported unchanged. A namespaced document places those same entries under `analyses` and pair-specific settings under `pair_requests`. `unary_requests` is reserved for later summary-statistics requests and must remain empty in this release. Unlisted analyses and pair requests receive their defaults. Unknown identifiers, families or options, invalid values, missing resources, and options whose consuming method is not selected are rejected before task submission.
 
-The first pair route exposes one advanced option, `native_args`, as an array of individual non-file GCTA tokens on the deterministic request ID:
+Both GCTA pair routes expose `native_args` as an array of individual non-file GCTA tokens on the deterministic request ID. A relationship's deterministic LDMS request additionally owns its matrix construction settings; it never inherits them from either endpoint's unary analysis:
 
 ```json
 {
   "analyses": {},
   "pair_requests": {
     "gcta_bivariate_reml--height_disease": {
+      "native_args": ["--reml-maxit", "500"]
+    },
+    "gcta_bivariate_reml_ldms--height_disease": {
+      "ld_score_region_kb": 50,
+      "ld_bins": 1,
+      "ldms_maf_edges": [0, 0.5],
       "native_args": ["--reml-maxit", "500"]
     }
   }
@@ -153,6 +160,8 @@ The wrapper rejects whitespace or shell syntax, path separators, environment ass
 | `ld_score_region_kb` | Positive integer; `200`               | `gcta_greml_ldms` only; LD-score window in kilobases.                                                   |
 | `ld_bins`            | Positive integer; `4`                 | `gcta_greml_ldms` only; number of LD-score strata.                                                      |
 | `ldms_maf_edges`     | Number array; `[0,0.01,0.05,0.2,0.5]` | `gcta_greml_ldms` only; strictly increasing, at least two values, beginning at `0` and ending at `0.5`. |
+
+The same three LDMS setting names are accepted under a `gcta_bivariate_reml_ldms--<relationship_id>` pair request. Their defaults are `200`, `4` and `[0,0.01,0.05,0.2,0.5]`. The resolved values become part of the matrix reuse key, so a unary and pair request reuse one MGRM family only when cohort, genotype input and all three settings agree exactly.
 
 | LDAK option          | Type and default                | Consumer and constraints                                                                                                      |
 | -------------------- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |

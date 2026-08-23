@@ -23,13 +23,13 @@ Use the following provenance chain for any result:
 3. Map `<method>` to its producing tool using the table below.
 4. Read the tool version from `pipeline_info/nf_core_gwas_software_mqc_versions.yml`. The pipeline version and complete run parameters are recorded by the `pipeline_info/` reports and `params_<timestamp>.json`.
 
-Pairwise outputs instead use the deterministic request ID `<method>--<relationship_id>`. Find `relationship_id` in `--relationship_manifest`, follow its ordered left and right analysis IDs into `--analysis_manifest`, and use `requests/<method>/<request_id>/provenance.json` for the exact endpoint orientation, dense-matrix reuse key and native basename, effective prevalence, native arguments, all parsed native components, warnings and completion classification.
+Pairwise outputs instead use the deterministic request ID `<method>--<relationship_id>`. Find `relationship_id` in `--relationship_manifest`, follow its ordered left and right analysis IDs into `--analysis_manifest`, and use `requests/<method>/<request_id>/provenance.json` for the exact endpoint orientation, dense or LDMS matrix reuse key and native basename, effective prevalence, native arguments, all parsed native components, warnings and completion classification.
 
 | Method token                                     | Producing tool |
 | ------------------------------------------------ | -------------- |
 | `plink2`                                         | PLINK 2        |
 | `regenie`                                        | REGENIE        |
-| `gcta_fastgwa`, `gcta_greml`, `gcta_greml_ldms`, `gcta_bivariate_reml` | GCTA           |
+| `gcta_fastgwa`, `gcta_greml`, `gcta_greml_ldms`, `gcta_bivariate_reml`, `gcta_bivariate_reml_ldms` | GCTA           |
 | `ldak_kvik`, `ldak_reml`, `ldak_he`, `ldak_pcgc` | LDAK 6         |
 
 Together, the result prefix, retained cohort and analysis manifests, optional method-options document, and `pipeline_info/` artifacts identify the analysis, cohort, trait, genome build, method, scientific settings, pipeline version and producing tool version. Preserve them with an archived result.
@@ -183,7 +183,7 @@ The LDAK kinship model defaults to `human_default` with `power: -0.25`. Set `mod
 <details markdown="1">
 <summary>Output files</summary>
 
-The first relationship route uses one explicit all-variant dense GCTA matrix for the pair's cohort. It does not inherit either endpoint analysis's unary GCTA matrix settings. The native GCTA result and log remain request-addressed, while three lightweight TSV views expose each estimand family without selecting or ranking a result.
+The dense route uses one explicit all-variant GCTA matrix. The relationship's deterministic LDMS request owns one LD-by-MAF-stratified MGRM family. Neither route inherits matrix settings from an endpoint's unary analysis, and scientifically identical unary and pair LDMS settings reuse one matrix family. Native results remain request-addressed, while three lightweight TSV views expose each native estimand family without selecting, aggregating or ranking a result.
 
 - `requests/gcta_bivariate_reml/<request_id>/`
   - `native.hsq`: Complete native GCTA bivariate REML variance-component result.
@@ -193,6 +193,10 @@ The first relationship route uses one explicit all-variant dense GCTA matrix for
 - `heritability/gcta_bivariate_reml/<request_id>/heritability.tsv`: Left and right `V(G)/Vp` estimates on every scale the native result emitted.
 - `genetic_covariance/gcta_bivariate_reml/<request_id>/genetic_covariance.tsv`: Native observed-scale `C(G)_tr12` estimate and standard error.
 - `genetic_correlation/gcta_bivariate_reml/<request_id>/genetic_correlation.tsv`: Native ordered `rG` estimate and standard error.
+- `requests/gcta_bivariate_reml_ldms/<request_id>/`: The same native, diagnostics and provenance artifact set for REML-LDMS.
+- `heritability/gcta_bivariate_reml_ldms/<request_id>/heritability.tsv`: Ordered trait-specific `V(Gk)/Vp` rows for every native LDMS component `Gk` and scale emitted by GCTA.
+- `genetic_covariance/gcta_bivariate_reml_ldms/<request_id>/genetic_covariance.tsv`: Native observed-scale `C(Gk)_tr12` estimate and standard error for every LDMS component.
+- `genetic_correlation/gcta_bivariate_reml_ldms/<request_id>/genetic_correlation.tsv`: Native ordered `rGk` estimate and standard error for every LDMS component.
 
 </details>
 
