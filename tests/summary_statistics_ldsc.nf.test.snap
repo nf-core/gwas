@@ -1,0 +1,61 @@
+{
+    "run H2 and RG with shared content-addressed munging": {
+        "content": [
+            [
+                "external_bt/external_bt.canonical.tsv.gz:md5,d9dcd1eb98b4598a795a0482526a40ad",
+                "external_qt/external_qt.canonical.tsv.gz:md5,21c397a726168e192398090f5984bf11"
+            ],
+            "relationship_id\trequest_id\tmethod\tendpoint\tsummary_statistics_id\ttrait_id\ttrait_type\tscale\testimate\tstandard_error\tclassification\tnative_artifact\nNA\tldsc_h2--external_qt\tldsc_h2\tunary\texternal_qt\tQT_external\tquantitative\tobserved\t-1.2938e-15\t1.1092e-15\testimable_with_warning\trequests/ldsc_h2/ldsc_h2--external_qt/native.observed.log\n",
+            "relationship_id\trequest_id\tmethod\tendpoint\tsummary_statistics_id\ttrait_id\ttrait_type\tscale\testimate\tstandard_error\tclassification\tnative_artifact\nNA\tldsc_h2--external_bt\tldsc_h2\tunary\texternal_bt\tBT_external\tbinary\tobserved\t-1.0782e-15\t9.2429e-16\testimable_with_warning\trequests/ldsc_h2/ldsc_h2--external_bt/native.observed.log\nNA\tldsc_h2--external_bt\tldsc_h2\tunary\texternal_bt\tBT_external\tbinary\tliability\t-1.7722e-15\t1.5192e-15\testimable_with_warning\trequests/ldsc_h2/ldsc_h2--external_bt/native.liability.log\n",
+            "relationship_id\trequest_id\tmethod\tendpoint\tsummary_statistics_id\ttrait_id\ttrait_type\tscale\testimate\tstandard_error\tclassification\tnative_artifact\nexternal_pair\tldsc_rg--external_pair\tldsc_rg\tleft\texternal_qt\tQT_external\tquantitative\tobserved\t-1.3138e-15\t8.5779e-16\tcompleted_nonestimable\trequests/ldsc_rg/ldsc_rg--external_pair/native.observed.log\nexternal_pair\tldsc_rg--external_pair\tldsc_rg\tright\texternal_bt\tBT_external\tbinary\tobserved\t-1.0949e-15\t7.1483e-16\tcompleted_nonestimable\trequests/ldsc_rg/ldsc_rg--external_pair/native.observed.log\nexternal_pair\tldsc_rg--external_pair\tldsc_rg\tleft\texternal_qt\tQT_external\tquantitative\tliability\t-1.3138e-15\t8.5779e-16\tcompleted_nonestimable\trequests/ldsc_rg/ldsc_rg--external_pair/native.liability.log\nexternal_pair\tldsc_rg--external_pair\tldsc_rg\tright\texternal_bt\tBT_external\tbinary\tliability\t-1.7996e-15\t1.175e-15\tcompleted_nonestimable\trequests/ldsc_rg/ldsc_rg--external_pair/native.liability.log\n",
+            "relationship_id\trequest_id\tmethod\tleft_summary_statistics_id\tright_summary_statistics_id\tleft_trait_id\tright_trait_id\testimate\tstandard_error\tz_score\tp_value\tclassification\tnative_artifact\nexternal_pair\tldsc_rg--external_pair\tldsc_rg\texternal_qt\texternal_bt\tQT_external\tBT_external\tNA\tNA\tNA\tNA\tcompleted_nonestimable\trequests/ldsc_rg/ldsc_rg--external_pair/native.observed.log\n",
+            "relationship_id\trequest_id\tmethod\tleft_summary_statistics_id\tright_summary_statistics_id\tleft_trait_id\tright_trait_id\tscale\testimate\tstandard_error\tclassification\tnative_artifact\nexternal_pair\tldsc_rg--external_pair\tldsc_rg\texternal_qt\texternal_bt\tQT_external\tBT_external\tobserved\t-6.9962e-16\t7.4854e-16\tcompleted_nonestimable\trequests/ldsc_rg/ldsc_rg--external_pair/native.observed.log\nexternal_pair\tldsc_rg--external_pair\tldsc_rg\texternal_qt\texternal_bt\tQT_external\tBT_external\tliability\t-8.9696e-16\t9.5967e-16\tcompleted_nonestimable\trequests/ldsc_rg/ldsc_rg--external_pair/native.liability.log\n",
+            {
+                "CANONICALISE_SUMMARY_STATISTICS": {
+                    "python": "3.14.5"
+                },
+                "LDSC_H2_LIABILITY": {
+                    "ldsc": "3.0.2",
+                    "ldsc_native": "3.0.1",
+                    "ldsc_source_revision": "6c673952cee74bd5c57aef1555a03b1c015399a0",
+                    "python": "3.9.13"
+                },
+                "LDSC_H2_OBSERVED": {
+                    "ldsc": "3.0.2",
+                    "ldsc_native": "3.0.1",
+                    "ldsc_source_revision": "6c673952cee74bd5c57aef1555a03b1c015399a0",
+                    "python": "3.9.13"
+                },
+                "LDSC_MUNGESUMSTATS": {
+                    "ldsc": "3.0.2",
+                    "ldsc_native": "3.0.1",
+                    "ldsc_source_revision": "6c673952cee74bd5c57aef1555a03b1c015399a0",
+                    "python": "3.9.13"
+                },
+                "LDSC_RG_LIABILITY": {
+                    "ldsc": "3.0.2",
+                    "ldsc_native": "3.0.1",
+                    "ldsc_source_revision": "6c673952cee74bd5c57aef1555a03b1c015399a0",
+                    "python": "3.9.13"
+                },
+                "LDSC_RG_OBSERVED": {
+                    "ldsc": "3.0.2",
+                    "ldsc_native": "3.0.1",
+                    "ldsc_source_revision": "6c673952cee74bd5c57aef1555a03b1c015399a0",
+                    "python": "3.9.13"
+                },
+                "NORMALISE_LDSC": {
+                    "python": "3.14.5"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-24T05:55:29.521917174"
+    }
+}
