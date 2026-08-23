@@ -188,7 +188,7 @@ The first relationship route uses one explicit all-variant dense GCTA matrix for
 - `requests/gcta_bivariate_reml/<request_id>/`
   - `native.hsq`: Complete native GCTA bivariate REML variance-component result.
   - `native.log`: Native command, version, convergence and sample-overlap log.
-  - `diagnostics.tsv`: Full-union endpoint counts, native common/non-missing counts, convergence, residual covariance when estimated, warnings and the Q43 completion classification.
+  - `diagnostics.tsv`: Full-union endpoint counts, native common/non-missing counts, convergence, residual covariance when estimated, whether that component was retained or dropped by an explicit native option or GCTA's native overlap rule, warnings and the Q43 completion classification.
   - `provenance.json`: Ordered endpoint identities, cohort, matrix kind/key/native basename/settings, effective prevalence, accepted native arguments, all parsed native component values, tool version, warnings, classification and artifact inventory.
 - `heritability/gcta_bivariate_reml/<request_id>/heritability.tsv`: Left and right `V(G)/Vp` estimates on every scale the native result emitted.
 - `genetic_covariance/gcta_bivariate_reml/<request_id>/genetic_covariance.tsv`: Native observed-scale `C(G)_tr12` estimate and standard error.

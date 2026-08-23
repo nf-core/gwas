@@ -224,6 +224,7 @@ nextflow_function {
         [name: 'alternate operation', args: ['--pca', '10'], expected: 'different primary GCTA operation'],
         [name: 'file-taking input', args: ['--keep', 'samples.txt'], expected: 'wrapper-owned invocation mechanics'],
         [name: 'undeclared file-like value', args: ['--mystery', 'samples.txt'], expected: 'undeclared file input'],
+        [name: 'path separator', args: ['--mystery', '../samples'], expected: 'path separator'],
         [name: 'environment assignment', args: ['--reml-maxit', 'KEY=value'], expected: 'environment assignment'],
     ]
 

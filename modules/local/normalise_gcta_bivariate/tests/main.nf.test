@@ -104,23 +104,36 @@ nextflow_process {
         }
     }
 
-    test("a missing mandatory primary uncertainty is completed nonestimable") {
-        when {
-            def inputs = nativeInputs(outputDir, 'nonestimable', [components: ['V(G)/Vp_tr1': ['0.20', 'NA']]])
-            process {
-                """
-                input[0] = [new groovy.json.JsonSlurper().parseText('${groovy.json.JsonOutput.toJson(metadata())}'), file('${inputs.hsq}', checkIfExists: true), file('${inputs.log}', checkIfExists: true), file('${inputs.pairLog}', checkIfExists: true)]
-                """
-            }
-        }
+    def nonfinitePrimaryCases = [
+        [name: 'left heritability estimate', id: 'left_h2_estimate', component: 'V(G)/Vp_tr1', values: ['NA', '0.02']],
+        [name: 'left heritability uncertainty', id: 'left_h2_se', component: 'V(G)/Vp_tr1', values: ['0.20', 'NaN']],
+        [name: 'right heritability estimate', id: 'right_h2_estimate', component: 'V(G)/Vp_tr2', values: ['Infinity', '0.03']],
+        [name: 'right heritability uncertainty', id: 'right_h2_se', component: 'V(G)/Vp_tr2', values: ['0.30', 'NA']],
+        [name: 'genetic covariance estimate', id: 'genetic_covariance_estimate', component: 'C(G)_tr12', values: ['NaN', '0.01']],
+        [name: 'genetic covariance uncertainty', id: 'genetic_covariance_se', component: 'C(G)_tr12', values: ['0.10', 'Infinity']],
+        [name: 'genetic correlation estimate', id: 'genetic_correlation_estimate', component: 'rG', values: ['NA', '0.10']],
+        [name: 'genetic correlation uncertainty', id: 'genetic_correlation_se', component: 'rG', values: ['0.40', 'NaN']],
+    ]
 
-        then {
-            def provenance = new groovy.json.JsonSlurper().parse(new File(process.out.provenance.get(0).get(1).toString()))
-            assertAll(
-                { assert process.success },
-                { assert provenance.classification == 'completed_nonestimable' },
-                { assert provenance.native_components['V(G)/Vp_tr1'].standard_error == null },
-            )
+    nonfinitePrimaryCases.each { scenario ->
+        test("a nonfinite ${scenario.name} is completed nonestimable") {
+            when {
+                def inputs = nativeInputs(outputDir, scenario.id, [components: [(scenario.component): scenario.values]])
+                process {
+                    """
+                    input[0] = [new groovy.json.JsonSlurper().parseText('${groovy.json.JsonOutput.toJson(metadata())}'), file('${inputs.hsq}', checkIfExists: true), file('${inputs.log}', checkIfExists: true), file('${inputs.pairLog}', checkIfExists: true)]
+                    """
+                }
+            }
+
+            then {
+                def provenance = new groovy.json.JsonSlurper().parse(new File(process.out.provenance.get(0).get(1).toString()))
+                assertAll(
+                    { assert process.success },
+                    { assert provenance.classification == 'completed_nonestimable' },
+                    { assert provenance.native_components[scenario.component].estimate == null || provenance.native_components[scenario.component].standard_error == null },
+                )
+            }
         }
     }
 
@@ -161,6 +174,27 @@ nextflow_process {
                 { assert provenance.classification == 'estimable' },
                 { assert provenance.diagnostics.residual_covariance == 'NA' },
                 { assert provenance.diagnostics.residual_covariance_status == 'dropped_by_native_option' },
+            )
+        }
+    }
+
+    test("a native overlap-driven residual-covariance drop is auditable") {
+        when {
+            def inputs = nativeInputs(outputDir, 'native_overlap_drop', [components: ['C(e)_tr12': null]])
+            process {
+                """
+                input[0] = [new groovy.json.JsonSlurper().parseText('${groovy.json.JsonOutput.toJson(metadata())}'), file('${inputs.hsq}', checkIfExists: true), file('${inputs.log}', checkIfExists: true), file('${inputs.pairLog}', checkIfExists: true)]
+                """
+            }
+        }
+
+        then {
+            def provenance = new groovy.json.JsonSlurper().parse(new File(process.out.provenance.get(0).get(1).toString()))
+            assertAll(
+                { assert process.success },
+                { assert provenance.classification == 'estimable' },
+                { assert provenance.diagnostics.residual_covariance == 'NA' },
+                { assert provenance.diagnostics.residual_covariance_status == 'dropped_by_native_overlap_rule' },
             )
         }
     }

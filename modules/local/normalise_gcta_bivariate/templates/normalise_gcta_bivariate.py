@@ -53,8 +53,6 @@ def parse_hsq(path):
             "native_standard_error": se_text,
         }
     mandatory = ["V(G)_tr1", "V(G)_tr2", "C(G)_tr12", "V(e)_tr1", "V(e)_tr2", "Vp_tr1", "Vp_tr2", "V(G)/Vp_tr1", "V(G)/Vp_tr2", "rG", "logL", "n"]
-    if "--reml-bivar-nocove" not in META.get("native_args", []):
-        mandatory.append("C(e)_tr12")
     missing = [source for source in mandatory if source not in components]
     if missing:
         fail("native result '{}' is missing mandatory components {}".format(path, ", ".join(missing)))
@@ -165,7 +163,12 @@ write_tsv(
 
 diagnostics = dict(pair_diagnostics)
 residual_covariance_present = "C(e)_tr12" in components
-residual_covariance_status = "retained" if residual_covariance_present else "dropped_by_native_option"
+if residual_covariance_present:
+    residual_covariance_status = "retained"
+elif "--reml-bivar-nocove" in META.get("native_args", []):
+    residual_covariance_status = "dropped_by_native_option"
+else:
+    residual_covariance_status = "dropped_by_native_overlap_rule"
 diagnostics.update({
     "classification": classification,
     "native_converged": str(converged).lower(),
