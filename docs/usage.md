@@ -6,9 +6,7 @@
 
 ## Introduction
 
-nf-core/gwas runs association and individual-level heritability analyses from prepared human genotypes,
-phenotypes and optional covariates. A cohort manifest owns genotype facts; an analysis manifest links
-each trait analysis to one cohort and selects its methods.
+nf-core/gwas runs association, individual-level heritability and explicitly declared pairwise genetic-correlation analyses from prepared human genotypes, phenotypes and optional covariates. A cohort manifest owns genotype facts; an analysis manifest links each trait analysis to one cohort and selects unary methods; and an optional relationship manifest binds ordered trait endpoints to pairwise methods.
 
 > [!IMPORTANT]
 > Genotypes must be prepared before you run the pipeline. The pipeline converts accepted genotype
@@ -16,7 +14,7 @@ each trait analysis to one cohort and selects its methods.
 
 ## Linked manifest input
 
-Every run requires both linked CSV manifests:
+Every run requires the linked cohort and analysis CSV manifests. `--relationship_manifest` is optional; when absent, no pair is inferred.
 
 ```bash
 nextflow run nf-core/gwas \
@@ -64,7 +62,30 @@ Populate exactly one complete genotype representation on each row. PLINK 1 and V
 | `heritability_methods`  | By row   | Optional comma-delimited selector: `gcta_greml`, `gcta_greml_ldms`, `ldak_reml`, `ldak_he`, or `ldak_pcgc`.                 |
 | `population_prevalence` | By route | Number strictly between `0` and `1`; valid only for binary heritability analyses and required by `ldak_pcgc`.               |
 
-At least one method selector must be populated. Tokens are comma-delimited without spaces and may appear only once. Association-only and heritability-only rows are both valid.
+At least one unary method selector must be populated unless the analysis is referenced by a relationship row. Tokens are comma-delimited without spaces and may appear only once. Association-only, heritability-only and relationship-only analysis rows are valid.
+
+### Relationship manifest fields
+
+The optional relationship manifest has exactly eight columns. The first release implements only the primary dense `gcta_bivariate_reml` route; the summary-statistics endpoint columns are reserved for later methods and must remain blank for this route.
+
+| Column                       | Required | Description                                                                                                                                          |
+| ---------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `relationship_id`            | Yes      | Unique, whitespace-free identifier for this exact populated endpoint binding.                                                                        |
+| `left_analysis_id`           | GCTA     | Analysis ID for native trait 1.                                                                                                                       |
+| `right_analysis_id`          | GCTA     | Analysis ID for native trait 2.                                                                                                                       |
+| `left_summary_statistics_id` | No       | Reserved summary-statistics endpoint; leave blank in this release.                                                                                   |
+| `right_summary_statistics_id` | No       | Reserved summary-statistics endpoint; leave blank in this release.                                                                                   |
+| `relationship_methods`       | Yes      | Comma-delimited pairwise selector; currently `gcta_bivariate_reml`.                                                                                   |
+| `pair_quant_covariates`      | No       | Relationship-owned headered quantitative covariates beginning with `FID` and `IID`.                                                                  |
+| `pair_cat_covariates`        | No       | Relationship-owned headered categorical covariates beginning with `FID` and `IID`.                                                                   |
+
+GCTA bivariate REML requires two different `analysis_id` values from one cohort, and their declared `trait_id` values must also differ. A reversed duplicate such as `height,disease` plus `disease,height` is invalid because it requests the same unordered pair twice. Left and right still matter: they define GCTA trait 1 and trait 2 and are recorded in every normalized result and provenance file.
+
+The pair phenotype is a deterministic full union of the two normalized endpoint sample sets in `FID`,`IID` order, with `NA` on a side where that trait is missing. Pair covariates belong to the relationship, not either endpoint analysis. The primary pair request ID is deterministic:
+
+```text
+gcta_bivariate_reml--<relationship_id>
+```
 
 ### Runnable examples
 
@@ -91,9 +112,37 @@ nextflow run nf-core/gwas \
     --outdir results
 ```
 
+The [relationship manifest example](../assets/examples/relational/relationship_manifest.csv) binds the heterogeneous quantitative and binary analyses. For the deliberately small fixture, use the [namespaced method-options example](../assets/examples/relational/method_options_heterogeneous_bivariate.json), which retains the unary settings, raises GCTA's native REML iteration allowance and deliberately drops the residual-covariance component for this compact test request. These are explicit example-specific native choices, not defaults of the pair route:
+
+```bash
+nextflow run nf-core/gwas \
+    -r <VERSION> \
+    -profile docker \
+    --cohort_manifest assets/examples/relational/cohort_manifest.csv \
+    --analysis_manifest assets/examples/relational/analysis_manifest_heterogeneous.csv \
+    --relationship_manifest assets/examples/relational/relationship_manifest.csv \
+    --method_options assets/examples/relational/method_options_heterogeneous_bivariate.json \
+    --outdir results
+```
+
 ### Advanced method options
 
-`--method_options` is optional. Its JSON root is keyed by `analysis_id`; each value may contain `gcta`, `ldak` and/or `regenie`. Unlisted analyses receive every default. Unknown analyses, families or options, invalid values, missing resources, and options whose consuming method is not selected are rejected before task submission.
+`--method_options` is optional. The established form keeps its JSON root keyed by `analysis_id`; each value may contain `gcta`, `ldak` and/or `regenie`. It remains supported unchanged. A namespaced document places those same entries under `analyses` and pair-specific settings under `pair_requests`. `unary_requests` is reserved for later summary-statistics requests and must remain empty in this release. Unlisted analyses and pair requests receive their defaults. Unknown identifiers, families or options, invalid values, missing resources, and options whose consuming method is not selected are rejected before task submission.
+
+The first pair route exposes one advanced option, `native_args`, as an array of individual non-file GCTA tokens on the deterministic request ID:
+
+```json
+{
+  "analyses": {},
+  "pair_requests": {
+    "gcta_bivariate_reml--height_disease": {
+      "native_args": ["--reml-maxit", "500"]
+    }
+  }
+}
+```
+
+The wrapper rejects whitespace or shell syntax, path separators, environment assignments, undeclared file-like values, file-bearing invocation mechanics such as `--keep` and `--extract`, wrapper-owned flags such as `--grm`, `--pheno`, `--out`, `--reml-bivar` and `--reml-bivar-prevalence`, and flags selecting another primary GCTA operation such as `--pca`. Arguments remain native scientific options: the pipeline records them and presents all resulting estimates; it does not choose a preferred result.
 
 | GCTA option          | Type and default                      | Consumer and constraints                                                                                |
 | -------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------- |
@@ -139,11 +188,11 @@ For example, this changes the fitted-model block size and Step 2 policy for one 
 
 Resource paths are staged and their contents participate in matrix or prediction reuse identity. `gcta_grm_parts` is operational partitioning and remains configuration/profile-only, never a method option.
 
-The authoritative structural contracts are [`schema_cohort_manifest.json`](../assets/schema_cohort_manifest.json) and [`schema_analysis_manifest.json`](../assets/schema_analysis_manifest.json); relationship-, method-, trait- and resource-aware diagnostics come from the central preflight validator.
+The authoritative structural contracts are [`schema_cohort_manifest.json`](../assets/schema_cohort_manifest.json), [`schema_analysis_manifest.json`](../assets/schema_analysis_manifest.json) and [`schema_relationship_manifest.json`](../assets/schema_relationship_manifest.json); relationship-, method-, trait- and resource-aware diagnostics come from the central preflight validator.
 
 ### Validation diagnostics
 
-Structural failures name the manifest and invalid column. Cross-row preflight failures additionally name the CSV row and `cohort_id` or `analysis_id`: examples include an incomplete or second genotype group, conflicting duplicate cohorts, duplicate analyses, orphan `cohort_id` references, unknown or repeated method tokens, invalid binary coding, and route-inapplicable prevalence. Method-options failures name the JSON document, `analysis_id` and fully qualified option such as `gcta.sparse_cutoff` or `ldak.weights`; malformed JSON, unknown keys, invalid types/ranges and missing stageable resources all fail before task submission.
+Structural failures name the manifest and invalid column. Cross-row preflight failures additionally name the CSV row and `cohort_id`, `analysis_id` or `relationship_id`: examples include an incomplete or second genotype group, conflicting duplicate cohorts, duplicate analyses, orphan references, same-endpoint or same-trait pair bindings, cross-cohort GCTA pairs, reversed duplicates, unknown or repeated method tokens, invalid binary coding, and route-inapplicable prevalence. Method-options failures name the JSON document and analysis or request ID plus the qualified option; malformed JSON, unknown keys, invalid types/ranges and missing stageable resources all fail before task submission.
 
 ### Phenotype normalisation
 
@@ -204,6 +253,7 @@ nextflow run nf-core/gwas -r <VERSION> -profile docker -params-file params.yaml
 ```yaml title="params.yaml"
 cohort_manifest: "./cohorts.csv"
 analysis_manifest: "./analyses.csv"
+relationship_manifest: "./relationships.csv"
 outdir: "./results/"
 ```
 
@@ -222,7 +272,7 @@ nextflow pull nf-core/gwas
 
 ## Reproducibility
 
-Pin the pipeline revision with `-r`, retain the exact cohort and analysis manifests, optional method-options document and parameter file, and archive `pipeline_info/` with your results. Reusing the same revision, inputs and parameters also lets `-resume` recover cached tasks.
+Pin the pipeline revision with `-r`, retain the exact cohort, analysis and optional relationship manifests, method-options document and parameter file, and archive `pipeline_info/` with your results. Reusing the same revision, inputs and parameters also lets `-resume` recover cached tasks.
 
 Find published version tags on the [nf-core/gwas versions page](https://github.com/nf-core/gwas/tags). The run's pipeline and tool versions are recorded in the published reports described in [Pipeline information](output.md#pipeline-information).
 

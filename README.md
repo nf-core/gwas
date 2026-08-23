@@ -21,7 +21,7 @@
 
 ## Introduction
 
-**nf-core/gwas** is a bioinformatics pipeline for association and individual-level heritability analysis of prepared human genotype, phenotype and covariate data. A cohort manifest owns genotype facts and an analysis manifest links traits and selected methods to those cohorts. The pipeline reuses cohort preparation and relatedness matrices across compatible analyses, retains native results, and produces comparable GWASLab-standardised summary statistics.
+**nf-core/gwas** is a bioinformatics pipeline for association, individual-level heritability and declared pairwise genetic-correlation analysis of prepared human genotype, phenotype and covariate data. A cohort manifest owns genotype facts, an analysis manifest links traits and selected unary methods to those cohorts, and an optional relationship manifest binds explicit pairs. The pipeline reuses cohort preparation and relatedness matrices across compatible analyses, retains native results, and produces comparable GWASLab-standardised summary statistics.
 
 Genotype quality control is not performed by the pipeline. Input genotypes must already have suitable samples, variants, alleles, coordinates, genome build and analysis filters.
 
@@ -44,7 +44,8 @@ Genotype quality control is not performed by the pipeline. Input genotypes must 
    - LDAK REML
    - LDAK Haseman-Elston regression
    - LDAK PCGC
-7. Collect run and software provenance with MultiQC and Nextflow reports.
+7. Run declared same-cohort pairs with dense GCTA bivariate REML, retaining native output plus normalized heritability, genetic-covariance, genetic-correlation, diagnostics and request provenance.
+8. Collect run and software provenance with MultiQC and Nextflow reports.
 
 ## Usage
 
@@ -67,6 +68,8 @@ height,my_cohort,height,quantitative,/data/phenotypes.tsv,height,,,,,plink2,,
 
 Runnable minimal and heterogeneous examples are available under [`assets/examples/relational/`](assets/examples/relational/).
 
+To request pairwise analysis, add the optional eight-column relationship manifest. This first route accepts two distinct analysis IDs from the same cohort and the method token `gcta_bivariate_reml`; no pair is inferred.
+
 Then run:
 
 ```bash
@@ -75,6 +78,7 @@ nextflow run nf-core/gwas \
     -profile docker \
     --cohort_manifest cohorts.csv \
     --analysis_manifest analyses.csv \
+    --relationship_manifest relationships.csv \
     --outdir results
 ```
 
@@ -85,7 +89,7 @@ For more details and further functionality, please refer to the [usage documenta
 
 ## Pipeline output
 
-Native association results are published under `association/<method>/<analysis_id>/`, comparable GWASLab tables under `summary_statistics/<analysis_id>/`, and individual-level heritability estimates under `heritability/individual/<method>/<analysis_id>/`. Intermediates such as prepared genotypes, normalised phenotypes, relatedness matrices and REGENIE predictions are unpublished unless their save controls are enabled.
+Native association results are published under `association/<method>/<analysis_id>/`, comparable GWASLab tables under `summary_statistics/<analysis_id>/`, and individual-level heritability estimates under `heritability/individual/<method>/<analysis_id>/`. A declared GCTA pair publishes native and request provenance under `requests/gcta_bivariate_reml/<request_id>/` plus normalized estimand views under `heritability/`, `genetic_covariance/` and `genetic_correlation/`. Intermediates such as prepared genotypes, normalised phenotypes, relatedness matrices and REGENIE predictions are unpublished unless their save controls are enabled.
 
 For exact filenames, provenance lookup and optional output, see the [output documentation](https://nf-co.re/gwas/output).
 

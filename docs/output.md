@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This document describes the files that nf-core/gwas publishes beneath `--outdir`. Native association and heritability results are retained, every association result also receives a GWASLab-standardised summary-statistics table, and run-level provenance is collected in MultiQC and `pipeline_info/`.
+This document describes the files that nf-core/gwas publishes beneath `--outdir`. Native association, heritability and declared pairwise GCTA results are retained, every association result also receives a GWASLab-standardised summary-statistics table, and run-level provenance is collected in MultiQC and `pipeline_info/`.
 
 Intermediates are unpublished by default. The optional directories described below appear only when their corresponding save control is enabled.
 
@@ -23,11 +23,13 @@ Use the following provenance chain for any result:
 3. Map `<method>` to its producing tool using the table below.
 4. Read the tool version from `pipeline_info/nf_core_gwas_software_mqc_versions.yml`. The pipeline version and complete run parameters are recorded by the `pipeline_info/` reports and `params_<timestamp>.json`.
 
+Pairwise outputs instead use the deterministic request ID `<method>--<relationship_id>`. Find `relationship_id` in `--relationship_manifest`, follow its ordered left and right analysis IDs into `--analysis_manifest`, and use `requests/<method>/<request_id>/provenance.json` for the exact endpoint orientation, dense-matrix reuse key and native basename, effective prevalence, native arguments, all parsed native components, warnings and completion classification.
+
 | Method token                                     | Producing tool |
 | ------------------------------------------------ | -------------- |
 | `plink2`                                         | PLINK 2        |
 | `regenie`                                        | REGENIE        |
-| `gcta_fastgwa`, `gcta_greml`, `gcta_greml_ldms`  | GCTA           |
+| `gcta_fastgwa`, `gcta_greml`, `gcta_greml_ldms`, `gcta_bivariate_reml` | GCTA           |
 | `ldak_kvik`, `ldak_reml`, `ldak_he`, `ldak_pcgc` | LDAK 6         |
 
 Together, the result prefix, retained cohort and analysis manifests, optional method-options document, and `pipeline_info/` artifacts identify the analysis, cohort, trait, genome build, method, scientific settings, pipeline version and producing tool version. Preserve them with an archived result.
@@ -47,6 +49,7 @@ The pipeline is built using [Nextflow](https://www.nextflow.io/) and publishes:
 - [Heritability](#heritability)
   - [GCTA GREML and GREML-LDMS](#gcta-greml-and-greml-ldms)
   - [LDAK estimators](#ldak-estimators)
+- [Pairwise GCTA bivariate REML](#pairwise-gcta-bivariate-reml)
 - [Quality control and optional prepared data](#quality-control-and-optional-prepared-data)
 - [MultiQC](#multiqc)
 - [Pipeline information](#pipeline-information)
@@ -175,6 +178,26 @@ GREML uses one dense matrix. GREML-LDMS partitions variants by LD score and MAF.
 
 The LDAK kinship model defaults to `human_default` with `power: -0.25`. Set `model: custom` before supplying another power. `weights_policy: equal` is the default and explicitly ignores weights; `default` retains LDAK's native policy; `provided` requires the staged `weights` resource. `relatedness_filter` defaults to `false`. When HE or PCGC has covariates, the pipeline first adjusts the kinship matrix on the same analysis subset and covariates, then passes those covariates to the estimator so phenotype residualisation and matrix projection remain aligned.
 
+## Pairwise GCTA bivariate REML
+
+<details markdown="1">
+<summary>Output files</summary>
+
+The first relationship route uses one explicit all-variant dense GCTA matrix for the pair's cohort. It does not inherit either endpoint analysis's unary GCTA matrix settings. The native GCTA result and log remain request-addressed, while three lightweight TSV views expose each estimand family without selecting or ranking a result.
+
+- `requests/gcta_bivariate_reml/<request_id>/`
+  - `native.hsq`: Complete native GCTA bivariate REML variance-component result.
+  - `native.log`: Native command, version, convergence and sample-overlap log.
+  - `diagnostics.tsv`: Full-union endpoint counts, native common/non-missing counts, convergence, residual covariance when estimated, warnings and the Q43 completion classification.
+  - `provenance.json`: Ordered endpoint identities, cohort, matrix kind/key/native basename/settings, effective prevalence, accepted native arguments, all parsed native component values, tool version, warnings, classification and artifact inventory.
+- `heritability/gcta_bivariate_reml/<request_id>/heritability.tsv`: Left and right `V(G)/Vp` estimates on every scale the native result emitted.
+- `genetic_covariance/gcta_bivariate_reml/<request_id>/genetic_covariance.tsv`: Native observed-scale `C(G)_tr12` estimate and standard error.
+- `genetic_correlation/gcta_bivariate_reml/<request_id>/genetic_correlation.tsv`: Native ordered `rG` estimate and standard error.
+
+</details>
+
+Successful native completion is classified as `estimable`, `estimable_with_warning` or `completed_nonestimable`. An explicit native nonconvergence, corrupt or incomplete mandatory output, or execution error is the fourth state, `failed`; it fails the request and the run rather than publishing a misleading normalized result. A warning or out-of-range native estimate is retained rather than clipped or discarded. The pipeline does not compare methods or choose a best result. For binary endpoints, a declared `population_prevalence` is passed only through GCTA's endpoint-aware `--reml-bivar-prevalence` interface; ordinary unary `--prevalence` is never used on this route. Liability-scale heritability rows appear only when GCTA itself emits the corresponding native `_L` component.
+
 ## Quality control and optional prepared data
 
 ### Relatedness matrices
@@ -228,7 +251,7 @@ These files show the exact recoding consumed by downstream tools and are useful 
 <details markdown="1">
 <summary>Output files</summary>
 
-[MultiQC](https://multiqc.info/) combines the validated Analysis plan, workflow parameters, route-aware Methods Description and collected software versions into one report. The Analysis plan has one row per `analysis_id` and records the joined cohort, trait, trait type, genome build, ancestry provenance and requested association and heritability methods. It describes requested routes, not their completion or scientific results. Custom Manhattan and QQ plots and heritability-result panels are outside the current reporting scope.
+[MultiQC](https://multiqc.info/) combines the validated Analysis plan, workflow parameters, route-aware Methods Description and collected software versions into one report. The Analysis plan has one row per `analysis_id` and records the joined cohort, trait, trait type, genome build, ancestry provenance and requested association and heritability methods; the Methods Description additionally cites selected pairwise routes. It describes requested routes, not their completion or scientific results. Custom Manhattan and QQ plots and estimator-result panels are outside the current reporting scope.
 
 - `multiqc/`
   - `multiqc_report.html`: Standalone HTML run report.

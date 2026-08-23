@@ -22,6 +22,10 @@
 
   > Yang J, Bakshi A, Zhu Z, et al. Genetic variance estimation with imputed variants finds negligible missing heritability for human height and body mass index. Nat Genet. 2015;47(10):1114-1120. doi: 10.1038/ng.3390. PubMed PMID: 26323059.
 
+- [GCTA bivariate REML](https://doi.org/10.1093/bioinformatics/bts474)
+
+  > Lee SH, Yang J, Goddard ME, Visscher PM, Wray NR. Estimation of pleiotropy between complex diseases using single-nucleotide polymorphism-derived genomic relationships and restricted maximum likelihood. Bioinformatics. 2012;28(19):2540-2542. doi: 10.1093/bioinformatics/bts474. PubMed PMID: 22843982.
+
 - [GWASLab](https://cloufield.github.io/gwaslab/)
 
 - [LDAK](https://doi.org/10.1016/j.ajhg.2012.10.010)
