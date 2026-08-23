@@ -185,6 +185,28 @@ GREML uses one dense matrix. GREML-LDMS partitions variants by LD score and MAF.
 
 The LDAK kinship model defaults to `human_default` with `power: -0.25`. Set `model: custom` before supplying another power. `weights_policy: equal` is the default and explicitly ignores weights; `default` retains LDAK's native policy; `provided` requires the staged `weights` resource. `relatedness_filter` defaults to `false`. When HE or PCGC has covariates, the pipeline first adjusts the kinship matrix on the same analysis subset and covariates, then passes those covariates to the estimator so phenotype residualisation and matrix projection remain aligned.
 
+### Summary-level LDSC H2 and RG
+
+<details markdown="1">
+<summary>Output files</summary>
+
+[LDSC](https://github.com/CBIIT/ldsc) consumes each canonical summary through one content-addressed HapMap3 munging step. Unary H2 and ordered pairwise RG requests reuse that munged result when the summary identity, adapter contract and HapMap3 bytes are identical. Munged summaries are workflow intermediates and are not published.
+
+- `requests/ldsc_h2/<request_id>/`
+  - `native.observed.log`: Complete native observed-scale LDSC H2 log.
+  - `native.liability.log`: Optional native liability-scale log for a binary summary declaring both sample and population prevalence.
+  - `diagnostics.tsv`: Completion classification, native scales, regression-SNP count, LDSC diagnostics and unmodified warnings.
+  - `provenance.json`: Summary identity, request and reference-bundle metadata, accepted native arguments, munging keys/diagnostics, native estimates, LDSC source revision/container, warnings, classification and artifact inventory.
+- `heritability/ldsc_h2/<request_id>/heritability.tsv`: One normalized H2 row per native scale.
+- `requests/ldsc_rg/<request_id>/`: The same observed/optional-liability native logs, diagnostics and provenance for the ordered summary pair.
+- `heritability/ldsc_rg/<request_id>/heritability.tsv`: Ordered left/right marginal H2 rows for every native scale.
+- `genetic_covariance/ldsc_rg/<request_id>/genetic_covariance.tsv`: Genetic covariance and standard error for every native scale.
+- `genetic_correlation/ldsc_rg/<request_id>/genetic_correlation.tsv`: Observed-invocation genetic correlation, standard error, z score and p value.
+
+</details>
+
+Normalized results preserve the native values and classify successful completion as `estimable`, `estimable_with_warning` or `completed_nonestimable`; native warnings and boundary violations never cause clipping or method selection. A malformed or incomplete mandatory native log fails the request. The pipeline presents every requested method and does not rank or combine them. Observed-scale LDSC is always retained. Liability-scale output is added only when all binary endpoints in the request declare both prevalence values; quantitative endpoints in a mixed RG request retain their quantitative-scale marginal H2.
+
 ## Pairwise GCTA bivariate REML
 
 <details markdown="1">

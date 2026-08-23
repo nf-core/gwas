@@ -8,24 +8,26 @@ nextflow_pipeline {
 
     test("raw and canonical external sources converge on the canonical contract") {
         when {
+            def resources = RELATIONAL.ldscResources(outputDir, 'pipeline_external_ingress')
             params {
                 outdir = "$outputDir"
                 cohort_manifest = null
                 analysis_manifest = null
                 summary_statistics_manifest = RELATIONAL.summaryStatistics(projectDir, outputDir, 'pipeline_external_ingress', { rows ->
+                    rows[0].source = resources.quantitative
                     def raw = new LinkedHashMap(rows[0])
                     raw.summary_statistics_id = 'external_raw'
                     raw.trait_id = 'QT_external_raw'
-                    raw.source = RELATIONAL.canonicalSummary(outputDir, 'external_raw')
+                    raw.source = resources.binary
                     raw.source_mode = 'raw'
                     raw.source_format = 'gwaslab'
                     rows << raw
                 })
-                reference_catalog = RELATIONAL.referenceCatalog(outputDir, 'pipeline_external_ingress')
+                reference_catalog = resources.catalog
                 method_options = RELATIONAL.methodOptions(outputDir, 'pipeline_external_ingress', [
                     unary_requests: [
-                        'ldsc_h2--external_qt': [reference_bundle_id: 'ldsc_eur'],
-                        'ldsc_h2--external_raw': [reference_bundle_id: 'ldsc_eur'],
+                        'ldsc_h2--external_qt': [reference_bundle_id: 'ldsc_eur', native_args: ['--n-blocks', '20']],
+                        'ldsc_h2--external_raw': [reference_bundle_id: 'ldsc_eur', native_args: ['--n-blocks', '20']],
                     ],
                 ])
             }

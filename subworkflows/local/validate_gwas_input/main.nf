@@ -967,8 +967,8 @@ def validateSummaryNativeArgumentTokens(method_options, namespace, request_id, m
             '--prevalence2',
             '--ascertainment2',
         ],
-        ldsc_h2: ['--h2', '--ref-ld-chr', '--w-ld-chr', '--out'],
-        ldsc_rg: ['--rg', '--ref-ld-chr', '--w-ld-chr', '--out'],
+        ldsc_h2: ['--h2', '--ref-ld-chr', '--w-ld-chr', '--samp-prev', '--pop-prev', '--out'],
+        ldsc_rg: ['--rg', '--ref-ld-chr', '--w-ld-chr', '--samp-prev', '--pop-prev', '--out'],
     ]
     def undeclared_file_options = [
         ldak_sumher: [

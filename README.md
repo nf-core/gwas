@@ -47,7 +47,8 @@ Genotype quality control is not performed by the pipeline. Input genotypes must 
    - LDAK PCGC
 8. Resolve declared unary and pair summary-statistics requests against explicit LDAK or LDSC reference bundles, including LDAK SumHer heritability and SumCors genetic correlation.
 9. Run declared same-cohort pairs with dense or LDMS GCTA bivariate REML, retaining native output plus normalized heritability, genetic-covariance, genetic-correlation, diagnostics and request provenance.
-10. Collect run and software provenance with MultiQC and Nextflow reports.
+10. Run declared LDSC H2 and ordered RG requests, reusing content-identical munging and retaining observed- and available liability-scale native results plus normalized estimand views, diagnostics and provenance.
+11. Collect run and software provenance with MultiQC and Nextflow reports.
 
 ## Usage
 
@@ -91,7 +92,7 @@ For more details and further functionality, please refer to the [usage documenta
 
 ## Pipeline output
 
-Native association results are published under `association/<method>/<analysis_id>/`. Every internal or external summary result is published once under `summary_statistics/<summary_statistics_id>/` as `<summary_statistics_id>.canonical.tsv.gz` plus a provenance sidecar. Individual-level heritability estimates remain under `heritability/individual/<method>/<analysis_id>/`. A declared GCTA pair publishes native and request provenance under `requests/<method>/<request_id>/` plus normalized estimand views under `heritability/`, `genetic_covariance/` and `genetic_correlation/`. Intermediates such as prepared genotypes, normalised phenotypes, relatedness matrices and REGENIE predictions are unpublished unless their save controls are enabled.
+Native association results are published under `association/<method>/<analysis_id>/`. Every internal or external summary result is published once under `summary_statistics/<summary_statistics_id>/` as `<summary_statistics_id>.canonical.tsv.gz` plus a provenance sidecar. Individual-level heritability estimates remain under `heritability/individual/<method>/<analysis_id>/`. Declared GCTA and LDSC requests publish native results, diagnostics and provenance under `requests/<method>/<request_id>/` plus normalized estimand views under `heritability/`, `genetic_covariance/` and `genetic_correlation/`. Munged LDSC summaries and other intermediates are not republished; prepared genotypes, normalised phenotypes, relatedness matrices and REGENIE predictions remain unpublished unless their save controls are enabled.
 
 For exact filenames, provenance lookup and optional output, see the [output documentation](https://nf-co.re/gwas/output).
 

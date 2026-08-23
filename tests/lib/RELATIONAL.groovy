@@ -271,8 +271,13 @@ class RELATIONAL {
 
     static String referenceCatalog(Object outputDir, String name) {
         def hapmap3 = resource(outputDir, "${name}/hapmap3.snp", "rs1\n")
-        def referenceLd = resource(outputDir, "${name}/reference.l2.ldscore", "CHR SNP BP L2\n1 rs1 1 1\n")
-        def regressionWeights = resource(outputDir, "${name}/weights.l2.ldscore", "CHR SNP BP L2\n1 rs1 1 1\n")
+        def resourceRoot = new File(new File(outputDir.toString()).parentFile, "resources/${name}")
+        def referenceLd = new File(resourceRoot, 'reference')
+        def regressionWeights = new File(resourceRoot, 'weights')
+        referenceLd.mkdirs()
+        regressionWeights.mkdirs()
+        new File(referenceLd, '1.l2.ldscore').text = "CHR SNP BP L2\n1 rs1 1 1\n"
+        new File(regressionWeights, '1.l2.ldscore').text = "CHR SNP BP L2\n1 rs1 1 1\n"
         def tagging = resource(outputDir, "${name}/reference.tagging", "Predictor Tagging\nrs1 1\n")
         def document = [
             ldsc: [
@@ -281,8 +286,8 @@ class RELATIONAL {
                     ancestry: 'EUR',
                     variant_id_system: 'rsid',
                     hapmap3_snplist: hapmap3,
-                    reference_ld_scores: referenceLd,
-                    regression_weights: regressionWeights,
+                    reference_ld_scores: referenceLd.absolutePath,
+                    regression_weights: regressionWeights.absolutePath,
                 ],
             ],
             ldak: [
@@ -300,6 +305,80 @@ class RELATIONAL {
         def catalog = new File(directory, 'reference_catalog.json')
         catalog.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(document)) + '\n'
         return catalog.absolutePath
+    }
+
+    // Build one deterministic, self-contained LDSC fixture family large enough for the native regression
+    // smoke tests. These files are generated inside nf-test output state and are not pipeline dependencies.
+    static Map ldscResources(Object outputDir, String name) {
+        def root = new File(new File(outputDir.toString()).parentFile, "resources/${name}")
+        def reference = new File(root, 'reference')
+        def weights = new File(root, 'weights')
+        reference.mkdirs()
+        weights.mkdirs()
+        def gzipText = { File target, String body ->
+            target.withOutputStream { output ->
+                def gzip = new java.util.zip.GZIPOutputStream(output)
+                gzip.write(body.getBytes('UTF-8'))
+                gzip.close()
+            }
+        }
+        def hapmap3 = new File(root, 'w_hm3.snplist')
+        def alleleRows = []
+        (1..2).each { chromosome ->
+            def referenceRows = []
+            def weightRows = []
+            (1..500).each { index ->
+                def globalIndex = (chromosome - 1) * 500 + index
+                def ldScore = 1.0 + (globalIndex % 47) / 10.0
+                def weight = 1.0 + (globalIndex % 13) / 20.0
+                referenceRows << "${chromosome}\trs${globalIndex}\t${globalIndex}\t${ldScore}"
+                weightRows << "${chromosome}\trs${globalIndex}\t${globalIndex}\t${weight}"
+                alleleRows << "rs${globalIndex}\tA\tG"
+            }
+            gzipText(new File(reference, "${chromosome}.l2.ldscore.gz"), "CHR\tSNP\tBP\tL2\n${referenceRows.join('\n')}\n")
+            new File(reference, "${chromosome}.l2.M_5_50").text = '500\n'
+            gzipText(new File(weights, "${chromosome}.l2.ldscore.gz"), "CHR\tSNP\tBP\tL2\n${weightRows.join('\n')}\n")
+        }
+        hapmap3.text = "SNP\tA1\tA2\n${alleleRows.join('\n')}\n"
+
+        def summary = { String id, double coefficient, int sampleSize ->
+            def source = new File(root, "${id}.canonical.tsv")
+            def rows = (1..1000).collect { index ->
+                def chromosome = index <= 500 ? 1 : 2
+                def localIndex = index <= 500 ? index : index - 500
+                def ldScore = 1.0 + (index % 47) / 10.0
+                def sign = index % 2 == 0 ? 1.0 : -1.0
+                def z = sign * Math.sqrt(1.0 + coefficient * ldScore) + ((index % 7) - 3) / 20.0
+                def se = 0.01
+                def beta = z * se
+                "rs${index}\t${chromosome}\t${localIndex}\tA\tG\t1900000\t0.25\t${String.format(java.util.Locale.ROOT, '%.8f', beta)}\t${se}\t0.001\t${sampleSize}"
+            }
+            source.text = "SNPID\tCHR\tPOS\tEA\tNEA\tSTATUS\tEAF\tBETA\tSE\tP\tN\n${rows.join('\n')}\n"
+            source.absolutePath
+        }
+
+        def document = [
+            ldsc: [
+                ldsc_eur: [
+                    genome_build: 'GRCh37',
+                    ancestry: 'EUR',
+                    variant_id_system: 'rsid',
+                    hapmap3_snplist: hapmap3.absolutePath,
+                    reference_ld_scores: reference.absolutePath,
+                    regression_weights: weights.absolutePath,
+                ],
+            ],
+        ]
+        def catalog = new File(root, 'reference_catalog.json')
+        catalog.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(document)) + '\n'
+        return [
+            catalog: catalog.absolutePath,
+            quantitative: summary('external_qt', 0.5, 10000),
+            binary: summary('external_bt', 0.7, 12000),
+            hapmap3: hapmap3.absolutePath,
+            reference: reference.absolutePath,
+            weights: weights.absolutePath,
+        ]
     }
 
     static String summaryMethodOptions(Object outputDir, String name) {

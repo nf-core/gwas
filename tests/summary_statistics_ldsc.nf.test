@@ -1,0 +1,166 @@
+nextflow_pipeline {
+
+    name "Test standalone LDSC production routes"
+    script "../main.nf"
+    tag "pipeline"
+    tag "summary_statistics"
+    tag "ldsc"
+
+    def inputs = { projectDir, outputDir, name ->
+        def resources = RELATIONAL.ldscResources(outputDir, name)
+        def summaries = RELATIONAL.summaryStatistics(projectDir, outputDir, name, { rows ->
+            rows[0].source = resources.quantitative
+            rows[0].heritability_methods = 'ldsc_h2'
+            def binary = RELATIONAL.summary(outputDir, 'external_bt')
+            binary.source = resources.binary
+            binary.heritability_methods = 'ldsc_h2'
+            rows << binary
+        })
+        def relationships = RELATIONAL.summaryRelationships(projectDir, outputDir, name, { rows ->
+            rows[0].relationship_methods = 'ldsc_rg'
+        })
+        def options = RELATIONAL.methodOptions(outputDir, name, [
+            unary_requests: [
+                'ldsc_h2--external_qt': [reference_bundle_id: 'ldsc_eur', native_args: ['--n-blocks', '20']],
+                'ldsc_h2--external_bt': [reference_bundle_id: 'ldsc_eur', native_args: ['--n-blocks', '20']],
+            ],
+            pair_requests: [
+                'ldsc_rg--external_pair': [reference_bundle_id: 'ldsc_eur', native_args: ['--n-blocks', '20']],
+            ],
+        ])
+        [summary: summaries, relationship: relationships, catalog: resources.catalog, options: options]
+    }
+
+    test("run H2 and RG with shared content-addressed munging") {
+        when {
+            def manifests = inputs(projectDir, outputDir, 'ldsc_real')
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = null
+                analysis_manifest = null
+                summary_statistics_manifest = manifests.summary
+                relationship_manifest = manifests.relationship
+                reference_catalog = manifests.catalog
+                method_options = manifests.options
+            }
+        }
+
+        then {
+            def h2QtRequest = new File("${params.outdir}/requests/ldsc_h2/ldsc_h2--external_qt")
+            def h2BtRequest = new File("${params.outdir}/requests/ldsc_h2/ldsc_h2--external_bt")
+            def rgRequest = new File("${params.outdir}/requests/ldsc_rg/ldsc_rg--external_pair")
+            def h2Qt = new File("${params.outdir}/heritability/ldsc_h2/ldsc_h2--external_qt/heritability.tsv")
+            def h2Bt = new File("${params.outdir}/heritability/ldsc_h2/ldsc_h2--external_bt/heritability.tsv")
+            def rgH2 = new File("${params.outdir}/heritability/ldsc_rg/ldsc_rg--external_pair/heritability.tsv")
+            def rg = new File("${params.outdir}/genetic_correlation/ldsc_rg/ldsc_rg--external_pair/genetic_correlation.tsv")
+            def covariance = new File("${params.outdir}/genetic_covariance/ldsc_rg/ldsc_rg--external_pair/genetic_covariance.tsv")
+            def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
+            def h2Provenance = new groovy.json.JsonSlurper().parse(new File(h2BtRequest, 'provenance.json'))
+            def rgProvenance = new groovy.json.JsonSlurper().parse(new File(rgRequest, 'provenance.json'))
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'LDSC_MUNGESUMSTATS') == 2 },
+                { assert TRACE.count(workflow, 'LDSC_H2_OBSERVED') == 2 },
+                { assert TRACE.count(workflow, 'LDSC_H2_LIABILITY') == 1 },
+                { assert TRACE.count(workflow, 'LDSC_RG_OBSERVED') == 1 },
+                { assert TRACE.count(workflow, 'LDSC_RG_LIABILITY') == 1 },
+                { assert TRACE.count(workflow, 'NORMALISE_LDSC') == 3 },
+                { assert new File(h2QtRequest, 'native.observed.log').isFile() },
+                { assert !new File(h2QtRequest, 'native.liability.log').exists() },
+                { assert new File(h2BtRequest, 'native.observed.log').isFile() },
+                { assert new File(h2BtRequest, 'native.liability.log').isFile() },
+                { assert new File(rgRequest, 'native.observed.log').isFile() },
+                { assert new File(rgRequest, 'native.liability.log').isFile() },
+                { assert h2Qt.readLines().size() == 2 },
+                { assert h2Bt.readLines().size() == 3 },
+                { assert rgH2.readLines().size() == 5 },
+                { assert rg.readLines().size() == 2 },
+                { assert covariance.readLines().size() == 3 },
+                { assert h2Provenance.reference_bundle.id == 'ldsc_eur' },
+                { assert h2Provenance.reference_validation == 'structural_availability_only' },
+                { assert h2Provenance.native.keySet() as Set == ['estimates', 'intercept', 'lambda_gc', 'mean_chi_squared', 'ratio', 'regression_snps'] as Set },
+                { assert h2Provenance.munging.adapter_contract == 'nfcore_gwas_canonical_v1_to_ldsc_sumstats_v1' },
+                { assert h2Provenance.execution.ldsc_container == System.getenv('LDSC_TEST_CONTAINER') },
+                { assert rgProvenance.endpoints.left.summary_statistics_id == 'external_qt' },
+                { assert rgProvenance.endpoints.right.summary_statistics_id == 'external_bt' },
+                { assert rgProvenance.artifacts.native == ['native.observed.log', 'native.liability.log'] },
+                { assert snapshot(
+                    RELATIONAL.gzipTextHashes("${params.outdir}/summary_statistics"),
+                    h2Qt.text,
+                    h2Bt.text,
+                    rgH2.text,
+                    rg.text,
+                    covariance.text,
+                    removeNextflowVersion(versions.toString()),
+                ).match() },
+            )
+        }
+    }
+
+    test("stub H2 and RG without republishing munged intermediates") {
+        options "-stub"
+
+        when {
+            def manifests = inputs(projectDir, outputDir, 'ldsc_stub')
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = null
+                analysis_manifest = null
+                summary_statistics_manifest = manifests.summary
+                relationship_manifest = manifests.relationship
+                reference_catalog = manifests.catalog
+                method_options = manifests.options
+            }
+        }
+
+        then {
+            def requestId = 'ldsc_h2--external_qt'
+            def request = new File("${params.outdir}/requests/ldsc_h2/${requestId}")
+            def heritability = new File("${params.outdir}/heritability/ldsc_h2/${requestId}/heritability.tsv")
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'LDSC_MUNGESUMSTATS') == 2 },
+                { assert TRACE.count(workflow, 'LDSC_H2_OBSERVED') == 2 },
+                { assert TRACE.count(workflow, 'LDSC_RG_OBSERVED') == 1 },
+                { assert TRACE.count(workflow, 'NORMALISE_LDSC') == 3 },
+                { assert new File(request, 'native.observed.log').text == 'LDSC heritability stub\n' },
+                { assert new groovy.json.JsonSlurper().parse(new File(request, 'provenance.json')).stub },
+                { assert heritability.text.contains('completed_nonestimable') },
+                { assert !new File("${params.outdir}/intermediates/ldsc").exists() },
+            )
+        }
+    }
+
+    test("reject request-owned prevalence flags before task submission") {
+        when {
+            def manifests = inputs(projectDir, outputDir, 'ldsc_firewall')
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = null
+                analysis_manifest = null
+                summary_statistics_manifest = manifests.summary
+                relationship_manifest = manifests.relationship
+                reference_catalog = manifests.catalog
+                method_options = RELATIONAL.methodOptions(outputDir, 'ldsc_firewall', [
+                    unary_requests: [
+                        'ldsc_h2--external_qt': [reference_bundle_id: 'ldsc_eur', native_args: ['--samp-prev', '0.2']],
+                        'ldsc_h2--external_bt': [reference_bundle_id: 'ldsc_eur'],
+                    ],
+                    pair_requests: [
+                        'ldsc_rg--external_pair': [reference_bundle_id: 'ldsc_eur'],
+                    ],
+                ])
+            }
+        }
+
+        then {
+            def report = VALIDATION.report(outputDir, workflow.stdout)
+            assertAll(
+                { assert workflow.failed },
+                { assert report.contains("request_id 'ldsc_h2--external_qt'") },
+                { assert report.contains("token 1 '--samp-prev' conflicts with wrapper-owned invocation mechanics") },
+                { assert TRACE.count(workflow, 'LDSC_MUNGESUMSTATS') == 0 },
+            )
+        }
+    }
+}

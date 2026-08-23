@@ -7,12 +7,18 @@
 include { CANONICALISE_SUMMARY_STATISTICS                     } from '../modules/local/canonicalise_summary_statistics/main'
 include { GWASLAB_HARMONIZE                                   } from '../modules/local/gwaslab/harmonize/main'
 include { GCTA_FASTGWA                                        } from '../modules/local/gcta/fastgwa/main'
+include { LDSC_H2 as LDSC_H2_LIABILITY                        } from '../modules/local/ldsc/h2/main'
+include { LDSC_H2 as LDSC_H2_OBSERVED                         } from '../modules/local/ldsc/h2/main'
+include { LDSC_MUNGESUMSTATS                                  } from '../modules/local/ldsc/mungesumstats/main'
+include { LDSC_RG as LDSC_RG_LIABILITY                        } from '../modules/local/ldsc/rg/main'
+include { LDSC_RG as LDSC_RG_OBSERVED                         } from '../modules/local/ldsc/rg/main'
 include { LDAK_SUMCORS                                        } from '../modules/local/ldak/sumcors/main'
 include { LDAK_SUMHER                                         } from '../modules/local/ldak/sumher/main'
 include { NORMALISE_LDAK_SUMCORS                              } from '../modules/local/normalise_ldak_sumcors/main'
 include { NORMALISE_LDAK_SUMHER                               } from '../modules/local/normalise_ldak_sumher/main'
 include { NORMALISE_PHENOTYPES                                } from '../modules/local/normalise_phenotypes/main'
 include { NORMALISE_GCTA_BIVARIATE                            } from '../modules/local/normalise_gcta_bivariate/main'
+include { NORMALISE_LDSC                                      } from '../modules/local/normalise_ldsc/main'
 include { PLINK2_GLM                                          } from '../modules/local/plink2/glm/main'
 include { PREPARE_BIVARIATE_TRAITS                            } from '../modules/local/prepare_bivariate_traits/main'
 include { PREPARE_LDAK_SUMMARY_STATISTICS                     } from '../modules/local/prepare_ldak_summary_statistics/main'
@@ -35,6 +41,8 @@ include { getAssociationColumnMappingJson                     } from '../subwork
 include { getInternalSummaryMetadata                          } from '../subworkflows/local/validate_gwas_input'
 include { getGwaslabReferences                                } from '../subworkflows/local/utils_nfcore_gwas_pipeline'
 include { analysisPlanJson                                    } from '../subworkflows/local/utils_nfcore_gwas_pipeline'
+include { digestFileBytes                                     } from '../subworkflows/local/utils_nfcore_gwas_pipeline'
+include { digestIdentityText                                  } from '../subworkflows/local/utils_nfcore_gwas_pipeline'
 include { methodsDescriptionText                              } from '../subworkflows/local/utils_nfcore_gwas_pipeline'
 
 // SUBWORKFLOW: Consisting entirely of nf-core/modules
@@ -495,6 +503,204 @@ workflow GWAS {
         }
 
     NORMALISE_LDAK_SUMCORS(ch_sumcors_native_results)
+
+    // PIPELINE ROUTE: standalone CBIIT Python 3 LDSC munging, H2 and RG
+    //
+    // Munging belongs to a canonical summary plus the exact HapMap3 allele-universe bytes, not to a
+    // downstream request or its regression reference/weights. A content-derived key therefore lets unary,
+    // pairwise, primary and named sensitivity requests reuse the same expensive preparation without making
+    // ancestry, bundle names, H2/RG native arguments or output identity part of that derivation.
+    def ldsc_munging_key = { summary_statistics_id, hapmap3_snplist ->
+        digestIdentityText([
+            'adapter=nfcore_gwas_canonical_v1_to_ldsc_sumstats_v1',
+            "summary_statistics_id=${summary_statistics_id}",
+            "hapmap3_sha256=${digestFileBytes(hapmap3_snplist)}",
+        ].join('\n'))
+    }
+
+    def ch_ldsc_munging_requests = ch_unary_requests
+        .filter { meta, _hapmap3_snplist, _reference_ld_scores, _regression_weights, _tagging_file -> meta.method == 'ldsc_h2' }
+        .map { meta, hapmap3_snplist, _reference_ld_scores, _regression_weights, _tagging_file ->
+            def key = ldsc_munging_key(meta.summary_statistics_id, hapmap3_snplist)
+            [meta.summary_statistics_id, key, hapmap3_snplist]
+        }
+        .mix(
+            ch_pair_requests
+                .filter { meta, _hapmap3_snplist, _reference_ld_scores, _regression_weights, _tagging_file -> meta.method == 'ldsc_rg' }
+                .flatMap { meta, hapmap3_snplist, _reference_ld_scores, _regression_weights, _tagging_file ->
+                    [meta.left_summary_statistics_id, meta.right_summary_statistics_id].collect { summary_statistics_id ->
+                        [summary_statistics_id, ldsc_munging_key(summary_statistics_id, hapmap3_snplist), hapmap3_snplist]
+                    }
+                }
+        )
+        .unique { _summary_statistics_id, key, _hapmap3_snplist -> key }
+
+    def ch_canonical_by_summary_id = CANONICALISE_SUMMARY_STATISTICS.out.summary_statistics
+        .map { meta, canonical_summary_statistics -> [meta.summary_statistics_id, meta, canonical_summary_statistics] }
+
+    def ch_ldsc_munging_invocations = ch_ldsc_munging_requests
+        .combine(ch_canonical_by_summary_id, by: 0)
+        .multiMap { summary_statistics_id, key, hapmap3_snplist, summary_meta, canonical_summary_statistics ->
+            def munging_meta = summary_meta + [
+                id: key,
+                munging_key: key,
+                summary_statistics_id: summary_statistics_id,
+                hapmap3_sha256: digestFileBytes(hapmap3_snplist),
+                munging_adapter_contract: 'nfcore_gwas_canonical_v1_to_ldsc_sumstats_v1',
+            ]
+            sumstats: [munging_meta, canonical_summary_statistics]
+            merge_alleles: [[id: key], hapmap3_snplist]
+        }
+
+    LDSC_MUNGESUMSTATS(
+        ch_ldsc_munging_invocations.sumstats,
+        ch_ldsc_munging_invocations.merge_alleles,
+    )
+
+    def ch_ldsc_munged = LDSC_MUNGESUMSTATS.out.munged_sumstats
+        .map { meta, munged_sumstats -> [meta.munging_key, meta, munged_sumstats] }
+        .join(
+            LDSC_MUNGESUMSTATS.out.log.map { meta, munging_log -> [meta.munging_key, munging_log] },
+            failOnDuplicate: true,
+            failOnMismatch: true,
+        )
+
+    // Unary request identity and request-owned LD/weight resources are joined only after munging. Observed
+    // scale is always retained. A second native invocation is made only when a binary endpoint declares both
+    // population and sample prevalence, because native LDSC emits liability rather than observed H2 when
+    // those values are supplied.
+    def ch_ldsc_h2_requests = ch_unary_requests
+        .filter { meta, _hapmap3_snplist, _reference_ld_scores, _regression_weights, _tagging_file -> meta.method == 'ldsc_h2' }
+        .map { meta, hapmap3_snplist, reference_ld_scores, regression_weights, _tagging_file ->
+            [ldsc_munging_key(meta.summary_statistics_id, hapmap3_snplist), meta, reference_ld_scores, regression_weights]
+        }
+        .combine(ch_ldsc_munged, by: 0)
+
+    def ch_ldsc_h2_observed = ch_ldsc_h2_requests.multiMap { key, meta, reference_ld_scores, regression_weights, munging_meta, munged_sumstats, munging_log ->
+        def route_meta = meta + [munging_keys: [key], native_scale: 'observed']
+        sumstats: [route_meta, munged_sumstats]
+        reference_ld_scores: [[id: meta.reference_bundle_id], reference_ld_scores]
+        regression_weights: [[id: meta.reference_bundle_id], regression_weights]
+        munging_log: [meta.request_id, munging_log]
+    }
+
+    LDSC_H2_OBSERVED(
+        ch_ldsc_h2_observed.sumstats,
+        ch_ldsc_h2_observed.reference_ld_scores,
+        ch_ldsc_h2_observed.regression_weights,
+    )
+
+    def ch_ldsc_h2_liability = ch_ldsc_h2_requests
+        .filter { _key, meta, _reference_ld_scores, _regression_weights, _munging_meta, _munged_sumstats, _munging_log ->
+            meta.is_binary && meta.population_prevalence != null && meta.sample_prevalence != null
+        }
+        .multiMap { key, meta, reference_ld_scores, regression_weights, munging_meta, munged_sumstats, munging_log ->
+            def route_meta = meta + [
+                munging_keys: [key],
+                native_scale: 'liability',
+                effective_population_prevalence: [meta.population_prevalence],
+                effective_sample_prevalence: [meta.sample_prevalence],
+            ]
+            sumstats: [route_meta, munged_sumstats]
+            reference_ld_scores: [[id: meta.reference_bundle_id], reference_ld_scores]
+            regression_weights: [[id: meta.reference_bundle_id], regression_weights]
+        }
+
+    LDSC_H2_LIABILITY(
+        ch_ldsc_h2_liability.sumstats,
+        ch_ldsc_h2_liability.reference_ld_scores,
+        ch_ldsc_h2_liability.regression_weights,
+    )
+
+    // Pair requests preserve declared left/right order. Both endpoint munging keys are resolved against the
+    // one HapMap3 resource selected by this request, then the request-owned LD-score and regression-weight
+    // directories are passed unchanged to RG.
+    def ch_ldsc_rg_left = ch_pair_requests
+        .filter { meta, _hapmap3_snplist, _reference_ld_scores, _regression_weights, _tagging_file -> meta.method == 'ldsc_rg' }
+        .map { meta, hapmap3_snplist, reference_ld_scores, regression_weights, _tagging_file ->
+            def left_key = ldsc_munging_key(meta.left_summary_statistics_id, hapmap3_snplist)
+            [left_key, meta, hapmap3_snplist, reference_ld_scores, regression_weights]
+        }
+        .combine(ch_ldsc_munged, by: 0)
+        .map { left_key, meta, hapmap3_snplist, reference_ld_scores, regression_weights, left_munging_meta, left_sumstats, left_munging_log ->
+            def right_key = ldsc_munging_key(meta.right_summary_statistics_id, hapmap3_snplist)
+            [right_key, left_key, meta, reference_ld_scores, regression_weights, left_sumstats, left_munging_log]
+        }
+
+    def ch_ldsc_rg_requests = ch_ldsc_rg_left
+        .combine(ch_ldsc_munged, by: 0)
+        .map { right_key, left_key, meta, reference_ld_scores, regression_weights, left_sumstats, left_munging_log, right_munging_meta, right_sumstats, right_munging_log ->
+            [meta, left_key, right_key, reference_ld_scores, regression_weights, left_sumstats, right_sumstats, left_munging_log, right_munging_log]
+        }
+
+    def ch_ldsc_rg_observed = ch_ldsc_rg_requests.multiMap { meta, left_key, right_key, reference_ld_scores, regression_weights, left_sumstats, right_sumstats, left_munging_log, right_munging_log ->
+        def route_meta = meta + [munging_keys: [left_key, right_key], native_scale: 'observed']
+        sumstats: [route_meta, left_sumstats, right_sumstats]
+        reference_ld_scores: [[id: meta.reference_bundle_id], reference_ld_scores]
+        regression_weights: [[id: meta.reference_bundle_id], regression_weights]
+        munging_logs: [meta.request_id, [left_munging_log, right_munging_log]]
+    }
+
+    LDSC_RG_OBSERVED(
+        ch_ldsc_rg_observed.sumstats,
+        ch_ldsc_rg_observed.reference_ld_scores,
+        ch_ldsc_rg_observed.regression_weights,
+    )
+
+    def ch_ldsc_rg_liability = ch_ldsc_rg_requests
+        .filter { meta, _left_key, _right_key, _reference_ld_scores, _regression_weights, _left_sumstats, _right_sumstats, _left_munging_log, _right_munging_log ->
+            def has_binary = meta.left_is_binary || meta.right_is_binary
+            def complete = [
+                [binary: meta.left_is_binary, population: meta.left_population_prevalence, sample: meta.left_sample_prevalence],
+                [binary: meta.right_is_binary, population: meta.right_population_prevalence, sample: meta.right_sample_prevalence],
+            ].every { endpoint -> !endpoint.binary || (endpoint.population != null && endpoint.sample != null) }
+            has_binary && complete
+        }
+        .multiMap { meta, left_key, right_key, reference_ld_scores, regression_weights, left_sumstats, right_sumstats, left_munging_log, right_munging_log ->
+            def population = [
+                meta.left_is_binary ? meta.left_population_prevalence : 'nan',
+                meta.right_is_binary ? meta.right_population_prevalence : 'nan',
+            ]
+            def sample = [
+                meta.left_is_binary ? meta.left_sample_prevalence : 'nan',
+                meta.right_is_binary ? meta.right_sample_prevalence : 'nan',
+            ]
+            def route_meta = meta + [
+                munging_keys: [left_key, right_key],
+                native_scale: 'liability',
+                effective_population_prevalence: population,
+                effective_sample_prevalence: sample,
+            ]
+            sumstats: [route_meta, left_sumstats, right_sumstats]
+            reference_ld_scores: [[id: meta.reference_bundle_id], reference_ld_scores]
+            regression_weights: [[id: meta.reference_bundle_id], regression_weights]
+        }
+
+    LDSC_RG_LIABILITY(
+        ch_ldsc_rg_liability.sumstats,
+        ch_ldsc_rg_liability.reference_ld_scores,
+        ch_ldsc_rg_liability.regression_weights,
+    )
+
+    def ch_ldsc_h2_native = LDSC_H2_OBSERVED.out.log
+        .map { meta, observed_log -> [meta.request_id, meta, observed_log] }
+        .join(
+            LDSC_H2_LIABILITY.out.log.map { meta, liability_log -> [meta.request_id, liability_log] },
+            remainder: true,
+        )
+        .join(ch_ldsc_h2_observed.munging_log, failOnDuplicate: true, failOnMismatch: true)
+        .map { _request_id, meta, observed_log, liability_log, munging_log -> [meta, observed_log, liability_log ?: [], [munging_log]] }
+
+    def ch_ldsc_rg_native = LDSC_RG_OBSERVED.out.log
+        .map { meta, observed_log -> [meta.request_id, meta, observed_log] }
+        .join(
+            LDSC_RG_LIABILITY.out.log.map { meta, liability_log -> [meta.request_id, liability_log] },
+            remainder: true,
+        )
+        .join(ch_ldsc_rg_observed.munging_logs, failOnDuplicate: true, failOnMismatch: true)
+        .map { _request_id, meta, observed_log, liability_log, munging_logs -> [meta, observed_log, liability_log ?: [], munging_logs] }
+
+    NORMALISE_LDSC(ch_ldsc_h2_native.mix(ch_ldsc_rg_native))
 
     //
     // SUBWORKFLOW: GCTA GREML heritability

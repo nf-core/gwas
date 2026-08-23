@@ -137,6 +137,8 @@ notes: |
   both values and the exact source revision are emitted separately.
   Optional non-file arguments use `task.ext.args`; callers must not duplicate the
   module-owned `--sumstats`, `--merge-alleles`, or `--out` options.
+  The wrapper decompresses a gzip input into the task directory before invocation because
+  this pinned Python 3 source revision otherwise reads the gzip header as bytes and fails.
 authors:
   - "@lyh970817"
 maintainers:

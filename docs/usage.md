@@ -198,6 +198,8 @@ Summary requests use the same deterministic ownership boundary. LDAK receives ex
 
 For `ldak_sumher` and `ldak_sumcors`, the pipeline converts each distinct canonical summary once to LDAK's `Predictor A1 A2 Z n A1Freq` contract, with `A1` equal to the canonical effect allele and `Z = BETA / SE`; the canonical artifact and its provenance remain unchanged. Both routes use `--cutoff 0.01` unless a request explicitly supplies `--cutoff` or `--truncate`, and those two large-effect policies cannot be combined. SumCors initially accepts `LDAK-Thin`, `Uniform-GCTA` and `Human-Default` tagging bundles. Binary SumHer receives population prevalence and sample ascertainment only when both are declared. SumCors receives the two ordered prevalence/ascertainment pairs only when both endpoints are binary and all four values are present; mixed-trait and incomplete binary pairs run without liability arguments. LDAK's native ambiguous-variant exclusion and complete-summary checks remain enabled unless an accepted scientific override changes them.
 
+LDSC H2 always retains an observed-scale invocation. A binary summary additionally receives a liability-scale invocation only when both `sample_prevalence` and `population_prevalence` are declared. LDSC RG follows the same rule for its ordered endpoints: the observed-scale result is always retained, and a second invocation supplies prevalence only when at least one endpoint is binary and every binary endpoint declares both values. Quantitative endpoints in that mixed invocation use LDSC's native `nan` prevalence placeholder. Request-level `native_args` cannot override either prevalence flag.
+
 ```json
 {
   "unary_requests": {
