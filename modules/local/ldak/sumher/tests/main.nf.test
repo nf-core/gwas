@@ -1,0 +1,123 @@
+nextflow_process {
+
+    name "Test nf-core LDAK_SUMHER module"
+    config "./nextflow.config"
+    script "../main.nf"
+    process "LDAK_SUMHER"
+
+    tag "modules"
+    tag "modules_local"
+    tag "modules_nfcore"
+    tag "ldak"
+    tag "ldak/sumher"
+
+    test("official compact fixture - quantitative trait") {
+
+        when {
+            params {
+                module_args = "--cutoff 0.01"
+            }
+            process {
+                """
+                input[0] = [
+                    [ id: "trait1" ],
+                    file(params.ldak_sumher_fixture_base_path + "trait1.summaries", checkIfExists: true)
+                ]
+                input[1] = [
+                    [ id: "human_default" ],
+                    file(params.ldak_sumher_fixture_base_path + "test.tagging", checkIfExists: true)
+                ]
+                """
+            }
+        }
+
+        then {
+            def command = path(process.out.hers.get(0)[1]).parent.resolve(".command.sh").text.replaceAll(/\s+/, " ")
+            assertAll(
+                { assert process.success },
+                { assert process.out.hers.size() == 1 },
+                { assert process.out.categories.size() == 1 },
+                { assert process.out.shares.size() == 1 },
+                { assert process.out.enrichments.size() == 1 },
+                { assert process.out.extra.size() == 1 },
+                { assert process.out.cross.size() == 1 },
+                { assert process.out.taus.size() == 1 },
+                { assert process.out.labels.size() == 1 },
+                { assert process.out.progress.size() == 1 },
+                { assert process.out.overlap.size() == 1 },
+                { assert process.out.hers_liability.size() == 0 },
+                { assert process.out.categories_liability.size() == 0 },
+                { assert process.out.liability_factor.size() == 0 },
+                { assert process.out.versions_ldak.get(0)[2] == "6.3" },
+                { assert command.contains('--sum-hers "trait1"') },
+                { assert command.contains('--summary "summary/trait1.summaries"') },
+                { assert command.contains('--tagfile "tagging/test.tagging"') },
+                { assert command.contains("--cutoff 0.01") },
+                { assert path(process.out.hers.get(0)[1]).text.contains("Her_All") },
+                { assert snapshot(sanitizeOutput(process.out, unstableKeys: ["log"])).match() }
+            )
+        }
+    }
+
+    test("official compact fixture - stub with liability outputs") {
+
+        options "-stub"
+
+        when {
+            params {
+                module_args = "--prevalence 0.1 --ascertainment 0.4"
+            }
+            process {
+                """
+                input[0] = [
+                    [ id: "trait1_stub" ],
+                    file(params.ldak_sumher_fixture_base_path + "trait1.summaries", checkIfExists: true)
+                ]
+                input[1] = [
+                    [ id: "human_default" ],
+                    file(params.ldak_sumher_fixture_base_path + "test.tagging", checkIfExists: true)
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.hers_liability.size() == 1 },
+                { assert process.out.categories_liability.size() == 1 },
+                { assert process.out.liability_factor.size() == 1 },
+                { assert process.out.versions_ldak.get(0)[2] == "6.3" },
+                { assert snapshot(sanitizeOutput(process.out, unstableKeys: ["log"])).match() }
+            )
+        }
+    }
+
+    test("summary statistics with no tagging-file overlap fail") {
+
+        when {
+            params {
+                module_args = "--cutoff 0.01"
+            }
+            process {
+                """
+                input[0] = [
+                    [ id: "invalid" ],
+                    file(params.ldak_sumher_fixture_base_path + "invalid.summaries", checkIfExists: true)
+                ]
+                input[1] = [
+                    [ id: "human_default" ],
+                    file(params.ldak_sumher_fixture_base_path + "test.tagging", checkIfExists: true)
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.failed },
+                { assert process.errorReport.contains("contains summary statistics for none of the 512 predictors") }
+            )
+        }
+    }
+}
