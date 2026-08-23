@@ -76,6 +76,7 @@ nextflow_pipeline {
         }
 
         then {
+            def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
             def sumherRequest = new File("${params.outdir}/requests/ldak_sumher/ldak_sumher--external_qt")
             def sumcorsRequest = new File("${params.outdir}/requests/ldak_sumcors/ldak_sumcors--external_pair")
             def sumherProvenance = new groovy.json.JsonSlurper().parse(new File(sumherRequest, 'provenance.json'))
@@ -117,6 +118,7 @@ nextflow_pipeline {
                 { assert sumherCommand.contains('--cutoff 0.01') },
                 { assert !sumherCommand.contains('--prevalence') },
                 { assert sumcorsCommand.contains('--check-sums NO --cutoff 0.01') },
+                { assert snapshot(removeNextflowVersion(versions.toString())).match('versions') },
             )
         }
     }
