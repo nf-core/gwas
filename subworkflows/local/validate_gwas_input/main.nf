@@ -939,10 +939,60 @@ def validateSummaryNativeArgumentTokens(method_options, namespace, request_id, m
         fail.call("the first token must be a native option beginning with '--'")
     }
     def reserved_by_method = [
-        ldak_sumher: ['--sum-hers', '--summary', '--tagfile', '--out', '--threads'],
-        ldak_sumcors: ['--sum-cors', '--summary', '--summary2', '--tagfile', '--out', '--threads'],
+        ldak_sumher: [
+            '--sum-hers',
+            '--sum-cors',
+            '--summary',
+            '--summary2',
+            '--tagfile',
+            '--out',
+            '--threads',
+            '--max-threads',
+            '--prevalence',
+            '--ascertainment',
+            '--prevalence2',
+            '--ascertainment2',
+        ],
+        ldak_sumcors: [
+            '--sum-hers',
+            '--sum-cors',
+            '--summary',
+            '--summary2',
+            '--tagfile',
+            '--out',
+            '--threads',
+            '--max-threads',
+            '--prevalence',
+            '--ascertainment',
+            '--prevalence2',
+            '--ascertainment2',
+        ],
         ldsc_h2: ['--h2', '--ref-ld-chr', '--w-ld-chr', '--out'],
         ldsc_rg: ['--rg', '--ref-ld-chr', '--w-ld-chr', '--out'],
+    ]
+    def undeclared_file_options = [
+        ldak_sumher: [
+            '--alternative-tags',
+            '--categories',
+            '--exclude',
+            '--extract',
+            '--keep',
+            '--labels',
+            '--matrix',
+            '--remove',
+            '--weights',
+        ],
+        ldak_sumcors: [
+            '--alternative-tags',
+            '--categories',
+            '--exclude',
+            '--extract',
+            '--keep',
+            '--labels',
+            '--matrix',
+            '--remove',
+            '--weights',
+        ],
     ]
     native_args.eachWithIndex { token, index ->
         if (!(token instanceof String) || !token) {
@@ -958,6 +1008,9 @@ def validateSummaryNativeArgumentTokens(method_options, namespace, request_id, m
         if (option_name in (reserved_by_method[method] ?: [])) {
             fail.call("token ${index + 1} '${token}' conflicts with wrapper-owned invocation mechanics")
         }
+        if (option_name in (undeclared_file_options[method] ?: [])) {
+            fail.call("token ${index + 1} '${token}' requires a typed staged resource, but this request architecture declares no such file role")
+        }
         def argument_value = token.contains('=') ? token.substring(token.indexOf('=') + 1) : token
         if (!token.startsWith('--') || token.contains('=')) {
             def candidate = file(argument_value)
@@ -965,6 +1018,14 @@ def validateSummaryNativeArgumentTokens(method_options, namespace, request_id, m
             if (candidate.exists() || looks_like_file) {
                 fail.call("token ${index + 1} '${token}' resembles an undeclared file input; file-taking native options require a typed staged resource")
             }
+        }
+    }
+    if (method in ['ldak_sumher', 'ldak_sumcors']) {
+        def option_names = native_args
+            .findAll { token -> token instanceof String && token.startsWith('--') }
+            .collect { token -> token.split('=', 2)[0] }
+        if (option_names.contains('--cutoff') && option_names.contains('--truncate')) {
+            fail.call("'--cutoff' and '--truncate' are mutually exclusive LDAK large-effect policies")
         }
     }
     return native_args
@@ -1054,6 +1115,9 @@ def resolveRequestNamespace(method_options, document, namespace, primary_request
             }
             if (bundle.family != request.reference_family) {
                 error("[nf-core/gwas] ERROR: Method-options document '${method_options}', namespace '${namespace}', request_id '${request.request_id}', option 'reference_bundle_id': method '${request.method}' requires family '${request.reference_family}', but '${reference_bundle_id}' belongs to '${bundle.family}'")
+            }
+            if (request.method == 'ldak_sumcors' && !(bundle.model in ['LDAK-Thin', 'Uniform-GCTA', 'Human-Default'])) {
+                error("[nf-core/gwas] ERROR: Method-options document '${method_options}', namespace '${namespace}', request_id '${request.request_id}', option 'reference_bundle_id': first-release LDAK SumCors supports models 'LDAK-Thin', 'Uniform-GCTA' and 'Human-Default', but bundle '${reference_bundle_id}' declares '${bundle.model}'")
             }
         }
         def resolved_meta = request.meta + [

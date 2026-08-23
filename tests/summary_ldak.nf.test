@@ -1,0 +1,274 @@
+nextflow_pipeline {
+
+    name "Test LDAK SumHer and SumCors summary-statistics routes"
+    script "../main.nf"
+    tag "pipeline"
+    tag "summary_statistics"
+    tag "heritability"
+    tag "genetic_correlation"
+    tag "ldak"
+    tag "ldak_sumher"
+    tag "ldak_sumcors"
+
+    def routeInputs = { projectDir, outputDir, name, model = 'LDAK-Thin', nativeArgs = ['--check-sums', 'NO'], binary = false, rightSamplePrevalence = 0.5 ->
+        def leftSource = RELATIONAL.ldakCanonicalSummary(projectDir, outputDir, "${name}_left", 'trait1')
+        def rightSource = RELATIONAL.ldakCanonicalSummary(projectDir, outputDir, "${name}_right", 'trait2')
+        def summaries = RELATIONAL.summaryStatistics(projectDir, outputDir, name, { rows ->
+            rows[0].source = leftSource
+            rows[0].heritability_methods = 'ldak_sumher'
+            if (binary) {
+                rows[0].trait_type = 'binary'
+                rows[0].population_prevalence = 0.1
+                rows[0].sample_prevalence = 0.4
+            }
+            def right = new LinkedHashMap(rows[0])
+            right.summary_statistics_id = 'external_qt2'
+            right.trait_id = 'QT_external_2'
+            right.source = rightSource
+            right.heritability_methods = ''
+            if (binary) {
+                right.population_prevalence = 0.2
+                right.sample_prevalence = rightSamplePrevalence
+            }
+            rows << right
+        })
+        def relationships = RELATIONAL.summaryRelationships(projectDir, outputDir, name, { rows ->
+            rows[0].right_summary_statistics_id = 'external_qt2'
+            rows[0].relationship_methods = 'ldak_sumcors'
+        })
+        return [
+            summaries: summaries,
+            relationships: relationships,
+            catalog: RELATIONAL.ldakReferenceCatalog(projectDir, outputDir, name, model),
+            options: RELATIONAL.methodOptions(outputDir, name, [
+                unary_requests: [
+                    'ldak_sumher--external_qt': [reference_bundle_id: 'ldak_test'],
+                ],
+                pair_requests: [
+                    'ldak_sumcors--external_pair': [reference_bundle_id: 'ldak_test', native_args: nativeArgs],
+                ],
+            ]),
+        ]
+    }
+
+    def workFiles = { outputDir ->
+        def files = []
+        new File(new File(outputDir.toString()).parentFile, 'work').eachFileRecurse { entry ->
+            if (entry.isFile()) {
+                files << entry
+            }
+        }
+        return files
+    }
+
+    test("SumHer and SumCors publish every native result plus normalized estimand and provenance views") {
+        when {
+            def inputs = routeInputs(projectDir, outputDir, 'ldak_summary_routes')
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = null
+                analysis_manifest = null
+                summary_statistics_manifest = inputs.summaries
+                relationship_manifest = inputs.relationships
+                reference_catalog = inputs.catalog
+                method_options = inputs.options
+            }
+        }
+
+        then {
+            def sumherRequest = new File("${params.outdir}/requests/ldak_sumher/ldak_sumher--external_qt")
+            def sumcorsRequest = new File("${params.outdir}/requests/ldak_sumcors/ldak_sumcors--external_pair")
+            def sumherProvenance = new groovy.json.JsonSlurper().parse(new File(sumherRequest, 'provenance.json'))
+            def sumcorsProvenance = new groovy.json.JsonSlurper().parse(new File(sumcorsRequest, 'provenance.json'))
+            def commands = workFiles(outputDir).findAll { entry -> entry.name == '.command.sh' }*.text
+            def sumherCommand = commands.find { command -> command.contains('--sum-hers "native"') }
+            def sumcorsCommand = commands.find { command -> command.contains('--sum-cors "native"') }
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'PREPARE_LDAK_SUMMARY_STATISTICS') == 2 },
+                { assert TRACE.count(workflow, 'LDAK_SUMHER') == 1 },
+                { assert TRACE.count(workflow, 'LDAK_SUMCORS') == 1 },
+                { assert TRACE.count(workflow, 'NORMALISE_LDAK_SUMHER') == 1 },
+                { assert TRACE.count(workflow, 'NORMALISE_LDAK_SUMCORS') == 1 },
+                { assert sumherRequest.listFiles()*.name.toSet().containsAll(['native.hers', 'native.cats', 'native.share', 'native.enrich', 'native.extra', 'native.cross', 'native.taus', 'native.labels', 'native.progress', 'native.overlap', 'native.log', 'diagnostics.tsv', 'provenance.json']) },
+                { assert sumcorsRequest.listFiles()*.name.toSet().containsAll(['native.cors', 'native.cors.full', 'native.labels', 'native.progress', 'native.overlap', 'native.log', 'diagnostics.tsv', 'provenance.json']) },
+                { assert new File("${params.outdir}/heritability/ldak_sumher/ldak_sumher--external_qt/heritability.tsv").isFile() },
+                { assert new File("${params.outdir}/heritability/ldak_sumcors/ldak_sumcors--external_pair/heritability.tsv").isFile() },
+                { assert new File("${params.outdir}/genetic_covariance/ldak_sumcors/ldak_sumcors--external_pair/genetic_covariance.tsv").isFile() },
+                { assert new File("${params.outdir}/genetic_correlation/ldak_sumcors/ldak_sumcors--external_pair/genetic_correlation.tsv").isFile() },
+                { assert sumherProvenance.summary_statistics_id == 'external_qt' },
+                { assert sumherProvenance.reference.model == 'LDAK-Thin' },
+                { assert sumherProvenance.reference_validation == 'structural_availability_only' },
+                { assert sumherProvenance.effective_native_args == ['--cutoff', '0.01'] },
+                { assert sumherProvenance.native_artifacts.containsAll(['native.hers', 'native.cats', 'native.share', 'native.enrich', 'native.extra', 'native.cross', 'native.taus', 'native.labels', 'native.progress', 'native.overlap', 'native.log']) },
+                { assert sumherProvenance.execution.native.declared_container.contains('@sha256:f2b2157559e4346cab5e9f478ab70fc76359743ef06522fed9ad23769d735a6e') },
+                { assert sumherProvenance.scientific_policy.scope == 'total_common_snp_heritability' },
+                { assert sumherProvenance.diagnostics.large_effect_predictors_excluded == 42 },
+                { assert sumherProvenance.diagnostics.estimated_parameter_count == 1 },
+                { assert sumcorsProvenance.orientation.left.summary_statistics_id == 'external_qt' },
+                { assert sumcorsProvenance.orientation.right.summary_statistics_id == 'external_qt2' },
+                { assert sumcorsProvenance.effective_native_args == ['--check-sums', 'NO', '--cutoff', '0.01'] },
+                { assert sumcorsProvenance.native_artifacts.containsAll(['native.cors', 'native.cors.full', 'native.labels', 'native.progress', 'native.overlap', 'native.log']) },
+                { assert sumcorsProvenance.scientific_policy.sample_overlap == 'estimated_by_native_default' },
+                { assert sumcorsProvenance.diagnostics.left_large_effect_predictors_excluded == 42 },
+                { assert sumcorsProvenance.diagnostics.right_large_effect_predictors_excluded == 48 },
+                { assert sumcorsProvenance.diagnostics.predictors_used == 451 },
+                { assert sumcorsProvenance.classification == 'completed_nonestimable' },
+                { assert sumherCommand.contains('--cutoff 0.01') },
+                { assert !sumherCommand.contains('--prevalence') },
+                { assert sumcorsCommand.contains('--check-sums NO --cutoff 0.01') },
+            )
+        }
+    }
+
+    test("complete binary endpoints receive ordered SumHer and SumCors liability arguments") {
+        when {
+            def inputs = routeInputs(projectDir, outputDir, 'ldak_summary_binary', 'LDAK-Thin', ['--check-sums', 'NO'], true)
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = null
+                analysis_manifest = null
+                summary_statistics_manifest = inputs.summaries
+                relationship_manifest = inputs.relationships
+                reference_catalog = inputs.catalog
+                method_options = inputs.options
+            }
+        }
+
+        then {
+            def sumherRequest = new File("${params.outdir}/requests/ldak_sumher/ldak_sumher--external_qt")
+            def sumcorsRequest = new File("${params.outdir}/requests/ldak_sumcors/ldak_sumcors--external_pair")
+            def sumherProvenance = new groovy.json.JsonSlurper().parse(new File(sumherRequest, 'provenance.json'))
+            def sumcorsProvenance = new groovy.json.JsonSlurper().parse(new File(sumcorsRequest, 'provenance.json'))
+            def commands = workFiles(outputDir).findAll { entry -> entry.name == '.command.sh' }*.text
+            def sumherCommand = commands.find { command -> command.contains('--sum-hers "native"') }
+            def sumcorsCommand = commands.find { command -> command.contains('--sum-cors "native"') }
+            def sumherRows = new File("${params.outdir}/heritability/ldak_sumher/ldak_sumher--external_qt/heritability.tsv").readLines()
+            def sumcorsRows = new File("${params.outdir}/heritability/ldak_sumcors/ldak_sumcors--external_pair/heritability.tsv").readLines()
+            assertAll(
+                { assert workflow.success },
+                { assert sumherRequest.listFiles()*.name.toSet().containsAll(['native.hers.liab', 'native.cats.liab', 'native.factor']) },
+                { assert sumcorsRequest.listFiles()*.name.contains('native.cors.liab') },
+                { assert sumherCommand.contains('--prevalence 0.1 --ascertainment 0.4') },
+                { assert sumcorsCommand.contains('--prevalence 0.1 --ascertainment 0.4 --prevalence2 0.2 --ascertainment2 0.5') },
+                { assert sumherProvenance.effective_native_args == ['--cutoff', '0.01', '--prevalence', '0.1', '--ascertainment', '0.4'] },
+                { assert sumcorsProvenance.effective_native_args == ['--check-sums', 'NO', '--cutoff', '0.01', '--prevalence', '0.1', '--ascertainment', '0.4', '--prevalence2', '0.2', '--ascertainment2', '0.5'] },
+                { assert sumherRows.any { row -> row.contains('\tliability\t') } },
+                { assert sumcorsRows.count { row -> row.contains('\tliability\t') } == 2 },
+            )
+        }
+    }
+
+    test("SumHer and SumCors preserve route topology under stub execution") {
+        options "-stub"
+
+        when {
+            def inputs = routeInputs(projectDir, outputDir, 'ldak_summary_stub')
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = null
+                analysis_manifest = null
+                summary_statistics_manifest = inputs.summaries
+                relationship_manifest = inputs.relationships
+                reference_catalog = inputs.catalog
+                method_options = inputs.options
+            }
+        }
+
+        then {
+            def sumherProvenance = new groovy.json.JsonSlurper().parse(new File("${params.outdir}/requests/ldak_sumher/ldak_sumher--external_qt/provenance.json"))
+            def sumcorsProvenance = new groovy.json.JsonSlurper().parse(new File("${params.outdir}/requests/ldak_sumcors/ldak_sumcors--external_pair/provenance.json"))
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'PREPARE_LDAK_SUMMARY_STATISTICS') == 2 },
+                { assert TRACE.count(workflow, 'LDAK_SUMHER') == 1 },
+                { assert TRACE.count(workflow, 'LDAK_SUMCORS') == 1 },
+                { assert TRACE.count(workflow, 'NORMALISE_LDAK_SUMHER') == 1 },
+                { assert TRACE.count(workflow, 'NORMALISE_LDAK_SUMCORS') == 1 },
+                { assert sumherProvenance.stub == true },
+                { assert sumcorsProvenance.stub == true },
+            )
+        }
+    }
+
+    test("incomplete binary-pair prevalence leaves SumCors on its native scale") {
+        options "-stub"
+
+        when {
+            def inputs = routeInputs(projectDir, outputDir, 'ldak_summary_incomplete_binary', 'LDAK-Thin', ['--check-sums', 'NO'], true, '')
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = null
+                analysis_manifest = null
+                summary_statistics_manifest = inputs.summaries
+                relationship_manifest = inputs.relationships
+                reference_catalog = inputs.catalog
+                method_options = inputs.options
+            }
+        }
+
+        then {
+            def sumherRequest = new File("${params.outdir}/requests/ldak_sumher/ldak_sumher--external_qt")
+            def sumcorsRequest = new File("${params.outdir}/requests/ldak_sumcors/ldak_sumcors--external_pair")
+            assertAll(
+                { assert workflow.success },
+                { assert sumherRequest.listFiles()*.name.toSet().containsAll(['native.hers.liab', 'native.cats.liab', 'native.factor']) },
+                { assert !sumcorsRequest.listFiles()*.name.contains('native.cors.liab') },
+            )
+        }
+    }
+
+    def invalidRequests = [
+        [
+            name: 'unsupported SumCors BLD-LDAK model',
+            model: 'BLD-LDAK',
+            nativeArgs: ['--check-sums', 'NO'],
+            expected: "first-release LDAK SumCors supports models 'LDAK-Thin', 'Uniform-GCTA' and 'Human-Default'",
+        ],
+        [
+            name: 'mutually exclusive cutoff and truncation',
+            model: 'LDAK-Thin',
+            nativeArgs: ['--cutoff', '0.02', '--truncate', 'YES'],
+            expected: "'--cutoff' and '--truncate' are mutually exclusive",
+        ],
+        [
+            name: 'wrapper-owned prevalence override',
+            model: 'LDAK-Thin',
+            nativeArgs: ['--prevalence', '0.1'],
+            expected: "conflicts with wrapper-owned invocation mechanics",
+        ],
+        [
+            name: 'undeclared file-taking option',
+            model: 'LDAK-Thin',
+            nativeArgs: ['--matrix', 'untyped_resource'],
+            expected: 'requires a typed staged resource',
+        ],
+    ]
+
+    invalidRequests.each { scenario ->
+        test("preflight rejects ${scenario.name}") {
+            when {
+                def inputs = routeInputs(projectDir, outputDir, "invalid_${scenario.name.replace(' ', '_')}", scenario.model, scenario.nativeArgs)
+                params {
+                    outdir = "$outputDir"
+                    cohort_manifest = null
+                    analysis_manifest = null
+                    summary_statistics_manifest = inputs.summaries
+                    relationship_manifest = inputs.relationships
+                    reference_catalog = inputs.catalog
+                    method_options = inputs.options
+                }
+            }
+
+            then {
+                def report = VALIDATION.report(outputDir, workflow.stdout)
+                assertAll(
+                    { assert !workflow.success },
+                    { assert report.contains(scenario.expected) },
+                    { assert TRACE.count(workflow, 'PREPARE_LDAK_SUMMARY_STATISTICS') == 0 },
+                    { assert TRACE.count(workflow, 'LDAK_SUMCORS') == 0 },
+                )
+            }
+        }
+    }
+}

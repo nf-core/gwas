@@ -323,6 +323,53 @@ class RELATIONAL {
         )
     }
 
+    static String ldakCanonicalSummary(Object projectDir, Object outputDir, String name, String fixtureName) {
+        def source = new File(projectDir.toString(), "modules/local/ldak/sumcors/tests/fixtures/${fixtureName}.summaries")
+        def rows = []
+        source.readLines().tail().eachWithIndex { line, index ->
+            def fields = line.tokenize()
+            def z = fields[3].toDouble()
+            rows << [
+                fields[0],
+                '1',
+                (index + 1).toString(),
+                fields[1],
+                fields[2],
+                '1900000',
+                fields[5],
+                formatNumber(z * 0.01),
+                '0.01',
+                formatNumber(Math.min(1.0d, Math.exp(-0.5d * z * z))),
+                fields[4],
+            ].join('\t')
+        }
+        return resource(
+            outputDir,
+            "${name}.canonical.tsv",
+            'SNPID\tCHR\tPOS\tEA\tNEA\tSTATUS\tEAF\tBETA\tSE\tP\tN\n' + rows.join('\n') + '\n',
+        )
+    }
+
+    static String ldakReferenceCatalog(Object projectDir, Object outputDir, String name, String model = 'LDAK-Thin') {
+        def tagging = new File(projectDir.toString(), 'modules/local/ldak/sumcors/tests/fixtures/test.tagging').absolutePath
+        def document = [
+            ldak: [
+                ldak_test: [
+                    genome_build: 'GRCh37',
+                    ancestry: 'EUR',
+                    variant_id_system: 'rsid',
+                    model: model,
+                    tagging_file: tagging,
+                ],
+            ],
+        ]
+        def directory = new File(new File(outputDir.toString()).parentFile, "manifests/${name}")
+        directory.mkdirs()
+        def catalog = new File(directory, 'reference_catalog.json')
+        catalog.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(document)) + '\n'
+        return catalog.absolutePath
+    }
+
     static Map relationship(String relationshipId) {
         def fixture = { path -> "${FIXTURES.UPSTREAM}results/fixtures/${path}" }
         def relationships = [
@@ -516,5 +563,9 @@ class RELATIONAL {
     private static String quote(Object value) {
         def text = value == null ? '' : value.toString()
         return text.contains(',') ? "\"${text}\"" : text
+    }
+
+    private static String formatNumber(Number value) {
+        return String.format(java.util.Locale.ROOT, '%.12g', value.doubleValue())
     }
 }

@@ -45,7 +45,7 @@ Genotype quality control is not performed by the pipeline. Input genotypes must 
    - LDAK REML
    - LDAK Haseman-Elston regression
    - LDAK PCGC
-8. Resolve declared unary and pair summary-statistics requests against explicit LDAK or LDSC reference bundles.
+8. Resolve declared unary and pair summary-statistics requests against explicit LDAK or LDSC reference bundles, including LDAK SumHer heritability and SumCors genetic correlation.
 9. Run declared same-cohort pairs with dense or LDMS GCTA bivariate REML, retaining native output plus normalized heritability, genetic-covariance, genetic-correlation, diagnostics and request provenance.
 10. Collect run and software provenance with MultiQC and Nextflow reports.
 

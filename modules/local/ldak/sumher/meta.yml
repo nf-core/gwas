@@ -1,0 +1,194 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/modules/meta-schema.json
+name: ldak_sumher
+description: Estimate SNP heritability from GWAS summary statistics and a precomputed LDAK tagging file
+keywords:
+  - ldak
+  - gwas
+  - summary statistics
+  - heritability
+tools:
+  - ldak:
+      description: Linkage Disequilibrium Adjusted Kinships and Loads More
+      homepage: https://dougspeed.com/
+      documentation: https://dougspeed.com/snp-heritability/
+      licence: ["GPL-3.0-or-later"]
+      identifier: ""
+input:
+  - - meta:
+        type: map
+        description: |
+          Metadata map for the trait summary statistics.
+          The `meta.id` value provides the default output prefix.
+    - summary_statistics:
+        type: file
+        description: GWAS summary statistics in the native LDAK summary format passed to `--summary`
+        pattern: "*.{summaries,txt,tsv}"
+        ontologies:
+          - edam: http://edamontology.org/format_3475
+  - - meta2:
+        type: map
+        description: Metadata map for the LDAK tagging reference
+    - tagging_file:
+        type: file
+        description: Precomputed LDAK tagging file passed to `--tagfile`
+        pattern: "*.tagging"
+        ontologies: []
+output:
+  hers:
+    - - meta:
+          type: map
+          description: Metadata map propagated from the summary-statistics input
+      - ${prefix}.hers:
+          type: file
+          description: Main SNP-heritability estimates
+          pattern: "*.hers"
+          ontologies: []
+  categories:
+    - - meta:
+          type: map
+          description: Metadata map propagated from the summary-statistics input
+      - ${prefix}.cats:
+          type: file
+          description: Heritability estimates by category
+          pattern: "*.cats"
+          ontologies: []
+  shares:
+    - - meta:
+          type: map
+          description: Metadata map propagated from the summary-statistics input
+      - ${prefix}.share:
+          type: file
+          description: Heritability shares by category
+          pattern: "*.share"
+          ontologies: []
+  enrichments:
+    - - meta:
+          type: map
+          description: Metadata map propagated from the summary-statistics input
+      - ${prefix}.enrich:
+          type: file
+          description: Heritability enrichment estimates
+          pattern: "*.enrich"
+          ontologies: []
+  extra:
+    - - meta:
+          type: map
+          description: Metadata map propagated from the summary-statistics input
+      - ${prefix}.extra:
+          type: file
+          description: Additional SumHer estimates and diagnostics
+          pattern: "*.extra"
+          ontologies: []
+  cross:
+    - - meta:
+          type: map
+          description: Metadata map propagated from the summary-statistics input
+      - ${prefix}.cross:
+          type: file
+          description: Cross-category estimates
+          pattern: "*.cross"
+          ontologies: []
+  taus:
+    - - meta:
+          type: map
+          description: Metadata map propagated from the summary-statistics input
+      - ${prefix}.taus:
+          type: file
+          description: Category coefficient estimates
+          pattern: "*.taus"
+          ontologies: []
+  labels:
+    - - meta:
+          type: map
+          description: Metadata map propagated from the summary-statistics input
+      - ${prefix}.labels:
+          type: file
+          description: Labels for the fitted categories
+          pattern: "*.labels"
+          ontologies: []
+  progress:
+    - - meta:
+          type: map
+          description: Metadata map propagated from the summary-statistics input
+      - ${prefix}.progress:
+          type: file
+          description: Solver progress records
+          pattern: "*.progress"
+          ontologies: []
+  overlap:
+    - - meta:
+          type: map
+          description: Metadata map propagated from the summary-statistics input
+      - ${prefix}.overlap:
+          type: file
+          description: Category-overlap information
+          pattern: "*.overlap"
+          ontologies: []
+  hers_liability:
+    - - meta:
+          type: map
+          description: Metadata map propagated from the summary-statistics input
+      - ${prefix}.hers.liab:
+          type: file
+          optional: true
+          description: Liability-scale heritability estimates emitted when prevalence and ascertainment are supplied
+          pattern: "*.hers.liab"
+          ontologies: []
+  categories_liability:
+    - - meta:
+          type: map
+          description: Metadata map propagated from the summary-statistics input
+      - ${prefix}.cats.liab:
+          type: file
+          optional: true
+          description: Liability-scale category estimates emitted when prevalence and ascertainment are supplied
+          pattern: "*.cats.liab"
+          ontologies: []
+  liability_factor:
+    - - meta:
+          type: map
+          description: Metadata map propagated from the summary-statistics input
+      - ${prefix}.factor:
+          type: file
+          optional: true
+          description: Observed-to-liability conversion factor emitted when prevalence and ascertainment are supplied
+          pattern: "*.factor"
+          ontologies: []
+  log:
+    - - meta:
+          type: map
+          description: Metadata map propagated from the summary-statistics input
+      - ${prefix}.log:
+          type: file
+          description: Captured LDAK standard output and error stream
+          pattern: "*.log"
+          ontologies: []
+  versions_ldak:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - ldak:
+          type: string
+          description: The name of the tool
+      - cat /opt/ldak/version:
+          type: eval
+          description: Exact LDAK version recorded in the checksum-verified compatibility image
+topics:
+  versions:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - ldak:
+          type: string
+          description: The name of the tool
+      - cat /opt/ldak/version:
+          type: eval
+          description: Exact LDAK version recorded in the checksum-verified compatibility image
+notes: |
+  The mandatory native `--summary` and `--tagfile` inputs are explicit. Optional scientific arguments are passed through `task.ext.args`; callers remain responsible for providing a valid LDAK argument set.
+
+  LDAK's native banner identifies this binary only as `Version 6`. The compatibility image records exact version 6.3 separately and pins the official upstream binary by revision and SHA-256. A genuine LDAK 6.3 Conda package is not currently available, so this module deliberately has no Conda environment rather than misrepresenting the 6.1 package as 6.3.
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"
