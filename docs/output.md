@@ -27,14 +27,14 @@ Use the following provenance chain for any result:
 
 Pairwise outputs instead use the deterministic request ID `<method>--<relationship_id>`. Find `relationship_id` in `--relationship_manifest`, follow its ordered left and right analysis IDs into `--analysis_manifest`, and use `requests/<method>/<request_id>/provenance.json` for the exact endpoint orientation, dense or LDMS matrix reuse key and native basename, effective prevalence, native arguments, all parsed native components, warnings and completion classification.
 
-| Method token                                     | Producing tool |
-| ------------------------------------------------ | -------------- |
-| `plink2`                                         | PLINK 2        |
-| `regenie`                                        | REGENIE        |
+| Method token                                                                                       | Producing tool |
+| -------------------------------------------------------------------------------------------------- | -------------- |
+| `plink2`                                                                                           | PLINK 2        |
+| `regenie`                                                                                          | REGENIE        |
 | `gcta_fastgwa`, `gcta_greml`, `gcta_greml_ldms`, `gcta_bivariate_reml`, `gcta_bivariate_reml_ldms` | GCTA           |
-| `ldak_kvik`, `ldak_reml`, `ldak_he`, `ldak_pcgc` | LDAK 6         |
-| `ldak_sumher`, `ldak_sumcors`                     | LDAK 6.3       |
-| `ldsc_h2`, `ldsc_rg`                              | LDSC           |
+| `ldak_kvik`, `ldak_reml`, `ldak_he`, `ldak_pcgc`                                                   | LDAK 6         |
+| `ldak_sumher`, `ldak_sumcors`                                                                      | LDAK 6.3       |
+| `ldsc_h2`, `ldsc_rg`                                                                               | LDSC           |
 
 Together, the result prefix, retained cohort and analysis manifests, optional method-options document, and `pipeline_info/` artifacts identify the analysis, cohort, trait, genome build, method, scientific settings, pipeline version and producing tool version. Preserve them with an archived result.
 
@@ -199,13 +199,13 @@ The LDAK kinship model defaults to `human_default` with `power: -0.25`. Set `mod
   - `provenance.json`: Summary identity, request and reference-bundle metadata, accepted native arguments, munging keys/diagnostics, native estimates, LDSC source revision/container, warnings, classification and artifact inventory.
 - `heritability/ldsc_h2/<request_id>/heritability.tsv`: One normalized H2 row per native scale.
 - `requests/ldsc_rg/<request_id>/`: The same observed/optional-liability native logs, diagnostics and provenance for the ordered summary pair.
-- `heritability/ldsc_rg/<request_id>/heritability.tsv`: Ordered left/right marginal H2 rows for every native scale.
-- `genetic_covariance/ldsc_rg/<request_id>/genetic_covariance.tsv`: Genetic covariance and standard error for every native scale.
+- `heritability/ldsc_rg/<request_id>/heritability.tsv`: Ordered left/right marginal H2 rows with endpoint-specific scale attribution.
+- `genetic_covariance/ldsc_rg/<request_id>/genetic_covariance.tsv`: Genetic covariance and standard error with ordered scale attribution.
 - `genetic_correlation/ldsc_rg/<request_id>/genetic_correlation.tsv`: Observed-invocation genetic correlation, standard error, z score and p value.
 
 </details>
 
-Normalized results preserve the native values and classify successful completion as `estimable`, `estimable_with_warning` or `completed_nonestimable`; native warnings and boundary violations never cause clipping or method selection. A malformed or incomplete mandatory native log fails the request. The pipeline presents every requested method and does not rank or combine them. Observed-scale LDSC is always retained. Liability-scale output is added only when all binary endpoints in the request declare both prevalence values; quantitative endpoints in a mixed RG request retain their quantitative-scale marginal H2.
+Normalized results preserve the native values and classify successful completion as `estimable`, `estimable_with_warning` or `completed_nonestimable`; native warnings and boundary violations never cause clipping or method selection. A malformed or incomplete mandatory native log fails the request. The pipeline presents every requested method and does not rank or combine them. Observed-scale LDSC is always retained. Liability-scale output is added only when all binary endpoints in the request declare both prevalence values. In a mixed RG invocation, a quantitative endpoint remains `observed`, the binary endpoint is `liability`, and the ordered covariance scale is written as `observed_x_liability` or `liability_x_observed`. The provenance retains LDSC's native labels separately from these scientifically attributed normalized scales.
 
 ## Pairwise GCTA bivariate REML
 
@@ -242,7 +242,7 @@ SumHer and SumCors are request-addressed thin wrappers over native LDAK 6.3. Eve
   - `native.hers`, `native.cats`, `native.share`, `native.enrich`, `native.extra`, `native.cross`, `native.taus`: Native SumHer estimates and category results.
   - `native.labels`, `native.progress`, `native.overlap`, `native.log`: Native labels, progress, overlap diagnostics and captured execution log.
   - `native.hers.liab`, `native.cats.liab`, `native.factor`: Optional native liability-scale artifacts, present only when LDAK receives a complete binary-trait prevalence/ascertainment pair.
-  - `diagnostics.tsv`, `provenance.json`: Completion classification, warnings, exact request/reference identities, effective native arguments, adapter evidence, tool/runtime identity and native-artifact inventory.
+  - `diagnostics.tsv`, `provenance.json`: Completion classification, warnings, exact request/reference identities, effective native arguments, adapter evidence, native log likelihoods, tool/runtime identity and native-artifact inventory. The wrapper does not invent a universal parameter count or derive AIC when the native output does not report the model-specific parameter count.
 - `heritability/ldak_sumher/<request_id>/heritability.tsv`: Observed-scale and, when emitted by LDAK, liability-scale SumHer estimates.
 - `requests/ldak_sumcors/<request_id>/`
   - `native.cors`, `native.cors.full`, `native.labels`, `native.progress`, `native.overlap`, `native.log`: Complete native SumCors result family.
