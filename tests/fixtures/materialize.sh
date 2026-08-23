@@ -120,6 +120,7 @@ contract_files=(
     "$project_dir/modules/local/plink2/vcf/environment.yml"
     "$project_dir/modules/local/plink2/makebed/main.nf"
     "$project_dir/modules/local/plink2/makebed/environment.yml"
+    "$project_dir/assets/examples/relational/method_options_heterogeneous_bivariate.json"
 )
 
 digest_input=$(mktemp "${TMPDIR:-/tmp}/gwas-fixture-digest.XXXXXX")
@@ -149,6 +150,8 @@ required_derivatives=(
 )
 
 fixture_files=("${canonical_files[@]}" "${required_derivatives[@]}")
+bivariate_options=results/fixtures/relational/method_options_heterogeneous_bivariate.json
+fixture_files+=("$bivariate_options")
 
 verify_fixture_root() {
     local root=$1
@@ -198,6 +201,7 @@ for relative_path in "${canonical_files[@]}"; do
     mkdir -p "$(dirname "$published_root/$relative_path")"
     cp "$download_root/$relative_path" "$published_root/$relative_path"
 done
+cp "$project_dir/assets/examples/relational/method_options_heterogeneous_bivariate.json" "$published_root/$bivariate_options"
 
 # The documents remain the static nf-core/test-datasets examples. During tests against an unmerged fixture
 # source, relocate only their canonical root so every embedded input and resource resolves from the same verified

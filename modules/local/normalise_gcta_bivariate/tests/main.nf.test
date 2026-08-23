@@ -1,0 +1,185 @@
+nextflow_process {
+
+    name "Test Process NORMALISE_GCTA_BIVARIATE"
+    script "../main.nf"
+    process "NORMALISE_GCTA_BIVARIATE"
+    config "./nextflow.config"
+
+    tag "modules"
+    tag "modules_local"
+    tag "normalise_gcta_bivariate"
+
+    def metadata = { nativeArgs = [] ->
+        [
+            id: 'example.grm',
+            relationship_id: 'height_disease',
+            request_id: 'gcta_bivariate_reml--height_disease',
+            left_analysis_id: 'height',
+            right_analysis_id: 'disease',
+            left_trait_id: 'HEIGHT',
+            right_trait_id: 'DISEASE',
+            left_trait_type: 'quantitative',
+            right_trait_type: 'binary',
+            left_population_prevalence: null,
+            right_population_prevalence: 0.1,
+            cohort: 'cohort',
+            matrix_kind: 'gcta_dense',
+            matrix_key: 'abc123',
+            matrix_basename: 'example.grm',
+            matrix_settings: [:],
+            reml_bivar_prevalence: [0.1],
+            native_args: nativeArgs,
+        ]
+    }
+
+    def nativeInputs = { outputDir, name, mutations = [:] ->
+        def root = new File(outputDir.toString(), "native_${name}")
+        root.mkdirs()
+        def components = [
+            'V(G)_tr1': ['0.20', '0.02'],
+            'V(G)_tr2': ['0.30', '0.03'],
+            'C(G)_tr12': ['0.10', '0.01'],
+            'V(e)_tr1': ['0.80', '0.04'],
+            'V(e)_tr2': ['0.70', '0.04'],
+            'C(e)_tr12': ['0.05', '0.01'],
+            'Vp_tr1': ['1.00', '0.05'],
+            'Vp_tr2': ['1.00', '0.05'],
+            'V(G)/Vp_tr1': ['0.20', '0.02'],
+            'V(G)/Vp_tr2': ['0.30', '0.03'],
+            'rG': ['0.40', '0.10'],
+            'logL': ['-100.0'],
+            'n': ['100'],
+        ]
+        (mutations.components ?: [:]).each { source, values ->
+            if (values == null) {
+                components.remove(source)
+            }
+            else {
+                components[source] = values
+            }
+        }
+        def hsq = new File(root, 'native.hsq')
+        hsq.text = 'Source\tVariance\tSE\n' + components.collect { source, values -> ([source] + values).join('\t') }.join('\n') + '\n'
+        def log = new File(root, 'native.log')
+        log.text = """
+        * Genome-wide Complex Trait Analysis
+        * version v1.94.1 Linux
+        100 individuals are in common
+        90 non-missing phenotypes for trait #1 and 80 for trait #2
+        ${mutations.converged == false ? 'REML did not converge' : 'Log-likelihood ratio converged'}
+        """.stripIndent()
+        def pairLog = new File(root, 'native.pair.log')
+        pairLog.text = [
+            left_samples: 100,
+            right_samples: 100,
+            endpoint_overlap_samples: 100,
+            union_samples: 100,
+            left_nonmissing: 90,
+            right_nonmissing: 80,
+            both_nonmissing: 75,
+            quantitative_covariate_samples: 100,
+            categorical_covariate_samples: 100,
+        ].collect { metric, value -> "${metric}\t${value}" }.join('\n') + '\n'
+        [hsq: hsq, log: log, pairLog: pairLog]
+    }
+
+    test("finite native estimands and uncertainties are estimable") {
+        when {
+            def inputs = nativeInputs(outputDir, 'estimable')
+            process {
+                """
+                input[0] = [new groovy.json.JsonSlurper().parseText('${groovy.json.JsonOutput.toJson(metadata())}'), file('${inputs.hsq}', checkIfExists: true), file('${inputs.log}', checkIfExists: true), file('${inputs.pairLog}', checkIfExists: true)]
+                """
+            }
+        }
+
+        then {
+            def provenance = new groovy.json.JsonSlurper().parse(new File(process.out.provenance.get(0).get(1).toString()))
+            assertAll(
+                { assert process.success },
+                { assert provenance.classification == 'estimable' },
+                { assert provenance.diagnostics.residual_covariance_status == 'retained' },
+                { assert provenance.declared_prevalence == [left: null, right: 0.1] },
+            )
+        }
+    }
+
+    test("a missing mandatory primary uncertainty is completed nonestimable") {
+        when {
+            def inputs = nativeInputs(outputDir, 'nonestimable', [components: ['V(G)/Vp_tr1': ['0.20', 'NA']]])
+            process {
+                """
+                input[0] = [new groovy.json.JsonSlurper().parseText('${groovy.json.JsonOutput.toJson(metadata())}'), file('${inputs.hsq}', checkIfExists: true), file('${inputs.log}', checkIfExists: true), file('${inputs.pairLog}', checkIfExists: true)]
+                """
+            }
+        }
+
+        then {
+            def provenance = new groovy.json.JsonSlurper().parse(new File(process.out.provenance.get(0).get(1).toString()))
+            assertAll(
+                { assert process.success },
+                { assert provenance.classification == 'completed_nonestimable' },
+                { assert provenance.native_components['V(G)/Vp_tr1'].standard_error == null },
+            )
+        }
+    }
+
+    test("an out-of-range native heritability is retained with a warning") {
+        when {
+            def inputs = nativeInputs(outputDir, 'warning', [components: ['V(G)/Vp_tr1': ['-0.10', '0.02']]])
+            process {
+                """
+                input[0] = [new groovy.json.JsonSlurper().parseText('${groovy.json.JsonOutput.toJson(metadata())}'), file('${inputs.hsq}', checkIfExists: true), file('${inputs.log}', checkIfExists: true), file('${inputs.pairLog}', checkIfExists: true)]
+                """
+            }
+        }
+
+        then {
+            def provenance = new groovy.json.JsonSlurper().parse(new File(process.out.provenance.get(0).get(1).toString()))
+            assertAll(
+                { assert process.success },
+                { assert provenance.classification == 'estimable_with_warning' },
+                { assert provenance.warnings.contains('left_heritability_outside_unit_interval') },
+            )
+        }
+    }
+
+    test("the deliberate native residual-covariance override is auditable") {
+        when {
+            def inputs = nativeInputs(outputDir, 'nocove', [components: ['C(e)_tr12': null]])
+            process {
+                """
+                input[0] = [new groovy.json.JsonSlurper().parseText('${groovy.json.JsonOutput.toJson(metadata(['--reml-bivar-nocove']))}'), file('${inputs.hsq}', checkIfExists: true), file('${inputs.log}', checkIfExists: true), file('${inputs.pairLog}', checkIfExists: true)]
+                """
+            }
+        }
+
+        then {
+            def provenance = new groovy.json.JsonSlurper().parse(new File(process.out.provenance.get(0).get(1).toString()))
+            assertAll(
+                { assert process.success },
+                { assert provenance.classification == 'estimable' },
+                { assert provenance.diagnostics.residual_covariance == 'NA' },
+                { assert provenance.diagnostics.residual_covariance_status == 'dropped_by_native_option' },
+            )
+        }
+    }
+
+    test("native nonconvergence fails normalization") {
+        when {
+            def inputs = nativeInputs(outputDir, 'nonconverged', [converged: false])
+            process {
+                """
+                input[0] = [new groovy.json.JsonSlurper().parseText('${groovy.json.JsonOutput.toJson(metadata())}'), file('${inputs.hsq}', checkIfExists: true), file('${inputs.log}', checkIfExists: true), file('${inputs.pairLog}', checkIfExists: true)]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.failed },
+                { assert process.errorReport.contains('does not confirm REML convergence') },
+            )
+        }
+    }
+}

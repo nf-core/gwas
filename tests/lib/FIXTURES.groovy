@@ -19,6 +19,7 @@ class FIXTURES {
         'results/fixtures/relational/analysis_manifest_heritability_only.csv',
         'results/fixtures/relational/analysis_manifest_heterogeneous.csv',
         'results/fixtures/relational/method_options_heterogeneous.json',
+        'results/fixtures/relational/method_options_heterogeneous_bivariate.json',
         'results/fixtures/relational/resources/gcta_grm_extract.txt',
         'results/fixtures/relational/resources/ldak_predictor_extract.txt',
         'results/fixtures/relational/resources/ldak_weights.txt',

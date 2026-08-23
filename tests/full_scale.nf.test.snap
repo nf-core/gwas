@@ -11,6 +11,9 @@
                 "CUSTOM_GCTASTRATIFYLDSCORES": {
                     "r-base": "4.2.1"
                 },
+                "GCTA_BIVARIATEREML": {
+                    "gcta": "1.94.1"
+                },
                 "GCTA_CALCULATELDSCORES": {
                     "gcta": "1.94.1"
                 },
@@ -60,6 +63,9 @@
                 "LDAK_SUBGRM": {
                     "ldak6": 6
                 },
+                "NORMALISE_GCTA_BIVARIATE": {
+                    "python": "3.14.5"
+                },
                 "NORMALISE_PHENOTYPES": {
                     "python": "3.14.5"
                 },
@@ -71,6 +77,9 @@
                 },
                 "PLINK2_VCF": {
                     "plink2": "2.0.0-a.6.9LM"
+                },
+                "PREPARE_BIVARIATE_TRAITS": {
+                    "python": "3.14.5"
                 },
                 "REGENIE_STEP1": {
                     "regenie": "4.1.2"
@@ -87,7 +96,7 @@
             "nf-test": "0.9.3",
             "nextflow": "25.10.4"
         },
-        "timestamp": "2026-08-13T14:38:39.697391338"
+        "timestamp": "2026-08-23T23:40:49.080356499"
     },
     "association": {
         "content": [

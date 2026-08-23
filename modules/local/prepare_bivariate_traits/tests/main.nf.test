@@ -1,0 +1,74 @@
+nextflow_process {
+
+    name "Test Process PREPARE_BIVARIATE_TRAITS"
+    script "../main.nf"
+    process "PREPARE_BIVARIATE_TRAITS"
+    config "./nextflow.config"
+
+    tag "modules"
+    tag "modules_local"
+    tag "prepare_bivariate_traits"
+
+    def pairInputs = { outputDir, name, covariates = true ->
+        def root = new File(outputDir.toString(), "pair_${name}")
+        root.mkdirs()
+        def left = new File(root, 'left.pheno')
+        left.text = 'F1\tI1\t1\nF1\tI2\tNA\nF2\tI3\t3\n'
+        def right = new File(root, 'right.pheno')
+        right.text = 'F1\tI2\t2\nF2\tI3\t4\nF3\tI4\t5\n'
+        def qcovar = new File(root, 'pair.qcovar')
+        def covar = new File(root, 'pair.covar')
+        if (covariates) {
+            qcovar.text = 'FID\tIID\tage\nF1\tI1\t10\nF1\tI2\t20\nF2\tI3\t30\nF3\tI4\t40\n'
+            covar.text = 'FID\tIID\tbatch\nF1\tI1\tA\nF1\tI2\tA\nF2\tI3\tB\nF3\tI4\tB\n'
+        }
+        [left: left, right: right, qcovar: qcovar, covar: covar]
+    }
+
+    test("build a sorted full-union pair and strip relationship covariate headers") {
+        when {
+            def inputs = pairInputs(outputDir, 'union')
+            process {
+                """
+                input[0] = [[request_id: 'gcta_bivariate_reml--pair'], file('${inputs.left}', checkIfExists: true), file('${inputs.right}', checkIfExists: true), file('${inputs.qcovar}', checkIfExists: true), file('${inputs.covar}', checkIfExists: true)]
+                """
+            }
+        }
+
+        then {
+            def phenotype = new File(process.out.phenotype.get(0).get(1).toString())
+            def qcovar = new File(process.out.quant_covariates.get(0).get(1).toString())
+            def covar = new File(process.out.cat_covariates.get(0).get(1).toString())
+            def log = new File(process.out.log.get(0).get(1).toString()).text
+            assertAll(
+                { assert process.success },
+                { assert phenotype.text == 'F1\tI1\t1\tNA\nF1\tI2\tNA\t2\nF2\tI3\t3\t4\nF3\tI4\tNA\t5\n' },
+                { assert qcovar.text == 'F1\tI1\t10\nF1\tI2\t20\nF2\tI3\t30\nF3\tI4\t40\n' },
+                { assert covar.text == 'F1\tI1\tA\nF1\tI2\tA\nF2\tI3\tB\nF3\tI4\tB\n' },
+                { assert log.contains('endpoint_overlap_samples\t2') },
+                { assert log.contains('union_samples\t4') },
+                { assert log.contains('both_nonmissing\t1') },
+            )
+        }
+    }
+
+    test("relationship covariates are optional") {
+        when {
+            def inputs = pairInputs(outputDir, 'without_covariates', false)
+            process {
+                """
+                input[0] = [[request_id: 'gcta_bivariate_reml--pair'], file('${inputs.left}', checkIfExists: true), file('${inputs.right}', checkIfExists: true), [], []]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.quant_covariates.empty },
+                { assert process.out.cat_covariates.empty },
+                { assert new File(process.out.phenotype.get(0).get(1).toString()).isFile() },
+            )
+        }
+    }
+}

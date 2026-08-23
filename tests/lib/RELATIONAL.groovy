@@ -97,6 +97,52 @@ class RELATIONAL {
         )
     }
 
+    static String relationships(Object projectDir, Object outputDir, String name, Closure mutate = null) {
+        def header = [
+            'relationship_id',
+            'left_analysis_id',
+            'right_analysis_id',
+            'left_summary_statistics_id',
+            'right_summary_statistics_id',
+            'relationship_methods',
+            'pair_quant_covariates',
+            'pair_cat_covariates',
+        ]
+        def rows = [relationship('qt_bt')]
+        if (mutate) {
+            mutate(rows)
+        }
+        return materialise(
+            projectDir,
+            outputDir,
+            name,
+            'relationships',
+            header,
+            rows,
+            ['pair_quant_covariates', 'pair_cat_covariates'],
+        )
+    }
+
+    static Map relationship(String relationshipId) {
+        def fixture = { path -> "${FIXTURES.UPSTREAM}results/fixtures/${path}" }
+        def relationships = [
+            qt_bt: [
+                relationship_id: 'qt_bt',
+                left_analysis_id: 'example_pgen_qt',
+                right_analysis_id: 'example_pgen_bt',
+                left_summary_statistics_id: '',
+                right_summary_statistics_id: '',
+                relationship_methods: 'gcta_bivariate_reml',
+                pair_quant_covariates: fixture('pheno_cov/example.qcovar'),
+                pair_cat_covariates: fixture('pheno_cov/example.catcovar'),
+            ],
+        ]
+        if (!relationships.containsKey(relationshipId)) {
+            throw new IllegalArgumentException("No shipped relationship fixture '${relationshipId}'")
+        }
+        return new LinkedHashMap(relationships[relationshipId])
+    }
+
     static Map analysis(Object projectDir, String analysisId) {
         def fixture = { path -> "${FIXTURES.UPSTREAM}results/fixtures/${path}" }
         def common = [
