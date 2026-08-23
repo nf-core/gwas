@@ -39,6 +39,12 @@
   "pair_requests": {
     "gcta_bivariate_reml--heterogeneous_qt_bt": {
       "native_args": ["--reml-maxit", "500", "--reml-bivar-nocove"]
+    },
+    "gcta_bivariate_reml_ldms--heterogeneous_qt_bt": {
+      "ld_score_region_kb": 50,
+      "ld_bins": 1,
+      "ldms_maf_edges": [0, 0.5],
+      "native_args": ["--reml-no-constrain", "--reml-maxit", "500", "--reml-bivar-nocove"]
     }
   }
 }

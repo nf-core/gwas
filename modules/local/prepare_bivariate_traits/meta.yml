@@ -1,5 +1,5 @@
 name: prepare_bivariate_traits
-description: Build an ordered full-union two-trait phenotype and normalize relationship-owned covariates for dense GCTA bivariate REML
+description: Build an ordered full-union two-trait phenotype and normalize relationship-owned covariates for GCTA bivariate REML
 keywords:
   - phenotype
   - covariates

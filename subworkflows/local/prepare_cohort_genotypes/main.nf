@@ -89,13 +89,13 @@ workflow PREPARE_COHORT_GENOTYPES {
         .map { _cohort_id, meta, pgen, psam, pvar -> [meta, pgen, psam, pvar] }
 
     //
-    // LDAK and GCTA GREML-LDMS consume PLINK 1. The derivative is lazy — only a cohort with a route
-    // that needs it is converted — and cohort-keyed, so all such analyses share one conversion. It is
-    // always derived from the canonical PLINK 2 bundle, even when the researcher supplied PLINK 1, so
-    // every input encoding crosses the same compatibility seam.
+    // LDAK, GCTA GREML-LDMS and GCTA bivariate REML-LDMS consume PLINK 1. The derivative is lazy — only
+    // a cohort with a route that needs it is converted — and cohort-keyed, so unary and pair requests
+    // share one conversion. It is always derived from the canonical PLINK 2 bundle, even when the
+    // researcher supplied PLINK 1, so every input encoding crosses the same compatibility seam.
     //
     def ch_plink1_analyses = ch_analyses.filter { meta, _genotype_files ->
-        'ldak_kvik' in (meta.association_methods ?: []) || (meta.heritability_methods ?: []).any { method -> method in ['ldak_reml', 'ldak_he', 'ldak_pcgc'] } || 'gcta_greml_ldms' in (meta.heritability_methods ?: [])
+        'ldak_kvik' in (meta.association_methods ?: []) || (meta.heritability_methods ?: []).any { method -> method in ['ldak_reml', 'ldak_he', 'ldak_pcgc'] } || 'gcta_greml_ldms' in (meta.heritability_methods ?: []) || (meta.relationship_id && meta.matrix_kind == 'gcta_ldms')
     }
 
     def ch_plink1_cohort_genotypes = ch_plink1_analyses

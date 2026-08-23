@@ -405,6 +405,31 @@ nextflow_function {
         }
     }
 
+    test("each relationship request asks only for its selected method matrix family") {
+
+        function "getRelatednessMatrixKinds"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    id: 'gcta_bivariate_reml_ldms--qt_bt',
+                    relationship_id: 'qt_bt',
+                    method: 'gcta_bivariate_reml_ldms',
+                    relationship_methods: ['gcta_bivariate_reml', 'gcta_bivariate_reml_ldms'],
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == ['gcta_ldms'] },
+            )
+        }
+    }
+
     test("several LDAK estimators share one LDAK kinship kind") {
 
         function "getRelatednessMatrixKinds"

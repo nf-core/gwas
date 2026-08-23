@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Normalize native dense GCTA bivariate REML outputs without choosing a preferred result."""
+"""Normalize native dense or LDMS GCTA bivariate REML outputs without selecting a result."""
 
 import json
 import math
@@ -12,7 +12,8 @@ GCTA_LOG = ${gcta_log_literal}
 PAIR_LOG = ${pair_log_literal}
 PROCESS_NAME = ${task_process_literal}
 CONTAINER = ${task_container_literal}
-METHOD = "gcta_bivariate_reml"
+METHOD = META["method"]
+LDMS = METHOD == "gcta_bivariate_reml_ldms"
 
 
 def fail(message):
@@ -29,6 +30,17 @@ def parse_number(text):
 
 def display(value):
     return "NA" if value is None else format(value, ".15g")
+
+
+def component_sources(suffix):
+    return {
+        "left_variance": "V(G{})_tr1".format(suffix),
+        "right_variance": "V(G{})_tr2".format(suffix),
+        "covariance": "C(G{})_tr12".format(suffix),
+        "left_heritability": "V(G{})/Vp_tr1".format(suffix),
+        "right_heritability": "V(G{})/Vp_tr2".format(suffix),
+        "correlation": "rG{}".format(suffix),
+    }
 
 
 def parse_hsq(path):
@@ -52,11 +64,27 @@ def parse_hsq(path):
             "native_estimate": estimate_text,
             "native_standard_error": se_text,
         }
-    mandatory = ["V(G)_tr1", "V(G)_tr2", "C(G)_tr12", "V(e)_tr1", "V(e)_tr2", "Vp_tr1", "Vp_tr2", "V(G)/Vp_tr1", "V(G)/Vp_tr2", "rG", "logL", "n"]
+    if LDMS:
+        suffixes = sorted(
+            [
+                match.group(1)
+                for source in components
+                for match in [re.fullmatch(r"V\\(G(\\d*)\\)_tr1", source)]
+                if match
+            ],
+            key=lambda suffix: int(suffix) if suffix else 0,
+        )
+        if not suffixes:
+            fail("native LDMS result '{}' contains no genetic variance components".format(path))
+    else:
+        suffixes = [""]
+    mandatory = ["V(e)_tr1", "V(e)_tr2", "Vp_tr1", "Vp_tr2", "logL", "n"]
+    for suffix in suffixes:
+        mandatory.extend(component_sources(suffix).values())
     missing = [source for source in mandatory if source not in components]
     if missing:
         fail("native result '{}' is missing mandatory components {}".format(path, ", ".join(missing)))
-    return components
+    return components, suffixes
 
 
 def parse_pair_log(path):
@@ -76,7 +104,7 @@ def parse_pair_log(path):
 
 with open(GCTA_LOG) as handle:
     log_text = handle.read()
-components = parse_hsq(HSQ)
+components, component_suffixes = parse_hsq(HSQ)
 pair_diagnostics = parse_pair_log(PAIR_LOG)
 
 converged = bool(re.search(r"Log-likelihood ratio converged", log_text, flags=re.IGNORECASE))
@@ -93,26 +121,34 @@ warning_patterns = [
     ("unreliable_standard_error", r"SE is unreliable"),
 ]
 warnings = [name for name, pattern in warning_patterns if re.search(pattern, log_text, flags=re.IGNORECASE)]
-rg = components["rG"]["estimate"]
-rg_se = components["rG"]["standard_error"]
-left_h2 = components["V(G)/Vp_tr1"]["estimate"]
-right_h2 = components["V(G)/Vp_tr2"]["estimate"]
-if rg is not None and abs(rg) > 1:
-    warnings.append("genetic_correlation_outside_unit_interval")
-elif rg is not None and abs(rg) == 1:
-    warnings.append("genetic_correlation_at_boundary")
+primary_components = []
+for suffix in component_suffixes:
+    sources = component_sources(suffix)
+    component = "G{}".format(suffix)
+    warning_suffix = ":" + component if LDMS else ""
+    rg = components[sources["correlation"]]["estimate"]
+    if rg is not None and abs(rg) > 1:
+        warnings.append("genetic_correlation_outside_unit_interval" + warning_suffix)
+    elif rg is not None and abs(rg) == 1:
+        warnings.append("genetic_correlation_at_boundary" + warning_suffix)
 
-for side, h2 in [("left", left_h2), ("right", right_h2)]:
-    if h2 is not None and (h2 < 0 or h2 > 1):
-        warnings.append(side + "_heritability_outside_unit_interval")
-    elif h2 is not None and h2 in (0, 1):
-        warnings.append(side + "_heritability_at_boundary")
+    for side, source in [("left", sources["left_heritability"]), ("right", sources["right_heritability"])]:
+        h2 = components[source]["estimate"]
+        if h2 is not None and (h2 < 0 or h2 > 1):
+            warnings.append("{}_heritability_outside_unit_interval{}".format(side, warning_suffix))
+        elif h2 is not None and h2 in (0, 1):
+            warnings.append("{}_heritability_at_boundary{}".format(side, warning_suffix))
 
-for source in ["V(G)_tr1", "V(G)_tr2", "V(e)_tr1", "V(e)_tr2", "Vp_tr1", "Vp_tr2"]:
+    primary_components.extend([components[sources[name]] for name in ["left_heritability", "right_heritability", "covariance", "correlation"]])
+
+for source in [
+    source
+    for suffix in component_suffixes
+    for source in [component_sources(suffix)["left_variance"], component_sources(suffix)["right_variance"]]
+] + ["V(e)_tr1", "V(e)_tr2", "Vp_tr1", "Vp_tr2"]:
     if components[source]["estimate"] is not None and components[source]["estimate"] < 0:
         warnings.append("negative_variance_component:" + source)
 
-primary_components = [components[name] for name in ["V(G)/Vp_tr1", "V(G)/Vp_tr2", "C(G)_tr12", "rG"]]
 estimable = all(component["estimate"] is not None and component["standard_error"] is not None for component in primary_components)
 if not converged or not estimable:
     classification = "completed_nonestimable"
@@ -131,34 +167,50 @@ def write_tsv(path, header, rows):
 
 common = [META["relationship_id"], META["request_id"], METHOD]
 heritability_rows = []
-for side, suffix in [("left", "tr1"), ("right", "tr2")]:
-    endpoint = {
-        "analysis_id": META[side + "_analysis_id"],
-        "trait_id": META[side + "_trait_id"],
-        "trait_type": META[side + "_trait_type"],
-    }
-    observed = components["V(G)/Vp_" + suffix]
-    heritability_rows.append(common + [side, endpoint["analysis_id"], endpoint["trait_id"], endpoint["trait_type"], "observed", display(observed["estimate"]), display(observed["standard_error"]), classification])
-    liability_key = "V(G)/Vp_{}_L".format(suffix)
-    if liability_key in components:
-        liability = components[liability_key]
-        heritability_rows.append(common + [side, endpoint["analysis_id"], endpoint["trait_id"], endpoint["trait_type"], "liability", display(liability["estimate"]), display(liability["standard_error"]), classification])
+for component_suffix in component_suffixes:
+    sources = component_sources(component_suffix)
+    component = "G{}".format(component_suffix)
+    for side, source in [
+        ("left", sources["left_heritability"]),
+        ("right", sources["right_heritability"]),
+    ]:
+        endpoint = {
+            "analysis_id": META[side + "_analysis_id"],
+            "trait_id": META[side + "_trait_id"],
+            "trait_type": META[side + "_trait_type"],
+        }
+        observed = components[source]
+        prefix = common + ([component] if LDMS else [])
+        heritability_rows.append(prefix + [side, endpoint["analysis_id"], endpoint["trait_id"], endpoint["trait_type"], "observed", display(observed["estimate"]), display(observed["standard_error"]), classification])
+        liability_key = source + "_L"
+        if liability_key in components:
+            liability = components[liability_key]
+            heritability_rows.append(prefix + [side, endpoint["analysis_id"], endpoint["trait_id"], endpoint["trait_type"], "liability", display(liability["estimate"]), display(liability["standard_error"]), classification])
 write_tsv(
     "heritability.tsv",
-    ["relationship_id", "request_id", "method", "endpoint", "analysis_id", "trait_id", "trait_type", "scale", "estimate", "standard_error", "classification"],
+    ["relationship_id", "request_id", "method"] + (["component"] if LDMS else []) + ["endpoint", "analysis_id", "trait_id", "trait_type", "scale", "estimate", "standard_error", "classification"],
     heritability_rows,
 )
 
+correlation_rows = []
+covariance_rows = []
+for suffix in component_suffixes:
+    sources = component_sources(suffix)
+    component = "G{}".format(suffix)
+    prefix = common + ([component] if LDMS else [])
+    rg = components[sources["correlation"]]
+    covariance = components[sources["covariance"]]
+    correlation_rows.append(prefix + [META["left_analysis_id"], META["right_analysis_id"], META["left_trait_id"], META["right_trait_id"], display(rg["estimate"]), display(rg["standard_error"]), classification])
+    covariance_rows.append(prefix + [META["left_analysis_id"], META["right_analysis_id"], META["left_trait_id"], META["right_trait_id"], "observed", display(covariance["estimate"]), display(covariance["standard_error"]), classification])
 write_tsv(
     "genetic_correlation.tsv",
-    ["relationship_id", "request_id", "method", "left_analysis_id", "right_analysis_id", "left_trait_id", "right_trait_id", "estimate", "standard_error", "classification"],
-    [common + [META["left_analysis_id"], META["right_analysis_id"], META["left_trait_id"], META["right_trait_id"], display(rg), display(rg_se), classification]],
+    ["relationship_id", "request_id", "method"] + (["component"] if LDMS else []) + ["left_analysis_id", "right_analysis_id", "left_trait_id", "right_trait_id", "estimate", "standard_error", "classification"],
+    correlation_rows,
 )
-covariance = components["C(G)_tr12"]
 write_tsv(
     "genetic_covariance.tsv",
-    ["relationship_id", "request_id", "method", "left_analysis_id", "right_analysis_id", "left_trait_id", "right_trait_id", "scale", "estimate", "standard_error", "classification"],
-    [common + [META["left_analysis_id"], META["right_analysis_id"], META["left_trait_id"], META["right_trait_id"], "observed", display(covariance["estimate"]), display(covariance["standard_error"]), classification]],
+    ["relationship_id", "request_id", "method"] + (["component"] if LDMS else []) + ["left_analysis_id", "right_analysis_id", "left_trait_id", "right_trait_id", "scale", "estimate", "standard_error", "classification"],
+    covariance_rows,
 )
 
 diagnostics = dict(pair_diagnostics)
@@ -181,6 +233,8 @@ diagnostics.update({
     "residual_covariance_status": residual_covariance_status,
     "warnings": ",".join(sorted(set(warnings))) if warnings else "none",
 })
+if LDMS:
+    diagnostics["genetic_components"] = ",".join("G{}".format(suffix) for suffix in component_suffixes)
 write_tsv(
     "diagnostics.tsv",
     ["relationship_id", "request_id", "metric", "value"],
@@ -220,6 +274,8 @@ provenance = {
         "normalized": ["heritability.tsv", "genetic_correlation.tsv", "genetic_covariance.tsv", "diagnostics.tsv", "provenance.json"],
     },
 }
+if LDMS:
+    provenance["genetic_components"] = ["G{}".format(suffix) for suffix in component_suffixes]
 with open("provenance.json", "w", newline="") as handle:
     json.dump(provenance, handle, indent=2, sort_keys=True, allow_nan=False)
     handle.write("\\n")

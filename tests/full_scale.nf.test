@@ -23,6 +23,7 @@ nextflow_pipeline {
             def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
             def multiqc_report = new File("${params.outdir}/multiqc/multiqc_report.html")
             def relationship_request = new File("${params.outdir}/requests/gcta_bivariate_reml/gcta_bivariate_reml--heterogeneous_qt_bt")
+            def ldms_relationship_request = new File("${params.outdir}/requests/gcta_bivariate_reml_ldms/gcta_bivariate_reml_ldms--heterogeneous_qt_bt")
             def stable_name_association = getAllFilesFromDir(
                 association.toString(),
                 relative: true,
@@ -74,16 +75,20 @@ nextflow_pipeline {
                 { assert TRACE.count(workflow, 'GCTA_REML') == 2 },
                 { assert TRACE.count(workflow, 'GCTA_REMLLDMS') == 2 },
                 { assert TRACE.count(workflow, 'GCTA_BIVARIATEREML') == 1 },
-                { assert TRACE.count(workflow, 'NORMALISE_GCTA_BIVARIATE') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEREMLLDMS') == 1 },
+                { assert TRACE.count(workflow, 'PREPARE_BIVARIATE_TRAITS') == 1 },
+                { assert TRACE.count(workflow, 'NORMALISE_GCTA_BIVARIATE') == 2 },
                 { assert TRACE.count(workflow, 'LDAK_REML') == 2 },
                 { assert TRACE.count(workflow, 'LDAK_HE') == 2 },
                 { assert TRACE.count(workflow, 'LDAK_PCGC') == 1 },
                 { assert multiqc_report.text.contains('Association testing was performed with PLINK 2 (Chang <em>et al.</em>, 2015), REGENIE (Mbatchou <em>et al.</em>, 2021), GCTA fastGWA (Jiang <em>et al.</em>, 2019), and LDAK-KVIK (Hof and Speed, 2025).') },
                 { assert multiqc_report.text.contains('SNP-based heritability was estimated with GCTA GREML (Yang <em>et al.</em>, 2011), GCTA GREML-LDMS (Yang <em>et al.</em>, 2015), and LDAK (Speed <em>et al.</em>, 2012).') },
-                { assert multiqc_report.text.contains('Pairwise genetic covariance and correlation were estimated with GCTA bivariate REML (Lee <em>et al.</em>, 2012).') },
+                { assert multiqc_report.text.contains('Pairwise genetic covariance and correlation were estimated with GCTA bivariate REML (Lee <em>et al.</em>, 2012) and GCTA bivariate REML-LDMS (Lee <em>et al.</em>, 2012; Yang <em>et al.</em>, 2015).') },
                 { assert multiqc_report.text.count('https://doi.org/10.1093/bioinformatics/bts474') == 1 },
                 { assert new File(relationship_request, 'native.hsq').isFile() },
                 { assert new File(relationship_request, 'provenance.json').isFile() },
+                { assert new File(ldms_relationship_request, 'native.hsq').isFile() },
+                { assert new File(ldms_relationship_request, 'provenance.json').isFile() },
                 { assert multiqc_report.text.count('https://doi.org/10.1038/ng.3390') == 1 },
                 { assert multiqc_report.text.count('https://doi.org/10.1038/s41588-019-0530-8') == 1 },
                 { assert multiqc_report.text.count('https://doi.org/10.1016/j.ajhg.2012.10.010') == 1 },

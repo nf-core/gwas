@@ -13,6 +13,7 @@ include { PREPARE_BIVARIATE_TRAITS                            } from '../modules
 
 // MODULE: Installed directly from nf-core/modules
 include { GCTA_BIVARIATEREML                                  } from '../modules/nf-core/gcta/bivariatereml/main'
+include { GCTA_BIVARIATEREMLLDMS                              } from '../modules/nf-core/gcta/bivariateremlldms/main'
 include { MULTIQC                                             } from '../modules/nf-core/multiqc/main'
 
 // SUBWORKFLOW: Consisting of a mix of local and nf-core/modules
@@ -64,11 +65,18 @@ workflow GWAS {
         )
         .collect()
 
-    // One element per analysis unit carrying the genotype files it declared. Cohort preparation collapses
-    // this to the distinct cohorts.
-    def ch_analysis_genotypes = ch_analyses.map { meta, genotype_files, _phenotype, _quant_covariates, _cat_covariates, _kvik_extract, _ldak_weights ->
+    // One element per analysis unit carrying the genotype files it declared. A pairwise LDMS request is
+    // also a consumer of the cohort's lazy PLINK 1 derivative, so it enters this request stream without
+    // inheriting either endpoint's unary method settings. Cohort preparation collapses every request to
+    // the distinct cohort before conversion.
+    def ch_genotype_requests = ch_analyses.map { meta, genotype_files, _phenotype, _quant_covariates, _cat_covariates, _kvik_extract, _ldak_weights ->
         [meta, genotype_files]
     }
+    ch_genotype_requests = ch_genotype_requests.mix(
+        ch_relationships
+            .filter { meta, _genotype_files, _pair_quant_covariates, _pair_cat_covariates -> meta.matrix_kind == 'gcta_ldms' }
+            .map { meta, genotype_files, _pair_quant_covariates, _pair_cat_covariates -> [meta, genotype_files] }
+    )
 
     // Matrix preparation additionally receives the optional LDAK weights Path. It derives identity from the
     // bytes before request deduplication and keeps the Path outside matrix metadata and the published key.
@@ -82,7 +90,7 @@ workflow GWAS {
     //
     // SUBWORKFLOW: Prepare each distinct cohort's genotypes once into the canonical PLINK 2 bundle
     //
-    PREPARE_COHORT_GENOTYPES(ch_analysis_genotypes)
+    PREPARE_COHORT_GENOTYPES(ch_genotype_requests)
 
     //
     // SUBWORKFLOW: Build each distinct relatedness matrix once and fan it out per analysis unit
@@ -109,6 +117,7 @@ workflow GWAS {
     // and the strict form is what says so. The covariate file is optional, so it joins with
     // `remainder: true` and arrives as `null` for a row that supplied none.
     def ch_analysis_inputs = PREPARE_COHORT_GENOTYPES.out.genotypes
+        .filter { meta, _pgen, _psam, _pvar -> !meta.relationship_id }
         .join(NORMALISE_PHENOTYPES.out.phenotype, failOnMismatch: true, failOnDuplicate: true)
         .join(NORMALISE_PHENOTYPES.out.covariates, remainder: true)
 
@@ -121,32 +130,44 @@ workflow GWAS {
             [meta, phenotype, quant_covariates ?: [], cat_covariates ?: []]
         }
 
-    // Pair requests own their orientation and covariates. Resolve each declared endpoint against the
-    // canonical unary phenotype stream, then construct one ordered full-union two-trait table. `combine`
-    // is deliberate at the endpoint seams: one analysis may be reused by several relationship requests.
-    def ch_left_pair_phenotypes = ch_relationships
-        .map { meta, _genotype_files, pair_quant_covariates, pair_cat_covariates ->
-            [meta.left_analysis_id, meta.request_id, meta, pair_quant_covariates ?: [], pair_cat_covariates ?: []]
+    // Relationships own their orientation and covariates. Collapse the per-method request fan-out to one
+    // relationship definition, resolve each endpoint against the canonical unary phenotype stream, and
+    // construct one ordered full-union two-trait table. `combine` is deliberate at the endpoint seams: one
+    // analysis may be reused by several relationships. The prepared artifact is fanned back out by
+    // relationship ID only after construction, so selecting dense and LDMS does not duplicate it.
+    def ch_relationship_definitions = ch_relationships
+        .map { meta, genotype_files, pair_quant_covariates, pair_cat_covariates ->
+            def relationship_meta = meta + [
+                id: meta.relationship_id,
+                request_id: meta.relationship_id,
+            ]
+            [meta.relationship_id, relationship_meta, genotype_files, pair_quant_covariates, pair_cat_covariates]
+        }
+        .unique { relationship_id, _meta, _genotype_files, _pair_quant_covariates, _pair_cat_covariates -> relationship_id }
+
+    def ch_left_pair_phenotypes = ch_relationship_definitions
+        .map { relationship_id, meta, _genotype_files, pair_quant_covariates, pair_cat_covariates ->
+            [meta.left_analysis_id, relationship_id, meta, pair_quant_covariates ?: [], pair_cat_covariates ?: []]
         }
         .combine(
             NORMALISE_PHENOTYPES.out.phenotype_headerless.map { meta, phenotype -> [meta.id, phenotype] },
             by: 0,
         )
-        .map { _analysis_id, request_id, meta, pair_quant_covariates, pair_cat_covariates, phenotype ->
-            [request_id, meta, phenotype, pair_quant_covariates, pair_cat_covariates]
+        .map { _analysis_id, relationship_id, meta, pair_quant_covariates, pair_cat_covariates, phenotype ->
+            [relationship_id, meta, phenotype, pair_quant_covariates, pair_cat_covariates]
         }
 
-    def ch_right_pair_phenotypes = ch_relationships
-        .map { meta, _genotype_files, _pair_quant_covariates, _pair_cat_covariates -> [meta.right_analysis_id, meta.request_id] }
+    def ch_right_pair_phenotypes = ch_relationship_definitions
+        .map { relationship_id, meta, _genotype_files, _pair_quant_covariates, _pair_cat_covariates -> [meta.right_analysis_id, relationship_id] }
         .combine(
             NORMALISE_PHENOTYPES.out.phenotype_headerless.map { meta, phenotype -> [meta.id, phenotype] },
             by: 0,
         )
-        .map { _analysis_id, request_id, phenotype -> [request_id, phenotype] }
+        .map { _analysis_id, relationship_id, phenotype -> [relationship_id, phenotype] }
 
     def ch_pair_trait_inputs = ch_left_pair_phenotypes
         .join(ch_right_pair_phenotypes, failOnDuplicate: true, failOnMismatch: true)
-        .map { _request_id, meta, left_phenotype, pair_quant_covariates, pair_cat_covariates, right_phenotype ->
+        .map { _relationship_id, meta, left_phenotype, pair_quant_covariates, pair_cat_covariates, right_phenotype ->
             [meta, left_phenotype, right_phenotype, pair_quant_covariates, pair_cat_covariates]
         }
 
@@ -209,7 +230,7 @@ workflow GWAS {
             [meta.id, meta, kvik_extract ?: [], meta.method_options.ldak.kvik_step1_subset]
         }
 
-    def ch_kvik_genotypes = PREPARE_COHORT_GENOTYPES.out.plink1_genotypes.filter { meta, _bed, _bim, _fam -> 'ldak_kvik' in meta.association_methods }
+    def ch_kvik_genotypes = PREPARE_COHORT_GENOTYPES.out.plink1_genotypes.filter { meta, _bed, _bim, _fam -> 'ldak_kvik' in (meta.association_methods ?: []) }
 
     ROUTE_LDAK_KVIK_ASSOCIATIONS(
         ch_kvik_genotypes,
@@ -335,7 +356,9 @@ workflow GWAS {
         .filter { meta, _grm_files -> !meta.relationship_id }
         .map { meta, grm_files -> [meta, [], grm_files, 'greml'] }
         .mix(
-            PREPARE_RELATEDNESS_MATRICES.out.gcta_ldms.map { meta, mgrm, grm_files -> [meta, mgrm, grm_files, 'greml_ldms'] }
+            PREPARE_RELATEDNESS_MATRICES.out.gcta_ldms
+                .filter { meta, _mgrm, _grm_files -> !meta.relationship_id }
+                .map { meta, mgrm, grm_files -> [meta, mgrm, grm_files, 'greml_ldms'] }
         )
 
     def ch_greml_inputs = ch_greml_matrices
@@ -364,7 +387,7 @@ workflow GWAS {
     // basename. Keep that native basename separate from request attribution and from the content-derived
     // matrix reuse key; all three identities reach the normalized provenance adapter.
     def ch_bivariate_matrices = PREPARE_RELATEDNESS_MATRICES.out.gcta_dense
-        .filter { meta, _grm_files -> meta.relationship_id && 'gcta_bivariate_reml' in meta.relationship_methods }
+        .filter { meta, _grm_files -> meta.relationship_id && meta.method == 'gcta_bivariate_reml' }
         .map { meta, grm_files ->
             def grm_id = grm_files.find { grm_file -> grm_file.name.endsWith('.grm.id') }
             if (!grm_id) {
@@ -374,16 +397,26 @@ workflow GWAS {
             [meta.request_id, meta + [matrix_basename: basename], grm_files]
         }
 
-    def ch_prepared_pairs = PREPARE_BIVARIATE_TRAITS.out.phenotype
+    def ch_prepared_relationships = PREPARE_BIVARIATE_TRAITS.out.phenotype
         .join(PREPARE_BIVARIATE_TRAITS.out.quant_covariates, remainder: true)
         .join(PREPARE_BIVARIATE_TRAITS.out.cat_covariates, remainder: true)
         .join(PREPARE_BIVARIATE_TRAITS.out.log, failOnDuplicate: true, failOnMismatch: true)
         .map { meta, phenotype, quant_covariates, cat_covariates, pair_log ->
-            [meta.request_id, meta, phenotype, quant_covariates ?: [], cat_covariates ?: [], pair_log]
+            [meta.relationship_id, phenotype, quant_covariates ?: [], cat_covariates ?: [], pair_log]
         }
 
+    def ch_prepared_pairs = ch_relationships
+        .map { meta, _genotype_files, _pair_quant_covariates, _pair_cat_covariates -> [meta.relationship_id, meta] }
+        .combine(ch_prepared_relationships, by: 0)
+        .map { _relationship_id, meta, phenotype, quant_covariates, cat_covariates, pair_log ->
+            [meta.request_id, meta, phenotype, quant_covariates, cat_covariates, pair_log]
+        }
+
+    def ch_dense_prepared_pairs = ch_prepared_pairs
+        .filter { _request_id, pair_meta, _phenotype, _quant_covariates, _cat_covariates, _pair_log -> pair_meta.method == 'gcta_bivariate_reml' }
+
     def ch_bivariate_invocations = ch_bivariate_matrices
-        .join(ch_prepared_pairs, failOnDuplicate: true, failOnMismatch: true)
+        .join(ch_dense_prepared_pairs, failOnDuplicate: true, failOnMismatch: true)
         .multiMap { _request_id, matrix_meta, grm_files, pair_meta, phenotype, quant_covariates, cat_covariates, pair_log ->
             if (matrix_meta.relationship_id != pair_meta.relationship_id) {
                 error("[nf-core/gwas] ERROR: pair request '${pair_meta.request_id}' matrix attribution disagrees with the prepared phenotype")
@@ -407,7 +440,7 @@ workflow GWAS {
         ch_bivariate_invocations.covar,
     )
 
-    def ch_bivariate_native_results = GCTA_BIVARIATEREML.out.bivariate_results
+    def ch_dense_bivariate_native_results = GCTA_BIVARIATEREML.out.bivariate_results
         .map { meta, hsq -> [meta.request_id, meta, hsq] }
         .join(
             GCTA_BIVARIATEREML.out.log_file.map { meta, gcta_log -> [meta.request_id, gcta_log] },
@@ -416,6 +449,58 @@ workflow GWAS {
         )
         .join(ch_bivariate_invocations.pair_log, failOnDuplicate: true, failOnMismatch: true)
         .map { _request_id, meta, hsq, gcta_log, pair_log -> [meta, hsq, gcta_log, pair_log] }
+
+    //
+    // PIPELINE ROUTE: primary GCTA bivariate REML-LDMS relationship request
+    //
+    // The MGRM manifest basename is the installed atom's native identity. The request ID and the
+    // matrix content key remain separate attribution fields so a unary GREML-LDMS request and a pair
+    // request can share one scientifically identical matrix family without sharing result identity.
+    def ch_bivariate_ldms_matrices = PREPARE_RELATEDNESS_MATRICES.out.gcta_ldms
+        .filter { meta, _mgrm, _grm_files -> meta.relationship_id && 'gcta_bivariate_reml_ldms' == meta.method }
+        .map { meta, mgrm, grm_files ->
+            [meta.request_id, meta + [matrix_basename: mgrm.baseName], mgrm, grm_files]
+        }
+
+    def ch_ldms_prepared_pairs = ch_prepared_pairs
+        .filter { _request_id, pair_meta, _phenotype, _quant_covariates, _cat_covariates, _pair_log -> pair_meta.method == 'gcta_bivariate_reml_ldms' }
+
+    def ch_bivariate_ldms_invocations = ch_bivariate_ldms_matrices
+        .join(ch_ldms_prepared_pairs, failOnDuplicate: true, failOnMismatch: true)
+        .multiMap { _request_id, matrix_meta, mgrm, grm_files, pair_meta, phenotype, quant_covariates, cat_covariates, pair_log ->
+            if (matrix_meta.relationship_id != pair_meta.relationship_id) {
+                error("[nf-core/gwas] ERROR: pair request '${pair_meta.request_id}' LDMS matrix attribution disagrees with the prepared phenotype")
+            }
+            def route_meta = pair_meta + [
+                id: matrix_meta.matrix_basename,
+                matrix_key: matrix_meta.matrix_key,
+                matrix_basename: matrix_meta.matrix_basename,
+            ]
+            mgrm: [route_meta, mgrm, grm_files]
+            pheno: [route_meta, phenotype, 1, 2]
+            qcovar: [route_meta, quant_covariates]
+            covar: [route_meta, cat_covariates]
+            pair_log: [pair_meta.request_id, pair_log]
+        }
+
+    GCTA_BIVARIATEREMLLDMS(
+        ch_bivariate_ldms_invocations.mgrm,
+        ch_bivariate_ldms_invocations.pheno,
+        ch_bivariate_ldms_invocations.qcovar,
+        ch_bivariate_ldms_invocations.covar,
+    )
+
+    def ch_ldms_bivariate_native_results = GCTA_BIVARIATEREMLLDMS.out.bivariate_results
+        .map { meta, hsq -> [meta.request_id, meta, hsq] }
+        .join(
+            GCTA_BIVARIATEREMLLDMS.out.log_file.map { meta, gcta_log -> [meta.request_id, gcta_log] },
+            failOnDuplicate: true,
+            failOnMismatch: true,
+        )
+        .join(ch_bivariate_ldms_invocations.pair_log, failOnDuplicate: true, failOnMismatch: true)
+        .map { _request_id, meta, hsq, gcta_log, pair_log -> [meta, hsq, gcta_log, pair_log] }
+
+    def ch_bivariate_native_results = ch_dense_bivariate_native_results.mix(ch_ldms_bivariate_native_results)
 
     NORMALISE_GCTA_BIVARIATE(ch_bivariate_native_results)
 

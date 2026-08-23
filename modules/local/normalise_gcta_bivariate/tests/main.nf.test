@@ -9,11 +9,12 @@ nextflow_process {
     tag "modules_local"
     tag "normalise_gcta_bivariate"
 
-    def metadata = { nativeArgs = [] ->
+    def metadata = { nativeArgs = [], method = 'gcta_bivariate_reml' ->
         [
             id: 'example.grm',
             relationship_id: 'height_disease',
-            request_id: 'gcta_bivariate_reml--height_disease',
+            request_id: "${method}--height_disease",
+            method: method,
             left_analysis_id: 'height',
             right_analysis_id: 'disease',
             left_trait_id: 'HEIGHT',
@@ -23,7 +24,7 @@ nextflow_process {
             left_population_prevalence: null,
             right_population_prevalence: 0.1,
             cohort: 'cohort',
-            matrix_kind: 'gcta_dense',
+            matrix_kind: method == 'gcta_bivariate_reml_ldms' ? 'gcta_ldms' : 'gcta_dense',
             matrix_key: 'abc123',
             matrix_basename: 'example.grm',
             matrix_settings: [:],
@@ -35,7 +36,7 @@ nextflow_process {
     def nativeInputs = { outputDir, name, mutations = [:] ->
         def root = new File(outputDir.toString(), "native_${name}")
         root.mkdirs()
-        def components = [
+        def components = mutations.resetComponents ? [:] : [
             'V(G)_tr1': ['0.20', '0.02'],
             'V(G)_tr2': ['0.30', '0.03'],
             'C(G)_tr12': ['0.10', '0.01'],
@@ -153,6 +154,55 @@ nextflow_process {
                 { assert process.success },
                 { assert provenance.classification == 'estimable_with_warning' },
                 { assert provenance.warnings.contains('left_heritability_outside_unit_interval') },
+            )
+        }
+    }
+
+    test("LDMS retains every native genetic component without synthesizing a preferred aggregate") {
+        when {
+            def ldmsComponents = [
+                'V(G1)_tr1': ['0.10', '0.02'],
+                'V(G1)_tr2': ['0.15', '0.03'],
+                'C(G1)_tr12': ['0.04', '0.01'],
+                'V(G2)_tr1': ['0.20', '0.04'],
+                'V(G2)_tr2': ['0.25', '0.05'],
+                'C(G2)_tr12': ['0.08', '0.02'],
+                'V(e)_tr1': ['0.70', '0.05'],
+                'V(e)_tr2': ['0.60', '0.05'],
+                'C(e)_tr12': ['0.03', '0.01'],
+                'Vp_tr1': ['1.00', '0.06'],
+                'Vp_tr2': ['1.00', '0.06'],
+                'V(G1)/Vp_tr1': ['0.10', '0.02'],
+                'V(G1)/Vp_tr2': ['0.15', '0.03'],
+                'V(G2)/Vp_tr1': ['0.20', '0.04'],
+                'V(G2)/Vp_tr2': ['0.25', '0.05'],
+                'rG1': ['0.33', '0.10'],
+                'rG2': ['0.36', '0.12'],
+                'logL': ['-90.0'],
+                'n': ['100'],
+            ]
+            def inputs = nativeInputs(outputDir, 'ldms_components', [resetComponents: true, components: ldmsComponents])
+            process {
+                """
+                input[0] = [new groovy.json.JsonSlurper().parseText('${groovy.json.JsonOutput.toJson(metadata([], 'gcta_bivariate_reml_ldms'))}'), file('${inputs.hsq}', checkIfExists: true), file('${inputs.log}', checkIfExists: true), file('${inputs.pairLog}', checkIfExists: true)]
+                """
+            }
+        }
+
+        then {
+            def heritability = file(process.out.heritability.get(0).get(1)).readLines()
+            def correlation = file(process.out.genetic_correlation.get(0).get(1)).readLines()
+            def covariance = file(process.out.genetic_covariance.get(0).get(1)).readLines()
+            def provenance = new groovy.json.JsonSlurper().parse(new File(process.out.provenance.get(0).get(1).toString()))
+            assertAll(
+                { assert process.success },
+                { assert provenance.method == 'gcta_bivariate_reml_ldms' },
+                { assert provenance.genetic_components == ['G1', 'G2'] },
+                { assert provenance.native_components.keySet().containsAll(['V(G1)_tr1', 'V(G1)_tr2', 'C(G1)_tr12', 'V(G2)_tr1', 'V(G2)_tr2', 'C(G2)_tr12', 'rG1', 'rG2']) },
+                { assert heritability.first().contains('\tcomponent\t') },
+                { assert heritability.tail().collect { line -> line.split('\t')[3] }.toSet() == ['G1', 'G2'].toSet() },
+                { assert correlation.tail().collect { line -> line.split('\t')[3] } == ['G1', 'G2'] },
+                { assert covariance.tail().collect { line -> line.split('\t')[3] } == ['G1', 'G2'] },
             )
         }
     }

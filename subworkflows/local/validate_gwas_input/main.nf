@@ -156,6 +156,14 @@ def getMethodRegistry() {
             consumes_population_prevalence: true,
             citation_key: 'gcta_bivariate_reml',
         ],
+        gcta_bivariate_reml_ldms: [
+            domain: 'pairwise',
+            option_family: 'gcta',
+            matrix_kind: 'gcta_ldms',
+            consumes_population_prevalence: true,
+            citation_key: 'gcta_bivariate_reml',
+            citation_keys: ['gcta_bivariate_reml', 'gcta_greml_ldms'],
+        ],
         ldak_reml: [
             domain: 'heritability',
             option_family: 'ldak',
@@ -818,7 +826,13 @@ def validateNativeArgumentTokens(method_options, request_id, native_args) {
 }
 
 def resolvePairRequestOptions(method_options, document, relationship_records) {
-    def defaults = relationship_records.collectEntries { record -> [(record[0].request_id): []] }
+    def defaults = relationship_records.collectEntries { record ->
+        def meta = record[0]
+        [(meta.request_id): [
+            native_args: [],
+            matrix_settings: meta.matrix_settings,
+        ]]
+    }
     if (!method_options) {
         return defaults
     }
@@ -836,13 +850,58 @@ def resolvePairRequestOptions(method_options, document, relationship_records) {
         if (!(options instanceof Map)) {
             error("[nf-core/gwas] ERROR: Method-options document '${method_options}', pair_request_id '${request_id}': expected an option object")
         }
-        def unknown = options.keySet().findAll { option -> option != 'native_args' }
-        if (unknown) {
-            error("[nf-core/gwas] ERROR: Method-options document '${method_options}', pair_request_id '${request_id}', option '${unknown.first()}': unknown option; the first dense GCTA bivariate route accepts native_args only")
+        def accepted = ['native_args']
+        if (defaults[request_id].matrix_settings) {
+            accepted += ['ld_score_region_kb', 'ld_bins', 'ldms_maf_edges']
         }
-        defaults[request_id] = validateNativeArgumentTokens(method_options, request_id, options.native_args ?: [])
+        def unknown = options.keySet().findAll { option -> !(option in accepted) }
+        if (unknown) {
+            error("[nf-core/gwas] ERROR: Method-options document '${method_options}', pair_request_id '${request_id}', option '${unknown.first()}': unknown option; accepted options for this GCTA pair request are ${accepted.join(', ')}")
+        }
+        def matrix_settings = defaults[request_id].matrix_settings
+        if (matrix_settings) {
+            def fail = { option, reason ->
+                error("[nf-core/gwas] ERROR: Method-options document '${method_options}', pair_request_id '${request_id}', option '${option}': ${reason}")
+            }
+            matrix_settings = resolvePairLdmsMatrixSettings(options, matrix_settings, fail)
+        }
+        defaults[request_id] = [
+            native_args: validateNativeArgumentTokens(method_options, request_id, options.native_args ?: []),
+            matrix_settings: matrix_settings,
+        ]
     }
     return defaults
+}
+
+def resolvePairLdmsMatrixSettings(options, defaults, fail) {
+    def ld_score_region_kb = options.containsKey('ld_score_region_kb') ? options.ld_score_region_kb : defaults.ld_score_region_kb
+    def ld_bins = options.containsKey('ld_bins') ? options.ld_bins : defaults.ld_bins
+    def ldms_maf_edges = options.containsKey('ldms_maf_edges')
+        ? options.ldms_maf_edges
+        : defaults.containsKey('maf_edges')
+            ? defaults.maf_edges
+            : defaults.ldms_maf_edges
+
+    if (!(ld_score_region_kb instanceof Number) || ld_score_region_kb < 1 || ld_score_region_kb != ld_score_region_kb.toInteger()) {
+        fail.call('ld_score_region_kb', 'expected one positive integer')
+    }
+    if (!(ld_bins instanceof Number) || ld_bins < 1 || ld_bins != ld_bins.toInteger()) {
+        fail.call('ld_bins', 'expected one positive integer')
+    }
+    if (!(ldms_maf_edges instanceof List) || ldms_maf_edges.size() < 2 || !ldms_maf_edges.every { edge -> edge instanceof Number && edge >= 0 && edge <= 0.5 }) {
+        fail.call('ldms_maf_edges', 'expected a numeric boundary list spanning 0 to 0.5')
+    }
+    if (ldms_maf_edges.first() != 0 || ldms_maf_edges.last() != 0.5) {
+        fail.call('ldms_maf_edges', 'boundaries must start at 0 and end at 0.5')
+    }
+    if ((1..<ldms_maf_edges.size()).any { index -> ldms_maf_edges[index] <= ldms_maf_edges[index - 1] }) {
+        fail.call('ldms_maf_edges', 'boundaries must be strictly increasing')
+    }
+    return [
+        ld_score_region_kb: ld_score_region_kb.toInteger(),
+        ld_bins: ld_bins.toInteger(),
+        maf_edges: ldms_maf_edges,
+    ]
 }
 
 def getGctaBivariatePrevalence(left_meta, right_meta) {
@@ -886,7 +945,12 @@ def validateRelationalInput(
     def options_document = readMethodOptionsDocument(method_options)
     def method_options_by_analysis = validateMethodOptions(method_options, analysis_rows, options_document)
     def pair_prevalence_analysis_ids = relationship_rows
-        .findAll { row -> tokenizeMethodSelector(row[0].relationship_methods).contains('gcta_bivariate_reml') }
+        .findAll { row ->
+            tokenizeMethodSelector(row[0].relationship_methods).any { method ->
+                def capability = getMethodCapabilities()[method]
+                capability && capability.domain == 'pairwise' && capability.consumes_population_prevalence
+            }
+        }
         .collectMany { row -> [normaliseCellValue(row[0].left_analysis_id), normaliseCellValue(row[0].right_analysis_id)] }
         .findAll { analysis_id -> analysis_id }
         .collect { analysis_id -> analysis_id.toString() } as Set
@@ -1044,7 +1108,7 @@ def validateRelationalInput(
         if (left_summary_statistics_id || right_summary_statistics_id) {
             reject.call(
                 ['left_summary_statistics_id', 'right_summary_statistics_id'],
-                'summary-statistics endpoints are reserved for the later SumCors and LDSC relationship routes and cannot be populated in this first dense GCTA slice'
+                'summary-statistics endpoints are reserved for the later SumCors and LDSC relationship routes and cannot be populated for the implemented GCTA pair routes',
             )
         }
 
@@ -1079,6 +1143,13 @@ def validateRelationalInput(
             if (!unknown && !repeated && methods) {
                 methods.each { method ->
                     def request_id = "${method}--${relationship_id}".toString()
+                    def matrix_kind = getMethodCapabilities()[method].matrix_kind
+                    def matrix_settings = matrix_kind == 'gcta_ldms'
+                        ? resolvePairLdmsMatrixSettings(
+                            [:],
+                            getMethodOptionDefaults().gcta.subMap(['ld_score_region_kb', 'ld_bins', 'ldms_maf_edges']),
+                        ) { option, reason -> reject.call('relationship_methods', "default ${option}: ${reason}") }
+                        : [:]
                     def pair_meta = [
                         id: request_id,
                         request_id: request_id,
@@ -1099,8 +1170,8 @@ def validateRelationalInput(
                         build: left_meta.build,
                         ancestry: left_meta.ancestry,
                         genotype_format: left_meta.genotype_format,
-                        matrix_kind: 'gcta_dense',
-                        matrix_settings: [:],
+                        matrix_kind: matrix_kind,
+                        matrix_settings: matrix_settings,
                         reml_bivar_prevalence: getGctaBivariatePrevalence(left_meta, right_meta),
                         native_args: [],
                     ]
@@ -1129,10 +1200,11 @@ def validateRelationalInput(
         error("[nf-core/gwas] ERROR: Validation of linked manifests failed!\n\n${errors.join('\n')}\n")
     }
 
-    def pair_native_args = resolvePairRequestOptions(method_options, options_document, validated_relationships)
+    def pair_request_options = resolvePairRequestOptions(method_options, options_document, validated_relationships)
     def resolved_relationships = validated_relationships.collect { record ->
         def meta = record[0]
-        [meta + [native_args: pair_native_args[meta.request_id]], record[1], record[2], record[3]]
+        def request_options = pair_request_options[meta.request_id]
+        [meta + [native_args: request_options.native_args, matrix_settings: request_options.matrix_settings], record[1], record[2], record[3]]
     }
     return [analyses: validated_rows, relationships: resolved_relationships]
 }

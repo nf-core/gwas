@@ -1,5 +1,5 @@
 name: normalise_gcta_bivariate
-description: Normalize dense GCTA bivariate REML results into estimand views, diagnostics and request provenance while retaining native values
+description: Normalize dense or LDMS GCTA bivariate REML results into estimand views, diagnostics and request provenance while retaining native values
 keywords:
   - gcta
   - bivariate
@@ -14,7 +14,7 @@ tools:
 input:
   - - meta:
         type: map
-        description: Pair-request, endpoint, matrix and native-invocation metadata
+        description: Pair-request, endpoint, dense or LDMS matrix and native-invocation metadata
     - hsq:
         type: file
         description: Native GCTA bivariate REML result
@@ -34,21 +34,21 @@ output:
           description: Pair-request metadata propagated from input
       - heritability.tsv:
           type: file
-          description: Ordered endpoint heritability estimands on every native scale GCTA emitted
+          description: Ordered endpoint and LDMS-component heritability estimands on every native scale GCTA emitted
   genetic_correlation:
     - - meta:
           type: map
           description: Pair-request metadata propagated from input
       - genetic_correlation.tsv:
           type: file
-          description: Ordered pair genetic correlation estimand
+          description: Ordered pair genetic correlation estimands, one per native LDMS component when applicable
   genetic_covariance:
     - - meta:
           type: map
           description: Pair-request metadata propagated from input
       - genetic_covariance.tsv:
           type: file
-          description: Ordered pair observed-scale genetic covariance estimand
+          description: Ordered pair observed-scale genetic covariance estimands, one per native LDMS component when applicable
   diagnostics:
     - - meta:
           type: map

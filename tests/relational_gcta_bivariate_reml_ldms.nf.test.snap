@@ -1,0 +1,66 @@
+{
+    "versions": {
+        "content": [
+            {
+                "CUSTOM_GCTACREATEMGRMMANIFEST": {
+                    "coreutils": 9.5
+                },
+                "CUSTOM_GCTAMERGEGRMPARTS": {
+                    "coreutils": 9.5
+                },
+                "CUSTOM_GCTASTRATIFYLDSCORES": {
+                    "r-base": "4.2.1"
+                },
+                "GCTA_BIVARIATEREMLLDMS": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_CALCULATELDSCORES": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_MAKEGRMPART": {
+                    "gcta": "1.94.1"
+                },
+                "NORMALISE_GCTA_BIVARIATE": {
+                    "python": "3.14.5"
+                },
+                "NORMALISE_PHENOTYPES": {
+                    "python": "3.14.5"
+                },
+                "PLINK2_MAKEBED": {
+                    "plink2": "2.0.0-a.6.9LM"
+                },
+                "PREPARE_BIVARIATE_TRAITS": {
+                    "python": "3.14.5"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-24T02:38:19.677543414"
+    },
+    "results": {
+        "content": [
+            [
+                "diagnostics.tsv",
+                "native.hsq",
+                "native.log",
+                "provenance.json"
+            ],
+            "relationship_id\trequest_id\tmethod\tcomponent\tendpoint\tanalysis_id\ttrait_id\ttrait_type\tscale\testimate\tstandard_error\tclassification\nqt_bt\tgcta_bivariate_reml_ldms--qt_bt\tgcta_bivariate_reml_ldms\tG\tleft\texample_pgen_qt\tQT\tquantitative\tobserved\t0.028416\t0.182369\testimable_with_warning\nqt_bt\tgcta_bivariate_reml_ldms--qt_bt\tgcta_bivariate_reml_ldms\tG\tright\texample_pgen_bt\tBT\tbinary\tobserved\t0.082874\t0.165318\testimable_with_warning\n",
+            "relationship_id\trequest_id\tmethod\tcomponent\tleft_analysis_id\tright_analysis_id\tleft_trait_id\tright_trait_id\testimate\tstandard_error\tclassification\nqt_bt\tgcta_bivariate_reml_ldms--qt_bt\tgcta_bivariate_reml_ldms\tG\texample_pgen_qt\texample_pgen_bt\tQT\tBT\t-1\t5.298639\testimable_with_warning\n",
+            "relationship_id\trequest_id\tmethod\tcomponent\tleft_analysis_id\tright_analysis_id\tleft_trait_id\tright_trait_id\tscale\testimate\tstandard_error\tclassification\nqt_bt\tgcta_bivariate_reml_ldms--qt_bt\tgcta_bivariate_reml_ldms\tG\texample_pgen_qt\texample_pgen_bt\tQT\tBT\tobserved\t-0.019751\t0.052604\testimable_with_warning\n",
+            "relationship_id\trequest_id\tmetric\tvalue\nqt_bt\tgcta_bivariate_reml_ldms--qt_bt\tboth_nonmissing\t200\nqt_bt\tgcta_bivariate_reml_ldms--qt_bt\tcategorical_covariate_samples\t200\nqt_bt\tgcta_bivariate_reml_ldms--qt_bt\tclassification\testimable_with_warning\nqt_bt\tgcta_bivariate_reml_ldms--qt_bt\tendpoint_overlap_samples\t200\nqt_bt\tgcta_bivariate_reml_ldms--qt_bt\tgenetic_components\tG\nqt_bt\tgcta_bivariate_reml_ldms--qt_bt\tleft_nonmissing\t200\nqt_bt\tgcta_bivariate_reml_ldms--qt_bt\tleft_samples\t200\nqt_bt\tgcta_bivariate_reml_ldms--qt_bt\tnative_common_samples\t200\nqt_bt\tgcta_bivariate_reml_ldms--qt_bt\tnative_converged\ttrue\nqt_bt\tgcta_bivariate_reml_ldms--qt_bt\tnative_log_likelihood\t-58.817\nqt_bt\tgcta_bivariate_reml_ldms--qt_bt\tnative_observations\t400\nqt_bt\tgcta_bivariate_reml_ldms--qt_bt\tnative_trait1_nonmissing\t200\nqt_bt\tgcta_bivariate_reml_ldms--qt_bt\tnative_trait2_nonmissing\t200\nqt_bt\tgcta_bivariate_reml_ldms--qt_bt\tquantitative_covariate_samples\t200\nqt_bt\tgcta_bivariate_reml_ldms--qt_bt\tresidual_covariance\t0.085266\nqt_bt\tgcta_bivariate_reml_ldms--qt_bt\tresidual_covariance_status\tretained\nqt_bt\tgcta_bivariate_reml_ldms--qt_bt\tright_nonmissing\t200\nqt_bt\tgcta_bivariate_reml_ldms--qt_bt\tright_samples\t200\nqt_bt\tgcta_bivariate_reml_ldms--qt_bt\tunion_samples\t200\nqt_bt\tgcta_bivariate_reml_ldms--qt_bt\twarnings\tbended_information_matrix,genetic_correlation_at_boundary:G,unreliable_standard_error\n",
+            "{\n    \"artifacts\": {\n        \"native\": [\n            \"native.hsq\",\n            \"native.log\"\n        ],\n        \"normalized\": [\n            \"heritability.tsv\",\n            \"genetic_correlation.tsv\",\n            \"genetic_covariance.tsv\",\n            \"diagnostics.tsv\",\n            \"provenance.json\"\n        ]\n    },\n    \"classification\": \"estimable_with_warning\",\n    \"cohort_id\": \"example_pgen\",\n    \"declared_prevalence\": {\n        \"left\": null,\n        \"right\": 0.1\n    },\n    \"diagnostics\": {\n        \"both_nonmissing\": \"200\",\n        \"categorical_covariate_samples\": \"200\",\n        \"classification\": \"estimable_with_warning\",\n        \"endpoint_overlap_samples\": \"200\",\n        \"genetic_components\": \"G\",\n        \"left_nonmissing\": \"200\",\n        \"left_samples\": \"200\",\n        \"native_common_samples\": \"200\",\n        \"native_converged\": \"true\",\n        \"native_log_likelihood\": \"-58.817\",\n        \"native_observations\": \"400\",\n        \"native_trait1_nonmissing\": \"200\",\n        \"native_trait2_nonmissing\": \"200\",\n        \"quantitative_covariate_samples\": \"200\",\n        \"residual_covariance\": \"0.085266\",\n        \"residual_covariance_status\": \"retained\",\n        \"right_nonmissing\": \"200\",\n        \"right_samples\": \"200\",\n        \"union_samples\": \"200\",\n        \"warnings\": \"bended_information_matrix,genetic_correlation_at_boundary:G,unreliable_standard_error\"\n    },\n    \"effective_prevalence\": [\n        0.1\n    ],\n    \"execution\": {\n        \"container\": \"community.wave.seqera.io/library/python:3.14.5--dc8358b3c5eeb927\",\n        \"process\": \"NFCORE_GWAS:GWAS:NORMALISE_GCTA_BIVARIATE\"\n    },\n    \"genetic_components\": [\n        \"G\"\n    ],\n    \"matrix\": {\n        \"basename\": \"example_pgen.gcta_ldms.7e55b38dddb5\",\n        \"key\": \"7e55b38dddb5\",\n        \"kind\": \"gcta_ldms\",\n        \"settings\": {\n            \"ld_bins\": 1,\n            \"ld_score_region_kb\": 50,\n            \"maf_edges\": [\n                0,\n                0.5\n            ]\n        }\n    },\n    \"method\": \"gcta_bivariate_reml_ldms\",\n    \"native_args\": [\n        \"--reml-maxit\",\n        \"500\"\n    ],\n    \"native_components\": {\n        \"C(G)_tr12\": {\n            \"estimate\": -0.019751,\n            \"native_estimate\": \"-0.019751\",\n            \"native_standard_error\": \"0.052604\",\n            \"standard_error\": 0.052604\n        },\n        \"C(e)_tr12\": {\n            \"estimate\": 0.085266,\n            \"native_estimate\": \"0.085266\",\n            \"native_standard_error\": \"0.059089\",\n            \"standard_error\": 0.059089\n        },\n        \"V(G)/Vp_tr1\": {\n            \"estimate\": 0.028416,\n            \"native_estimate\": \"0.028416\",\n            \"native_standard_error\": \"0.182369\",\n            \"standard_error\": 0.182369\n        },\n        \"V(G)/Vp_tr2\": {\n            \"estimate\": 0.082874,\n            \"native_estimate\": \"0.082874\",\n            \"native_standard_error\": \"0.165318\",\n            \"standard_error\": 0.165318\n        },\n        \"V(G)_tr1\": {\n            \"estimate\": 0.020143,\n            \"native_estimate\": \"0.020143\",\n            \"native_standard_error\": \"0.129282\",\n            \"standard_error\": 0.129282\n        },\n        \"V(G)_tr2\": {\n            \"estimate\": 0.019367,\n            \"native_estimate\": \"0.019367\",\n            \"native_standard_error\": \"0.038739\",\n            \"standard_error\": 0.038739\n        },\n        \"V(e)_tr1\": {\n            \"estimate\": 0.688726,\n            \"native_estimate\": \"0.688726\",\n            \"native_standard_error\": \"0.147072\",\n            \"standard_error\": 0.147072\n        },\n        \"V(e)_tr2\": {\n            \"estimate\": 0.214329,\n            \"native_estimate\": \"0.214329\",\n            \"native_standard_error\": \"0.043773\",\n            \"standard_error\": 0.043773\n        },\n        \"Vp_tr1\": {\n            \"estimate\": 0.708869,\n            \"native_estimate\": \"0.708869\",\n            \"native_standard_error\": \"0.071516\",\n            \"standard_error\": 0.071516\n        },\n        \"Vp_tr2\": {\n            \"estimate\": 0.233696,\n            \"native_estimate\": \"0.233696\",\n            \"native_standard_error\": \"0.023665\",\n            \"standard_error\": 0.023665\n        },\n        \"logL\": {\n            \"estimate\": -58.817,\n            \"native_estimate\": \"-58.817\",\n            \"native_standard_error\": null,\n            \"standard_error\": null\n        },\n        \"n\": {\n            \"estimate\": 400.0,\n            \"native_estimate\": \"400\",\n            \"native_standard_error\": null,\n            \"standard_error\": null\n        },\n        \"rG\": {\n            \"estimate\": -1.0,\n            \"native_estimate\": \"-1.000000\",\n            \"native_standard_error\": \"5.298639\",\n            \"standard_error\": 5.298639\n        }\n    },\n    \"orientation\": {\n        \"left\": {\n            \"analysis_id\": \"example_pgen_qt\",\n            \"trait_id\": \"QT\",\n            \"trait_type\": \"quantitative\"\n        },\n        \"right\": {\n            \"analysis_id\": \"example_pgen_bt\",\n            \"trait_id\": \"BT\",\n            \"trait_type\": \"binary\"\n        }\n    },\n    \"relationship_id\": \"qt_bt\",\n    \"request_id\": \"gcta_bivariate_reml_ldms--qt_bt\",\n    \"schema_version\": \"1.0\",\n    \"tool\": {\n        \"name\": \"gcta\",\n        \"version\": \"1.94.1\"\n    },\n    \"warnings\": [\n        \"bended_information_matrix\",\n        \"genetic_correlation_at_boundary:G\",\n        \"unreliable_standard_error\"\n    ]\n}"
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-24T02:38:19.681530669"
+    }
+}

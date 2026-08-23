@@ -1,0 +1,179 @@
+nextflow_pipeline {
+
+    name "Test primary GCTA bivariate REML-LDMS relationship route"
+    script "../main.nf"
+    tag "pipeline"
+    tag "relational"
+    tag "heritability"
+    tag "genetic_correlation"
+    tag "gcta"
+    tag "gcta_bivariate_reml_ldms"
+
+    def pairInputs = { projectDir, outputDir, name, unary = false ->
+        def analyses = RELATIONAL.analyses(projectDir, outputDir, name, { rows ->
+            def binary = RELATIONAL.analysis(projectDir, 'example_pgen_bt')
+            binary.population_prevalence = 0.1
+            rows << binary
+            rows.each { row ->
+                row.association_methods = ''
+                row.heritability_methods = unary && row.analysis_id == 'example_pgen_qt' ? 'gcta_greml_ldms' : ''
+            }
+        })
+        def relationships = RELATIONAL.relationships(projectDir, outputDir, name, { rows ->
+            rows[0].relationship_methods = 'gcta_bivariate_reml_ldms'
+        })
+        def options = [
+            analyses: unary
+                ? [example_pgen_qt: [gcta: [
+                    reml_no_constrain: true,
+                    ld_score_region_kb: 50,
+                    ld_bins: 1,
+                    ldms_maf_edges: [0, 0.5],
+                ]]]
+                : [:],
+            pair_requests: [
+                'gcta_bivariate_reml_ldms--qt_bt': [
+                    ld_score_region_kb: 50,
+                    ld_bins: 1,
+                    ldms_maf_edges: [0, 0.5],
+                    native_args: ['--reml-maxit', '500'],
+                ],
+            ],
+        ]
+        return [
+            cohort: RELATIONAL.cohorts(projectDir, outputDir, name),
+            analyses: analyses,
+            relationships: relationships,
+            options: RELATIONAL.methodOptions(outputDir, name, options),
+        ]
+    }
+
+    def workFiles = { outputDir ->
+        def files = []
+        new File(new File(outputDir.toString()).parentFile, 'work').eachFileRecurse { entry ->
+            if (entry.isFile()) {
+                files << entry
+            }
+        }
+        return files
+    }
+
+    test("mixed quantitative-binary pair publishes native LDMS components and request provenance") {
+        when {
+            def inputs = pairInputs(projectDir, outputDir, 'gcta_bivariate_ldms_primary')
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = inputs.cohort
+                analysis_manifest = inputs.analyses
+                relationship_manifest = inputs.relationships
+                method_options = inputs.options
+                gcta_grm_parts = 1
+            }
+        }
+
+        then {
+            def request = new File("${params.outdir}/requests/gcta_bivariate_reml_ldms/gcta_bivariate_reml_ldms--qt_bt")
+            def heritability = new File("${params.outdir}/heritability/gcta_bivariate_reml_ldms/gcta_bivariate_reml_ldms--qt_bt/heritability.tsv")
+            def correlation = new File("${params.outdir}/genetic_correlation/gcta_bivariate_reml_ldms/gcta_bivariate_reml_ldms--qt_bt/genetic_correlation.tsv")
+            def covariance = new File("${params.outdir}/genetic_covariance/gcta_bivariate_reml_ldms/gcta_bivariate_reml_ldms--qt_bt/genetic_covariance.tsv")
+            def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
+            def provenance = new groovy.json.JsonSlurper().parse(new File(request, 'provenance.json'))
+            def diagnosticText = new File(request, 'diagnostics.tsv').text
+            def nativeCommand = workFiles(outputDir).find { entry ->
+                entry.name == '.command.sh' && entry.text.contains('--mgrm') && entry.text.contains('--reml-bivar 1 2')
+            }
+            def stableRequestNames = request.listFiles()*.name.sort()
+            def stableProvenance = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(provenance))
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'PLINK2_MAKEBED') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 1 },
+                { assert TRACE.count(workflow, 'CUSTOM_GCTASTRATIFYLDSCORES') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_MAKEGRMPART') == 1 },
+                { assert TRACE.count(workflow, 'CUSTOM_GCTACREATEMGRMMANIFEST') == 1 },
+                { assert TRACE.count(workflow, 'PREPARE_BIVARIATE_TRAITS') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEREMLLDMS') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEREML') == 0 },
+                { assert TRACE.count(workflow, 'NORMALISE_GCTA_BIVARIATE') == 1 },
+                { assert new File(request, 'native.hsq').isFile() },
+                { assert new File(request, 'native.log').isFile() },
+                { assert heritability.readLines().first().contains('\tcomponent\t') },
+                { assert correlation.readLines().first().contains('\tcomponent\t') },
+                { assert covariance.readLines().first().contains('\tcomponent\t') },
+                { assert provenance.method == 'gcta_bivariate_reml_ldms' },
+                { assert provenance.matrix.kind == 'gcta_ldms' },
+                { assert provenance.matrix.settings == [ld_bins: 1, ld_score_region_kb: 50, maf_edges: [0, 0.5]] },
+                { assert provenance.matrix.key },
+                { assert provenance.matrix.basename != provenance.request_id },
+                { assert provenance.genetic_components == ['G'] },
+                { assert provenance.native_args == ['--reml-maxit', '500'] },
+                { assert provenance.effective_prevalence == [0.1] },
+                { assert provenance.diagnostics.residual_covariance_status == 'retained' },
+                { assert nativeCommand != null },
+                { assert nativeCommand.text.contains('--reml-bivar-prevalence 0.1') },
+                { assert nativeCommand.text.contains('--reml-maxit 500') },
+                { assert snapshot(removeNextflowVersion(versions.toString())).match('versions') },
+                { assert snapshot(stableRequestNames, heritability.text, correlation.text, covariance.text, diagnosticText, stableProvenance).match('results') },
+            )
+        }
+    }
+
+    test("primary LDMS pair route preserves topology under stub execution") {
+        options "-stub"
+
+        when {
+            def inputs = pairInputs(projectDir, outputDir, 'gcta_bivariate_ldms_stub')
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = inputs.cohort
+                analysis_manifest = inputs.analyses
+                relationship_manifest = inputs.relationships
+                method_options = inputs.options
+                gcta_grm_parts = 1
+            }
+        }
+
+        then {
+            def request = new File("${params.outdir}/requests/gcta_bivariate_reml_ldms/gcta_bivariate_reml_ldms--qt_bt")
+            def provenance = new groovy.json.JsonSlurper().parse(new File(request, 'provenance.json'))
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEREMLLDMS') == 1 },
+                { assert TRACE.count(workflow, 'NORMALISE_GCTA_BIVARIATE') == 1 },
+                { assert new File(request, 'native.hsq').isFile() },
+                { assert provenance.method == 'gcta_bivariate_reml_ldms' },
+                { assert provenance.stub == true },
+                { assert provenance.classification == 'completed_nonestimable' },
+            )
+        }
+    }
+
+    test("scientifically identical unary and pair LDMS requests share one matrix family") {
+        when {
+            def inputs = pairInputs(projectDir, outputDir, 'gcta_bivariate_ldms_reuse', true)
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = inputs.cohort
+                analysis_manifest = inputs.analyses
+                relationship_manifest = inputs.relationships
+                method_options = inputs.options
+                gcta_grm_parts = 1
+            }
+        }
+
+        then {
+            def unary = new File("${params.outdir}/heritability/individual/gcta_greml_ldms/example_pgen_qt/example_pgen_qt.gcta_greml_ldms.hsq")
+            def pair = new File("${params.outdir}/requests/gcta_bivariate_reml_ldms/gcta_bivariate_reml_ldms--qt_bt/native.hsq")
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 1 },
+                { assert TRACE.count(workflow, 'CUSTOM_GCTASTRATIFYLDSCORES') == 1 },
+                { assert TRACE.count(workflow, 'CUSTOM_GCTACREATEMGRMMANIFEST') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_REMLLDMS') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEREMLLDMS') == 1 },
+                { assert unary.isFile() },
+                { assert pair.isFile() },
+            )
+        }
+    }
+}

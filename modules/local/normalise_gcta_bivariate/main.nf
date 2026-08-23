@@ -31,26 +31,28 @@ process NORMALISE_GCTA_BIVARIATE {
     template('normalise_gcta_bivariate.py')
 
     stub:
+    def component_header = meta.method == 'gcta_bivariate_reml_ldms' ? '\tcomponent' : ''
+    def component_value = meta.method == 'gcta_bivariate_reml_ldms' ? '\tG' : ''
     """
     cat <<-'END_HERITABILITY' > heritability.tsv
-    relationship_id\trequest_id\tmethod\tendpoint\tanalysis_id\ttrait_id\ttrait_type\tscale\testimate\tstandard_error\tclassification
-    ${meta.relationship_id}\t${meta.request_id}\tgcta_bivariate_reml\tleft\t${meta.left_analysis_id}\t${meta.left_trait_id}\t${meta.left_trait_type}\tobserved\tNA\tNA\tcompleted_nonestimable
-    ${meta.relationship_id}\t${meta.request_id}\tgcta_bivariate_reml\tright\t${meta.right_analysis_id}\t${meta.right_trait_id}\t${meta.right_trait_type}\tobserved\tNA\tNA\tcompleted_nonestimable
+    relationship_id\trequest_id\tmethod${component_header}\tendpoint\tanalysis_id\ttrait_id\ttrait_type\tscale\testimate\tstandard_error\tclassification
+    ${meta.relationship_id}\t${meta.request_id}\t${meta.method}${component_value}\tleft\t${meta.left_analysis_id}\t${meta.left_trait_id}\t${meta.left_trait_type}\tobserved\tNA\tNA\tcompleted_nonestimable
+    ${meta.relationship_id}\t${meta.request_id}\t${meta.method}${component_value}\tright\t${meta.right_analysis_id}\t${meta.right_trait_id}\t${meta.right_trait_type}\tobserved\tNA\tNA\tcompleted_nonestimable
     END_HERITABILITY
     cat <<-'END_CORRELATION' > genetic_correlation.tsv
-    relationship_id\trequest_id\tmethod\tleft_analysis_id\tright_analysis_id\tleft_trait_id\tright_trait_id\testimate\tstandard_error\tclassification
-    ${meta.relationship_id}\t${meta.request_id}\tgcta_bivariate_reml\t${meta.left_analysis_id}\t${meta.right_analysis_id}\t${meta.left_trait_id}\t${meta.right_trait_id}\tNA\tNA\tcompleted_nonestimable
+    relationship_id\trequest_id\tmethod${component_header}\tleft_analysis_id\tright_analysis_id\tleft_trait_id\tright_trait_id\testimate\tstandard_error\tclassification
+    ${meta.relationship_id}\t${meta.request_id}\t${meta.method}${component_value}\t${meta.left_analysis_id}\t${meta.right_analysis_id}\t${meta.left_trait_id}\t${meta.right_trait_id}\tNA\tNA\tcompleted_nonestimable
     END_CORRELATION
     cat <<-'END_COVARIANCE' > genetic_covariance.tsv
-    relationship_id\trequest_id\tmethod\tleft_analysis_id\tright_analysis_id\tleft_trait_id\tright_trait_id\tscale\testimate\tstandard_error\tclassification
-    ${meta.relationship_id}\t${meta.request_id}\tgcta_bivariate_reml\t${meta.left_analysis_id}\t${meta.right_analysis_id}\t${meta.left_trait_id}\t${meta.right_trait_id}\tobserved\tNA\tNA\tcompleted_nonestimable
+    relationship_id\trequest_id\tmethod${component_header}\tleft_analysis_id\tright_analysis_id\tleft_trait_id\tright_trait_id\tscale\testimate\tstandard_error\tclassification
+    ${meta.relationship_id}\t${meta.request_id}\t${meta.method}${component_value}\t${meta.left_analysis_id}\t${meta.right_analysis_id}\t${meta.left_trait_id}\t${meta.right_trait_id}\tobserved\tNA\tNA\tcompleted_nonestimable
     END_COVARIANCE
     cat <<-'END_DIAGNOSTICS' > diagnostics.tsv
     relationship_id\trequest_id\tmetric\tvalue
     ${meta.relationship_id}\t${meta.request_id}\tclassification\tcompleted_nonestimable
     END_DIAGNOSTICS
     cat <<-'END_PROVENANCE' > provenance.json
-    {"schema_version":"1.0","relationship_id":"${meta.relationship_id}","request_id":"${meta.request_id}","method":"gcta_bivariate_reml","classification":"completed_nonestimable","stub":true}
+    {"schema_version":"1.0","relationship_id":"${meta.relationship_id}","request_id":"${meta.request_id}","method":"${meta.method}","classification":"completed_nonestimable","stub":true}
     END_PROVENANCE
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

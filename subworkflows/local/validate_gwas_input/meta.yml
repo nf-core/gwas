@@ -33,7 +33,7 @@ output:
       ontologies:
         - edam: "http://edamontology.org/format_2330"
   - relationships:
-      description: Canonical pair-request tuples with endpoint identity, deterministic request ID, fixed matrix settings and relationship-owned covariate resources
+      description: Canonical pair-request tuples with endpoint identity, deterministic request ID, dense or relationship-owned LDMS matrix settings and relationship-owned covariate resources
       structure: "[map meta, list genotype_files, path pair_quant_covariates|[], path pair_cat_covariates|[]]"
       pattern: "*.{pgen,psam,pvar,bed,bim,fam,vcf,vcf.gz,txt,tsv}"
       ontologies:

@@ -127,6 +127,7 @@ nextflow_function {
                     'gcta_greml',
                     'gcta_greml_ldms',
                     'gcta_bivariate_reml',
+                    'gcta_bivariate_reml_ldms',
                     'ldak_reml',
                     'ldak_he',
                     'ldak_pcgc',
@@ -136,10 +137,61 @@ nextflow_function {
                 { assert function.result.gcta_greml_ldms.matrix_kind == 'gcta_ldms' },
                 { assert function.result.gcta_bivariate_reml.domain == 'pairwise' },
                 { assert function.result.gcta_bivariate_reml.matrix_kind == 'gcta_dense' },
+                { assert function.result.gcta_bivariate_reml_ldms.domain == 'pairwise' },
+                { assert function.result.gcta_bivariate_reml_ldms.matrix_kind == 'gcta_ldms' },
                 { assert function.result.ldak_reml.matrix_kind == 'ldak_kinship' },
                 { assert function.result.ldak_pcgc.requires_population_prevalence },
                 { assert function.result.ldak_he.citation_key == function.result.ldak_pcgc.citation_key },
             )
+        }
+    }
+
+    test("pair LDMS settings resolve independently of either endpoint analysis") {
+        function "resolvePairLdmsMatrixSettings"
+
+        when {
+            function {
+                """
+                input[0] = [ld_score_region_kb: 50, ld_bins: 1, ldms_maf_edges: [0, 0.5]]
+                input[1] = [ld_score_region_kb: 200, ld_bins: 4, maf_edges: [0, 0.01, 0.05, 0.2, 0.5]]
+                input[2] = { option, reason -> error("\${option}: \${reason}") }
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == [ld_score_region_kb: 50, ld_bins: 1, maf_edges: [0, 0.5]] },
+            )
+        }
+    }
+
+    def invalidPairLdmsSettings = [
+        [name: 'non-positive LD bins', options: [ld_bins: 0], expected: 'ld_bins: expected one positive integer'],
+        [name: 'non-increasing MAF boundaries', options: [ldms_maf_edges: [0, 0.05, 0.01, 0.5]], expected: 'ldms_maf_edges: boundaries must be strictly increasing'],
+    ]
+
+    invalidPairLdmsSettings.each { scenario ->
+        test("pair LDMS settings reject ${scenario.name}") {
+            function "resolvePairLdmsMatrixSettings"
+
+            when {
+                function {
+                    """
+                    input[0] = ${scenario.options.inspect()}
+                    input[1] = [ld_score_region_kb: 200, ld_bins: 4, maf_edges: [0, 0.01, 0.05, 0.2, 0.5]]
+                    input[2] = { option, reason -> error("\${option}: \${reason}") }
+                    """
+                }
+            }
+
+            then {
+                assertAll(
+                    { assert function.failed },
+                    { assert function.stdout.join('\n').contains(scenario.expected) },
+                )
+            }
         }
     }
 

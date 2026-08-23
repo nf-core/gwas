@@ -277,7 +277,7 @@ def selectedCitationKeys(selected_methods) {
 
     def citation_order = ['plink2', 'regenie', 'gcta_fastgwa', 'gcta_greml', 'gcta_greml_ldms', 'gcta_bivariate_reml', 'ldak_kvik', 'ldak']
     def keys = (association + heritability + pairwise)
-        .collect { token -> capabilities[token].citation_key }
+        .collectMany { token -> capabilities[token].citation_keys ?: [capabilities[token].citation_key] }
         .findAll { key -> key }
         .unique()
         .sort { key -> citation_order.indexOf(key) }
@@ -289,7 +289,9 @@ def selectedCitationKeys(selected_methods) {
 }
 
 def toolCitationText(selected_methods) {
-    def keys = selectedCitationKeys(selected_methods)
+    def association = (selected_methods.association ?: []) as Set
+    def heritability = (selected_methods.heritability ?: []) as Set
+    def pairwise = (selected_methods.pairwise ?: []) as Set
     def association_labels = [
         plink2: 'PLINK 2 (Chang <em>et al.</em>, 2015)',
         regenie: 'REGENIE (Mbatchou <em>et al.</em>, 2021)',
@@ -299,15 +301,18 @@ def toolCitationText(selected_methods) {
     def heritability_labels = [
         gcta_greml: 'GCTA GREML (Yang <em>et al.</em>, 2011)',
         gcta_greml_ldms: 'GCTA GREML-LDMS (Yang <em>et al.</em>, 2015)',
-        ldak: 'LDAK (Speed <em>et al.</em>, 2012)',
+        ldak_reml: 'LDAK (Speed <em>et al.</em>, 2012)',
+        ldak_he: 'LDAK (Speed <em>et al.</em>, 2012)',
+        ldak_pcgc: 'LDAK (Speed <em>et al.</em>, 2012)',
     ]
     def pairwise_labels = [
         gcta_bivariate_reml: 'GCTA bivariate REML (Lee <em>et al.</em>, 2012)',
+        gcta_bivariate_reml_ldms: 'GCTA bivariate REML-LDMS (Lee <em>et al.</em>, 2012; Yang <em>et al.</em>, 2015)',
     ]
     def sentences = []
-    def selected_association = keys.findAll { key -> association_labels.containsKey(key) }.collect { key -> association_labels[key] }
-    def selected_heritability = keys.findAll { key -> heritability_labels.containsKey(key) }.collect { key -> heritability_labels[key] }
-    def selected_pairwise = keys.findAll { key -> pairwise_labels.containsKey(key) }.collect { key -> pairwise_labels[key] }
+    def selected_association = association_labels.findAll { token, _label -> token in association }.values().toList()
+    def selected_heritability = heritability_labels.findAll { token, _label -> token in heritability }.values().toList().unique()
+    def selected_pairwise = pairwise_labels.findAll { token, _label -> token in pairwise }.values().toList()
     if (selected_association) {
         sentences << "Association testing was performed with ${joinProseList(selected_association)}."
         sentences << 'Association summary statistics were harmonised with GWASLab.'

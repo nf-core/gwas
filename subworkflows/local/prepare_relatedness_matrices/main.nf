@@ -235,7 +235,7 @@ workflow PREPARE_RELATEDNESS_MATRICES {
 
     def ch_gcta_ldms = ch_requests
         .filter { _key, _meta, request, _weights_file -> request.kind == 'gcta_ldms' }
-        .map { key, meta, _request, _weights_file -> [key, meta] }
+        .map { key, meta, _request, _weights_file -> [key, meta.relationship_id ? meta + [matrix_key: key] : meta] }
         .combine(
             PLINK_PREPARE_GRM_LDMS_GCTA.out.mgrm_bundle.map { matrix_meta, mgrm, grm_files -> [matrix_meta.key, mgrm, grm_files] },
             by: 0
@@ -331,7 +331,9 @@ def buildRelatednessMatrixKey(identity, settings) {
 
 def getRelatednessMatrixKinds(meta) {
     def capabilities = getMethodCapabilities()
-    def selected = ((meta.association_methods ?: []) + (meta.heritability_methods ?: []) + (meta.relationship_methods ?: [])) as Set
+    def selected = meta.relationship_id
+        ? [meta.method] as Set
+        : ((meta.association_methods ?: []) + (meta.heritability_methods ?: [])) as Set
     return ['gcta_dense', 'gcta_ldms', 'gcta_sparse', 'ldak_kinship'].findAll { kind ->
         selected.any { method -> capabilities[method] && capabilities[method].matrix_kind == kind }
     }

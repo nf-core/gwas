@@ -1,2 +1,2 @@
 relationship_id,left_analysis_id,right_analysis_id,left_summary_statistics_id,right_summary_statistics_id,relationship_methods,pair_quant_covariates,pair_cat_covariates
-heterogeneous_qt_bt,heterogeneous_qt,heterogeneous_bt,,,gcta_bivariate_reml,,
+heterogeneous_qt_bt,heterogeneous_qt,heterogeneous_bt,,,"gcta_bivariate_reml,gcta_bivariate_reml_ldms",,
