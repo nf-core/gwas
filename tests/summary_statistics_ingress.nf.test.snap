@@ -1,0 +1,23 @@
+{
+    "versions": {
+        "content": [
+            {
+                "CANONICALISE_SUMMARY_STATISTICS": {
+                    "python": "3.14.5"
+                },
+                "GWASLAB_HARMONIZE": {
+                    "gwaslab": "4.1.9",
+                    "python": "3.12.13"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-24T03:23:57.173994014"
+    }
+}

@@ -89,7 +89,7 @@ nextflow_pipeline {
                     new File(association, "${analysis_id}/${analysis_id}.gcta_fastgwa.fastGWA")
                 }
                 def harmonised_results = analysis_ids.collect { analysis_id ->
-                    new File(summary_statistics, "${analysis_id}/${analysis_id}.gcta_fastgwa.gwaslab.tsv.gz")
+                    new File(summary_statistics, "${analysis_id}--gcta_fastgwa/${analysis_id}--gcta_fastgwa.canonical.tsv.gz")
                 }
 
                 if (mode.stub) {
@@ -103,7 +103,7 @@ nextflow_pipeline {
                         { assert TRACE.count(workflow, 'GWASLAB_HARMONIZE') == 5 },
                         { assert TRACE.count(workflow, 'GCTA_REML') == 1 },
                         { assert association.list().toList().sort() == analysis_ids },
-                        { assert summary_statistics.list().toList().sort() == analysis_ids },
+                        { assert summary_statistics.list().toList().sort() == analysis_ids.collect { id -> "${id}--gcta_fastgwa" }.sort() },
                         { assert native_results.every { result -> result.isFile() } },
                         { assert harmonised_results.every { result -> result.isFile() } },
                         { assert greml.isFile() },
@@ -128,7 +128,7 @@ nextflow_pipeline {
                     def stable_name_association = getAllFilesFromDir("${params.outdir}/association", relative: true, includeDir: true).findAll { path -> path.toString() }
                     def stable_path_association = getAllFilesFromDir("${params.outdir}/association", ignoreFile: 'tests/.nftignore')
                     def stable_name_summary_statistics = getAllFilesFromDir("${params.outdir}/summary_statistics", relative: true, includeDir: true).findAll { path -> path.toString() }
-                    def stable_path_summary_statistics = getAllFilesFromDir("${params.outdir}/summary_statistics", ignoreFile: 'tests/.nftignore')
+                    def stable_path_summary_statistics = RELATIONAL.gzipTextHashes("${params.outdir}/summary_statistics")
                     assertAll(
                         { assert workflow.success },
                         // Four declarations canonicalise to cutoff 0.05; the fifth requests 0.025.
@@ -140,7 +140,7 @@ nextflow_pipeline {
                         // GREML gets its own dense build rather than reusing a fastGWA sparse family.
                         { assert TRACE.count(workflow, 'GCTA_REML') == 1 },
                         { assert association.list().toList().sort() == analysis_ids },
-                        { assert summary_statistics.list().toList().sort() == analysis_ids },
+                        { assert summary_statistics.list().toList().sort() == analysis_ids.collect { id -> "${id}--gcta_fastgwa" }.sort() },
                         { assert greml.isFile() },
                         { assert fastgwa_commands.size() == 5 },
                         { assert fastgwa_commands.count { entry -> entry.text.contains('--fastGWA-mlm-binary') } == 1 },

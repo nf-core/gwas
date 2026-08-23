@@ -2,6 +2,9 @@
     "versions": {
         "content": [
             {
+                "CANONICALISE_SUMMARY_STATISTICS": {
+                    "python": "3.14.5"
+                },
                 "CUSTOM_GCTAMERGEGRMPARTS": {
                     "coreutils": 9.5
                 },
@@ -33,7 +36,7 @@
             "nf-test": "0.9.3",
             "nextflow": "25.10.4"
         },
-        "timestamp": "2026-08-02T08:12:02.571754574"
+        "timestamp": "2026-08-24T02:51:11.798487453"
     },
     "association": {
         "content": [
@@ -62,34 +65,39 @@
             "nf-test": "0.9.3",
             "nextflow": "25.10.4"
         },
-        "timestamp": "2026-08-12T20:40:30.428715423"
+        "timestamp": "2026-08-24T03:36:51.342837812"
     },
     "summary_statistics": {
         "content": [
             [
-                "fastgwa_and_greml",
-                "fastgwa_and_greml/fastgwa_and_greml.gcta_fastgwa.gwaslab.tsv.gz",
-                "fastgwa_binary",
-                "fastgwa_binary/fastgwa_binary.gcta_fastgwa.gwaslab.tsv.gz",
-                "fastgwa_different",
-                "fastgwa_different/fastgwa_different.gcta_fastgwa.gwaslab.tsv.gz",
-                "fastgwa_same_1",
-                "fastgwa_same_1/fastgwa_same_1.gcta_fastgwa.gwaslab.tsv.gz",
-                "fastgwa_same_2",
-                "fastgwa_same_2/fastgwa_same_2.gcta_fastgwa.gwaslab.tsv.gz"
+                "fastgwa_and_greml--gcta_fastgwa",
+                "fastgwa_and_greml--gcta_fastgwa/fastgwa_and_greml--gcta_fastgwa.canonical.tsv.gz",
+                "fastgwa_and_greml--gcta_fastgwa/fastgwa_and_greml--gcta_fastgwa.provenance.json",
+                "fastgwa_binary--gcta_fastgwa",
+                "fastgwa_binary--gcta_fastgwa/fastgwa_binary--gcta_fastgwa.canonical.tsv.gz",
+                "fastgwa_binary--gcta_fastgwa/fastgwa_binary--gcta_fastgwa.provenance.json",
+                "fastgwa_different--gcta_fastgwa",
+                "fastgwa_different--gcta_fastgwa/fastgwa_different--gcta_fastgwa.canonical.tsv.gz",
+                "fastgwa_different--gcta_fastgwa/fastgwa_different--gcta_fastgwa.provenance.json",
+                "fastgwa_same_1--gcta_fastgwa",
+                "fastgwa_same_1--gcta_fastgwa/fastgwa_same_1--gcta_fastgwa.canonical.tsv.gz",
+                "fastgwa_same_1--gcta_fastgwa/fastgwa_same_1--gcta_fastgwa.provenance.json",
+                "fastgwa_same_2--gcta_fastgwa",
+                "fastgwa_same_2--gcta_fastgwa/fastgwa_same_2--gcta_fastgwa.canonical.tsv.gz",
+                "fastgwa_same_2--gcta_fastgwa/fastgwa_same_2--gcta_fastgwa.provenance.json"
             ],
             [
-                "fastgwa_and_greml.gcta_fastgwa.gwaslab.tsv.gz:md5,a4d5535f646d99afb20e750f74719340",
-                "fastgwa_binary.gcta_fastgwa.gwaslab.tsv.gz:md5,b23f4a0e8f13104f9394d4b93638a210",
-                "fastgwa_different.gcta_fastgwa.gwaslab.tsv.gz:md5,a4d5535f646d99afb20e750f74719340",
-                "fastgwa_same_1.gcta_fastgwa.gwaslab.tsv.gz:md5,a4d5535f646d99afb20e750f74719340",
-                "fastgwa_same_2.gcta_fastgwa.gwaslab.tsv.gz:md5,a4d5535f646d99afb20e750f74719340"
+                "fastgwa_and_greml--gcta_fastgwa/fastgwa_and_greml--gcta_fastgwa.canonical.tsv.gz:md5,45d8a16e24ebba350e6e70c16d3abc32",
+                "fastgwa_binary--gcta_fastgwa/fastgwa_binary--gcta_fastgwa.canonical.tsv.gz:md5,62a9e3f4686436e25bf553c316749960",
+                "fastgwa_different--gcta_fastgwa/fastgwa_different--gcta_fastgwa.canonical.tsv.gz:md5,45d8a16e24ebba350e6e70c16d3abc32",
+                "fastgwa_same_1--gcta_fastgwa/fastgwa_same_1--gcta_fastgwa.canonical.tsv.gz:md5,45d8a16e24ebba350e6e70c16d3abc32",
+                "fastgwa_same_2--gcta_fastgwa/fastgwa_same_2--gcta_fastgwa.canonical.tsv.gz:md5,45d8a16e24ebba350e6e70c16d3abc32"
             ]
         ],
         "meta": {
             "nf-test": "0.9.3",
             "nextflow": "25.10.4"
         },
-        "timestamp": "2026-08-12T20:40:30.467619896"
+        "timestamp": "2026-08-24T03:36:51.403947548"
     }
 }

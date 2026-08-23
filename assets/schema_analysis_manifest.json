@@ -101,6 +101,14 @@
                 "description": "Optional population prevalence for binary-trait heritability methods that consume liability-scale prevalence.",
                 "errorMessage": "Population prevalence must be a number strictly between 0 and 1",
                 "meta": ["population_prevalence"]
+            },
+            "sample_prevalence": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "exclusiveMaximum": 1,
+                "description": "Optional sample case fraction for a binary trait.",
+                "errorMessage": "Sample prevalence must be a number strictly between 0 and 1",
+                "meta": ["sample_prevalence"]
             }
         },
         "required": ["analysis_id", "cohort_id", "trait_id", "trait_type", "phenotype", "phenotype_column"]

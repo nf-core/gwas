@@ -52,10 +52,10 @@ nextflow_pipeline {
                 { assert TRACE.tags(workflow, 'NORMALISE_PHENOTYPES').sort() == analysisIds },
                 { assert TRACE.count(workflow, 'NORMALISE_PHENOTYPES') == analysisIds.size() },
                 { assert TRACE.count(workflow, 'PLINK2_GLM') == analysisIds.size() },
-                { assert TRACE.tags(workflow, 'GWASLAB_HARMONIZE').sort() == analysisIds },
+                { assert TRACE.tags(workflow, 'GWASLAB_HARMONIZE').sort() == analysisIds.collect { id -> "${id}--plink2" }.sort() },
                 { assert plink2.list().toList().sort() == analysisIds },
-                { assert harmonised.list().toList().sort() == analysisIds },
-                { assert analysisIds.every { id -> new File(harmonised, "${id}/${id}.plink2.gwaslab.tsv.gz").exists() } },
+                { assert harmonised.list().toList().sort() == analysisIds.collect { id -> "${id}--plink2" }.sort() },
+                { assert analysisIds.every { id -> new File(harmonised, "${id}--plink2/${id}--plink2.canonical.tsv.gz").exists() } },
                 { assert snapshot(stable_name_association, stable_path_association).match('association') },
                 { assert snapshot(removeNextflowVersion(versions.toString())).match('versions') },
             )
@@ -202,17 +202,15 @@ nextflow_pipeline {
         }
     }
 
-    test("sample_prevalence is not a public analysis-manifest field") {
+    test("sample prevalence is rejected for a quantitative analysis") {
 
         when {
             params {
                 outdir = "$outputDir"
-                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, "sample_prevalence_header")
-                analysis_manifest = RELATIONAL.appendColumn(
-                    RELATIONAL.analyses(projectDir, outputDir, "sample_prevalence_header"),
-                    'sample_prevalence',
-                    '0.4',
-                )
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, "quantitative_sample_prevalence")
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, "quantitative_sample_prevalence", { rows ->
+                    rows[0].sample_prevalence = 0.4
+                })
             }
         }
 
@@ -221,8 +219,9 @@ nextflow_pipeline {
             assertAll(
                 { assert !workflow.success },
                 { assert report.contains(params.analysis_manifest.toString()) },
-                { assert report.contains('header row 1') },
-                { assert report.contains("unexpected column headers: 'sample_prevalence'") },
+                { assert report.contains("row 2 (analysis_id 'example_pgen_qt')") },
+                { assert report.contains("field 'sample_prevalence'") },
+                { assert report.contains('sample prevalence has no meaning on a quantitative trait') },
                 { assert TRACE.count(workflow, 'NORMALISE_PHENOTYPES') == 0 },
             )
         }
@@ -307,6 +306,7 @@ nextflow_pipeline {
     }
 
     test("a cohort manifest without an analysis manifest is rejected") {
+        tag "manifest_pairing"
 
         when {
             params {
@@ -320,13 +320,14 @@ nextflow_pipeline {
             def report = VALIDATION.report(outputDir, workflow.stdout)
             assertAll(
                 { assert !workflow.success },
-                { assert report.contains('Missing required parameter(s): analysis_manifest') },
+                { assert report.contains('--analysis_manifest is missing; linked manifests require both') },
                 { assert TRACE.count(workflow, 'NORMALISE_PHENOTYPES') == 0 },
             )
         }
     }
 
     test("an analysis manifest without a cohort manifest is rejected") {
+        tag "manifest_pairing"
 
         when {
             params {
@@ -340,7 +341,8 @@ nextflow_pipeline {
             def report = VALIDATION.report(outputDir, workflow.stdout)
             assertAll(
                 { assert !workflow.success },
-                { assert report.contains('Missing required parameter(s): cohort_manifest') },
+                { assert report.contains('--analysis_manifest') },
+                { assert report.contains('--cohort_manifest is missing; linked manifests require both') },
                 { assert TRACE.count(workflow, 'NORMALISE_PHENOTYPES') == 0 },
             )
         }

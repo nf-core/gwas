@@ -51,8 +51,8 @@ nextflow_pipeline {
                 { assert TRACE.count(workflow, 'LDAK_KVIKSTEP1') == 2 },
                 { assert TRACE.count(workflow, 'LDAK_KVIKSTEP2') == 2 },
                 { assert TRACE.count(workflow, 'GWASLAB_HARMONIZE') == 2 },
-                { assert new File(harmonisedRoot, 'example_bfile_qt/example_bfile_qt.ldak_kvik.gwaslab.tsv.gz').exists() },
-                { assert new File(harmonisedRoot, 'example_pgen_bt/example_pgen_bt.ldak_kvik.gwaslab.tsv.gz').exists() },
+                { assert new File(harmonisedRoot, 'example_bfile_qt--ldak_kvik/example_bfile_qt--ldak_kvik.canonical.tsv.gz').exists() },
+                { assert new File(harmonisedRoot, 'example_pgen_bt--ldak_kvik/example_pgen_bt--ldak_kvik.canonical.tsv.gz').exists() },
                 { assert snapshot(stableNameAssociation, stablePathAssociation).match('association') },
                 { assert snapshot(removeNextflowVersion(versions.toString())).match('versions') },
             )

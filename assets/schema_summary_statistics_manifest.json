@@ -1,0 +1,151 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://raw.githubusercontent.com/nf-core/gwas/master/assets/schema_summary_statistics_manifest.json",
+    "title": "nf-core/gwas pipeline - summary-statistics manifest schema",
+    "description": "Schema for the summary-statistics manifest provided with params.summary_statistics_manifest. One row declares one external or pipeline-generated scientific summary result.",
+    "type": "array",
+    "items": {
+        "type": "object",
+        "properties": {
+            "summary_statistics_id": {
+                "type": "string",
+                "pattern": "^\\S+$",
+                "description": "Unique stable identifier for the canonical summary-statistics result.",
+                "errorMessage": "Summary-statistics ID must be provided, must be unique and cannot contain spaces",
+                "meta": ["id"]
+            },
+            "trait_id": {
+                "type": "string",
+                "pattern": "^\\S+$",
+                "description": "Declared trait identifier represented by this summary-statistics result.",
+                "errorMessage": "Trait ID must be provided and cannot contain spaces",
+                "meta": ["trait"]
+            },
+            "trait_type": {
+                "type": "string",
+                "enum": ["quantitative", "binary"],
+                "description": "Declared trait type, which is never inferred from summary-statistics values.",
+                "errorMessage": "Trait type must be one of 'quantitative' or 'binary'",
+                "meta": ["trait_type"]
+            },
+            "source": {
+                "type": "string",
+                "format": "file-path",
+                "exists": true,
+                "pattern": "^\\S+\\.(tsv|txt|csv)(\\.gz|\\.bgz)?$",
+                "description": "External raw or canonical source summary-statistics table; blank for a pipeline-generated result.",
+                "errorMessage": "Source must be a readable .tsv, .txt or .csv table, optionally gzip-compressed, and cannot contain spaces"
+            },
+            "source_mode": {
+                "type": "string",
+                "enum": ["raw", "canonical"],
+                "description": "Whether an external source requires GWASLab harmonisation or already asserts the canonical contract; blank for a pipeline-generated result.",
+                "errorMessage": "Source mode must be one of 'raw' or 'canonical'",
+                "meta": ["source_mode"]
+            },
+            "source_format": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_.+-]+$",
+                "description": "GWASLab input-format name for external raw input or nfcore_gwas_canonical_v1 for external canonical input; blank for a pipeline-generated result.",
+                "errorMessage": "Source format must be a single GWASLab format token or 'nfcore_gwas_canonical_v1'",
+                "meta": ["source_format"]
+            },
+            "producer_analysis_id": {
+                "type": "string",
+                "pattern": "^\\S+$",
+                "description": "Analysis identifier that produces an internal summary result; blank for an external result.",
+                "errorMessage": "Producer analysis ID cannot contain spaces",
+                "meta": ["producer_analysis_id"]
+            },
+            "producer_association_method": {
+                "type": "string",
+                "pattern": "^[a-z0-9_]+$",
+                "description": "Association method selected by the producer analysis; blank for an external result.",
+                "errorMessage": "Producer association method must be one lowercase method token",
+                "meta": ["producer_association_method"]
+            },
+            "genome_build": {
+                "type": "string",
+                "enum": ["GRCh37", "GRCh38"],
+                "description": "Declared human reference build of an external source; derived from the producer analysis for an internal result.",
+                "errorMessage": "Genome build must be one of 'GRCh37' or 'GRCh38'",
+                "meta": ["build"]
+            },
+            "ancestry": {
+                "type": "string",
+                "pattern": "^\\S+$",
+                "description": "Researcher-declared ancestry or population provenance label for an external source; derived for an internal result.",
+                "errorMessage": "Ancestry must be provided and cannot contain spaces",
+                "meta": ["ancestry"]
+            },
+            "source_method": {
+                "type": "string",
+                "pattern": "^\\S+$",
+                "description": "Method or program that produced an external source; derived from producer_association_method for an internal result.",
+                "errorMessage": "Source method must be provided and cannot contain spaces",
+                "meta": ["source_method"]
+            },
+            "source_release": {
+                "type": ["string", "number"],
+                "pattern": "^\\S+$",
+                "description": "Optional study, dataset or software release associated with the source.",
+                "errorMessage": "Source release must be one token without spaces",
+                "meta": ["source_release"]
+            },
+            "heritability_methods": {
+                "type": "string",
+                "pattern": "^[a-z0-9_]+(,[a-z0-9_]+)*$",
+                "description": "Optional comma-delimited unary summary-statistics methods selected for this result.",
+                "errorMessage": "Heritability methods must be a comma-delimited list of lowercase tokens with no spaces",
+                "meta": ["heritability_methods"]
+            },
+            "population_prevalence": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "exclusiveMaximum": 1,
+                "description": "Optional population prevalence for a binary trait.",
+                "errorMessage": "Population prevalence must be a number strictly between 0 and 1",
+                "meta": ["population_prevalence"]
+            },
+            "sample_prevalence": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "exclusiveMaximum": 1,
+                "description": "Optional sample case fraction for a binary trait.",
+                "errorMessage": "Sample prevalence must be a number strictly between 0 and 1",
+                "meta": ["sample_prevalence"]
+            },
+            "access_constraints": {
+                "type": "string",
+                "pattern": "^[^\\r\\n]*$",
+                "description": "Optional non-secret access or redistribution constraint recorded in provenance.",
+                "errorMessage": "Access constraints must be one line and must not contain credentials",
+                "meta": ["access_constraints"]
+            }
+        },
+        "required": ["summary_statistics_id"],
+        "oneOf": [
+            {
+                "title": "External summary-statistics origin",
+                "required": ["trait_id", "trait_type", "source", "source_mode", "source_format", "genome_build", "ancestry", "source_method"],
+                "not": {
+                    "anyOf": [
+                        { "required": ["producer_analysis_id"] },
+                        { "required": ["producer_association_method"] }
+                    ]
+                }
+            },
+            {
+                "title": "Pipeline-generated summary-statistics origin",
+                "required": ["producer_analysis_id", "producer_association_method"],
+                "not": {
+                    "anyOf": [
+                        { "required": ["source"] },
+                        { "required": ["source_mode"] },
+                        { "required": ["source_format"] }
+                    ]
+                }
+            }
+        ]
+    }
+}

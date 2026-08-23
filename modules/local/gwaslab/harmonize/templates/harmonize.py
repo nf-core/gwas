@@ -108,6 +108,11 @@ if "$meta.method" == "ldak_kvik":
     if "N" in sumstats.data.columns:
         raise ValueError("LDAK-KVIK harmonisation cannot promote N_EFF because N already exists")
     sumstats.data.rename(columns={"N_EFF": "N"}, inplace=True)
+if "P" not in sumstats.data.columns:
+    # REGENIE and some supported external formats report -log10(P) instead of P. The
+    # canonical contract requires P, so ask GWASLab to derive it from whichever
+    # standardised test-statistic column the explicit input format supplied.
+    sumstats.fill_data(to_fill=["P"])
 sumstats.to_format(
     prefix,
     fmt="gwaslab",
