@@ -20,8 +20,14 @@ process LDSC_MUNGESUMSTATS {
     """
     export PYTHONUNBUFFERED=1
 
+    sumstats_input="${sumstats}"
+    if [[ "${sumstats}" == *.gz ]]; then
+        gzip --decompress --stdout "${sumstats}" > ldsc_munge_input.tsv
+        sumstats_input=ldsc_munge_input.tsv
+    fi
+
     munge_sumstats.py \
-        --sumstats "${sumstats}" \
+        --sumstats "\${sumstats_input}" \
         --merge-alleles "${merge_alleles}" \
         --out "${prefix}" \
         ${args}

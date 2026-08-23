@@ -13,14 +13,19 @@ nextflow_process {
     def inputs = { outputDir, name, valid = true ->
         def root = new File(outputDir.toString(), "fixture_${name}")
         root.mkdirs()
-        def sumstats = new File(root, "${name}.tsv")
+        def sumstats = new File(root, "${name}.tsv.gz")
         def mergeAlleles = new File(root, 'merge_alleles.tsv')
         def variants = (1..200).collect { index ->
             def beta = ((index % 9) - 4) / 20.0
             def pvalue = String.format(java.util.Locale.ROOT, '%.6g', 0.0001 + index / 1000000.0)
             "rs${index}\tA\tG\t10000\t${beta}\t${pvalue}"
         }
-        sumstats.text = valid ? "SNP\tA1\tA2\tN\tBETA\tP\n${variants.join('\n')}\n" : "SNP\tA1\tA2\tN\nrs1\tA\tG\t10000\n"
+        def body = valid ? "SNP\tA1\tA2\tN\tBETA\tP\n${variants.join('\n')}\n" : "SNP\tA1\tA2\tN\nrs1\tA\tG\t10000\n"
+        sumstats.withOutputStream { output ->
+            def gzip = new java.util.zip.GZIPOutputStream(output)
+            gzip.write(body.getBytes('UTF-8'))
+            gzip.close()
+        }
         mergeAlleles.text = "SNP\tA1\tA2\n" + (1..200).collect { "rs${it}\tA\tG" }.join('\n') + '\n'
         [sumstats: sumstats, mergeAlleles: mergeAlleles]
     }
