@@ -941,8 +941,8 @@ def validateSummaryNativeArgumentTokens(method_options, namespace, request_id, m
     def reserved_by_method = [
         ldak_sumher: ['--sum-hers', '--summary', '--tagfile', '--out', '--threads'],
         ldak_sumcors: ['--sum-cors', '--summary', '--summary2', '--tagfile', '--out', '--threads'],
-        ldsc_h2: ['--h2', '--ref-ld-chr', '--w-ld-chr', '--out'],
-        ldsc_rg: ['--rg', '--ref-ld-chr', '--w-ld-chr', '--out'],
+        ldsc_h2: ['--h2', '--ref-ld-chr', '--w-ld-chr', '--samp-prev', '--pop-prev', '--out'],
+        ldsc_rg: ['--rg', '--ref-ld-chr', '--w-ld-chr', '--samp-prev', '--pop-prev', '--out'],
     ]
     native_args.eachWithIndex { token, index ->
         if (!(token instanceof String) || !token) {
