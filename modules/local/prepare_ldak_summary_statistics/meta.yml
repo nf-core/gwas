@@ -1,0 +1,49 @@
+name: prepare_ldak_summary_statistics
+description: Convert the nf-core/gwas canonical summary-statistics contract to LDAK's native summary format
+keywords:
+  - ldak
+  - summary statistics
+  - adapter
+tools:
+  - python:
+      description: Python standard-library runtime
+      homepage: https://www.python.org/
+      documentation: https://docs.python.org/3/
+input:
+  - - meta:
+        type: map
+        description: Canonical summary-statistics identity and provenance metadata
+    - canonical_summary_statistics:
+        type: file
+        description: Canonical nf-core/gwas summary-statistics table
+        pattern: "*.canonical.tsv.gz"
+output:
+  summary_statistics:
+    - - meta:
+          type: map
+          description: Canonical summary-statistics metadata propagated from input
+      - ${prefix}.summaries:
+          type: file
+          description: LDAK-native Predictor, allele, Z, sample-size and allele-frequency table
+          pattern: "*.summaries"
+  preparation:
+    - - meta:
+          type: map
+          description: Canonical summary-statistics metadata propagated from input
+      - ${prefix}.preparation.json:
+          type: file
+          description: Deterministic conversion counts, policy ownership and content checksum
+          pattern: "*.preparation.json"
+  versions:
+    - versions.yml:
+        type: file
+        description: Software versions
+topics:
+  versions:
+    - versions.yml:
+        type: file
+        description: Software versions
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"

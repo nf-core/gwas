@@ -196,6 +196,8 @@ The wrapper rejects whitespace or shell syntax, path separators, environment ass
 
 Summary requests use the same deterministic ownership boundary. LDAK receives exactly one staged `tagging_file`; LDSC receives separate staged `hapmap3_snplist`, `reference_ld_scores` and `regression_weights` roles. `native_args` may contain non-file scientific tokens only. Wrapper-owned operation, input, output and thread flags are rejected, as are any values that resemble undeclared files or paths.
 
+For `ldak_sumher` and `ldak_sumcors`, the pipeline converts each distinct canonical summary once to LDAK's `Predictor A1 A2 Z n A1Freq` contract, with `A1` equal to the canonical effect allele and `Z = BETA / SE`; the canonical artifact and its provenance remain unchanged. Both routes use `--cutoff 0.01` unless a request explicitly supplies `--cutoff` or `--truncate`, and those two large-effect policies cannot be combined. SumCors initially accepts `LDAK-Thin`, `Uniform-GCTA` and `Human-Default` tagging bundles. Binary SumHer receives population prevalence and sample ascertainment only when both are declared. SumCors receives the two ordered prevalence/ascertainment pairs only when both endpoints are binary and all four values are present; mixed-trait and incomplete binary pairs run without liability arguments. LDAK's native ambiguous-variant exclusion and complete-summary checks remain enabled unless an accepted scientific override changes them.
+
 ```json
 {
   "unary_requests": {

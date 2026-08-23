@@ -147,7 +147,7 @@ GWASLab drops variants that fail its sanity checks and duplicated variants. Its 
 
 ## Heritability
 
-Heritability output is method-first and then analysis, under `individual/` because every estimator consumes individual-level genotypes. These native estimator tables are not harmonised.
+Individual-level heritability output is method-first and then analysis under `individual/`. These native estimator tables are not harmonised.
 
 ### GCTA GREML and GREML-LDMS
 
@@ -208,6 +208,31 @@ The dense route uses one explicit all-variant GCTA matrix. The relationship's de
 </details>
 
 Successful native completion is classified as `estimable`, `estimable_with_warning` or `completed_nonestimable`. An explicit native nonconvergence, corrupt or incomplete mandatory output, or execution error is the fourth state, `failed`; it fails the request and the run rather than publishing a misleading normalized result. A warning or out-of-range native estimate is retained rather than clipped or discarded. The pipeline does not compare methods or choose a best result. For binary endpoints, a declared `population_prevalence` is passed only through GCTA's endpoint-aware `--reml-bivar-prevalence` interface; ordinary unary `--prevalence` is never used on this route. Liability-scale heritability rows appear only when GCTA itself emits the corresponding native `_L` component.
+
+## LDAK summary-statistics heritability and correlation
+
+<details markdown="1">
+<summary>Output files</summary>
+
+SumHer and SumCors are request-addressed thin wrappers over native LDAK 6.3. Every native result is retained; the normalized TSVs are additional views and never rank, aggregate or select a preferred method.
+
+- `requests/ldak_sumher/<request_id>/`
+  - `native.hers`, `native.cats`, `native.share`, `native.enrich`, `native.extra`, `native.cross`, `native.taus`: Native SumHer estimates and category results.
+  - `native.labels`, `native.progress`, `native.overlap`, `native.log`: Native labels, progress, overlap diagnostics and captured execution log.
+  - `native.hers.liab`, `native.cats.liab`, `native.factor`: Optional native liability-scale artifacts, present only when LDAK receives a complete binary-trait prevalence/ascertainment pair.
+  - `diagnostics.tsv`, `provenance.json`: Completion classification, warnings, exact request/reference identities, effective native arguments, adapter evidence, tool/runtime identity and native-artifact inventory.
+- `heritability/ldak_sumher/<request_id>/heritability.tsv`: Observed-scale and, when emitted by LDAK, liability-scale SumHer estimates.
+- `requests/ldak_sumcors/<request_id>/`
+  - `native.cors`, `native.cors.full`, `native.labels`, `native.progress`, `native.overlap`, `native.log`: Complete native SumCors result family.
+  - `native.cors.liab`: Optional native liability-scale pair result when both ordered binary endpoints have complete prevalence/ascertainment declarations.
+  - `diagnostics.tsv`, `provenance.json`: Ordered endpoint identities, reference ownership, effective native arguments, adapter evidence, classification, warnings and native-artifact inventory.
+- `heritability/ldak_sumcors/<request_id>/heritability.tsv`: Ordered endpoint heritability estimates emitted by SumCors.
+- `genetic_covariance/ldak_sumcors/<request_id>/genetic_covariance.tsv`: Native ordered coheritability estimate and uncertainty.
+- `genetic_correlation/ldak_sumcors/<request_id>/genetic_correlation.tsv`: Native ordered genetic-correlation estimate and uncertainty.
+
+</details>
+
+Successful native completion uses the same `estimable`, `estimable_with_warning` and `completed_nonestimable` vocabulary as the GCTA bivariate views. Non-estimable compact or real datasets remain visible with native evidence and `NA` normalized estimates. Malformed or incomplete mandatory native results fail the request rather than being reinterpreted as a scientific result.
 
 ## Quality control and optional prepared data
 

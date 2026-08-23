@@ -21,9 +21,6 @@ process LDAK_SUMCORS {
     tuple val(meta), val(meta2), path("${prefix}.log"), emit: log
     tuple val("${task.process}"), val('ldak'), eval('cat /opt/ldak/version'), emit: versions_ldak, topic: versions
 
-    when:
-    task.ext.when == null || task.ext.when
-
     script:
     def args = task.ext.args ?: ''
     prefix = task.ext.prefix ?: "${meta.id}_${meta2.id}"
