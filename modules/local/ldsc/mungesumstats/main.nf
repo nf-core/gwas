@@ -2,6 +2,10 @@ process LDSC_MUNGESUMSTATS {
     tag "${meta.id}"
     label 'process_single'
 
+    container "${workflow.containerEngine in ['singularity', 'apptainer'] && !task.ext.singularity_pull_docker_container
+        ? 'docker://ghcr.io/lyh970817/gwas/ldsc@sha256:77fbb697c16a559c3fe75204b1e7ab6a0202afcf10b8a8629bcc98592b0e412b'
+        : 'ghcr.io/lyh970817/gwas/ldsc:3.0.2-cbiit-6c67395@sha256:77fbb697c16a559c3fe75204b1e7ab6a0202afcf10b8a8629bcc98592b0e412b'}"
+
     input:
     tuple val(meta), path(sumstats)
     tuple val(meta2), path(merge_alleles)
