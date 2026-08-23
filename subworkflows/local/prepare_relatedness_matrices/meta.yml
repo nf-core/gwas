@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
 name: "prepare_relatedness_matrices"
-description: Build each distinct relatedness matrix once under a content-derived reuse key and fan it out to every analysis unit that needs one
+description: Build each distinct relatedness matrix once under a content-derived reuse key and fan it out to every unary analysis or explicit pair request that needs one
 keywords:
   - relatedness
   - grm
@@ -20,7 +20,7 @@ components:
   - getmethodcapabilities
 input:
   - ch_analyses:
-      description: One analysis unit per element, carrying its cohort identity, selected methods, genotype files and optional LDAK weights Path. Validated GCTA family options, including the optional extraction resource, are carried in meta.method_options.
+      description: One unary analysis or explicit pair request per element, carrying its cohort identity, selected methods, genotype files and optional LDAK weights Path. Validated matrix settings and optional extraction resources are carried in metadata.
       structure: "[map meta, list genotype_files, path ldak_weights|[]]"
       pattern: "*.{pgen,psam,pvar,bed,bim,fam,vcf,vcf.gz,weights}"
       ontologies:
@@ -42,7 +42,7 @@ input:
       structure: integer
 output:
   - gcta_dense:
-      description: The merged dense GCTA relatedness matrix of each requesting analysis unit, carrying the focal analysis metadata. One element per analysis unit that selected a method needing a dense GCTA matrix, however many analysis units share the underlying build.
+      description: The merged dense GCTA relatedness matrix of each requesting unary analysis or pair request, carrying its focal attribution metadata. One element is emitted per requester, however many requesters share the underlying build.
       structure: [map meta, list grm_files]
       pattern: "*.grm.{bin,N.bin,id}"
       ontologies:

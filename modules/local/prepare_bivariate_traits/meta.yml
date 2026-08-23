@@ -1,0 +1,76 @@
+name: prepare_bivariate_traits
+description: Build an ordered full-union two-trait phenotype and normalize relationship-owned covariates for dense GCTA bivariate REML
+keywords:
+  - phenotype
+  - covariates
+  - bivariate
+  - gcta
+tools:
+  - python:
+      description: Python standard-library runtime
+      homepage: https://www.python.org/
+      documentation: https://docs.python.org/3/
+input:
+  - - meta:
+        type: map
+        description: Pair-request metadata including request_id and ordered endpoint identities
+    - left_phenotype:
+        type: file
+        description: Canonical headerless left-endpoint phenotype
+        pattern: "*.noheader.pheno"
+    - right_phenotype:
+        type: file
+        description: Canonical headerless right-endpoint phenotype
+        pattern: "*.noheader.pheno"
+    - pair_quant_covariates:
+        type: file
+        optional: true
+        description: Relationship-owned headered quantitative covariates; pass an empty list when absent
+    - pair_cat_covariates:
+        type: file
+        optional: true
+        description: Relationship-owned headered categorical covariates; pass an empty list when absent
+output:
+  phenotype:
+    - - meta:
+          type: map
+          description: Pair-request metadata propagated from input
+      - "${prefix}.pheno":
+          type: file
+          description: Headerless full-union FID, IID, left trait and right trait table with NA missing values
+  quant_covariates:
+    - - meta:
+          type: map
+          description: Pair-request metadata propagated from input
+      - "${prefix}.qcovar":
+          type: file
+          optional: true
+          description: Headerless normalized relationship quantitative covariates
+  cat_covariates:
+    - - meta:
+          type: map
+          description: Pair-request metadata propagated from input
+      - "${prefix}.covar":
+          type: file
+          optional: true
+          description: Headerless normalized relationship categorical covariates
+  log:
+    - - meta:
+          type: map
+          description: Pair-request metadata propagated from input
+      - "${prefix}.pair.log":
+          type: file
+          description: Deterministic endpoint union, overlap, missingness and relationship-covariate diagnostics
+  versions:
+    - versions.yml:
+        type: file
+        description: Software versions
+topics:
+  versions:
+    - versions.yml:
+        type: file
+        description: Software versions
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"

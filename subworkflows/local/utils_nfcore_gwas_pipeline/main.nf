@@ -38,6 +38,7 @@ workflow PIPELINE_INITIALISATION {
     outdir // channel: val(outdir)
     cohort_manifest // channel: val(cohort_manifest)
     analysis_manifest // channel: val(analysis_manifest)
+    relationship_manifest // channel: val(relationship_manifest)
     method_options // channel: val(method_options)
     help // channel: val(help)
     help_full // channel: val(help_full)
@@ -109,11 +110,13 @@ workflow PIPELINE_INITIALISATION {
     VALIDATE_GWAS_INPUT(
         cohort_manifest,
         analysis_manifest,
+        relationship_manifest,
         method_options,
     )
 
     emit:
     analyses = VALIDATE_GWAS_INPUT.out.analyses // channel: [ val(meta), [ path(genotype_file), ... ], path(phenotype), path(quant_covariates), path(cat_covariates), path(kvik_extract), path(ldak_weights) ]
+    relationships = VALIDATE_GWAS_INPUT.out.relationships // channel: [ val(meta), [ path(genotype_file), ... ], path(pair_quant_covariates), path(pair_cat_covariates) ]
 }
 
 /*
@@ -232,7 +235,7 @@ def analysisPlanJson(mqc_analysis_plan_yaml, analysis_metadata) {
 //
 // Generate a route-aware methods description for MultiQC.
 //
-def methodsDescriptionText(mqc_methods_yaml, selected_methods = [association: [], heritability: []]) {
+def methodsDescriptionText(mqc_methods_yaml, selected_methods = [association: [], heritability: [], pairwise: []]) {
     def meta = [:]
     meta.workflow = workflow.toMap()
     meta['manifest_map'] = workflow.manifest.toMap()
@@ -262,16 +265,18 @@ def methodsDescriptionText(mqc_methods_yaml, selected_methods = [association: []
 def selectedCitationKeys(selected_methods) {
     def association = (selected_methods.association ?: []) as Set
     def heritability = (selected_methods.heritability ?: []) as Set
+    def pairwise = (selected_methods.pairwise ?: []) as Set
     def capabilities = getMethodCapabilities()
     def known_association = capabilities.findAll { _token, details -> details.domain == 'association' }.keySet() as Set
     def known_heritability = capabilities.findAll { _token, details -> details.domain == 'heritability' }.keySet() as Set
-    def unknown = (association - known_association) + (heritability - known_heritability)
+    def known_pairwise = capabilities.findAll { _token, details -> details.domain == 'pairwise' }.keySet() as Set
+    def unknown = (association - known_association) + (heritability - known_heritability) + (pairwise - known_pairwise)
     if (unknown) {
         error("Cannot generate methods citations for unknown method selectors: ${unknown.toList().sort().join(', ')}")
     }
 
-    def citation_order = ['plink2', 'regenie', 'gcta_fastgwa', 'gcta_greml', 'gcta_greml_ldms', 'ldak_kvik', 'ldak']
-    def keys = (association + heritability)
+    def citation_order = ['plink2', 'regenie', 'gcta_fastgwa', 'gcta_greml', 'gcta_greml_ldms', 'gcta_bivariate_reml', 'ldak_kvik', 'ldak']
+    def keys = (association + heritability + pairwise)
         .collect { token -> capabilities[token].citation_key }
         .findAll { key -> key }
         .unique()
@@ -296,15 +301,22 @@ def toolCitationText(selected_methods) {
         gcta_greml_ldms: 'GCTA GREML-LDMS (Yang <em>et al.</em>, 2015)',
         ldak: 'LDAK (Speed <em>et al.</em>, 2012)',
     ]
+    def pairwise_labels = [
+        gcta_bivariate_reml: 'GCTA bivariate REML (Lee <em>et al.</em>, 2012)',
+    ]
     def sentences = []
     def selected_association = keys.findAll { key -> association_labels.containsKey(key) }.collect { key -> association_labels[key] }
     def selected_heritability = keys.findAll { key -> heritability_labels.containsKey(key) }.collect { key -> heritability_labels[key] }
+    def selected_pairwise = keys.findAll { key -> pairwise_labels.containsKey(key) }.collect { key -> pairwise_labels[key] }
     if (selected_association) {
         sentences << "Association testing was performed with ${joinProseList(selected_association)}."
         sentences << 'Association summary statistics were harmonised with GWASLab.'
     }
     if (selected_heritability) {
         sentences << "SNP-based heritability was estimated with ${joinProseList(selected_heritability)}."
+    }
+    if (selected_pairwise) {
+        sentences << "Pairwise genetic covariance and correlation were estimated with ${joinProseList(selected_pairwise)}."
     }
     sentences << 'The run report was generated with MultiQC (Ewels <em>et al.</em>, 2016).'
     return sentences.join(' ')
@@ -317,6 +329,7 @@ def toolBibliographyText(selected_methods) {
         gcta_fastgwa: '<li>Jiang L, Zheng Z, Qi T, et al. A resource-efficient tool for mixed model association analysis of large-scale data. <em>Nature Genetics</em>. 2019;51:1749-1755. doi: <a href="https://doi.org/10.1038/s41588-019-0530-8">10.1038/s41588-019-0530-8</a>.</li>',
         gcta_greml: '<li>Yang J, Lee SH, Goddard ME, Visscher PM. GCTA: a tool for genome-wide complex trait analysis. <em>American Journal of Human Genetics</em>. 2011;88:76-82. doi: <a href="https://doi.org/10.1016/j.ajhg.2010.11.011">10.1016/j.ajhg.2010.11.011</a>.</li>',
         gcta_greml_ldms: '<li>Yang J, Bakshi A, Zhu Z, et al. Genetic variance estimation with imputed variants finds negligible missing heritability for human height and body mass index. <em>Nature Genetics</em>. 2015;47:1114-1120. doi: <a href="https://doi.org/10.1038/ng.3390">10.1038/ng.3390</a>.</li>',
+        gcta_bivariate_reml: '<li>Lee SH, Yang J, Goddard ME, Visscher PM, Wray NR. Estimation of pleiotropy between complex diseases using single-nucleotide polymorphism-derived genomic relationships and restricted maximum likelihood. <em>Bioinformatics</em>. 2012;28:2540-2542. doi: <a href="https://doi.org/10.1093/bioinformatics/bts474">10.1093/bioinformatics/bts474</a>.</li>',
         ldak_kvik: '<li>Hof JP, Speed D. LDAK-KVIK performs fast and powerful mixed-model association analysis of quantitative and binary phenotypes. <em>Nature Genetics</em>. 2025;57:2116-2123. doi: <a href="https://doi.org/10.1038/s41588-025-02286-z">10.1038/s41588-025-02286-z</a>.</li>',
         ldak: '<li>Speed D, Hemani G, Johnson MR, Balding DJ. Improved heritability estimation from genome-wide SNPs. <em>American Journal of Human Genetics</em>. 2012;91:1011-1021. doi: <a href="https://doi.org/10.1016/j.ajhg.2012.10.010">10.1016/j.ajhg.2012.10.010</a>.</li>',
         gwaslab: '<li>GWASLab. <a href="https://cloufield.github.io/gwaslab/">https://cloufield.github.io/gwaslab/</a>.</li>',

@@ -32,9 +32,9 @@ workflow PREPARE_RELATEDNESS_MATRICES {
     //
     def ch_requests = ch_analyses.flatMap { meta, genotype_files, ldak_weights ->
         getRelatednessMatrixKinds(meta).collect { kind ->
-            def weights_policy = meta.method_options.ldak.weights_policy
+            def weights_policy = kind == 'ldak_kinship' ? meta.method_options.ldak.weights_policy : 'equal'
             def weights_identity = kind == 'ldak_kinship' ? getLdakWeightsIdentity(ldak_weights, weights_policy) : [mode: 'equal']
-            def gcta_extract = kind == 'gcta_dense' ? meta.method_options.gcta.grm_extract : []
+            def gcta_extract = kind == 'gcta_dense' && !meta.relationship_id ? meta.method_options.gcta.grm_extract : []
             def extract_identity = kind == 'gcta_dense' ? getMethodResourceIdentity(gcta_extract) : [mode: 'all']
             def request = buildRelatednessMatrixRequest(meta, genotype_files, kind, weights_identity, extract_identity)
             def weights_file = kind == 'ldak_kinship' ? ldak_weights ?: [] : []
@@ -217,7 +217,7 @@ workflow PREPARE_RELATEDNESS_MATRICES {
     //
     def ch_gcta_dense = ch_requests
         .filter { _key, _meta, request, _weights_file -> request.kind == 'gcta_dense' }
-        .map { key, meta, _request, _weights_file -> [key, meta] }
+        .map { key, meta, _request, _weights_file -> [key, meta.relationship_id ? meta + [matrix_key: key] : meta] }
         .combine(
             PLINK_PREPARE_GRM_GCTA.out.grm_files.map { matrix_meta, grm_files -> [matrix_meta.key, grm_files] },
             by: 0
@@ -331,7 +331,7 @@ def buildRelatednessMatrixKey(identity, settings) {
 
 def getRelatednessMatrixKinds(meta) {
     def capabilities = getMethodCapabilities()
-    def selected = ((meta.association_methods ?: []) + (meta.heritability_methods ?: [])) as Set
+    def selected = ((meta.association_methods ?: []) + (meta.heritability_methods ?: []) + (meta.relationship_methods ?: [])) as Set
     return ['gcta_dense', 'gcta_ldms', 'gcta_sparse', 'ldak_kinship'].findAll { kind ->
         selected.any { method -> capabilities[method] && capabilities[method].matrix_kind == kind }
     }
@@ -354,6 +354,12 @@ def getMethodResourceIdentity(resource) {
 
 // Matrix settings contain every scientific construction input and exclude estimator/execution controls.
 def getRelatednessMatrixSettings(meta, kind, weights_identity = [mode: 'equal'], gcta_extract_identity = [mode: 'all']) {
+    if (meta.relationship_id) {
+        if (kind != meta.matrix_kind) {
+            error("[nf-core/gwas] ERROR: relationship request '${meta.request_id}' declares matrix kind '${meta.matrix_kind}' but requested '${kind}'")
+        }
+        return meta.matrix_settings
+    }
     def method_options = meta.method_options
     def ldak_options = method_options.ldak
     if (kind == 'gcta_dense') {
@@ -391,7 +397,6 @@ def getRelatednessMatrixSettings(meta, kind, weights_identity = [mode: 'equal'],
 }
 
 def buildRelatednessMatrixRequest(meta, genotype_files, kind, weights_identity = [mode: 'equal'], gcta_extract_identity = [mode: 'all']) {
-    def method_options = meta.method_options
     def settings = getRelatednessMatrixSettings(meta, kind, weights_identity, gcta_extract_identity)
     def identity = [
         cohort: meta.cohort,
@@ -406,10 +411,10 @@ def buildRelatednessMatrixRequest(meta, genotype_files, kind, weights_identity =
         key: buildRelatednessMatrixKey(identity, settings),
     ]
     if (kind == 'gcta_dense') {
-        request.gcta_extract = method_options.gcta.grm_extract
+        request.gcta_extract = meta.relationship_id ? [] : meta.method_options.gcta.grm_extract
     }
     if (kind == 'ldak_kinship') {
-        request.filter_relatedness = method_options.ldak.relatedness_filter
+        request.filter_relatedness = meta.method_options.ldak.relatedness_filter
     }
     return request
 }

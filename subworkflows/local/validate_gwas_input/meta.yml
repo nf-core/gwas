@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
 name: "validate_gwas_input"
-description: Validate linked cohort and analysis manifests and emit canonical nf-core/gwas analysis records
+description: Validate linked cohort, analysis and optional relationship manifests and emit canonical nf-core/gwas request records
 keywords:
   - validation
   - manifest
@@ -17,8 +17,12 @@ input:
       description: Analysis manifest declaring cohort-linked traits, covariates and selected association or heritability methods
       structure: path analysis_manifest
       pattern: "*.csv"
+  - relationship_manifest:
+      description: Optional relationship manifest declaring ordered pair endpoints, selected pairwise methods and relationship-owned covariates
+      structure: "path relationship_manifest|[]"
+      pattern: "*.csv"
   - method_options:
-      description: Optional JSON document containing validated scientific method options keyed by analysis identifier
+      description: Optional JSON document containing validated unary analysis and pair-request scientific options
       structure: "path method_options|[]"
       pattern: "*.json"
 output:
@@ -26,6 +30,12 @@ output:
       description: Canonical analysis tuples with joined cohort metadata, resolved method options and stageable scientific resources
       structure: "[map meta, list genotype_files, path phenotype, path quant_covariates|[], path cat_covariates|[], path predictor_extract|[], path ldak_weights|[]]"
       pattern: "*.{pgen,psam,pvar,bed,bim,fam,vcf,vcf.gz,txt,tsv,json}"
+      ontologies:
+        - edam: "http://edamontology.org/format_2330"
+  - relationships:
+      description: Canonical pair-request tuples with endpoint identity, deterministic request ID, fixed matrix settings and relationship-owned covariate resources
+      structure: "[map meta, list genotype_files, path pair_quant_covariates|[], path pair_cat_covariates|[]]"
+      pattern: "*.{pgen,psam,pvar,bed,bim,fam,vcf,vcf.gz,txt,tsv}"
       ontologies:
         - edam: "http://edamontology.org/format_2330"
 authors:

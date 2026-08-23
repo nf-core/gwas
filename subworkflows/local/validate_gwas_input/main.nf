@@ -14,6 +14,7 @@ workflow VALIDATE_GWAS_INPUT {
     take:
     cohort_manifest // channel: val(cohort_manifest)
     analysis_manifest // channel: val(analysis_manifest)
+    relationship_manifest // channel: val(relationship_manifest)
     method_options // channel: val(method_options)
 
     main:
@@ -26,23 +27,31 @@ workflow VALIDATE_GWAS_INPUT {
 
     def cohort_schema = "${projectDir}/assets/schema_cohort_manifest.json"
     def analysis_schema = "${projectDir}/assets/schema_analysis_manifest.json"
+    def relationship_schema = "${projectDir}/assets/schema_relationship_manifest.json"
     validateSamplesheetHeader(cohort_manifest, cohort_schema, 'Cohort manifest')
     validateSamplesheetHeader(analysis_manifest, analysis_schema, 'Analysis manifest')
+    if (relationship_manifest) {
+        validateSamplesheetHeader(relationship_manifest, relationship_schema, 'Relationship manifest')
+    }
 
-    def ch_analyses = channel.fromList(
-        validateRelationalInput(
-            samplesheetToList(cohort_manifest, cohort_schema),
-            samplesheetToList(analysis_manifest, analysis_schema),
-            cohort_manifest,
-            analysis_manifest,
-            cohort_schema,
-            analysis_schema,
-            method_options,
-        )
+    def validated = validateRelationalInput(
+        samplesheetToList(cohort_manifest, cohort_schema),
+        samplesheetToList(analysis_manifest, analysis_schema),
+        relationship_manifest ? samplesheetToList(relationship_manifest, relationship_schema) : [],
+        cohort_manifest,
+        analysis_manifest,
+        relationship_manifest,
+        cohort_schema,
+        analysis_schema,
+        relationship_schema,
+        method_options,
     )
+    def ch_analyses = channel.fromList(validated.analyses)
+    def ch_relationships = channel.fromList(validated.relationships)
 
     emit:
     analyses = ch_analyses // channel: [ val(meta), [ path(genotype_file), ... ], path(phenotype), path(quant_covariates), path(cat_covariates), path(kvik_extract), path(ldak_weights) ]
+    relationships = ch_relationships // channel: [ val(meta), [ path(genotype_file), ... ], path(pair_quant_covariates), path(pair_cat_covariates) ]
 }
 
 /*
@@ -140,6 +149,13 @@ def getMethodRegistry() {
             consumes_population_prevalence: true,
             citation_key: 'gcta_greml_ldms',
         ],
+        gcta_bivariate_reml: [
+            domain: 'pairwise',
+            option_family: 'gcta',
+            matrix_kind: 'gcta_dense',
+            consumes_population_prevalence: true,
+            citation_key: 'gcta_bivariate_reml',
+        ],
         ldak_reml: [
             domain: 'heritability',
             option_family: 'ldak',
@@ -193,6 +209,13 @@ def getAssociationMethodTokens() {
 def getHeritabilityMethodTokens() {
     return getMethodCapabilities()
         .findAll { _token, details -> details.domain == 'heritability' }
+        .keySet()
+        .toList()
+}
+
+def getRelationshipMethodTokens() {
+    return getMethodCapabilities()
+        .findAll { _token, details -> details.domain == 'pairwise' }
         .keySet()
         .toList()
 }
@@ -275,7 +298,7 @@ def getAnalysisSettings(meta) {
     ]
 }
 
-def validateMethodSelectors(association_methods, heritability_methods, reject) {
+def validateMethodSelectors(association_methods, heritability_methods, reject, allow_empty = false) {
     [
         [column: 'association_methods', methods: association_methods, vocabulary: getAssociationMethodTokens()],
         [column: 'heritability_methods', methods: heritability_methods, vocabulary: getHeritabilityMethodTokens()],
@@ -289,7 +312,7 @@ def validateMethodSelectors(association_methods, heritability_methods, reject) {
             reject.call(selector.column, "method${repeated.size() > 1 ? 's' : ''} ${repeated.collect { method -> "'${method}'" }.join(', ')} listed more than once")
         }
     }
-    if (!association_methods && !heritability_methods) {
+    if (!allow_empty && !association_methods && !heritability_methods) {
         reject.call(['association_methods', 'heritability_methods'], 'row selects no method, populate one of them or remove the row')
     }
 }
@@ -346,8 +369,8 @@ def validateTraitColumns(is_binary, settings, reject) {
     }
 }
 
-def validateMethodConditionedColumns(settings, routes, reject) {
-    if (settings.population_prevalence != null && !routes.consumes_population_prevalence) {
+def validateMethodConditionedColumns(settings, routes, reject, pair_consumes_population_prevalence = false) {
+    if (settings.population_prevalence != null && !routes.consumes_population_prevalence && !pair_consumes_population_prevalence) {
         reject.call('population_prevalence', 'none of the selected estimators consumes it; select GCTA GREML, GCTA GREML-LDMS, LDAK REML or LDAK PCGC, or remove the prevalence')
     }
     if (settings.population_prevalence == null && routes.runs_ldak_pcgc) {
@@ -592,20 +615,17 @@ def resolveLdakMethodOptions(analysis_id, options, methods, defaults, fail) {
     ]
 }
 
-// Parse and validate the advanced method-options document before any channels are constructed.
-def validateMethodOptions(method_options, analysis_rows) {
-    def defaults = getMethodOptionDefaults()
+def readMethodOptionsDocument(method_options) {
     if (!method_options) {
-        return analysis_rows.collectEntries { row -> [(row[0].id): defaults] }
+        return [:]
     }
-
     def document_path = method_options.toString()
-    def fail = { analysis_id, option, reason ->
-        error("[nf-core/gwas] ERROR: Method-options document '${document_path}', analysis_id '${analysis_id}', option '${option}': ${reason}")
+    def fail = { reason ->
+        error("[nf-core/gwas] ERROR: Method-options document '${document_path}', analysis_id '<document>', option '<root>': ${reason}")
     }
     def document_file = file(method_options)
     if (!document_file.exists()) {
-        fail.call('<document>', '<root>', 'file does not exist')
+        fail.call('file does not exist')
     }
 
     def document = null
@@ -613,11 +633,48 @@ def validateMethodOptions(method_options, analysis_rows) {
         document = new groovy.json.JsonSlurper().parseText(document_file.text)
     }
     catch (Exception exception) {
-        fail.call('<document>', '<root>', "malformed JSON (${exception.message})")
+        fail.call("malformed JSON (${exception.message})")
     }
     if (!(document instanceof Map)) {
-        fail.call('<document>', '<root>', 'expected an object keyed by analysis_id')
+        fail.call('expected an object keyed by analysis_id or by a supported request namespace')
     }
+    return document
+}
+
+def getAnalysisOptionsDocument(method_options, document) {
+    def namespaces = ['analyses', 'unary_requests', 'pair_requests']
+    def uses_namespaces = document.keySet().any { key -> key in namespaces }
+    if (!uses_namespaces) {
+        return document
+    }
+    def unknown = document.keySet().findAll { key -> !(key in namespaces) }
+    if (unknown) {
+        error("[nf-core/gwas] ERROR: Method-options document '${method_options}' has unknown top-level namespace '${unknown.first()}'; accepted namespaces are ${namespaces.join(', ')}")
+    }
+    namespaces.each { namespace ->
+        if (document.containsKey(namespace) && !(document[namespace] instanceof Map)) {
+            error("[nf-core/gwas] ERROR: Method-options document '${method_options}', namespace '${namespace}': expected an object")
+        }
+    }
+    if (document.unary_requests) {
+        error("[nf-core/gwas] ERROR: Method-options document '${method_options}', namespace 'unary_requests': unary summary-statistics requests are not implemented in this release slice")
+    }
+    return document.analyses ?: [:]
+}
+
+// Parse and validate the analysis-owned part of the advanced method-options document.
+def validateMethodOptions(method_options, analysis_rows, document = null) {
+    def defaults = getMethodOptionDefaults()
+    if (!method_options) {
+        return analysis_rows.collectEntries { row -> [(row[0].id): defaults] }
+    }
+
+    document = document == null ? readMethodOptionsDocument(method_options) : document
+    def document_path = method_options.toString()
+    def fail = { analysis_id, option, reason ->
+        error("[nf-core/gwas] ERROR: Method-options document '${document_path}', analysis_id '${analysis_id}', option '${option}': ${reason}")
+    }
+    def analysis_document = getAnalysisOptionsDocument(method_options, document)
 
     def analyses = analysis_rows.collectEntries { row ->
         def meta = row[0]
@@ -629,7 +686,7 @@ def validateMethodOptions(method_options, analysis_rows) {
     }
     def resolved = analyses.collectEntries { analysis_id, _methods -> [(analysis_id): defaults] }
 
-    document.each { analysis_id, families ->
+    analysis_document.each { analysis_id, families ->
         if (!analyses.containsKey(analysis_id)) {
             fail.call(analysis_id, '<analysis>', 'analysis identifier is not declared in the analysis manifest')
         }
@@ -667,15 +724,172 @@ def validateMethodOptions(method_options, analysis_rows) {
     return resolved
 }
 
+def validateNativeArgumentTokens(method_options, request_id, native_args) {
+    def fail = { reason ->
+        error("[nf-core/gwas] ERROR: Method-options document '${method_options}', pair_request_id '${request_id}', option 'native_args': ${reason}")
+    }
+    if (!(native_args instanceof List)) {
+        fail.call('expected an array of individual command-line argument tokens')
+    }
+    if (native_args && !native_args.first().toString().startsWith('--')) {
+        fail.call("the first token must be a native option beginning with '--'")
+    }
+
+    def reserved = [
+        '--reml-bivar',
+        '--reml-bivar-prevalence',
+        '--bfile',
+        '--pfile',
+        '--mbfile',
+        '--mpfile',
+        '--grm',
+        '--mgrm',
+        '--grm-gz',
+        '--mgrm-gz',
+        '--pheno',
+        '--mpheno',
+        '--qcovar',
+        '--covar',
+        '--keep',
+        '--remove',
+        '--extract',
+        '--exclude',
+        '--update-sex',
+        '--dosage-mach',
+        '--dosage-beagle',
+        '--raw-files',
+        '--out',
+        '--thread-num',
+        '--prevalence',
+        '--help',
+        '--version',
+    ]
+    def primary_operations = [
+        '--reml',
+        '--reml-ldms',
+        '--make-grm',
+        '--make-grm-part',
+        '--make-bK-sparse',
+        '--fastGWA-mlm',
+        '--fastGWA-mlm-binary',
+        '--mlma',
+        '--cojo-slct',
+        '--cojo-joint',
+        '--HEreg',
+        '--pca',
+        '--pca-loading',
+        '--freq',
+        '--ld',
+        '--ld-score',
+        '--sblup',
+        '--blup-snp',
+        '--simu-qt',
+        '--simu-cc',
+        '--simu-causal-loci',
+        '--GTDT',
+    ]
+
+    native_args.eachWithIndex { token, index ->
+        if (!(token instanceof String) || !token) {
+            fail.call("token ${index + 1} must be a non-empty string")
+        }
+        if (!(token ==~ /^[A-Za-z0-9_.:+,@%=-]+$/)) {
+            fail.call("token ${index + 1} '${token}' contains whitespace, shell syntax or a path separator; pass individual non-file native tokens only")
+        }
+        if (token ==~ /^[A-Za-z_][A-Za-z0-9_]*=.*/) {
+            fail.call("token ${index + 1} '${token}' resembles an environment assignment; native arguments cannot alter the task environment")
+        }
+        def option_name = token.contains('=') ? token.substring(0, token.indexOf('=')) : token
+        if (option_name in reserved) {
+            fail.call("token ${index + 1} '${token}' conflicts with wrapper-owned invocation mechanics")
+        }
+        if (option_name in primary_operations || option_name.startsWith('--make-') || option_name.startsWith('--fastGWA') || option_name.startsWith('--mlma') || option_name.startsWith('--cojo-') || option_name.startsWith('--simu-')) {
+            fail.call("token ${index + 1} '${token}' selects a different primary GCTA operation")
+        }
+        if (!token.startsWith('--')) {
+            def candidate = file(token)
+            def looks_like_file = token ==~ /(?i).+\.(bed|bim|fam|pgen|pvar|psam|vcf|bcf|gz|bgz|txt|tsv|csv|list|keep|remove|grm|mgrm|phen|pheno|covar|qcovar|dat)/
+            if (candidate.exists() || looks_like_file) {
+                fail.call("token ${index + 1} '${token}' resembles an undeclared file input; file-taking native options require a typed staged resource")
+            }
+        }
+    }
+    return native_args
+}
+
+def resolvePairRequestOptions(method_options, document, relationship_records) {
+    def defaults = relationship_records.collectEntries { record -> [(record[0].request_id): []] }
+    if (!method_options) {
+        return defaults
+    }
+    def namespaces = ['analyses', 'unary_requests', 'pair_requests']
+    def uses_namespaces = document.keySet().any { key -> key in namespaces }
+    if (!uses_namespaces) {
+        return defaults
+    }
+
+    def declared = document.pair_requests ?: [:]
+    declared.each { request_id, options ->
+        if (!defaults.containsKey(request_id)) {
+            error("[nf-core/gwas] ERROR: Method-options document '${method_options}', pair_request_id '${request_id}': request identifier is not a selected deterministic primary pair request; selected requests are ${defaults.keySet().toList().sort()}")
+        }
+        if (!(options instanceof Map)) {
+            error("[nf-core/gwas] ERROR: Method-options document '${method_options}', pair_request_id '${request_id}': expected an option object")
+        }
+        def unknown = options.keySet().findAll { option -> option != 'native_args' }
+        if (unknown) {
+            error("[nf-core/gwas] ERROR: Method-options document '${method_options}', pair_request_id '${request_id}', option '${unknown.first()}': unknown option; the first dense GCTA bivariate route accepts native_args only")
+        }
+        defaults[request_id] = validateNativeArgumentTokens(method_options, request_id, options.native_args ?: [])
+    }
+    return defaults
+}
+
+def getGctaBivariatePrevalence(left_meta, right_meta) {
+    if (left_meta.is_binary && right_meta.is_binary) {
+        return left_meta.population_prevalence != null && right_meta.population_prevalence != null
+            ? [left_meta.population_prevalence, right_meta.population_prevalence]
+            : []
+    }
+    if (left_meta.is_binary && left_meta.population_prevalence != null) {
+        return [left_meta.population_prevalence]
+    }
+    if (right_meta.is_binary && right_meta.population_prevalence != null) {
+        return [right_meta.population_prevalence]
+    }
+    return []
+}
+
 // Validate the lists as a linked contract and construct the canonical tuple consumed by GWAS.
-def validateRelationalInput(cohort_rows, analysis_rows, cohort_manifest, analysis_manifest, cohort_schema, analysis_schema, method_options = null) {
+def validateRelationalInput(
+    cohort_rows,
+    analysis_rows,
+    relationship_rows,
+    cohort_manifest,
+    analysis_manifest,
+    relationship_manifest,
+    cohort_schema,
+    analysis_schema,
+    relationship_schema,
+    method_options = null
+) {
     def cohort_columns = getSamplesheetPositionalColumns(cohort_schema)
     def analysis_columns = getSamplesheetPositionalColumns(analysis_schema)
+    def relationship_columns = getSamplesheetPositionalColumns(relationship_schema)
     def errors = []
     def cohorts_by_id = [:]
     def line_by_analysis_id = [:]
+    def line_by_relationship_id = [:]
+    def analyses_by_id = [:]
     def validated_rows = []
-    def method_options_by_analysis = validateMethodOptions(method_options, analysis_rows)
+    def validated_relationships = []
+    def options_document = readMethodOptionsDocument(method_options)
+    def method_options_by_analysis = validateMethodOptions(method_options, analysis_rows, options_document)
+    def pair_prevalence_analysis_ids = relationship_rows
+        .findAll { row -> tokenizeMethodSelector(row[0].relationship_methods).contains('gcta_bivariate_reml') }
+        .collectMany { row -> [normaliseCellValue(row[0].left_analysis_id), normaliseCellValue(row[0].right_analysis_id)] }
+        .findAll { analysis_id -> analysis_id }
+        .collect { analysis_id -> analysis_id.toString() } as Set
 
     cohort_rows.eachWithIndex { row, index ->
         def line = index + 2
@@ -748,16 +962,15 @@ def validateRelationalInput(cohort_rows, analysis_rows, cohort_manifest, analysi
 
         def association_methods = tokenizeMethodSelector(analysis_meta.association_methods)
         def heritability_methods = tokenizeMethodSelector(analysis_meta.heritability_methods)
-        validateMethodSelectors(association_methods, heritability_methods, reject)
+        validateMethodSelectors(association_methods, heritability_methods, reject, relationship_rows ? true : false)
         def routes = getMethodRoutes(association_methods, heritability_methods)
         def settings = getAnalysisSettings(analysis_meta)
         def is_binary = analysis_meta.trait_type == 'binary'
         validateTraitColumns(is_binary, settings, reject)
-        validateMethodConditionedColumns(settings, routes, reject)
+        validateMethodConditionedColumns(settings, routes, reject, analysis_id in pair_prevalence_analysis_ids)
 
         if (cohort) {
-            validated_rows << [
-                analysis_meta + [
+            def resolved_meta = analysis_meta + [
                     build: cohort.meta.build,
                     ancestry: cohort.meta.ancestry,
                     association_methods: association_methods,
@@ -769,7 +982,9 @@ def validateRelationalInput(cohort_rows, analysis_rows, cohort_manifest, analysi
                     control_value: settings.control_value == null ? null : settings.control_value.toString(),
                     population_prevalence: settings.population_prevalence,
                     method_options: method_options_by_analysis[analysis_id],
-                ],
+                ]
+            def validated = [
+                resolved_meta,
                 cohort.genotype_files,
                 cells.phenotype,
                 cells.quant_covariates,
@@ -777,11 +992,147 @@ def validateRelationalInput(cohort_rows, analysis_rows, cohort_manifest, analysi
                 method_options_by_analysis[analysis_id].ldak.predictor_extract,
                 method_options_by_analysis[analysis_id].ldak.weights,
             ]
+            validated_rows << validated
+            analyses_by_id[analysis_id] = validated
+        }
+    }
+
+    def seen_bindings = [:]
+    relationship_rows.eachWithIndex { row, index ->
+        def line = index + 2
+        def relationship_meta = row[0]
+        def cells = [relationship_columns, row[1..-1]].transpose().collectEntries()
+        def relationship_id = relationship_meta.id
+        def left_analysis_id = normaliseCellValue(relationship_meta.left_analysis_id)?.toString()
+        def right_analysis_id = normaliseCellValue(relationship_meta.right_analysis_id)?.toString()
+        def left_summary_statistics_id = normaliseCellValue(relationship_meta.left_summary_statistics_id)?.toString()
+        def right_summary_statistics_id = normaliseCellValue(relationship_meta.right_summary_statistics_id)?.toString()
+        def reject = { field, message ->
+            def named = field instanceof List ? field : [field]
+            def label = named.size() > 1
+                ? "fields ${named.collect { name -> "'${name}'" }.join(', ')}"
+                : "field '${named.first()}'"
+            errors << "  - ${relationship_manifest} row ${line} (relationship_id '${relationship_id}'), ${label}: ${message}"
+        }
+
+        if (line_by_relationship_id.containsKey(relationship_id)) {
+            reject.call('relationship_id', "duplicate relationship_id '${relationship_id}', already declared on row ${line_by_relationship_id[relationship_id]}")
+        }
+        else {
+            line_by_relationship_id[relationship_id] = line
+        }
+
+        def methods = tokenizeMethodSelector(relationship_meta.relationship_methods)
+        def unknown = methods.findAll { method -> !getRelationshipMethodTokens().contains(method) }.unique()
+        if (unknown) {
+            reject.call('relationship_methods', "unknown method${unknown.size() > 1 ? 's' : ''} ${unknown.collect { method -> "'${method}'" }.join(', ')}, accepted values are ${getRelationshipMethodTokens().collect { method -> "'${method}'" }.join(', ')}")
+        }
+        def repeated = methods.countBy { method -> method }.findAll { _method, count -> count > 1 }.keySet()
+        if (repeated) {
+            reject.call('relationship_methods', "method${repeated.size() > 1 ? 's' : ''} ${repeated.collect { method -> "'${method}'" }.join(', ')} listed more than once")
+        }
+        if (!methods) {
+            reject.call('relationship_methods', 'row selects no pairwise method')
+        }
+
+        if (!left_analysis_id) {
+            reject.call('left_analysis_id', "selected GCTA pair methods require a declared left analysis endpoint")
+        }
+        if (!right_analysis_id) {
+            reject.call('right_analysis_id', "selected GCTA pair methods require a declared right analysis endpoint")
+        }
+        if (left_summary_statistics_id || right_summary_statistics_id) {
+            reject.call(
+                ['left_summary_statistics_id', 'right_summary_statistics_id'],
+                'summary-statistics endpoints are reserved for the later SumCors and LDSC relationship routes and cannot be populated in this first dense GCTA slice'
+            )
+        }
+
+        def left = left_analysis_id ? analyses_by_id[left_analysis_id] : null
+        def right = right_analysis_id ? analyses_by_id[right_analysis_id] : null
+        if (left_analysis_id && !left) {
+            reject.call('left_analysis_id', "undefined analysis_id '${left_analysis_id}', not declared in analysis manifest '${analysis_manifest}'")
+        }
+        if (right_analysis_id && !right) {
+            reject.call('right_analysis_id', "undefined analysis_id '${right_analysis_id}', not declared in analysis manifest '${analysis_manifest}'")
+        }
+        if (left_analysis_id && right_analysis_id && left_analysis_id == right_analysis_id) {
+            reject.call(['left_analysis_id', 'right_analysis_id'], "the exact same analysis endpoint '${left_analysis_id}' cannot occupy both sides")
+        }
+        if (left && right) {
+            def left_meta = left[0]
+            def right_meta = right[0]
+            if (left_meta.trait.toString() == right_meta.trait.toString()) {
+                reject.call(['left_analysis_id', 'right_analysis_id'], "declared trait_id '${left_meta.trait}' is equal on both sides; self-pairs are invalid")
+            }
+            if (left_meta.cohort.toString() != right_meta.cohort.toString()) {
+                reject.call(['left_analysis_id', 'right_analysis_id'], "GCTA bivariate REML requires one cohort, but '${left_analysis_id}' uses '${left_meta.cohort}' and '${right_analysis_id}' uses '${right_meta.cohort}'")
+            }
+            def binding_key = [left_analysis_id, right_analysis_id].sort().join('\u0000')
+            if (seen_bindings.containsKey(binding_key)) {
+                reject.call(['left_analysis_id', 'right_analysis_id'], "unordered endpoint binding duplicates relationship_id '${seen_bindings[binding_key].id}' on row ${seen_bindings[binding_key].line}")
+            }
+            else {
+                seen_bindings[binding_key] = [id: relationship_id, line: line]
+            }
+
+            if (!unknown && !repeated && methods) {
+                methods.each { method ->
+                    def request_id = "${method}--${relationship_id}".toString()
+                    def pair_meta = [
+                        id: request_id,
+                        request_id: request_id,
+                        relationship_id: relationship_id,
+                        method: method,
+                        relationship_methods: methods,
+                        left_analysis_id: left_analysis_id,
+                        right_analysis_id: right_analysis_id,
+                        left_trait_id: left_meta.trait,
+                        right_trait_id: right_meta.trait,
+                        left_trait_type: left_meta.trait_type,
+                        right_trait_type: right_meta.trait_type,
+                        left_is_binary: left_meta.is_binary,
+                        right_is_binary: right_meta.is_binary,
+                        left_population_prevalence: left_meta.population_prevalence,
+                        right_population_prevalence: right_meta.population_prevalence,
+                        cohort: left_meta.cohort,
+                        build: left_meta.build,
+                        ancestry: left_meta.ancestry,
+                        genotype_format: left_meta.genotype_format,
+                        matrix_kind: 'gcta_dense',
+                        matrix_settings: [:],
+                        reml_bivar_prevalence: getGctaBivariatePrevalence(left_meta, right_meta),
+                        native_args: [],
+                    ]
+                    validated_relationships << [
+                        pair_meta,
+                        left[1],
+                        cells.pair_quant_covariates,
+                        cells.pair_cat_covariates,
+                    ]
+                }
+            }
+        }
+    }
+
+    def referenced_analyses = validated_relationships
+        .collectMany { record -> [record[0].left_analysis_id, record[0].right_analysis_id] } as Set
+    validated_rows.each { row ->
+        def meta = row[0]
+        if (!meta.association_methods && !meta.heritability_methods && !(meta.id in referenced_analyses)) {
+            def line = line_by_analysis_id[meta.id]
+            errors << "  - ${analysis_manifest} row ${line} (analysis_id '${meta.id}'), fields 'association_methods', 'heritability_methods': row selects no unary method and is not referenced by any relationship; populate a method, reference it from a relationship or remove the row"
         }
     }
 
     if (errors) {
         error("[nf-core/gwas] ERROR: Validation of linked manifests failed!\n\n${errors.join('\n')}\n")
     }
-    return validated_rows
+
+    def pair_native_args = resolvePairRequestOptions(method_options, options_document, validated_relationships)
+    def resolved_relationships = validated_relationships.collect { record ->
+        def meta = record[0]
+        [meta + [native_args: pair_native_args[meta.request_id]], record[1], record[2], record[3]]
+    }
+    return [analyses: validated_rows, relationships: resolved_relationships]
 }

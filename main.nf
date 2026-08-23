@@ -37,6 +37,7 @@ workflow {
         params.outdir,
         params.cohort_manifest,
         params.analysis_manifest,
+        params.relationship_manifest,
         params.method_options,
         params.help,
         params.help_full,
@@ -47,7 +48,8 @@ workflow {
     // WORKFLOW: Run main workflow
     //
     NFCORE_GWAS(
-        PIPELINE_INITIALISATION.out.analyses
+        PIPELINE_INITIALISATION.out.analyses,
+        PIPELINE_INITIALISATION.out.relationships,
     )
     //
     // SUBWORKFLOW: Run completion tasks
@@ -73,6 +75,7 @@ workflow {
 workflow NFCORE_GWAS {
     take:
     analyses // channel: [ val(meta), path(genotype_files), path(phenotype), path(quant_covariates), path(cat_covariates), path(kvik_extract), path(ldak_weights) ]
+    relationships // channel: [ val(meta), path(genotype_files), path(pair_quant_covariates), path(pair_cat_covariates) ]
 
     main:
 
@@ -81,6 +84,7 @@ workflow NFCORE_GWAS {
     //
     GWAS(
         analyses,
+        relationships,
         params.multiqc_config,
         params.multiqc_logo,
         params.multiqc_methods_description,

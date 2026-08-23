@@ -1,0 +1,71 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://raw.githubusercontent.com/nf-core/gwas/master/assets/schema_relationship_manifest.json",
+    "title": "nf-core/gwas pipeline - relationship manifest schema",
+    "description": "Schema for the relationship manifest provided with params.relationship_manifest. One row declares one exact oriented pair binding and its pairwise methods.",
+    "type": "array",
+    "items": {
+        "type": "object",
+        "properties": {
+            "relationship_id": {
+                "type": "string",
+                "pattern": "^\\S+$",
+                "description": "Unique identifier for the exact populated endpoint binding.",
+                "errorMessage": "Relationship ID must be provided, must be unique and cannot contain spaces",
+                "meta": ["id"]
+            },
+            "left_analysis_id": {
+                "type": "string",
+                "pattern": "^\\S+$",
+                "description": "Analysis identifier bound to the left endpoint for individual-level pair methods.",
+                "errorMessage": "Left analysis ID cannot contain spaces",
+                "meta": ["left_analysis_id"]
+            },
+            "right_analysis_id": {
+                "type": "string",
+                "pattern": "^\\S+$",
+                "description": "Analysis identifier bound to the right endpoint for individual-level pair methods.",
+                "errorMessage": "Right analysis ID cannot contain spaces",
+                "meta": ["right_analysis_id"]
+            },
+            "left_summary_statistics_id": {
+                "type": "string",
+                "pattern": "^\\S+$",
+                "description": "Summary-statistics identifier bound to the left endpoint for summary-level pair methods.",
+                "errorMessage": "Left summary-statistics ID cannot contain spaces",
+                "meta": ["left_summary_statistics_id"]
+            },
+            "right_summary_statistics_id": {
+                "type": "string",
+                "pattern": "^\\S+$",
+                "description": "Summary-statistics identifier bound to the right endpoint for summary-level pair methods.",
+                "errorMessage": "Right summary-statistics ID cannot contain spaces",
+                "meta": ["right_summary_statistics_id"]
+            },
+            "relationship_methods": {
+                "type": "string",
+                "pattern": "^[a-z0-9_]+(,[a-z0-9_]+)*$",
+                "description": "Comma-delimited supported pairwise methods selected for this relationship.",
+                "errorMessage": "Relationship methods must be a comma-delimited list of lowercase tokens with no spaces",
+                "meta": ["relationship_methods"]
+            },
+            "pair_quant_covariates": {
+                "type": "string",
+                "format": "file-path",
+                "exists": true,
+                "pattern": "^\\S+$",
+                "description": "Optional headered file of relationship-owned quantitative covariates.",
+                "errorMessage": "Pair quantitative covariate file cannot contain spaces and must exist"
+            },
+            "pair_cat_covariates": {
+                "type": "string",
+                "format": "file-path",
+                "exists": true,
+                "pattern": "^\\S+$",
+                "description": "Optional headered file of relationship-owned categorical covariates.",
+                "errorMessage": "Pair categorical covariate file cannot contain spaces and must exist"
+            }
+        },
+        "required": ["relationship_id", "relationship_methods"]
+    }
+}

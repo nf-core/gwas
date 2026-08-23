@@ -7,9 +7,12 @@
 include { GWASLAB_HARMONIZE                                   } from '../modules/local/gwaslab/harmonize/main'
 include { GCTA_FASTGWA                                        } from '../modules/local/gcta/fastgwa/main'
 include { NORMALISE_PHENOTYPES                                } from '../modules/local/normalise_phenotypes/main'
+include { NORMALISE_GCTA_BIVARIATE                            } from '../modules/local/normalise_gcta_bivariate/main'
 include { PLINK2_GLM                                          } from '../modules/local/plink2/glm/main'
+include { PREPARE_BIVARIATE_TRAITS                            } from '../modules/local/prepare_bivariate_traits/main'
 
 // MODULE: Installed directly from nf-core/modules
+include { GCTA_BIVARIATEREML                                  } from '../modules/nf-core/gcta/bivariatereml/main'
 include { MULTIQC                                             } from '../modules/nf-core/multiqc/main'
 
 // SUBWORKFLOW: Consisting of a mix of local and nf-core/modules
@@ -42,6 +45,7 @@ include { paramsSummaryMap                                    } from 'plugin/nf-
 workflow GWAS {
     take:
     ch_analyses // channel: [ val(meta), [ path(genotype_file), ... ], path(phenotype), path(quant_covariates), path(cat_covariates), path(kvik_extract), path(ldak_weights) ]
+    ch_relationships // channel: [ val(meta), [ path(genotype_file), ... ], path(pair_quant_covariates), path(pair_cat_covariates) ]
     multiqc_config // channel: val(multiqc_config)
     multiqc_logo // channel: val(multiqc_logo)
     multiqc_methods_description // channel: val(multiqc_methods_description)
@@ -52,6 +56,12 @@ workflow GWAS {
     def ch_multiqc_files = channel.empty()
     def ch_analysis_metadata = ch_analyses
         .map { meta, _genotype_files, _phenotype, _quant_covariates, _cat_covariates, _kvik_extract, _ldak_weights -> meta }
+        .collect()
+    def ch_method_metadata = ch_analyses
+        .map { meta, _genotype_files, _phenotype, _quant_covariates, _cat_covariates, _kvik_extract, _ldak_weights -> [domain: 'analysis', meta: meta] }
+        .mix(
+            ch_relationships.map { meta, _genotype_files, _pair_quant_covariates, _pair_cat_covariates -> [domain: 'pairwise', meta: meta] }
+        )
         .collect()
 
     // One element per analysis unit carrying the genotype files it declared. Cohort preparation collapses
@@ -65,6 +75,9 @@ workflow GWAS {
     def ch_relatedness_analyses = ch_analyses.map { meta, genotype_files, _phenotype, _quant_covariates, _cat_covariates, _kvik_extract, ldak_weights ->
         [meta, genotype_files, ldak_weights ?: []]
     }
+    ch_relatedness_analyses = ch_relatedness_analyses.mix(
+        ch_relationships.map { meta, genotype_files, _pair_quant_covariates, _pair_cat_covariates -> [meta, genotype_files, []] }
+    )
 
     //
     // SUBWORKFLOW: Prepare each distinct cohort's genotypes once into the canonical PLINK 2 bundle
@@ -107,6 +120,37 @@ workflow GWAS {
         .map { meta, phenotype, quant_covariates, cat_covariates ->
             [meta, phenotype, quant_covariates ?: [], cat_covariates ?: []]
         }
+
+    // Pair requests own their orientation and covariates. Resolve each declared endpoint against the
+    // canonical unary phenotype stream, then construct one ordered full-union two-trait table. `combine`
+    // is deliberate at the endpoint seams: one analysis may be reused by several relationship requests.
+    def ch_left_pair_phenotypes = ch_relationships
+        .map { meta, _genotype_files, pair_quant_covariates, pair_cat_covariates ->
+            [meta.left_analysis_id, meta.request_id, meta, pair_quant_covariates ?: [], pair_cat_covariates ?: []]
+        }
+        .combine(
+            NORMALISE_PHENOTYPES.out.phenotype_headerless.map { meta, phenotype -> [meta.id, phenotype] },
+            by: 0,
+        )
+        .map { _analysis_id, request_id, meta, pair_quant_covariates, pair_cat_covariates, phenotype ->
+            [request_id, meta, phenotype, pair_quant_covariates, pair_cat_covariates]
+        }
+
+    def ch_right_pair_phenotypes = ch_relationships
+        .map { meta, _genotype_files, _pair_quant_covariates, _pair_cat_covariates -> [meta.right_analysis_id, meta.request_id] }
+        .combine(
+            NORMALISE_PHENOTYPES.out.phenotype_headerless.map { meta, phenotype -> [meta.id, phenotype] },
+            by: 0,
+        )
+        .map { _analysis_id, request_id, phenotype -> [request_id, phenotype] }
+
+    def ch_pair_trait_inputs = ch_left_pair_phenotypes
+        .join(ch_right_pair_phenotypes, failOnDuplicate: true, failOnMismatch: true)
+        .map { _request_id, meta, left_phenotype, pair_quant_covariates, pair_cat_covariates, right_phenotype ->
+            [meta, left_phenotype, right_phenotype, pair_quant_covariates, pair_cat_covariates]
+        }
+
+    PREPARE_BIVARIATE_TRAITS(ch_pair_trait_inputs)
 
     //
     // MODULE: PLINK 2 --glm association
@@ -288,6 +332,7 @@ workflow GWAS {
     // GCTA heritability contract here. The middle GRM element is absent for GREML and is the MGRM manifest
     // for GREML-LDMS; the estimator selector makes the subworkflow enforce that distinction.
     def ch_greml_matrices = PREPARE_RELATEDNESS_MATRICES.out.gcta_dense
+        .filter { meta, _grm_files -> !meta.relationship_id }
         .map { meta, grm_files -> [meta, [], grm_files, 'greml'] }
         .mix(
             PREPARE_RELATEDNESS_MATRICES.out.gcta_ldms.map { meta, mgrm, grm_files -> [meta, mgrm, grm_files, 'greml_ldms'] }
@@ -311,6 +356,68 @@ workflow GWAS {
         ch_greml_inputs.covar,
         ch_greml_inputs.estimator,
     )
+
+    //
+    // PIPELINE ROUTE: primary dense GCTA bivariate REML relationship request
+    //
+    // The installed atomic component correctly requires the primary metadata ID to be the staged GRM
+    // basename. Keep that native basename separate from request attribution and from the content-derived
+    // matrix reuse key; all three identities reach the normalized provenance adapter.
+    def ch_bivariate_matrices = PREPARE_RELATEDNESS_MATRICES.out.gcta_dense
+        .filter { meta, _grm_files -> meta.relationship_id && 'gcta_bivariate_reml' in meta.relationship_methods }
+        .map { meta, grm_files ->
+            def grm_id = grm_files.find { grm_file -> grm_file.name.endsWith('.grm.id') }
+            if (!grm_id) {
+                error("[nf-core/gwas] ERROR: pair request '${meta.request_id}' received a dense GCTA matrix without a .grm.id member")
+            }
+            def basename = grm_id.name.substring(0, grm_id.name.length() - '.grm.id'.length())
+            [meta.request_id, meta + [matrix_basename: basename], grm_files]
+        }
+
+    def ch_prepared_pairs = PREPARE_BIVARIATE_TRAITS.out.phenotype
+        .join(PREPARE_BIVARIATE_TRAITS.out.quant_covariates, remainder: true)
+        .join(PREPARE_BIVARIATE_TRAITS.out.cat_covariates, remainder: true)
+        .join(PREPARE_BIVARIATE_TRAITS.out.log, failOnDuplicate: true, failOnMismatch: true)
+        .map { meta, phenotype, quant_covariates, cat_covariates, pair_log ->
+            [meta.request_id, meta, phenotype, quant_covariates ?: [], cat_covariates ?: [], pair_log]
+        }
+
+    def ch_bivariate_invocations = ch_bivariate_matrices
+        .join(ch_prepared_pairs, failOnDuplicate: true, failOnMismatch: true)
+        .multiMap { _request_id, matrix_meta, grm_files, pair_meta, phenotype, quant_covariates, cat_covariates, pair_log ->
+            if (matrix_meta.relationship_id != pair_meta.relationship_id) {
+                error("[nf-core/gwas] ERROR: pair request '${pair_meta.request_id}' matrix attribution disagrees with the prepared phenotype")
+            }
+            def route_meta = pair_meta + [
+                id: matrix_meta.matrix_basename,
+                matrix_key: matrix_meta.matrix_key,
+                matrix_basename: matrix_meta.matrix_basename,
+            ]
+            grm: [route_meta, grm_files]
+            pheno: [route_meta, phenotype, 1, 2]
+            qcovar: [route_meta, quant_covariates]
+            covar: [route_meta, cat_covariates]
+            pair_log: [pair_meta.request_id, pair_log]
+        }
+
+    GCTA_BIVARIATEREML(
+        ch_bivariate_invocations.grm,
+        ch_bivariate_invocations.pheno,
+        ch_bivariate_invocations.qcovar,
+        ch_bivariate_invocations.covar,
+    )
+
+    def ch_bivariate_native_results = GCTA_BIVARIATEREML.out.bivariate_results
+        .map { meta, hsq -> [meta.request_id, meta, hsq] }
+        .join(
+            GCTA_BIVARIATEREML.out.log_file.map { meta, gcta_log -> [meta.request_id, gcta_log] },
+            failOnDuplicate: true,
+            failOnMismatch: true,
+        )
+        .join(ch_bivariate_invocations.pair_log, failOnDuplicate: true, failOnMismatch: true)
+        .map { _request_id, meta, hsq, gcta_log, pair_log -> [meta, hsq, gcta_log, pair_log] }
+
+    NORMALISE_GCTA_BIVARIATE(ch_bivariate_native_results)
 
     //
     // SUBWORKFLOWS: LDAK REML, Haseman-Elston and PCGC heritability
@@ -443,10 +550,13 @@ workflow GWAS {
     def multiqc_custom_methods_description = multiqc_methods_description
         ? file(multiqc_methods_description, checkIfExists: true)
         : file("${projectDir}/assets/methods_description_template.yml", checkIfExists: true)
-    def ch_methods_description = ch_analysis_metadata.map { analysis_metadata ->
+    def ch_methods_description = ch_method_metadata.map { method_metadata ->
+        def analysis_metadata = method_metadata.findAll { record -> record.domain == 'analysis' }.collect { record -> record.meta }
+        def relationship_metadata = method_metadata.findAll { record -> record.domain == 'pairwise' }.collect { record -> record.meta }
         def selected_methods = [
             association: analysis_metadata.collectMany { meta -> meta.association_methods }.unique().sort(),
             heritability: analysis_metadata.collectMany { meta -> meta.heritability_methods }.unique().sort(),
+            pairwise: relationship_metadata.collectMany { meta -> meta.relationship_methods }.unique().sort(),
         ]
         methodsDescriptionText(multiqc_custom_methods_description, selected_methods)
     }

@@ -1,0 +1,78 @@
+name: normalise_gcta_bivariate
+description: Normalize dense GCTA bivariate REML results into estimand views, diagnostics and request provenance while retaining native values
+keywords:
+  - gcta
+  - bivariate
+  - heritability
+  - genetic correlation
+  - provenance
+tools:
+  - python:
+      description: Python standard-library runtime
+      homepage: https://www.python.org/
+      documentation: https://docs.python.org/3/
+input:
+  - - meta:
+        type: map
+        description: Pair-request, endpoint, matrix and native-invocation metadata
+    - hsq:
+        type: file
+        description: Native GCTA bivariate REML result
+        pattern: "*.hsq"
+    - gcta_log:
+        type: file
+        description: Native GCTA log
+        pattern: "*.log"
+    - pair_log:
+        type: file
+        description: Pair-preparation diagnostics
+        pattern: "*.pair.log"
+output:
+  heritability:
+    - - meta:
+          type: map
+          description: Pair-request metadata propagated from input
+      - heritability.tsv:
+          type: file
+          description: Ordered endpoint heritability estimands on every native scale GCTA emitted
+  genetic_correlation:
+    - - meta:
+          type: map
+          description: Pair-request metadata propagated from input
+      - genetic_correlation.tsv:
+          type: file
+          description: Ordered pair genetic correlation estimand
+  genetic_covariance:
+    - - meta:
+          type: map
+          description: Pair-request metadata propagated from input
+      - genetic_covariance.tsv:
+          type: file
+          description: Ordered pair observed-scale genetic covariance estimand
+  diagnostics:
+    - - meta:
+          type: map
+          description: Pair-request metadata propagated from input
+      - diagnostics.tsv:
+          type: file
+          description: Pair shape and endpoint-aware native diagnostics including convergence classification
+  provenance:
+    - - meta:
+          type: map
+          description: Pair-request metadata propagated from input
+      - provenance.json:
+          type: file
+          description: Machine-readable request, matrix, execution owner, native component, warning and artifact provenance
+  versions:
+    - versions.yml:
+        type: file
+        description: Software versions
+topics:
+  versions:
+    - versions.yml:
+        type: file
+        description: Software versions
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"
