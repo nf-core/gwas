@@ -1,0 +1,59 @@
+{
+    "munge summary statistics against an explicit allele set": {
+        "content": [
+            [
+                "trait_a.sumstats.gz",
+                "SNP\tA1\tA2\tN\tZ",
+                201,
+                {
+                    "versions_ldsc": [
+                        [
+                            "LDSC_MUNGESUMSTATS",
+                            "ldsc",
+                            "3.0.2"
+                        ]
+                    ],
+                    "versions_ldsc_native": [
+                        [
+                            "LDSC_MUNGESUMSTATS",
+                            "ldsc_native",
+                            "3.0.1"
+                        ]
+                    ],
+                    "versions_ldsc_source": [
+                        [
+                            "LDSC_MUNGESUMSTATS",
+                            "ldsc_source_revision",
+                            "6c673952cee74bd5c57aef1555a03b1c015399a0"
+                        ]
+                    ],
+                    "versions_python": [
+                        [
+                            "LDSC_MUNGESUMSTATS",
+                            "python",
+                            "3.9.13"
+                        ]
+                    ]
+                }
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-24T04:53:40.252971366"
+    },
+    "emit a valid compressed stub": {
+        "content": [
+            [
+                "trait_stub.sumstats.gz",
+                "SNP\tA1\tA2\tN\tZ\n"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-24T04:53:48.177700108"
+    }
+}

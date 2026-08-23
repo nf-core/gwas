@@ -1,0 +1,125 @@
+nextflow_process {
+
+    name "Test Process LDSC_RG"
+    script "../main.nf"
+    process "LDSC_RG"
+    config "./nextflow.config"
+
+    tag "modules"
+    tag "modules_local"
+    tag "ldsc"
+    tag "ldsc_rg"
+
+    def inputs = { outputDir, name, valid = true ->
+        def root = new File(outputDir.toString(), "fixture_${name}")
+        def reference = new File(root, 'reference')
+        def weights = new File(root, 'weights')
+        reference.mkdirs()
+        weights.mkdirs()
+        def writeGzip = { File target, String body ->
+            target.withOutputStream { output ->
+                def gzip = new java.util.zip.GZIPOutputStream(output)
+                gzip.write(body.getBytes('UTF-8'))
+                gzip.close()
+            }
+        }
+        def leftRows = []
+        def rightRows = []
+        (1..2).each { chromosome ->
+            def referenceRows = []
+            def weightRows = []
+            (1..500).each { index ->
+                def globalIndex = (chromosome - 1) * 500 + index
+                def ldScore = 1.0 + (globalIndex % 47) / 10.0
+                def weight = 1.0 + (globalIndex % 13) / 20.0
+                referenceRows << "${chromosome}\trs${globalIndex}\t${globalIndex}\t${ldScore}"
+                weightRows << "${chromosome}\trs${globalIndex}\t${globalIndex}\t${weight}"
+                def sign = globalIndex % 2 == 0 ? 1.0 : -1.0
+                def leftZ = sign * Math.sqrt(1.0 + 0.5 * ldScore) + ((globalIndex % 7) - 3) / 20.0
+                def rightZ = sign * Math.sqrt(1.0 + 0.7 * ldScore) + ((globalIndex % 11) - 5) / 25.0
+                leftRows << "rs${globalIndex}\tA\tG\t${String.format(java.util.Locale.ROOT, '%.8f', leftZ)}\t10000"
+                rightRows << "rs${globalIndex}\tA\tG\t${String.format(java.util.Locale.ROOT, '%.8f', rightZ)}\t12000"
+            }
+            writeGzip(new File(reference, "${chromosome}.l2.ldscore.gz"), "CHR\tSNP\tBP\tL2\n${referenceRows.join('\n')}\n")
+            new File(reference, "${chromosome}.l2.M_5_50").text = '500\n'
+            writeGzip(new File(weights, "${chromosome}.l2.ldscore.gz"), "CHR\tSNP\tBP\tL2\n${weightRows.join('\n')}\n")
+        }
+        def left = new File(root, 'left.sumstats.gz')
+        def right = new File(root, 'right.sumstats.gz')
+        writeGzip(left, "SNP\tA1\tA2\tZ\tN\n${leftRows.join('\n')}\n")
+        writeGzip(right, valid ? "SNP\tA1\tA2\tZ\tN\n${rightRows.join('\n')}\n" : "SNP\tA1\tA2\tN\nrs1\tA\tG\t12000\n")
+        [left: left, right: right, reference: reference, weights: weights]
+    }
+
+    test("estimate pairwise genetic correlation") {
+        when {
+            def fixture = inputs(outputDir, 'valid')
+            process {
+                """
+                input[0] = [[id: 'trait_a--trait_b'], file('${fixture.left}', checkIfExists: true), file('${fixture.right}', checkIfExists: true)]
+                input[1] = [[id: 'reference'], file('${fixture.reference}', checkIfExists: true)]
+                input[2] = [[id: 'weights'], file('${fixture.weights}', checkIfExists: true)]
+                """
+            }
+        }
+
+        then {
+            def log = new File(process.out.log.get(0).get(1).toString())
+            assertAll(
+                { assert process.success },
+                { assert log.name == 'trait_a--trait_b.log' },
+                { assert log.text.contains('Genetic Correlation:') },
+                { assert log.text.contains('Summary of Genetic Correlation Results') },
+                { assert process.out.versions_ldsc.get(0) == ['LDSC_RG', 'ldsc', '3.0.2'] },
+                { assert process.out.versions_ldsc_native.get(0) == ['LDSC_RG', 'ldsc_native', '3.0.1'] },
+                { assert process.out.versions_ldsc_source.get(0) == ['LDSC_RG', 'ldsc_source_revision', '6c673952cee74bd5c57aef1555a03b1c015399a0'] },
+                { assert process.out.versions_python.get(0) == ['LDSC_RG', 'python', '3.9.13'] },
+                { assert snapshot([log.name, process.out.findAll { name, value -> name.startsWith('versions_') }]).match() },
+            )
+        }
+    }
+
+    test("emit a native-log stub") {
+        options "-stub"
+
+        when {
+            def fixture = inputs(outputDir, 'stub')
+            process {
+                """
+                input[0] = [[id: 'pair_stub'], file('${fixture.left}', checkIfExists: true), file('${fixture.right}', checkIfExists: true)]
+                input[1] = [[id: 'reference'], file('${fixture.reference}', checkIfExists: true)]
+                input[2] = [[id: 'weights'], file('${fixture.weights}', checkIfExists: true)]
+                """
+            }
+        }
+
+        then {
+            def log = new File(process.out.log.get(0).get(1).toString())
+            assertAll(
+                { assert process.success },
+                { assert log.text == 'LDSC genetic correlation stub\n' },
+                { assert snapshot([log.name, log.text]).match() },
+            )
+        }
+    }
+
+    test("reject a malformed second summary-statistics input") {
+        when {
+            def fixture = inputs(outputDir, 'invalid', false)
+            process {
+                """
+                input[0] = [[id: 'pair_invalid'], file('${fixture.left}', checkIfExists: true), file('${fixture.right}', checkIfExists: true)]
+                input[1] = [[id: 'reference'], file('${fixture.reference}', checkIfExists: true)]
+                input[2] = [[id: 'weights'], file('${fixture.weights}', checkIfExists: true)]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.failed },
+                { assert process.errorReport.contains('Improperly formatted sumstats file') || process.errorReport.contains('Usecols do not match columns') },
+            )
+        }
+    }
+}

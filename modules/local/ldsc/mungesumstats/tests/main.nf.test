@@ -1,0 +1,108 @@
+nextflow_process {
+
+    name "Test Process LDSC_MUNGESUMSTATS"
+    script "../main.nf"
+    process "LDSC_MUNGESUMSTATS"
+    config "./nextflow.config"
+
+    tag "modules"
+    tag "modules_local"
+    tag "ldsc"
+    tag "ldsc_mungesumstats"
+
+    def inputs = { outputDir, name, valid = true ->
+        def root = new File(outputDir.toString(), "fixture_${name}")
+        root.mkdirs()
+        def sumstats = new File(root, "${name}.tsv")
+        def mergeAlleles = new File(root, 'merge_alleles.tsv')
+        def variants = (1..200).collect { index ->
+            def beta = ((index % 9) - 4) / 20.0
+            def pvalue = String.format(java.util.Locale.ROOT, '%.6g', 0.0001 + index / 1000000.0)
+            "rs${index}\tA\tG\t10000\t${beta}\t${pvalue}"
+        }
+        sumstats.text = valid ? "SNP\tA1\tA2\tN\tBETA\tP\n${variants.join('\n')}\n" : "SNP\tA1\tA2\tN\nrs1\tA\tG\t10000\n"
+        mergeAlleles.text = "SNP\tA1\tA2\n" + (1..200).collect { "rs${it}\tA\tG" }.join('\n') + '\n'
+        [sumstats: sumstats, mergeAlleles: mergeAlleles]
+    }
+
+    test("munge summary statistics against an explicit allele set") {
+
+        when {
+            def fixture = inputs(outputDir, 'valid')
+            process {
+                """
+                input[0] = [[id: 'trait_a'], file('${fixture.sumstats}', checkIfExists: true)]
+                input[1] = [[id: 'hapmap3'], file('${fixture.mergeAlleles}', checkIfExists: true)]
+                """
+            }
+        }
+
+        then {
+            def munged = new File(process.out.munged_sumstats.get(0).get(1).toString())
+            def log = new File(process.out.log.get(0).get(1).toString())
+            def gzip = new java.util.zip.GZIPInputStream(new FileInputStream(munged))
+            def lines = gzip.getText('UTF-8').readLines()
+            gzip.close()
+            assertAll(
+                { assert process.success },
+                { assert munged.name == 'trait_a.sumstats.gz' },
+                { assert lines.first().split('\\s+') as List == ['SNP', 'A1', 'A2', 'N', 'Z'] },
+                { assert lines.size() == 201 },
+                { assert log.text.contains('200 SNPs remain') },
+                { assert process.out.versions_ldsc.get(0) == ['LDSC_MUNGESUMSTATS', 'ldsc', '3.0.2'] },
+                { assert process.out.versions_ldsc_native.get(0) == ['LDSC_MUNGESUMSTATS', 'ldsc_native', '3.0.1'] },
+                { assert process.out.versions_ldsc_source.get(0) == ['LDSC_MUNGESUMSTATS', 'ldsc_source_revision', '6c673952cee74bd5c57aef1555a03b1c015399a0'] },
+                { assert process.out.versions_python.get(0) == ['LDSC_MUNGESUMSTATS', 'python', '3.9.13'] },
+                { assert snapshot([munged.name, lines.first(), lines.size(), process.out.findAll { name, value -> name.startsWith('versions_') }]).match() },
+            )
+        }
+    }
+
+    test("emit a valid compressed stub") {
+
+        options "-stub"
+
+        when {
+            def fixture = inputs(outputDir, 'stub')
+            process {
+                """
+                input[0] = [[id: 'trait_stub'], file('${fixture.sumstats}', checkIfExists: true)]
+                input[1] = [[id: 'hapmap3'], file('${fixture.mergeAlleles}', checkIfExists: true)]
+                """
+            }
+        }
+
+        then {
+            def munged = new File(process.out.munged_sumstats.get(0).get(1).toString())
+            def gzip = new java.util.zip.GZIPInputStream(new FileInputStream(munged))
+            def text = gzip.getText('UTF-8')
+            gzip.close()
+            assertAll(
+                { assert process.success },
+                { assert text == 'SNP\tA1\tA2\tN\tZ\n' },
+                { assert new File(process.out.log.get(0).get(1).toString()).text == 'LDSC munging stub\n' },
+                { assert snapshot([munged.name, text]).match() },
+            )
+        }
+    }
+
+    test("reject summary statistics without an association statistic") {
+
+        when {
+            def fixture = inputs(outputDir, 'invalid', false)
+            process {
+                """
+                input[0] = [[id: 'trait_invalid'], file('${fixture.sumstats}', checkIfExists: true)]
+                input[1] = [[id: 'hapmap3'], file('${fixture.mergeAlleles}', checkIfExists: true)]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.failed },
+                { assert process.errorReport.contains('Could not interpret column') || process.errorReport.contains('signed summary statistic') },
+            )
+        }
+    }
+}

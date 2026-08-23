@@ -1,0 +1,57 @@
+{
+    "emit a native-log stub": {
+        "content": [
+            [
+                "pair_stub.log",
+                "LDSC genetic correlation stub\n"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-24T04:48:19.19728606"
+    },
+    "estimate pairwise genetic correlation": {
+        "content": [
+            [
+                "trait_a--trait_b.log",
+                {
+                    "versions_ldsc": [
+                        [
+                            "LDSC_RG",
+                            "ldsc",
+                            "3.0.2"
+                        ]
+                    ],
+                    "versions_ldsc_native": [
+                        [
+                            "LDSC_RG",
+                            "ldsc_native",
+                            "3.0.1"
+                        ]
+                    ],
+                    "versions_ldsc_source": [
+                        [
+                            "LDSC_RG",
+                            "ldsc_source_revision",
+                            "6c673952cee74bd5c57aef1555a03b1c015399a0"
+                        ]
+                    ],
+                    "versions_python": [
+                        [
+                            "LDSC_RG",
+                            "python",
+                            "3.9.13"
+                        ]
+                    ]
+                }
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-24T04:54:04.361194574"
+    }
+}
