@@ -201,6 +201,8 @@ def getMethodRegistry() {
             endpoint_domain: 'summary_statistics',
             option_family: 'ldak',
             reference_family: 'ldak',
+            consumes_population_prevalence: true,
+            consumes_sample_prevalence: true,
             citation_key: 'ldak_sumstats',
         ],
         ldsc_h2: [
@@ -217,6 +219,8 @@ def getMethodRegistry() {
             endpoint_domain: 'summary_statistics',
             option_family: 'ldsc',
             reference_family: 'ldsc',
+            consumes_population_prevalence: true,
+            consumes_sample_prevalence: true,
             citation_key: 'ldsc',
         ],
         ldak_reml: [
@@ -993,6 +997,38 @@ def validateSummaryNativeArgumentTokens(method_options, namespace, request_id, m
             '--remove',
             '--weights',
         ],
+        ldsc_h2: [
+            '--annot',
+            '--bfile',
+            '--cts-bin',
+            '--extract',
+            '--frqfile',
+            '--frqfile-chr',
+            '--h2-cts',
+            '--keep',
+            '--print-snps',
+            '--ref-ld',
+            '--ref-ld-chr-cts',
+            '--w-ld',
+        ],
+        ldsc_rg: [
+            '--annot',
+            '--bfile',
+            '--cts-bin',
+            '--extract',
+            '--frqfile',
+            '--frqfile-chr',
+            '--h2-cts',
+            '--keep',
+            '--print-snps',
+            '--ref-ld',
+            '--ref-ld-chr-cts',
+            '--w-ld',
+        ],
+    ]
+    def alternate_operations = [
+        ldsc_h2: ['--l2'],
+        ldsc_rg: ['--l2'],
     ]
     native_args.eachWithIndex { token, index ->
         if (!(token instanceof String) || !token) {
@@ -1010,6 +1046,9 @@ def validateSummaryNativeArgumentTokens(method_options, namespace, request_id, m
         }
         if (option_name in (undeclared_file_options[method] ?: [])) {
             fail.call("token ${index + 1} '${token}' requires a typed staged resource, but this request architecture declares no such file role")
+        }
+        if (option_name in (alternate_operations[method] ?: [])) {
+            fail.call("token ${index + 1} '${token}' selects a different primary operation from wrapper-owned method '${method}'")
         }
         def argument_value = token.contains('=') ? token.substring(token.indexOf('=') + 1) : token
         if (!token.startsWith('--') || token.contains('=')) {
@@ -1313,9 +1352,23 @@ def validateRelationalInput(cohort_rows, analysis_rows, summary_statistics_rows,
         .collectMany { row -> [normaliseCellValue(row[0].left_analysis_id), normaliseCellValue(row[0].right_analysis_id)] }
         .findAll { analysis_id -> analysis_id }
         .collect { analysis_id -> analysis_id.toString() } as Set
+    def pair_prevalence_summary_statistics_ids = relationship_rows
+        .findAll { row ->
+            tokenizeMethodSelector(row[0].relationship_methods).any { method ->
+                def capability = getMethodCapabilities()[method]
+                capability && capability.domain == 'pairwise' && capability.consumes_population_prevalence
+            }
+        }
+        .collectMany { row -> [normaliseCellValue(row[0].left_summary_statistics_id), normaliseCellValue(row[0].right_summary_statistics_id)] }
+        .findAll { summary_statistics_id -> summary_statistics_id }
+        .collect { summary_statistics_id -> summary_statistics_id.toString() } as Set
     def summary_prevalence_analysis_ids = summary_statistics_rows
         .findAll { row ->
-            normaliseCellValue(row[0].producer_analysis_id) && tokenizeMethodSelector(row[0].heritability_methods).any { method -> getMethodCapabilities()[method]?.consumes_population_prevalence }
+            def summary_statistics_id = normaliseCellValue(row[0].id)?.toString()
+            normaliseCellValue(row[0].producer_analysis_id) && (
+                tokenizeMethodSelector(row[0].heritability_methods).any { method -> getMethodCapabilities()[method]?.consumes_population_prevalence } ||
+                summary_statistics_id in pair_prevalence_summary_statistics_ids
+            )
         }
         .collect { row -> normaliseCellValue(row[0].producer_analysis_id).toString() } as Set
 

@@ -148,9 +148,13 @@ nextflow_function {
                 { assert function.result.ldak_sumher.reference_family == 'ldak' },
                 { assert function.result.ldak_sumher.consumes_population_prevalence },
                 { assert function.result.ldak_sumcors.endpoint_domain == 'summary_statistics' },
+                { assert function.result.ldak_sumcors.consumes_population_prevalence },
+                { assert function.result.ldak_sumcors.consumes_sample_prevalence },
                 { assert function.result.ldsc_h2.reference_family == 'ldsc' },
                 { assert function.result.ldsc_h2.consumes_sample_prevalence },
                 { assert function.result.ldsc_rg.endpoint_domain == 'summary_statistics' },
+                { assert function.result.ldsc_rg.consumes_population_prevalence },
+                { assert function.result.ldsc_rg.consumes_sample_prevalence },
                 { assert function.result.ldak_reml.matrix_kind == 'ldak_kinship' },
                 { assert function.result.ldak_pcgc.requires_population_prevalence },
                 { assert function.result.ldak_he.citation_key == function.result.ldak_pcgc.citation_key },
@@ -356,6 +360,98 @@ nextflow_function {
                 { assert function.failed },
                 { assert function.stdout.join('\n').contains('undeclared file input') },
             )
+        }
+    }
+
+    test("the summary firewall permits non-file LDSC scientific arguments") {
+        function "validateSummaryNativeArgumentTokens"
+
+        when {
+            function {
+                """
+                input[0] = 'method_options.json'
+                input[1] = 'pair_requests'
+                input[2] = 'ldsc_rg--example'
+                input[3] = 'ldsc_rg'
+                input[4] = ['--n-blocks', '20', '--intercept-gencov=0']
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == ['--n-blocks', '20', '--intercept-gencov=0'] },
+            )
+        }
+    }
+
+    def ldscFileOptions = [
+        '--annot',
+        '--bfile',
+        '--cts-bin',
+        '--extract',
+        '--frqfile',
+        '--frqfile-chr',
+        '--h2-cts',
+        '--keep',
+        '--print-snps',
+        '--ref-ld',
+        '--ref-ld-chr-cts',
+        '--w-ld',
+    ]
+    ['ldsc_h2', 'ldsc_rg'].each { method ->
+        ldscFileOptions.each { option ->
+            [
+                [name: 'bare', args: [option, 'opaque_resource']],
+                [name: 'inline', args: ["${option}=opaque_resource"]],
+            ].each { form ->
+                test("the ${method} firewall structurally rejects ${form.name} ${option}") {
+                    function "validateSummaryNativeArgumentTokens"
+
+                    when {
+                        function {
+                            """
+                            input[0] = 'method_options.json'
+                            input[1] = '${method == 'ldsc_h2' ? 'unary_requests' : 'pair_requests'}'
+                            input[2] = '${method}--example'
+                            input[3] = '${method}'
+                            input[4] = ${groovy.json.JsonOutput.toJson(form.args)}
+                            """
+                        }
+                    }
+
+                    then {
+                        assertAll(
+                            { assert function.failed },
+                            { assert function.stdout.join('\n').contains('requires a typed staged resource') },
+                        )
+                    }
+                }
+            }
+        }
+
+        test("the ${method} firewall rejects the alternate LD-score operation") {
+            function "validateSummaryNativeArgumentTokens"
+
+            when {
+                function {
+                    """
+                    input[0] = 'method_options.json'
+                    input[1] = '${method == 'ldsc_h2' ? 'unary_requests' : 'pair_requests'}'
+                    input[2] = '${method}--example'
+                    input[3] = '${method}'
+                    input[4] = ['--l2']
+                    """
+                }
+            }
+
+            then {
+                assertAll(
+                    { assert function.failed },
+                    { assert function.stdout.join('\n').contains("selects a different primary operation from wrapper-owned method '${method}'") },
+                )
+            }
         }
     }
 

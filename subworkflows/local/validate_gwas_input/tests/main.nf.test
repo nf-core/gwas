@@ -211,6 +211,61 @@ nextflow_workflow {
         }
     }
 
+    test("pair-only internal summaries retain ordered producer prevalence metadata") {
+        tag "internal_summary"
+
+        when {
+            workflow {
+                """
+                input[0] = file('${RELATIONAL.cohorts(projectDir, outputDir, 'pair_only_internal_prevalence')}', checkIfExists: true)
+                input[1] = file('${RELATIONAL.analyses(projectDir, outputDir, 'pair_only_internal_prevalence') { rows ->
+                    rows.clear()
+                    rows << RELATIONAL.analysis(projectDir, 'example_pgen_qt')
+                    def binary = RELATIONAL.analysis(projectDir, 'example_pgen_bt')
+                    binary.population_prevalence = 0.1
+                    binary.sample_prevalence = 0.2
+                    rows << binary
+                }}', checkIfExists: true)
+                input[2] = file('${RELATIONAL.summaryStatistics(projectDir, outputDir, 'pair_only_internal_prevalence') { rows ->
+                    rows.clear()
+                    rows << RELATIONAL.internalSummary('example_pgen_qt', 'plink2')
+                    rows << RELATIONAL.internalSummary('example_pgen_bt', 'plink2')
+                }}', checkIfExists: true)
+                input[3] = file('${RELATIONAL.summaryRelationships(projectDir, outputDir, 'pair_only_internal_prevalence') { rows ->
+                    rows[0].relationship_id = 'internal_pair'
+                    rows[0].left_summary_statistics_id = 'example_pgen_qt--plink2'
+                    rows[0].right_summary_statistics_id = 'example_pgen_bt--plink2'
+                    rows[0].relationship_methods = 'ldak_sumcors,ldsc_rg'
+                }}', checkIfExists: true)
+                input[4] = file('${RELATIONAL.referenceCatalog(outputDir, 'pair_only_internal_prevalence')}', checkIfExists: true)
+                input[5] = file('${RELATIONAL.methodOptions(outputDir, 'pair_only_internal_prevalence', [
+                    pair_requests: [
+                        'ldak_sumcors--internal_pair': [reference_bundle_id: 'ldak_thin_eur'],
+                        'ldsc_rg--internal_pair': [reference_bundle_id: 'ldsc_eur'],
+                    ],
+                ])}', checkIfExists: true)
+                """
+            }
+        }
+
+        then {
+            def requests = workflow.out.pair_requests.collectEntries { record -> [(record[0].request_id): record[0]] }
+            assertAll(
+                { assert workflow.success },
+                { assert workflow.out.unary_requests.size() == 0 },
+                { assert requests.keySet() == ['ldak_sumcors--internal_pair', 'ldsc_rg--internal_pair'] as Set },
+                { assert requests.values().every { meta -> meta.left_summary_statistics_id == 'example_pgen_qt--plink2' } },
+                { assert requests.values().every { meta -> meta.right_summary_statistics_id == 'example_pgen_bt--plink2' } },
+                { assert requests.values().every { meta -> !meta.left_is_binary } },
+                { assert requests.values().every { meta -> meta.left_population_prevalence == null } },
+                { assert requests.values().every { meta -> meta.left_sample_prevalence == null } },
+                { assert requests.values().every { meta -> meta.right_is_binary } },
+                { assert requests.values().every { meta -> meta.right_population_prevalence == 0.1 } },
+                { assert requests.values().every { meta -> meta.right_sample_prevalence == 0.2 } },
+            )
+        }
+    }
+
     test("pipeline-generated summaries require the producer-derived identity") {
         tag "summary_invalid"
 
