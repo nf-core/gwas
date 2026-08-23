@@ -80,8 +80,6 @@ with Path("heritability.tsv").open("w", encoding="utf-8", newline="") as handle:
 effective_args = META.get("effective_native_args", [])
 option_names = [token.split("=", 1)[0] for token in effective_args if isinstance(token, str) and token.startswith("--")]
 large_effect_match = re.search(r"There are (\\d+) predictors that explain at least .*?; these will be excluded", log_text)
-null_log_likelihood = number(extra.get("Null_logl"))
-alternative_log_likelihood = number(extra.get("Alt_logl"))
 overlap_proportion = number(overlap.get("Overlap_Proportion"))
 preparation = json.loads(PREPARATION.read_text(encoding="utf-8"))
 if "--check-sums" in option_names and "NO" in effective_args and overlap_proportion is not None and overlap_proportion < 0.8:
@@ -100,11 +98,8 @@ diagnostics = {
     "effective_size": extra.get("Effective_Size"),
     "weighted_mean_chisq": extra.get("Weighted_Mean_Chisq"),
     "weighted_gif": extra.get("Weighted_GIF"),
-    "estimated_parameter_count": 1,
     "null_log_likelihood": extra.get("Null_logl"),
     "alternative_log_likelihood": extra.get("Alt_logl"),
-    "null_aic": (-2 * null_log_likelihood) if null_log_likelihood is not None else None,
-    "alternative_aic": (2 - 2 * alternative_log_likelihood) if alternative_log_likelihood is not None else None,
 }
 with Path("diagnostics.tsv").open("w", encoding="utf-8", newline="") as handle:
     writer = csv.writer(handle, delimiter="\\t", lineterminator="\\n")

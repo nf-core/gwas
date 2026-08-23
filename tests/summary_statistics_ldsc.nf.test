@@ -84,6 +84,12 @@ nextflow_pipeline {
                 { assert rgProvenance.endpoints.left.summary_statistics_id == 'external_qt' },
                 { assert rgProvenance.endpoints.right.summary_statistics_id == 'external_bt' },
                 { assert rgProvenance.artifacts.native == ['native.observed.log', 'native.liability.log'] },
+                { assert rgProvenance.native.estimates.liability.native_scales.left_h2 == 'liability' },
+                { assert rgProvenance.native.estimates.liability.normalized_scales.left_h2 == 'observed' },
+                { assert rgProvenance.native.estimates.liability.normalized_scales.right_h2 == 'liability' },
+                { assert rgProvenance.native.estimates.liability.normalized_scales.covariance == 'observed_x_liability' },
+                { assert !rgH2.text.contains('quantitative\tliability\t') },
+                { assert covariance.text.contains('\tobserved_x_liability\t') },
                 { assert snapshot(
                     RELATIONAL.gzipTextHashes("${params.outdir}/summary_statistics"),
                     h2Qt.text,

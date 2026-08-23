@@ -180,7 +180,9 @@ if LIABILITY_LOG:
     with open(LIABILITY_LOG) as handle:
         liability_text = handle.read()
 
-texts = [(OBSERVED_LOG, observed_text)] + ([(LIABILITY_LOG, liability_text)] if liability_text is not None else [])
+texts = [("observed", OBSERVED_LOG, observed_text)] + (
+    [("liability", LIABILITY_LOG, liability_text)] if liability_text is not None else []
+)
 native_version = version_from(observed_text)
 if not native_version:
     fail("observed-scale native log does not report the LDSC version")
@@ -188,13 +190,15 @@ if liability_text is not None and version_from(liability_text) != native_version
     fail("observed- and liability-scale logs report different LDSC versions")
 
 munging = [parse_munging(path) for path in MUNGING_LOGS]
-all_native_warnings = sorted(set(warning for _path, text in texts for warning in warnings_from(text)))
+all_native_warnings = sorted(set(warning for _invocation, _path, text in texts for warning in warnings_from(text)))
 
 if METHOD == "ldsc_h2":
     estimates = []
     native_by_scale = {}
-    for path, text in texts:
+    for invocation, path, text in texts:
         scale, h2 = log_scale(text, "h2")
+        if scale != invocation:
+            fail("'{}' H2 invocation emitted '{}' scale H2".format(invocation, scale))
         if scale in native_by_scale:
             fail("native inputs repeat '{}' scale H2".format(scale))
         native_by_scale[scale] = {"h2": h2, "artifact": "native.{}.log".format(scale)}
@@ -251,11 +255,11 @@ else:
             fail("native RG log is missing the '{}' section".format(start))
         return text[start_at + len(start) : end_at]
 
-    native_by_scale = {}
+    native_by_invocation = {}
     primary_correlation = None
     primary_diagnostics = None
     estimands = []
-    for path, text in texts:
+    for invocation, path, text in texts:
         left_text = section(text, r"Heritability of phenotype 1", r"Heritability of phenotype 2/2")
         right_text = section(text, r"Heritability of phenotype 2/2", r"Genetic Covariance")
         covariance_text = section(text, r"Genetic Covariance", r"Genetic Correlation")
@@ -263,26 +267,42 @@ else:
         left_scale, left_h2 = log_scale(left_text, "h2")
         right_scale, right_h2 = log_scale(right_text, "h2")
         covariance_scale, covariance = log_scale(covariance_text, "gencov")
-        if len({left_scale, right_scale, covariance_scale}) != 1:
-            fail("native RG log mixes estimand scales within one invocation")
-        scale = left_scale
-        if scale in native_by_scale:
-            fail("native inputs repeat '{}' scale RG".format(scale))
+        if invocation in native_by_invocation:
+            fail("native inputs repeat '{}' RG invocation".format(invocation))
+        if invocation == "observed" and {left_scale, right_scale, covariance_scale} != {"observed"}:
+            fail("primary RG invocation did not emit observed-scale estimands")
+        normalized_left_scale = "liability" if invocation == "liability" and META["left_trait_type"] == "binary" else "observed"
+        normalized_right_scale = "liability" if invocation == "liability" and META["right_trait_type"] == "binary" else "observed"
+        normalized_covariance_scale = (
+            normalized_left_scale
+            if normalized_left_scale == normalized_right_scale
+            else "{}_x_{}".format(normalized_left_scale, normalized_right_scale)
+        )
         correlation = find_value_se(correlation_text, "Genetic Correlation")
         z_score = find_value(correlation_text, "Z-score")
         p_value = find_value(correlation_text, "P")
-        native_by_scale[scale] = {
+        native_by_invocation[invocation] = {
             "left_h2": left_h2,
             "right_h2": right_h2,
             "covariance": covariance,
             "correlation": correlation,
             "z_score": z_score,
             "p_value": p_value,
-            "artifact": "native.{}.log".format(scale),
+            "native_scales": {
+                "left_h2": left_scale,
+                "right_h2": right_scale,
+                "covariance": covariance_scale,
+            },
+            "normalized_scales": {
+                "left_h2": normalized_left_scale,
+                "right_h2": normalized_right_scale,
+                "covariance": normalized_covariance_scale,
+            },
+            "artifact": "native.{}.log".format(invocation),
         }
         estimands.extend([left_h2, right_h2, covariance, correlation])
-        if scale == "observed":
-            primary_correlation = native_by_scale[scale]
+        if invocation == "observed":
+            primary_correlation = native_by_invocation[invocation]
             primary_diagnostics = {
                 "regression_snps": regression_snps(text, pairwise=True),
                 "left_intercept": find_value_se(left_text, "Intercept"),
@@ -295,25 +315,25 @@ else:
     classification, warning_codes = classify(
         estimands,
         all_native_warnings,
-        [("left_heritability_{}".format(scale), values["left_h2"]["estimate"], 0, 1) for scale, values in native_by_scale.items()]
-        + [("right_heritability_{}".format(scale), values["right_h2"]["estimate"], 0, 1) for scale, values in native_by_scale.items()]
+        [("left_heritability_{}".format(values["normalized_scales"]["left_h2"]), values["left_h2"]["estimate"], 0, 1) for values in native_by_invocation.values()]
+        + [("right_heritability_{}".format(values["normalized_scales"]["right_h2"]), values["right_h2"]["estimate"], 0, 1) for values in native_by_invocation.values()]
         + [("genetic_correlation", primary_correlation["correlation"]["estimate"], -1, 1)],
     )
     heritability_rows = []
     covariance_rows = []
-    for scale, values in native_by_scale.items():
+    for invocation, values in native_by_invocation.items():
         artifact = "requests/{}/{}/{}".format(METHOD, META["request_id"], values["artifact"])
-        for endpoint, summary_key, trait_key, type_key, value_key in [
-            ("left", "left_summary_statistics_id", "left_trait_id", "left_trait_type", "left_h2"),
-            ("right", "right_summary_statistics_id", "right_trait_id", "right_trait_type", "right_h2"),
+        for endpoint, summary_key, trait_key, type_key, value_key, scale_key in [
+            ("left", "left_summary_statistics_id", "left_trait_id", "left_trait_type", "left_h2", "left_h2"),
+            ("right", "right_summary_statistics_id", "right_trait_id", "right_trait_type", "right_h2", "right_h2"),
         ]:
             value = values[value_key]
             heritability_rows.append(
-                [META["relationship_id"], META["request_id"], METHOD, endpoint, META[summary_key], META[trait_key], META[type_key], scale, display(value["estimate"]), display(value["standard_error"]), classification, artifact]
+                [META["relationship_id"], META["request_id"], METHOD, endpoint, META[summary_key], META[trait_key], META[type_key], values["normalized_scales"][scale_key], display(value["estimate"]), display(value["standard_error"]), classification, artifact]
             )
         covariance = values["covariance"]
         covariance_rows.append(
-            [META["relationship_id"], META["request_id"], METHOD, META["left_summary_statistics_id"], META["right_summary_statistics_id"], META["left_trait_id"], META["right_trait_id"], scale, display(covariance["estimate"]), display(covariance["standard_error"]), classification, artifact]
+            [META["relationship_id"], META["request_id"], METHOD, META["left_summary_statistics_id"], META["right_summary_statistics_id"], META["left_trait_id"], META["right_trait_id"], values["normalized_scales"]["covariance"], display(covariance["estimate"]), display(covariance["standard_error"]), classification, artifact]
         )
     write_tsv(
         "heritability.tsv",
@@ -332,7 +352,7 @@ else:
         [[META["relationship_id"], META["request_id"], METHOD, META["left_summary_statistics_id"], META["right_summary_statistics_id"], META["left_trait_id"], META["right_trait_id"], display(correlation["estimate"]), display(correlation["standard_error"]), display(primary_correlation["z_score"]["estimate"]), display(primary_correlation["p_value"]["estimate"]), classification, "requests/{}/{}/native.observed.log".format(METHOD, META["request_id"])]],
     )
     native = dict(primary_diagnostics)
-    native["estimates"] = native_by_scale
+    native["estimates"] = native_by_invocation
 
 scales = list(native["estimates"].keys())
 write_tsv(
