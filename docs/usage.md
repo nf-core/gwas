@@ -6,15 +6,15 @@
 
 ## Introduction
 
-nf-core/gwas runs association, individual-level heritability and explicitly declared pairwise genetic-correlation analyses from prepared human genotypes, phenotypes and optional covariates. A cohort manifest owns genotype facts; an analysis manifest links each trait analysis to one cohort and selects unary methods; and an optional relationship manifest binds ordered trait endpoints to pairwise methods.
+nf-core/gwas runs association, individual-level and summary-level heritability, and explicitly declared pairwise genetic-correlation analyses. A cohort manifest owns genotype facts; an analysis manifest links each individual-level trait analysis to one cohort; a summary-statistics manifest declares external or pipeline-generated summary results and their unary methods; and an optional relationship manifest binds ordered analysis or summary endpoints to pairwise methods.
 
 > [!IMPORTANT]
 > Genotypes must be prepared before you run the pipeline. The pipeline converts accepted genotype
 > encodings into the formats required by its methods, but it does not perform genotype quality control.
 
-## Linked manifest input
+## Relational manifest input
 
-Every run requires the linked cohort and analysis CSV manifests. `--relationship_manifest` is optional; when absent, no pair is inferred.
+Every run supplies at least one input family: the linked `--cohort_manifest` and `--analysis_manifest`, `--summary_statistics_manifest`, or both. The linked cohort and analysis manifests must always be supplied together. `--relationship_manifest` is optional; when absent, no pair is inferred.
 
 ```bash
 nextflow run nf-core/gwas \
@@ -61,25 +61,60 @@ Populate exactly one complete genotype representation on each row. PLINK 1 and V
 | `association_methods`   | By row   | Optional comma-delimited selector: `plink2`, `regenie`, `gcta_fastgwa`, or `ldak_kvik`.                                     |
 | `heritability_methods`  | By row   | Optional comma-delimited selector: `gcta_greml`, `gcta_greml_ldms`, `ldak_reml`, `ldak_he`, or `ldak_pcgc`.                 |
 | `population_prevalence` | By route | Number strictly between `0` and `1`; valid only for binary heritability analyses and required by `ldak_pcgc`.               |
+| `sample_prevalence`     | No       | Optional sample case fraction strictly between `0` and `1` for binary traits; forbidden for quantitative traits.          |
 
 At least one unary method selector must be populated unless the analysis is referenced by a relationship row. Tokens are comma-delimited without spaces and may appear only once. Association-only, heritability-only and relationship-only analysis rows are valid.
 
+### Summary-statistics manifest fields
+
+The summary-statistics manifest has exactly sixteen columns and owns one stable `summary_statistics_id` per row. Each row declares exactly one mutually exclusive origin:
+
+- An external result populates `source`, `source_mode` and `source_format`, leaves both producer fields blank, and declares its trait and provenance metadata.
+- A pipeline-generated result populates `producer_analysis_id` and `producer_association_method`, leaves the three external source fields blank, and uses the exact deterministic ID `<producer_analysis_id>--<producer_association_method>`. Trait, build, ancestry, source method and prevalence are derived from the producer analysis and remain blank on the summary row.
+
+| Column                        | Required        | Description                                                                                                                                       |
+| ----------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `summary_statistics_id`       | Yes             | Unique stable result identity. Internal results must use `<analysis_id>--<association_method>`.                                                    |
+| `trait_id`                    | External        | Declared trait identity for an external result; derived for an internal result.                                                                   |
+| `trait_type`                  | External        | `quantitative` or `binary` for an external result; derived for an internal result.                                                                |
+| `source`                      | External        | Existing external `.tsv`, `.txt` or `.csv` table, optionally gzip-compressed.                                                                      |
+| `source_mode`                 | External        | `raw` to harmonise through GWASLab or `canonical` to validate without reharmonising.                                                              |
+| `source_format`               | External        | Explicit named GWASLab format for `raw`, or exactly `nfcore_gwas_canonical_v1` for `canonical`. Automatic format detection is not supported.       |
+| `producer_analysis_id`        | Internal        | Declared analysis that produced the summary result.                                                                                               |
+| `producer_association_method` | Internal        | Association method selected by that analysis.                                                                                                     |
+| `genome_build`                | External        | `GRCh37` or `GRCh38`; derived from the producer cohort for an internal result.                                                                     |
+| `ancestry`                    | External        | Researcher-declared provenance label; derived from the producer cohort for an internal result.                                                    |
+| `source_method`               | External        | Program or method that produced the external table; derived from the producer association method for an internal result.                          |
+| `source_release`              | No              | Optional external source or release token.                                                                                                        |
+| `heritability_methods`        | By row          | Optional comma-delimited unary summary selector: `ldak_sumher` and/or `ldsc_h2`.                                                                  |
+| `population_prevalence`       | Binary external | Optional population prevalence strictly between `0` and `1`; derived for an internal result.                                                      |
+| `sample_prevalence`           | Binary external | Optional sample case fraction strictly between `0` and `1`; derived for an internal result.                                                       |
+| `access_constraints`          | No              | Optional one-line, non-secret access or redistribution note retained in provenance; accepted for either origin.                                  |
+
+An external canonical table must contain at least `SNPID`, `CHR`, `POS`, `EA`, `NEA`, `STATUS`, `EAF`, `BETA`, `SE`, `P` and `N`, with one non-empty variant row and a consistent tab-delimited field count. Raw and internal results converge on that same `nfcore_gwas_canonical_v1` contract before downstream summary methods consume them.
+
+Each declared summary must either select a unary method or be referenced by a relationship. The primary unary request ID is deterministic:
+
+```text
+<method>--<summary_statistics_id>
+```
+
 ### Relationship manifest fields
 
-The optional relationship manifest has exactly eight columns. The implemented individual-level pair routes are `gcta_bivariate_reml` and `gcta_bivariate_reml_ldms`; the summary-statistics endpoint columns remain reserved for later methods and must be blank for these routes.
+The optional relationship manifest has exactly eight columns. Endpoint slots are method-domain specific: `gcta_bivariate_reml` and `gcta_bivariate_reml_ldms` consume two analysis IDs, while `ldak_sumcors` and `ldsc_rg` consume two summary-statistics IDs. A row may select several methods for the same pair and may populate both endpoint domains only when each same-side summary is provably produced by the same-side analysis.
 
 | Column                       | Required | Description                                                                                                                                          |
 | ---------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `relationship_id`            | Yes      | Unique, whitespace-free identifier for this exact populated endpoint binding.                                                                        |
 | `left_analysis_id`           | GCTA     | Analysis ID for native trait 1.                                                                                                                       |
 | `right_analysis_id`          | GCTA     | Analysis ID for native trait 2.                                                                                                                       |
-| `left_summary_statistics_id` | No       | Reserved summary-statistics endpoint; leave blank in this release.                                                                                   |
-| `right_summary_statistics_id` | No       | Reserved summary-statistics endpoint; leave blank in this release.                                                                                   |
-| `relationship_methods`       | Yes      | Comma-delimited pairwise selector: `gcta_bivariate_reml`, `gcta_bivariate_reml_ldms` or both.                                                          |
+| `left_summary_statistics_id` | Summary  | Summary-statistics ID bound to the ordered left endpoint for `ldak_sumcors` or `ldsc_rg`.                                                             |
+| `right_summary_statistics_id` | Summary  | Summary-statistics ID bound to the ordered right endpoint for `ldak_sumcors` or `ldsc_rg`.                                                            |
+| `relationship_methods`       | Yes      | Comma-delimited pairwise selectors: `gcta_bivariate_reml`, `gcta_bivariate_reml_ldms`, `ldak_sumcors`, and/or `ldsc_rg`.                              |
 | `pair_quant_covariates`      | No       | Relationship-owned headered quantitative covariates beginning with `FID` and `IID`.                                                                  |
 | `pair_cat_covariates`        | No       | Relationship-owned headered categorical covariates beginning with `FID` and `IID`.                                                                   |
 
-GCTA bivariate REML requires two different `analysis_id` values from one cohort, and their declared `trait_id` values must also differ. A reversed duplicate such as `height,disease` plus `disease,height` is invalid because it requests the same unordered pair twice. Left and right still matter: they define GCTA trait 1 and trait 2 and are recorded in every normalized result and provenance file.
+The two populated endpoints must be different IDs and their declared trait IDs must differ. Different IDs may still represent related biological phenotypes; the pipeline does not police naming conventions. GCTA additionally requires two analysis IDs from one cohort. A reversed duplicate such as `height,disease` plus `disease,height` is invalid because it requests the same unordered binding twice. Left and right still matter and are recorded in every result and provenance file.
 
 The pair phenotype is a deterministic full union of the two normalized endpoint sample sets in `FID`,`IID` order, with `NA` on a side where that trait is missing. Pair covariates belong to the relationship, not either endpoint analysis. The primary pair request ID is deterministic:
 
@@ -88,7 +123,13 @@ gcta_bivariate_reml--<relationship_id>
 gcta_bivariate_reml_ldms--<relationship_id>
 ```
 
-### Runnable examples
+Summary pair request IDs use the same rule:
+
+```text
+<method>--<relationship_id>
+```
+
+### Examples
 
 [`assets/examples/relational/cohort_manifest.csv`](../assets/examples/relational/cohort_manifest.csv) is shared by the [minimal quantitative](../assets/examples/relational/analysis_manifest_quantitative.csv), [minimal binary](../assets/examples/relational/analysis_manifest_binary.csv), [association-only](../assets/examples/relational/analysis_manifest_association_only.csv), and [heritability-only](../assets/examples/relational/analysis_manifest_heritability_only.csv) examples. They use standard defaults and do not need `--method_options`.
 
@@ -126,9 +167,11 @@ nextflow run nf-core/gwas \
     --outdir results
 ```
 
+The [mixed summary-statistics manifest](../assets/examples/relational/summary_statistics_manifest.csv) illustrates both origins: one internal PLINK 2 result from `heterogeneous_qt` and one already-canonical external result. The companion [summary relationship](../assets/examples/relational/relationship_manifest_summary.csv), [request options](../assets/examples/relational/method_options_summary.json), and [reference-catalog shape](../assets/examples/relational/reference_catalog.json) show the complete declaration surface. Replace every `/refs/...` value in the catalog with a locally available scientific reference before launching; the pipeline deliberately rejects unavailable paths and does not infer a bundle from ancestry.
+
 ### Advanced method options
 
-`--method_options` is optional. The established form keeps its JSON root keyed by `analysis_id`; each value may contain `gcta`, `ldak` and/or `regenie`. It remains supported unchanged. A namespaced document places those same entries under `analyses` and pair-specific settings under `pair_requests`. `unary_requests` is reserved for later summary-statistics requests and must remain empty in this release. Unlisted analyses and pair requests receive their defaults. Unknown identifiers, families or options, invalid values, missing resources, and options whose consuming method is not selected are rejected before task submission.
+`--method_options` is optional. The established form keeps its JSON root keyed by `analysis_id`; each value may contain `gcta`, `ldak` and/or `regenie`. It remains supported unchanged. A namespaced document places those same entries under `analyses`, summary unary settings under `unary_requests`, and relationship settings under `pair_requests`. Unlisted analysis settings receive their defaults. Every selected LDAK or LDSC summary request must explicitly choose a `reference_bundle_id`; nothing is inferred from the summary's ancestry label.
 
 Both GCTA pair routes expose `native_args` as an array of individual non-file GCTA tokens on the deterministic request ID. A relationship's deterministic LDMS request additionally owns its matrix construction settings; it never inherits them from either endpoint's unary analysis:
 
@@ -150,6 +193,73 @@ Both GCTA pair routes expose `native_args` as an array of individual non-file GC
 ```
 
 The wrapper rejects whitespace or shell syntax, path separators, environment assignments, undeclared file-like values, file-bearing invocation mechanics such as `--keep` and `--extract`, wrapper-owned flags such as `--grm`, `--pheno`, `--out`, `--reml-bivar` and `--reml-bivar-prevalence`, and flags selecting another primary GCTA operation such as `--pca`. Arguments remain native scientific options: the pipeline records them and presents all resulting estimates; it does not choose a preferred result.
+
+Summary requests use the same deterministic ownership boundary. LDAK receives exactly one staged `tagging_file`; LDSC receives separate staged `hapmap3_snplist`, `reference_ld_scores` and `regression_weights` roles. `native_args` may contain non-file scientific tokens only. Wrapper-owned operation, input, output and thread flags are rejected, as are any values that resemble undeclared files or paths.
+
+```json
+{
+  "unary_requests": {
+    "ldsc_h2--height--plink2": {
+      "reference_bundle_id": "ldsc_eur"
+    }
+  },
+  "pair_requests": {
+    "ldak_sumcors--height_disease": {
+      "reference_bundle_id": "ldak_thin_eur"
+    },
+    "ldsc_rg--height_disease": {
+      "reference_bundle_id": "ldsc_eur"
+    }
+  }
+}
+```
+
+Each selected entity–method binding creates one deterministic primary request. Additional configurations are complete, independent named requests; they do not inherit omitted settings from the primary. Declare `primary_request_id` and `request_name`, and key the object by `<primary_request_id>--<request_name>`:
+
+```json
+{
+  "unary_requests": {
+    "ldsc_h2--height--plink2": {
+      "reference_bundle_id": "ldsc_eur"
+    },
+    "ldsc_h2--height--plink2--alternate": {
+      "primary_request_id": "ldsc_h2--height--plink2",
+      "request_name": "alternate",
+      "reference_bundle_id": "ldsc_eur_alternate"
+    }
+  }
+}
+```
+
+### Reference catalog
+
+`--reference_catalog` is a JSON object with optional `ldsc` and `ldak` families. Bundle IDs are globally unique across both families.
+
+```json
+{
+  "ldsc": {
+    "ldsc_eur": {
+      "genome_build": "GRCh37",
+      "ancestry": "EUR",
+      "variant_id_system": "rsid",
+      "hapmap3_snplist": "/refs/w_hm3.snplist",
+      "reference_ld_scores": "/refs/eur_w_ld_chr/",
+      "regression_weights": "/refs/eur_w_ld_chr/"
+    }
+  },
+  "ldak": {
+    "ldak_thin_eur": {
+      "genome_build": "GRCh37",
+      "ancestry": "EUR",
+      "variant_id_system": "rsid",
+      "model": "LDAK-Thin",
+      "tagging_file": "/refs/ldak-thin.tagging"
+    }
+  }
+}
+```
+
+The catalog may also declare a SHA-256 digest beside each role. Preflight checks the document shape, family, required roles, digest syntax and path availability. In the first release, `genome_build`, `ancestry`, `variant_id_system` and `model` are recorded provenance rather than a pipeline certification of scientific compatibility. The user owns reference selection.
 
 | GCTA option          | Type and default                      | Consumer and constraints                                                                                |
 | -------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------- |
@@ -197,11 +307,11 @@ For example, this changes the fitted-model block size and Step 2 policy for one 
 
 Resource paths are staged and their contents participate in matrix or prediction reuse identity. `gcta_grm_parts` is operational partitioning and remains configuration/profile-only, never a method option.
 
-The authoritative structural contracts are [`schema_cohort_manifest.json`](../assets/schema_cohort_manifest.json), [`schema_analysis_manifest.json`](../assets/schema_analysis_manifest.json) and [`schema_relationship_manifest.json`](../assets/schema_relationship_manifest.json); relationship-, method-, trait- and resource-aware diagnostics come from the central preflight validator.
+The authoritative structural contracts are [`schema_cohort_manifest.json`](../assets/schema_cohort_manifest.json), [`schema_analysis_manifest.json`](../assets/schema_analysis_manifest.json), [`schema_summary_statistics_manifest.json`](../assets/schema_summary_statistics_manifest.json), [`schema_relationship_manifest.json`](../assets/schema_relationship_manifest.json), and [`schema_reference_catalog.json`](../assets/schema_reference_catalog.json); origin-, relationship-, request-, method-, trait- and resource-aware diagnostics come from the central preflight validator.
 
 ### Validation diagnostics
 
-Structural failures name the manifest and invalid column. Cross-row preflight failures additionally name the CSV row and `cohort_id`, `analysis_id` or `relationship_id`: examples include an incomplete or second genotype group, conflicting duplicate cohorts, duplicate analyses, orphan references, same-endpoint or same-trait pair bindings, cross-cohort GCTA pairs, reversed duplicates, unknown or repeated method tokens, invalid binary coding, and route-inapplicable prevalence. Method-options failures name the JSON document and analysis or request ID plus the qualified option; malformed JSON, unknown keys, invalid types/ranges and missing stageable resources all fail before task submission.
+Structural failures name the manifest and invalid column. Cross-row preflight failures additionally name the CSV row and `cohort_id`, `analysis_id`, `summary_statistics_id` or `relationship_id`: examples include an incomplete genotype group, conflicting duplicates, an invalid or mixed summary origin, an internal producer mismatch, orphan endpoints, same-endpoint or same-trait pairs, cross-cohort GCTA pairs, reversed duplicates, unknown or repeated method tokens, invalid binary coding, and route-inapplicable prevalence. Method-options and reference-catalog failures name the document, request or bundle ID, qualified option or resource role, and reason before task submission.
 
 ### Phenotype normalisation
 
@@ -281,7 +391,7 @@ nextflow pull nf-core/gwas
 
 ## Reproducibility
 
-Pin the pipeline revision with `-r`, retain the exact cohort, analysis and optional relationship manifests, method-options document and parameter file, and archive `pipeline_info/` with your results. Reusing the same revision, inputs and parameters also lets `-resume` recover cached tasks.
+Pin the pipeline revision with `-r`, retain the exact supplied manifests, reference catalog, method-options document and parameter file, and archive `pipeline_info/` with your results. Reusing the same revision, inputs and parameters also lets `-resume` recover cached tasks.
 
 Find published version tags on the [nf-core/gwas versions page](https://github.com/nf-core/gwas/tags). The run's pipeline and tool versions are recorded in the published reports described in [Pipeline information](output.md#pipeline-information).
 
@@ -342,13 +452,14 @@ export NXF_OPTS='-Xms1g -Xmx4g'
 
 | What you see                                             | Meaning                                                                                              | First evidence to inspect                                                                                                |
 | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| An error naming a manifest, CSV row, identity and field  | Preflight rejected input before task submission                                                      | Read the complete grouped error report, fix every listed row and relaunch.                                               |
-| `Method-options document ... analysis_id ... option ...` | The JSON is malformed or an option is unknown, invalid, inapplicable or points at a missing resource | Read the named `analysis_id`, fully qualified option and reason.                                                         |
-| `Process ... terminated with an error`                   | A task was submitted and failed                                                                      | Inspect `.nextflow.log` and the task's `.command.err`, `.command.out` and `.command.log` in the reported work directory. |
+| An error naming a manifest, CSV row, identity and field            | Preflight rejected input before task submission                                                      | Read the complete grouped error report, fix every listed row and relaunch.                                               |
+| `Method-options document ... request_id ... option ...`            | A deterministic or named request is incomplete, invalid or conflicts with the invocation firewall    | Read the request namespace, request ID, option and reason; then correct the complete request configuration.              |
+| `Reference catalog ... reference_bundle_id ... field ...`          | A bundle is malformed, duplicated across families or has an unavailable required resource            | Correct the named bundle role; compatibility metadata is recorded but not scientifically certified by the pipeline.    |
+| `Process ... terminated with an error`                             | A task was submitted and failed                                                                      | Inspect `.nextflow.log` and the task's `.command.err`, `.command.out` and `.command.log` in the reported work directory. |
 
 ### Manifest validation failed
 
-Read the reported CSV path, row number, `cohort_id` or `analysis_id`, field name and reason from left to right. The validator reports all linked-manifest errors it can find in one launch, so correct every bullet before rerunning.
+Read the reported CSV path, row number, entity ID, field name and reason from left to right. The validator reports all linked-manifest errors it can find in one launch, so correct every bullet before rerunning.
 
 | Diagnostic fragment                                                                                                       | Supported action                                                                                                                                                                                            |
 | ------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -359,10 +470,12 @@ Read the reported CSV path, row number, `cohort_id` or `analysis_id`, field name
 | `unknown method`, `listed more than once` or `row selects no method`                                                      | Use each documented selector at most once and populate at least one of `association_methods` or `heritability_methods`. See [Analysis manifest fields](#analysis-manifest-fields).                          |
 | A binary `case_value` or `control_value` diagnostic                                                                       | Supply both distinct source codes for a binary trait. Remove both from a quantitative row. The pipeline does not infer `trait_type` from phenotype values.                                                  |
 | A `population_prevalence` diagnostic                                                                                      | Use it only for a binary heritability analysis whose selected estimator consumes it, and provide it for `ldak_pcgc`. See [Analysis manifest fields](#analysis-manifest-fields).                             |
+| A summary origin or deterministic identity diagnostic                                                                     | Populate exactly one complete external or producer origin. Internal IDs must be `<producer_analysis_id>--<producer_association_method>`. See [Summary-statistics manifest fields](#summary-statistics-manifest-fields). |
+| An undefined or self-paired summary endpoint                                                                               | Declare each referenced summary ID, use distinct endpoint and trait IDs on the two sides, and ensure any combined analysis/summary side has recorded producer correspondence.                              |
 
 ### Method-options validation failed
 
-The diagnostic names the document, `analysis_id`, fully qualified option and reason. Fix malformed JSON or use an object keyed by an `analysis_id` declared in the analysis manifest. Use only the `gcta` and `ldak` families and the options under [Advanced method options](#advanced-method-options). Remove options for methods that are not selected.
+The diagnostic names the document, entity or request ID, fully qualified option and reason. Fix malformed JSON; use the `gcta`, `ldak` and `regenie` analysis families; and use only the `analyses`, `unary_requests` and `pair_requests` namespaces described under [Advanced method options](#advanced-method-options). A request may configure only a method already selected by its summary or relationship declaration. Named additions must provide their own complete settings, including a reference bundle for LDAK or LDSC.
 
 Resolve resource paths from the launch environment. `weights_policy: provided` requires `weights`, and `kvik_step1_subset: provided` requires `predictor_extract`; resources are also rejected when supplied under an incompatible policy. Operational settings such as process resources and tool threads belong in run or profile configuration, not `--method_options`.
 
@@ -377,7 +490,7 @@ Selected resource failures are retried with larger requests, subject to `--max_c
 
 ### Expected results are missing
 
-- Confirm that the analysis row selected the method whose result you expected.
+- Confirm that the analysis, summary-statistics or relationship row selected the method whose result you expected.
 - Check the route-specific paths in the [output documentation](output.md).
 - Prepared genotypes, normalised phenotypes and covariates, relatedness matrices and REGENIE predictions are unpublished by default; enable the corresponding save control before expecting those directories.
 - GWASLab reference parameters are optional. Standardised association output is still produced without them, but reference-dependent allele checks, flips, rsID assignment and strand inference are not. `genome_build`, not `ancestry`, selects the build-specific resources.

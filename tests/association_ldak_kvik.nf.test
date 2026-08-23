@@ -17,23 +17,6 @@ nextflow_pipeline {
         return scripts
     }
 
-    // GWASLab outputs text in a gzip container whose member metadata is not scientific content.
-    // Snapshot decompressed text with line endings normalised and retain the relative filename so
-    // a content change remains attributable if an output area later contains multiple files.
-    def gzip_text_hashes = { directory ->
-        def root = new File(directory.toString())
-        def hashes = []
-        root.eachFileRecurse { entry ->
-            if (entry.isFile() && entry.name.endsWith('.gz')) {
-                def relative = root.toPath().relativize(entry.toPath()).toString()
-                def text = new java.util.zip.GZIPInputStream(new FileInputStream(entry))
-                    .withReader('UTF-8') { reader -> reader.readLines().join('\n') }
-                hashes << "${relative}:md5,${text.md5()}"
-            }
-        }
-        return hashes.sort()
-    }
-
     def gzip_rows = { file ->
         new java.util.zip.GZIPInputStream(new FileInputStream(file))
             .withReader('UTF-8') { reader ->
@@ -93,7 +76,7 @@ nextflow_pipeline {
 
             then {
                 def native_result = new File("${params.outdir}/association/ldak_kvik/example_vcf_qt/example_vcf_qt.ldak_kvik.step2.assoc")
-                def harmonised_result = new File("${params.outdir}/summary_statistics/example_vcf_qt/example_vcf_qt.ldak_kvik.gwaslab.tsv.gz")
+                def harmonised_result = new File("${params.outdir}/summary_statistics/example_vcf_qt--ldak_kvik/example_vcf_qt--ldak_kvik.canonical.tsv.gz")
                 if (mode.stub) {
                     assertAll(
                         { assert workflow.success },
@@ -147,7 +130,7 @@ nextflow_pipeline {
                     def stable_name_native = getAllFilesFromDir("${params.outdir}/association/ldak_kvik", relative: true, includeDir: true).findAll { path -> path.toString() }
                     def stable_path_native = getAllFilesFromDir("${params.outdir}/association/ldak_kvik", ignoreFile: 'tests/.nftignore')
                     def stable_name_harmonised = getAllFilesFromDir("${params.outdir}/summary_statistics", relative: true, includeDir: true).findAll { path -> path.toString() }
-                    def stable_path_harmonised = gzip_text_hashes("${params.outdir}/summary_statistics")
+                    def stable_path_harmonised = RELATIONAL.gzipTextHashes("${params.outdir}/summary_statistics")
                     assertAll(
                         { assert workflow.success },
                         { assert TRACE.count(workflow, 'PLINK2_MAKEBED') == 1 },
@@ -213,7 +196,7 @@ nextflow_pipeline {
 
             then {
                 def native_result = new File("${params.outdir}/association/ldak_kvik/example_vcf_qt/example_vcf_qt.ldak_kvik.step2.assoc")
-                def harmonised_result = new File("${params.outdir}/summary_statistics/example_vcf_qt/example_vcf_qt.ldak_kvik.gwaslab.tsv.gz")
+                def harmonised_result = new File("${params.outdir}/summary_statistics/example_vcf_qt--ldak_kvik/example_vcf_qt--ldak_kvik.canonical.tsv.gz")
                 if (mode.stub) {
                     assertAll(
                         { assert workflow.success },
@@ -229,7 +212,7 @@ nextflow_pipeline {
                     def stable_name_native = getAllFilesFromDir("${params.outdir}/association/ldak_kvik", relative: true, includeDir: true).findAll { path -> path.toString() }
                     def stable_path_native = getAllFilesFromDir("${params.outdir}/association/ldak_kvik", ignoreFile: 'tests/.nftignore')
                     def stable_name_harmonised = getAllFilesFromDir("${params.outdir}/summary_statistics", relative: true, includeDir: true).findAll { path -> path.toString() }
-                    def stable_path_harmonised = gzip_text_hashes("${params.outdir}/summary_statistics")
+                    def stable_path_harmonised = RELATIONAL.gzipTextHashes("${params.outdir}/summary_statistics")
                     assertAll(
                         { assert workflow.success },
                         { assert TRACE.count(workflow, 'LDAK_THINCOMMON') == 1 },
@@ -268,7 +251,7 @@ nextflow_pipeline {
 
             then {
                 def native_result = new File("${params.outdir}/association/ldak_kvik/example_vcf_qt/example_vcf_qt.ldak_kvik.step2.assoc")
-                def harmonised_result = new File("${params.outdir}/summary_statistics/example_vcf_qt/example_vcf_qt.ldak_kvik.gwaslab.tsv.gz")
+                def harmonised_result = new File("${params.outdir}/summary_statistics/example_vcf_qt--ldak_kvik/example_vcf_qt--ldak_kvik.canonical.tsv.gz")
                 if (mode.stub) {
                     assertAll(
                         { assert workflow.success },
@@ -284,7 +267,7 @@ nextflow_pipeline {
                     def stable_name_native = getAllFilesFromDir("${params.outdir}/association/ldak_kvik", relative: true, includeDir: true).findAll { path -> path.toString() }
                     def stable_path_native = getAllFilesFromDir("${params.outdir}/association/ldak_kvik", ignoreFile: 'tests/.nftignore')
                     def stable_name_harmonised = getAllFilesFromDir("${params.outdir}/summary_statistics", relative: true, includeDir: true).findAll { path -> path.toString() }
-                    def stable_path_harmonised = gzip_text_hashes("${params.outdir}/summary_statistics")
+                    def stable_path_harmonised = RELATIONAL.gzipTextHashes("${params.outdir}/summary_statistics")
                     assertAll(
                         { assert workflow.success },
                         { assert TRACE.count(workflow, 'LDAK_THINCOMMON') == 0 },
@@ -323,7 +306,7 @@ nextflow_pipeline {
 
             then {
                 def native_result = new File("${params.outdir}/association/ldak_kvik/example_pgen_bt/example_pgen_bt.ldak_kvik.step2.assoc")
-                def harmonised_result = new File("${params.outdir}/summary_statistics/example_pgen_bt/example_pgen_bt.ldak_kvik.gwaslab.tsv.gz")
+                def harmonised_result = new File("${params.outdir}/summary_statistics/example_pgen_bt--ldak_kvik/example_pgen_bt--ldak_kvik.canonical.tsv.gz")
                 if (mode.stub) {
                     assertAll(
                         { assert workflow.success },
@@ -353,7 +336,7 @@ nextflow_pipeline {
                     def stable_name_native = getAllFilesFromDir("${params.outdir}/association/ldak_kvik", relative: true, includeDir: true).findAll { path -> path.toString() }
                     def stable_path_native = getAllFilesFromDir("${params.outdir}/association/ldak_kvik", ignoreFile: 'tests/.nftignore')
                     def stable_name_harmonised = getAllFilesFromDir("${params.outdir}/summary_statistics", relative: true, includeDir: true).findAll { path -> path.toString() }
-                    def stable_path_harmonised = gzip_text_hashes("${params.outdir}/summary_statistics")
+                    def stable_path_harmonised = RELATIONAL.gzipTextHashes("${params.outdir}/summary_statistics")
                     assertAll(
                         { assert workflow.success },
                         { assert step1.contains('--binary YES') },

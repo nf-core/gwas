@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
 name: "validate_gwas_input"
-description: Validate linked cohort, analysis and optional relationship manifests and emit canonical nf-core/gwas request records
+description: Validate linked cohort, analysis, summary-statistics and relationship declarations and emit canonical nf-core/gwas request records
 keywords:
   - validation
   - manifest
@@ -11,18 +11,26 @@ components:
 input:
   - cohort_manifest:
       description: Cohort manifest declaring cohort identity, genome build, ancestry and exactly one genotype representation
-      structure: path cohort_manifest
+      structure: "path cohort_manifest|[]"
       pattern: "*.csv"
   - analysis_manifest:
       description: Analysis manifest declaring cohort-linked traits, covariates and selected association or heritability methods
-      structure: path analysis_manifest
+      structure: "path analysis_manifest|[]"
+      pattern: "*.csv"
+  - summary_statistics_manifest:
+      description: Optional manifest declaring mutually exclusive external sources or pipeline-generated summary results and their unary methods
+      structure: "path summary_statistics_manifest|[]"
       pattern: "*.csv"
   - relationship_manifest:
       description: Optional relationship manifest declaring ordered pair endpoints, selected pairwise methods and relationship-owned covariates
       structure: "path relationship_manifest|[]"
       pattern: "*.csv"
+  - reference_catalog:
+      description: Optional JSON catalog of request-selectable LDSC and LDAK reference bundles
+      structure: "path reference_catalog|[]"
+      pattern: "*.json"
   - method_options:
-      description: Optional JSON document containing validated unary analysis and pair-request scientific options
+      description: Optional JSON document containing validated analysis, unary summary and pair-request scientific options
       structure: "path method_options|[]"
       pattern: "*.json"
 output:
@@ -32,12 +40,27 @@ output:
       pattern: "*.{pgen,psam,pvar,bed,bim,fam,vcf,vcf.gz,txt,tsv,json}"
       ontologies:
         - edam: "http://edamontology.org/format_2330"
+  - summary_statistics:
+      description: External summary-statistics declarations with stable identity and staged source tables; internal declarations resolve requests without duplicating their association output
+      structure: "[map meta, path source]"
+      pattern: "*.{tsv,txt,csv,tsv.gz,txt.gz,csv.gz}"
+      ontologies: []
   - relationships:
       description: Canonical pair-request tuples with endpoint identity, deterministic request ID, dense or relationship-owned LDMS matrix settings and relationship-owned covariate resources
       structure: "[map meta, list genotype_files, path pair_quant_covariates|[], path pair_cat_covariates|[]]"
       pattern: "*.{pgen,psam,pvar,bed,bim,fam,vcf,vcf.gz,txt,tsv}"
       ontologies:
         - edam: "http://edamontology.org/format_2330"
+  - unary_requests:
+      description: Resolved unary summary-statistics requests with explicit family-specific reference resources
+      structure: "[map meta, path hapmap3_snplist|[], path reference_ld_scores|[], path regression_weights|[], path tagging_file|[]]"
+      pattern: "*"
+      ontologies: []
+  - pair_requests:
+      description: Resolved pair summary-statistics requests with explicit family-specific reference resources
+      structure: "[map meta, path hapmap3_snplist|[], path reference_ld_scores|[], path regression_weights|[], path tagging_file|[]]"
+      pattern: "*"
+      ontologies: []
 authors:
   - "@andongni"
 maintainers:

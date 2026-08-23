@@ -115,6 +115,7 @@ nextflow_function {
 
     test("method capabilities retain selector, matrix, prevalence and citation knowledge") {
         function "getMethodCapabilities"
+        tag "summary_capabilities"
 
         then {
             assertAll(
@@ -128,6 +129,10 @@ nextflow_function {
                     'gcta_greml_ldms',
                     'gcta_bivariate_reml',
                     'gcta_bivariate_reml_ldms',
+                    'ldak_sumher',
+                    'ldak_sumcors',
+                    'ldsc_h2',
+                    'ldsc_rg',
                     'ldak_reml',
                     'ldak_he',
                     'ldak_pcgc',
@@ -139,6 +144,13 @@ nextflow_function {
                 { assert function.result.gcta_bivariate_reml.matrix_kind == 'gcta_dense' },
                 { assert function.result.gcta_bivariate_reml_ldms.domain == 'pairwise' },
                 { assert function.result.gcta_bivariate_reml_ldms.matrix_kind == 'gcta_ldms' },
+                { assert function.result.ldak_sumher.domain == 'summary_unary' },
+                { assert function.result.ldak_sumher.reference_family == 'ldak' },
+                { assert function.result.ldak_sumher.consumes_population_prevalence },
+                { assert function.result.ldak_sumcors.endpoint_domain == 'summary_statistics' },
+                { assert function.result.ldsc_h2.reference_family == 'ldsc' },
+                { assert function.result.ldsc_h2.consumes_sample_prevalence },
+                { assert function.result.ldsc_rg.endpoint_domain == 'summary_statistics' },
                 { assert function.result.ldak_reml.matrix_kind == 'ldak_kinship' },
                 { assert function.result.ldak_pcgc.requires_population_prevalence },
                 { assert function.result.ldak_he.citation_key == function.result.ldak_pcgc.citation_key },
@@ -192,6 +204,26 @@ nextflow_function {
                     { assert function.stdout.join('\n').contains(scenario.expected) },
                 )
             }
+        }
+    }
+
+    test("internal summary-statistics identities are explicit and deterministic") {
+        function "getSummaryStatisticsId"
+
+        when {
+            function {
+                """
+                input[0] = 'analysis_a'
+                input[1] = 'regenie'
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == 'analysis_a--regenie' },
+            )
         }
     }
 
@@ -276,6 +308,7 @@ nextflow_function {
         [name: 'alternate operation', args: ['--pca', '10'], expected: 'different primary GCTA operation'],
         [name: 'file-taking input', args: ['--keep', 'samples.txt'], expected: 'wrapper-owned invocation mechanics'],
         [name: 'undeclared file-like value', args: ['--mystery', 'samples.txt'], expected: 'undeclared file input'],
+        [name: 'inline undeclared file-like value', args: ['--mystery=samples.txt'], expected: 'undeclared file input'],
         [name: 'path separator', args: ['--mystery', '../samples'], expected: 'path separator'],
         [name: 'environment assignment', args: ['--reml-maxit', 'KEY=value'], expected: 'environment assignment'],
     ]
@@ -300,6 +333,29 @@ nextflow_function {
                     { assert function.stdout.join('\n').contains(scenario.expected) },
                 )
             }
+        }
+    }
+
+    test("the summary firewall rejects inline undeclared files") {
+        function "validateSummaryNativeArgumentTokens"
+
+        when {
+            function {
+                """
+                input[0] = 'method_options.json'
+                input[1] = 'unary_requests'
+                input[2] = 'ldsc_h2--example'
+                input[3] = 'ldsc_h2'
+                input[4] = ['--mystery=samples.sumstats']
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.failed },
+                { assert function.stdout.join('\n').contains('undeclared file input') },
+            )
         }
     }
 

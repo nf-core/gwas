@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This document describes the files that nf-core/gwas publishes beneath `--outdir`. Native association, heritability and declared pairwise GCTA results are retained, every association result also receives a GWASLab-standardised summary-statistics table, and run-level provenance is collected in MultiQC and `pipeline_info/`.
+This document describes the files that nf-core/gwas publishes beneath `--outdir`. Native association, heritability and declared pairwise results are retained. Every internal association result and every external summary source converges on one canonical summary-statistics contract with a provenance sidecar. Run-level provenance is collected in MultiQC and `pipeline_info/`.
 
 Intermediates are unpublished by default. The optional directories described below appear only when their corresponding save control is enabled.
 
@@ -14,14 +14,16 @@ The shared result prefix grammar is:
 <analysis_id>.<method>[.<shard>]
 ```
 
-`<analysis_id>` is copied from the analysis manifest and identifies one cohort-trait analysis unit. `<method>` is one of the method-selector tokens documented in [Usage](usage.md#linked-manifest-input). A producing tool can add a native result suffix after that prefix. Harmonised files add the tool suffix `.gwaslab` after the method, giving `<analysis_id>.<method>.gwaslab.tsv.gz`.
+`<analysis_id>` is copied from the analysis manifest and identifies one cohort-trait analysis unit. `<method>` is one of the method-selector tokens documented in [Usage](usage.md#relational-manifest-input). A producing tool can add a native result suffix after that prefix.
+
+Summary results use a separate first-class identity. Pipeline-generated association summaries use `<analysis_id>--<association_method>`; external summaries use the declared `summary_statistics_id`. Both publish as `<summary_statistics_id>.canonical.tsv.gz` with `<summary_statistics_id>.provenance.json` in the same identity-addressed directory.
 
 Use the following provenance chain for any result:
 
-1. Read `<analysis_id>` and `<method>` from its parent directories and filename.
-2. Find the unique `analysis_id` row in `--analysis_manifest`, follow its `cohort_id` into `--cohort_manifest`, and inspect any entry for that analysis in `--method_options`.
-3. Map `<method>` to its producing tool using the table below.
-4. Read the tool version from `pipeline_info/nf_core_gwas_software_mqc_versions.yml`. The pipeline version and complete run parameters are recorded by the `pipeline_info/` reports and `params_<timestamp>.json`.
+1. For an analysis result, read `<analysis_id>` and `<method>` from its parent directories and filename. Find that analysis row, follow its `cohort_id`, and inspect its method options.
+2. For a summary result, read `summary_statistics_id` from its directory and provenance sidecar. The sidecar identifies an internal producer analysis/method or the external source basename and checksum, plus the transformation path.
+3. Map the method to its producing tool using the table below.
+4. Read tool versions from `pipeline_info/nf_core_gwas_software_mqc_versions.yml`. The pipeline version and complete run parameters are recorded by the `pipeline_info/` reports and `params_<timestamp>.json`.
 
 Pairwise outputs instead use the deterministic request ID `<method>--<relationship_id>`. Find `relationship_id` in `--relationship_manifest`, follow its ordered left and right analysis IDs into `--analysis_manifest`, and use `requests/<method>/<request_id>/provenance.json` for the exact endpoint orientation, dense or LDMS matrix reuse key and native basename, effective prevalence, native arguments, all parsed native components, warnings and completion classification.
 
@@ -31,10 +33,12 @@ Pairwise outputs instead use the deterministic request ID `<method>--<relationsh
 | `regenie`                                        | REGENIE        |
 | `gcta_fastgwa`, `gcta_greml`, `gcta_greml_ldms`, `gcta_bivariate_reml`, `gcta_bivariate_reml_ldms` | GCTA           |
 | `ldak_kvik`, `ldak_reml`, `ldak_he`, `ldak_pcgc` | LDAK 6         |
+| `ldak_sumher`, `ldak_sumcors`                     | LDAK 6.3       |
+| `ldsc_h2`, `ldsc_rg`                              | LDSC           |
 
 Together, the result prefix, retained cohort and analysis manifests, optional method-options document, and `pipeline_info/` artifacts identify the analysis, cohort, trait, genome build, method, scientific settings, pipeline version and producing tool version. Preserve them with an archived result.
 
-This attribution rule applies to analysis results under `association/`, `summary_statistics/` and `heritability/`. Optional prepared genotypes and relatedness matrices are deliberately shared artifacts rather than trait-method results: `genotypes/` is attributed to `cohort_id`, while `quality_control/relatedness_matrices/` is attributed to its reuse key and may serve several analysis rows.
+Analysis attribution applies under `association/` and `heritability/individual/`; summary attribution applies under `summary_statistics/` and summary-level request outputs. Optional prepared genotypes and relatedness matrices are deliberately shared artifacts rather than trait-method results: `genotypes/` is attributed to `cohort_id`, while `quality_control/relatedness_matrices/` is attributed to its reuse key and may serve several analysis rows.
 
 ## Pipeline overview
 
@@ -125,16 +129,19 @@ The published Step 2 file is native output with the fixed `_PHENO` token removed
 <details markdown="1">
 <summary>Output files</summary>
 
-[GWASLab](https://cloufield.github.io/gwaslab/) standardises every association result, while the native result remains available under `association/`. Files are grouped by analysis so every selected method for one cohort-trait unit can be compared in a single directory. The method token prevents collisions and `.gwaslab` is the tool suffix marking the harmonised derivative.
+[GWASLab](https://cloufield.github.io/gwaslab/) standardises every pipeline-generated association result and every external source declared with `source_mode: raw`; native association results remain available under `association/`. An external `source_mode: canonical` table bypasses GWASLab but passes through the same canonical validator. The external source itself and the temporary GWASLab table are not republished, so each scientific summary result appears only once.
 
-- `summary_statistics/<analysis_id>/`
-  - `<analysis_id>.<method>.gwaslab.tsv.gz`: Gzip-compressed, tab-delimited standardised summary statistics produced from one native association result.
+- `summary_statistics/<summary_statistics_id>/`
+  - `<summary_statistics_id>.canonical.tsv.gz`: Gzip-compressed, tab-delimited `nfcore_gwas_canonical_v1` table.
+  - `<summary_statistics_id>.provenance.json`: Safe source, producer, transformation, checksum and canonical-contract provenance.
 
 </details>
 
-The common columns are `SNPID`, `CHR`, `POS`, `EA`, `NEA`, `STATUS`, `EAF`, `BETA`, `SE` and `N`. PLINK 2, GCTA fastGWA and LDAK-KVIK tables carry `P`; REGENIE natively reports `LOG10P`, which GWASLab standardises as `MLOG10P` rather than converting to `P`. `EA` and `NEA` are the effect and non-effect alleles. `STATUS` is GWASLab's [seven-digit status code](https://cloufield.github.io/gwaslab/StatusCode/): the first two digits record genome build, followed by one digit each for identifier checking, coordinate checking, allele standardisation, reference alignment, and palindromic-variant/indel handling. A `9` means the corresponding check was not performed.
+The required columns are `SNPID`, `CHR`, `POS`, `EA`, `NEA`, `STATUS`, `EAF`, `BETA`, `SE`, `P` and `N`. `EA` and `NEA` are the effect and non-effect alleles. `STATUS` is GWASLab's [seven-digit status code](https://cloufield.github.io/gwaslab/StatusCode/): the first two digits record genome build, followed by one digit each for identifier checking, coordinate checking, allele standardisation, reference alignment, and palindromic-variant/indel handling. A `9` means the corresponding check was not performed. The validator also rejects duplicate headers, empty tables and rows with inconsistent field counts.
 
-All build-specific GWASLab reference parameters default to unset because no compact bundled reference is scientifically adequate. With no references, the output is still standardised for names, columns and allele roles. Supplying `--gwaslab_reference_fasta_grch37` or `--gwaslab_reference_fasta_grch38` enables reference-allele checks and flips; the corresponding `--gwaslab_rsid_vcf_*` enables rsID assignment, and `--gwaslab_strand_vcf_*` enables palindromic-strand inference. The cohort manifest's `genome_build` chooses the resource set per analysis.
+The sidecar records `summary_statistics_id`, trait type and declared prevalence metadata, build, ancestry, origin, source format/method/release/basename and SHA-256, internal producer identity when applicable, canonical filename/SHA-256/columns/variant count, transformation and serialization, harmonisation metadata, and the optional non-secret access constraint. An already-gzipped canonical candidate is copied byte-for-byte; an uncompressed candidate is gzip-compressed deterministically.
+
+All build-specific GWASLab reference parameters default to unset because no compact bundled reference is scientifically adequate. With no references, raw output is still standardised for names, columns and allele roles. Supplying `--gwaslab_reference_fasta_grch37` or `--gwaslab_reference_fasta_grch38` enables reference-allele checks and flips; the corresponding `--gwaslab_rsid_vcf_*` enables rsID assignment, and `--gwaslab_strand_vcf_*` enables palindromic-strand inference. The declared genome build chooses the resource set per summary.
 
 GWASLab drops variants that fail its sanity checks and duplicated variants. Its log is not published because timestamps and container-local paths make it non-reproducible provenance noise.
 

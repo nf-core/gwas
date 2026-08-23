@@ -4,6 +4,7 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 // MODULE: Local to the pipeline
+include { CANONICALISE_SUMMARY_STATISTICS                     } from '../modules/local/canonicalise_summary_statistics/main'
 include { GWASLAB_HARMONIZE                                   } from '../modules/local/gwaslab/harmonize/main'
 include { GCTA_FASTGWA                                        } from '../modules/local/gcta/fastgwa/main'
 include { NORMALISE_PHENOTYPES                                } from '../modules/local/normalise_phenotypes/main'
@@ -26,6 +27,7 @@ include { PREPARE_RELATEDNESS_MATRICES                        } from '../subwork
 include { ROUTE_LDAK_KVIK_ASSOCIATIONS                        } from '../subworkflows/local/route_ldak_kvik_associations'
 include { ROUTE_REGENIE_ASSOCIATIONS                          } from '../subworkflows/local/route_regenie_associations'
 include { getAssociationColumnMappingJson                     } from '../subworkflows/local/validate_gwas_input'
+include { getInternalSummaryMetadata                          } from '../subworkflows/local/validate_gwas_input'
 include { getGwaslabReferences                                } from '../subworkflows/local/utils_nfcore_gwas_pipeline'
 include { analysisPlanJson                                    } from '../subworkflows/local/utils_nfcore_gwas_pipeline'
 include { methodsDescriptionText                              } from '../subworkflows/local/utils_nfcore_gwas_pipeline'
@@ -46,7 +48,10 @@ include { paramsSummaryMap                                    } from 'plugin/nf-
 workflow GWAS {
     take:
     ch_analyses // channel: [ val(meta), [ path(genotype_file), ... ], path(phenotype), path(quant_covariates), path(cat_covariates), path(kvik_extract), path(ldak_weights) ]
+    ch_external_summary_statistics // channel: [ val(meta), path(source) ]
     ch_relationships // channel: [ val(meta), [ path(genotype_file), ... ], path(pair_quant_covariates), path(pair_cat_covariates) ]
+    ch_unary_requests // channel: [ val(meta), path(hapmap3_snplist), path(reference_ld_scores), path(regression_weights), path(tagging_file) ]
+    ch_pair_requests // channel: [ val(meta), path(hapmap3_snplist), path(reference_ld_scores), path(regression_weights), path(tagging_file) ]
     multiqc_config // channel: val(multiqc_config)
     multiqc_logo // channel: val(multiqc_logo)
     multiqc_methods_description // channel: val(multiqc_methods_description)
@@ -62,6 +67,12 @@ workflow GWAS {
         .map { meta, _genotype_files, _phenotype, _quant_covariates, _cat_covariates, _kvik_extract, _ldak_weights -> [domain: 'analysis', meta: meta] }
         .mix(
             ch_relationships.map { meta, _genotype_files, _pair_quant_covariates, _pair_cat_covariates -> [domain: 'pairwise', meta: meta] }
+        )
+        .mix(
+            ch_unary_requests.map { meta, _hapmap3_snplist, _reference_ld_scores, _regression_weights, _tagging_file -> [domain: 'summary_unary', meta: meta] }
+        )
+        .mix(
+            ch_pair_requests.map { meta, _hapmap3_snplist, _reference_ld_scores, _regression_weights, _tagging_file -> [domain: 'pairwise', meta: meta] }
         )
         .collect()
 
@@ -151,7 +162,7 @@ workflow GWAS {
         }
         .combine(
             NORMALISE_PHENOTYPES.out.phenotype_headerless.map { meta, phenotype -> [meta.id, phenotype] },
-            by: 0,
+            by: 0
         )
         .map { _analysis_id, relationship_id, meta, pair_quant_covariates, pair_cat_covariates, phenotype ->
             [relationship_id, meta, phenotype, pair_quant_covariates, pair_cat_covariates]
@@ -161,7 +172,7 @@ workflow GWAS {
         .map { relationship_id, meta, _genotype_files, _pair_quant_covariates, _pair_cat_covariates -> [meta.right_analysis_id, relationship_id] }
         .combine(
             NORMALISE_PHENOTYPES.out.phenotype_headerless.map { meta, phenotype -> [meta.id, phenotype] },
-            by: 0,
+            by: 0
         )
         .map { _analysis_id, relationship_id, phenotype -> [relationship_id, phenotype] }
 
@@ -320,16 +331,28 @@ workflow GWAS {
         GCTA_FASTGWA.out.results.map { meta, sumstats -> [meta + [method: 'gcta_fastgwa'], sumstats] }
     )
 
-    // The optional reference resources are resolved once for the run rather than per record: they are
-    // parameter-derived and build-keyed, and the cohort manifest's build enum makes the lookup total.
-    def gwaslab_references = getGwaslabReferences()
+    // Internal association results and external raw inputs converge before GWASLab. The producer-specific
+    // internal mappings remain explicit and unchanged; an external row supplies a named GWASLab format.
+    // Already-canonical external inputs bypass GWASLab and enter only the canonical contract validator.
+    def ch_harmonise_records = ch_association_results
+        .map { meta, source ->
+            def summary_meta = getInternalSummaryMetadata(meta, meta.method) + [
+                method: meta.method,
+                source_name: source.name,
+                gwaslab_input_format: getAssociationColumnMappingJson(meta.method, meta.is_binary),
+            ]
+            [summary_meta, source]
+        }
+        .mix(
+            ch_external_summary_statistics.filter { meta, _source -> meta.source_mode == 'raw' }.map { meta, source -> [meta + [method: 'external', gwaslab_input_format: meta.source_format], source] }
+        )
 
-    // `multiMap` rather than four `map`s of the same channel, so the reference tuples cannot drift out of
-    // lockstep with the summary statistics they belong to. A build with no configured resource yields
-    // `[]`, which stages nothing and reaches the component as an absent reference.
-    def ch_harmonise_input = ch_association_results.multiMap { meta, sumstats ->
+    // The optional GWASLab resources remain build-keyed pipeline parameters. This is independent from the
+    // request-owned LDSC/LDAK reference catalog and does not infer a scientific analysis reference.
+    def gwaslab_references = getGwaslabReferences()
+    def ch_harmonise_input = ch_harmonise_records.multiMap { meta, source ->
         def references = gwaslab_references[meta.build]
-        sumstats: [meta, sumstats, getAssociationColumnMappingJson(meta.method, meta.is_binary), meta.build]
+        sumstats: [meta, source, meta.gwaslab_input_format, meta.build]
         reference_fasta: [[id: meta.build], references.fasta, references.fasta_index]
         rsid_reference: [[id: meta.build], references.rsid_vcf, references.rsid_vcf_index]
         strand_reference: [[id: meta.build], references.strand_vcf, references.strand_vcf_index]
@@ -341,6 +364,17 @@ workflow GWAS {
         ch_harmonise_input.rsid_reference,
         ch_harmonise_input.strand_reference,
     )
+
+    def ch_harmonise_sources = ch_harmonise_records.map { meta, source -> [meta.summary_statistics_id, source] }
+    def ch_canonical_candidates = GWASLAB_HARMONIZE.out.sumstats
+        .map { meta, candidate -> [meta.summary_statistics_id, meta, candidate] }
+        .join(ch_harmonise_sources, failOnDuplicate: true, failOnMismatch: true)
+        .map { _summary_statistics_id, meta, candidate, source -> [meta, candidate, source] }
+        .mix(
+            ch_external_summary_statistics.filter { meta, _source -> meta.source_mode == 'canonical' }.map { meta, source -> [meta, source, source] }
+        )
+
+    CANONICALISE_SUMMARY_STATISTICS(ch_canonical_candidates)
 
     //
     // SUBWORKFLOW: GCTA GREML heritability
@@ -637,10 +671,11 @@ workflow GWAS {
         : file("${projectDir}/assets/methods_description_template.yml", checkIfExists: true)
     def ch_methods_description = ch_method_metadata.map { method_metadata ->
         def analysis_metadata = method_metadata.findAll { record -> record.domain == 'analysis' }.collect { record -> record.meta }
+        def summary_unary_metadata = method_metadata.findAll { record -> record.domain == 'summary_unary' }.collect { record -> record.meta }
         def relationship_metadata = method_metadata.findAll { record -> record.domain == 'pairwise' }.collect { record -> record.meta }
         def selected_methods = [
             association: analysis_metadata.collectMany { meta -> meta.association_methods }.unique().sort(),
-            heritability: analysis_metadata.collectMany { meta -> meta.heritability_methods }.unique().sort(),
+            heritability: (analysis_metadata.collectMany { meta -> meta.heritability_methods } + summary_unary_metadata.collect { meta -> meta.method }).unique().sort(),
             pairwise: relationship_metadata.collectMany { meta -> meta.relationship_methods }.unique().sort(),
         ]
         methodsDescriptionText(multiqc_custom_methods_description, selected_methods)
@@ -664,5 +699,7 @@ workflow GWAS {
     )
 
     emit:
-    multiqc_report = MULTIQC.out.report.map { _meta, report -> [report] }.toList() // channel: [ [ path(report) ] ]
+    canonical_summary_statistics  = CANONICALISE_SUMMARY_STATISTICS.out.summary_statistics // channel: [ val(meta), path(canonical_summary_statistics) ]
+    summary_statistics_provenance = CANONICALISE_SUMMARY_STATISTICS.out.provenance // channel: [ val(meta), path(provenance) ]
+    multiqc_report                = MULTIQC.out.report.map { _meta, report -> [report] }.toList() // channel: [ [ path(report) ] ]
 }

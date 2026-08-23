@@ -10,7 +10,7 @@
             "type": "object",
             "fa_icon": "fas fa-terminal",
             "description": "Define where the pipeline should find input data and save output data.",
-            "required": ["cohort_manifest", "analysis_manifest", "outdir"],
+            "required": ["outdir"],
             "properties": {
                 "cohort_manifest": {
                     "type": "string",
@@ -34,6 +34,17 @@
                     "help_text": "Supply together with `cohort_manifest`. Each unique `analysis_id` references one declared `cohort_id`, names the trait and phenotype inputs, and selects association or heritability methods.",
                     "fa_icon": "fas fa-file-medical-alt"
                 },
+                "summary_statistics_manifest": {
+                    "type": "string",
+                    "format": "file-path",
+                    "exists": true,
+                    "schema": "assets/schema_summary_statistics_manifest.json",
+                    "mimetype": "text/csv",
+                    "pattern": "^\\S+\\.csv$",
+                    "description": "Optional summary-statistics manifest declaring external or pipeline-generated results.",
+                    "help_text": "Each unique `summary_statistics_id` declares exactly one external source or one producing analysis/method pair and owns any unary summary-statistics methods. Supply this manifest alone for external summary-only work or alongside the linked cohort and analysis manifests.",
+                    "fa_icon": "fas fa-table"
+                },
                 "relationship_manifest": {
                     "type": "string",
                     "format": "file-path",
@@ -41,9 +52,20 @@
                     "schema": "assets/schema_relationship_manifest.json",
                     "mimetype": "text/csv",
                     "pattern": "^\\S+\\.csv$",
-                    "description": "Optional relationship manifest declaring explicit pairwise analysis requests.",
-                    "help_text": "Each relationship binds two declared analysis IDs in left-to-right order and selects one or more supported pairwise estimators. No pairs are inferred when this parameter is absent.",
+                    "description": "Optional relationship manifest declaring explicit pairwise endpoint requests.",
+                    "help_text": "Each relationship binds explicit left and right analysis and/or summary-statistics endpoints and selects one or more supported pairwise estimators. No pairs are inferred when this parameter is absent.",
                     "fa_icon": "fas fa-project-diagram"
+                },
+                "reference_catalog": {
+                    "type": "string",
+                    "format": "file-path",
+                    "exists": true,
+                    "schema": "assets/schema_reference_catalog.json",
+                    "mimetype": "application/json",
+                    "pattern": "^\\S+\\.json$",
+                    "description": "Optional catalog of explicitly named LDSC and LDAK reference bundles.",
+                    "help_text": "Summary-statistics requests select one family-specific bundle by `reference_bundle_id`. The pipeline validates required resource roles and path availability but does not infer a bundle from ancestry or certify scientific compatibility.",
+                    "fa_icon": "fas fa-book"
                 },
                 "method_options": {
                     "type": "string",
@@ -52,7 +74,7 @@
                     "mimetype": "application/json",
                     "pattern": "^\\S+\\.json$",
                     "description": "Optional structured scientific method options and stageable resources.",
-                    "help_text": "Legacy documents may remain keyed directly by `analysis_id`. Namespaced documents use `analyses`, `unary_requests` and `pair_requests`; GCTA pair requests accept `native_args`, and a relationship's deterministic bivariate LDMS request additionally accepts its matrix settings. Operational partitioning and task sizing belong to run/profile configuration.",
+                    "help_text": "Legacy documents may remain keyed directly by `analysis_id`. Namespaced documents use `analyses`, `unary_requests` and `pair_requests`. GCTA pair requests accept `native_args`, and a relationship's deterministic bivariate LDMS request additionally accepts its matrix settings. Summary requests select references here; explicitly named additions declare a complete independent configuration beneath the selected deterministic primary request. Operational partitioning and task sizing belong to run/profile configuration.",
                     "fa_icon": "fas fa-sliders-h"
                 },
                 "outdir": {

@@ -4,6 +4,24 @@
 // so executable tests consistently use the public nf-core/test-datasets fixture bundle.
 class RELATIONAL {
 
+    // Gzip member metadata is not scientific content. Snapshot decompressed text with
+    // normalised line endings while retaining the relative filename for attribution.
+    static List<String> gzipTextHashes(Object directory) {
+        def root = new File(directory.toString())
+        def hashes = []
+        root.eachFileRecurse { entry ->
+            if (entry.isFile() && entry.name.endsWith('.gz')) {
+                def relative = root.toPath().relativize(entry.toPath()).toString()
+                def text = new java.util.zip.GZIPInputStream(new FileInputStream(entry))
+                    .withReader('UTF-8') { reader -> reader.readLines().join('\n') }
+                def digest = java.security.MessageDigest.getInstance('MD5').digest(text.getBytes('UTF-8'))
+                def md5 = digest.collect { value -> String.format('%02x', value & 0xff) }.join()
+                hashes << "${relative}:md5,${md5}"
+            }
+        }
+        return hashes.sort()
+    }
+
     static String cohorts(Object projectDir, Object outputDir, String name, Closure mutate = null) {
         def header = ['cohort_id', 'genome_build', 'ancestry', 'pgen', 'psam', 'pvar', 'bed', 'bim', 'fam', 'vcf']
         def rows = [cohort('example_pgen')]
@@ -81,6 +99,7 @@ class RELATIONAL {
             'association_methods',
             'heritability_methods',
             'population_prevalence',
+            'sample_prevalence',
         ]
         def rows = [analysis(projectDir, 'example_pgen_qt')]
         if (mutate) {
@@ -123,6 +142,187 @@ class RELATIONAL {
         )
     }
 
+    static String summaryStatistics(Object projectDir, Object outputDir, String name, Closure mutate = null) {
+        def header = [
+            'summary_statistics_id',
+            'trait_id',
+            'trait_type',
+            'source',
+            'source_mode',
+            'source_format',
+            'producer_analysis_id',
+            'producer_association_method',
+            'genome_build',
+            'ancestry',
+            'source_method',
+            'source_release',
+            'heritability_methods',
+            'population_prevalence',
+            'sample_prevalence',
+            'access_constraints',
+        ]
+        def rows = [summary(outputDir, 'external_qt')]
+        if (mutate) {
+            mutate(rows)
+        }
+        return materialise(projectDir, outputDir, name, 'summary_statistics', header, rows, ['source'])
+    }
+
+    static Map summary(Object outputDir, String summaryStatisticsId) {
+        def summaries = [
+            external_qt: [
+                summary_statistics_id: 'external_qt',
+                trait_id: 'QT_external',
+                trait_type: 'quantitative',
+                source: canonicalSummary(outputDir, 'external_qt'),
+                source_mode: 'canonical',
+                source_format: 'nfcore_gwas_canonical_v1',
+                producer_analysis_id: '',
+                producer_association_method: '',
+                genome_build: 'GRCh37',
+                ancestry: 'EUR',
+                source_method: 'published_gwas',
+                source_release: 'v1',
+                heritability_methods: 'ldsc_h2',
+                population_prevalence: '',
+                sample_prevalence: '',
+                access_constraints: 'controlled_access',
+            ],
+            external_bt: [
+                summary_statistics_id: 'external_bt',
+                trait_id: 'BT_external',
+                trait_type: 'binary',
+                source: canonicalSummary(outputDir, 'external_bt'),
+                source_mode: 'canonical',
+                source_format: 'nfcore_gwas_canonical_v1',
+                producer_analysis_id: '',
+                producer_association_method: '',
+                genome_build: 'GRCh37',
+                ancestry: 'EUR',
+                source_method: 'published_gwas',
+                source_release: 'v2',
+                heritability_methods: '',
+                population_prevalence: 0.1,
+                sample_prevalence: 0.2,
+                access_constraints: '',
+            ],
+        ]
+        if (!summaries.containsKey(summaryStatisticsId)) {
+            throw new IllegalArgumentException("No shipped summary fixture '${summaryStatisticsId}'")
+        }
+        return new LinkedHashMap(summaries[summaryStatisticsId])
+    }
+
+    static Map internalSummary(String analysisId, String associationMethod, String heritabilityMethods = '') {
+        return [
+            summary_statistics_id: "${analysisId}--${associationMethod}",
+            trait_id: '',
+            trait_type: '',
+            source: '',
+            source_mode: '',
+            source_format: '',
+            producer_analysis_id: analysisId,
+            producer_association_method: associationMethod,
+            genome_build: '',
+            ancestry: '',
+            source_method: '',
+            source_release: '',
+            heritability_methods: heritabilityMethods,
+            population_prevalence: '',
+            sample_prevalence: '',
+            access_constraints: '',
+        ]
+    }
+
+    static String summaryRelationships(Object projectDir, Object outputDir, String name, Closure mutate = null) {
+        def header = [
+            'relationship_id',
+            'left_analysis_id',
+            'right_analysis_id',
+            'left_summary_statistics_id',
+            'right_summary_statistics_id',
+            'relationship_methods',
+            'pair_quant_covariates',
+            'pair_cat_covariates',
+        ]
+        def rows = [[
+            relationship_id: 'external_pair',
+            left_analysis_id: '',
+            right_analysis_id: '',
+            left_summary_statistics_id: 'external_qt',
+            right_summary_statistics_id: 'external_bt',
+            relationship_methods: 'ldsc_rg,ldak_sumcors',
+            pair_quant_covariates: '',
+            pair_cat_covariates: '',
+        ]]
+        if (mutate) {
+            mutate(rows)
+        }
+        return materialise(
+            projectDir,
+            outputDir,
+            name,
+            'summary_relationships',
+            header,
+            rows,
+            ['pair_quant_covariates', 'pair_cat_covariates'],
+        )
+    }
+
+    static String referenceCatalog(Object outputDir, String name) {
+        def hapmap3 = resource(outputDir, "${name}/hapmap3.snp", "rs1\n")
+        def referenceLd = resource(outputDir, "${name}/reference.l2.ldscore", "CHR SNP BP L2\n1 rs1 1 1\n")
+        def regressionWeights = resource(outputDir, "${name}/weights.l2.ldscore", "CHR SNP BP L2\n1 rs1 1 1\n")
+        def tagging = resource(outputDir, "${name}/reference.tagging", "Predictor Tagging\nrs1 1\n")
+        def document = [
+            ldsc: [
+                ldsc_eur: [
+                    genome_build: 'GRCh37',
+                    ancestry: 'EUR',
+                    variant_id_system: 'rsid',
+                    hapmap3_snplist: hapmap3,
+                    reference_ld_scores: referenceLd,
+                    regression_weights: regressionWeights,
+                ],
+            ],
+            ldak: [
+                ldak_thin_eur: [
+                    genome_build: 'GRCh37',
+                    ancestry: 'EUR',
+                    variant_id_system: 'rsid',
+                    model: 'LDAK-Thin',
+                    tagging_file: tagging,
+                ],
+            ],
+        ]
+        def directory = new File(new File(outputDir.toString()).parentFile, "manifests/${name}")
+        directory.mkdirs()
+        def catalog = new File(directory, 'reference_catalog.json')
+        catalog.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(document)) + '\n'
+        return catalog.absolutePath
+    }
+
+    static String summaryMethodOptions(Object outputDir, String name) {
+        return methodOptions(outputDir, name, [
+            unary_requests: [
+                'ldsc_h2--external_qt': [reference_bundle_id: 'ldsc_eur'],
+            ],
+            pair_requests: [
+                'ldsc_rg--external_pair': [reference_bundle_id: 'ldsc_eur'],
+                'ldak_sumcors--external_pair': [reference_bundle_id: 'ldak_thin_eur'],
+            ],
+        ])
+    }
+
+    static String canonicalSummary(Object outputDir, String name) {
+        return resource(
+            outputDir,
+            "${name}.canonical.tsv",
+            'SNPID\tCHR\tPOS\tEA\tNEA\tSTATUS\tEAF\tBETA\tSE\tP\tN\n' +
+                'rs1\t1\t1\tA\tG\t1900000\t0.25\t0.1\t0.01\t1e-4\t1000\n',
+        )
+    }
+
     static Map relationship(String relationshipId) {
         def fixture = { path -> "${FIXTURES.UPSTREAM}results/fixtures/${path}" }
         def relationships = [
@@ -153,6 +353,7 @@ class RELATIONAL {
             association_methods: 'plink2',
             heritability_methods: '',
             population_prevalence: '',
+            sample_prevalence: '',
         ]
         def analyses = [
             example_pgen_qt: common + [

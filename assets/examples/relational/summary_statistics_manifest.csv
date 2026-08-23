@@ -1,0 +1,4 @@
+summary_statistics_id,trait_id,trait_type,source,source_mode,source_format,producer_analysis_id,producer_association_method,genome_build,ancestry,source_method,source_release,heritability_methods,population_prevalence,sample_prevalence,access_constraints
+heterogeneous_qt--plink2,,,,,,heterogeneous_qt,plink2,,,,,ldsc_h2,,,
+published_bt,PUBLISHED_BT,binary,assets/examples/relational/published_bt.canonical.tsv,canonical,nfcore_gwas_canonical_v1,,,GRCh37,EUR,published_gwas,v1,,0.1,0.2,public
+published_qt_raw,PUBLISHED_QT_RAW,quantitative,assets/examples/relational/published_qt.raw.tsv,raw,gwaslab,,,GRCh37,EUR,published_gwas,v2,ldak_sumher,,,controlled_access

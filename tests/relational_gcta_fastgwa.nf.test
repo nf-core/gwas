@@ -58,7 +58,7 @@ nextflow_pipeline {
             def summaryStatistics = new File("${params.outdir}/summary_statistics")
             def matrices = new File("${params.outdir}/quality_control/relatedness_matrices")
             def harmonisedResults = analysisIds.collect { analysisId ->
-                new File(summaryStatistics, "${analysisId}/${analysisId}.gcta_fastgwa.gwaslab.tsv.gz")
+                new File(summaryStatistics, "${analysisId}--gcta_fastgwa/${analysisId}--gcta_fastgwa.canonical.tsv.gz")
             }
             def commandFiles = workFiles(outputDir).findAll { entry ->
                 entry.name == '.command.sh' && entry.text.contains('--grm-sparse') && entry.text.contains('--fastGWA-mlm')
@@ -91,7 +91,7 @@ nextflow_pipeline {
                 { assert TRACE.count(workflow, 'GWASLAB_HARMONIZE') == 4 },
                 { assert TRACE.tags(workflow, 'GCTA_FASTGWA').sort() == analysisIds },
                 { assert association.list().toList().sort() == analysisIds },
-                { assert summaryStatistics.list().toList().sort() == analysisIds },
+                { assert summaryStatistics.list().toList().sort() == analysisIds.collect { id -> "${id}--gcta_fastgwa" }.sort() },
                 { assert harmonisedResults.every { result -> result.isFile() } },
                 { assert commandFiles.size() == 4 },
                 { assert commandFiles.count { entry -> entry.text.contains('--fastGWA-mlm-binary') } == 1 },

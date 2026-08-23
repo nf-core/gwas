@@ -148,7 +148,7 @@ nextflow_pipeline {
                         { assert TRACE.count(workflow, 'GWASLAB_HARMONIZE') == 2 },
                         { assert TRACE.count(workflow, 'ATTRIBUTE_REGENIE_PREDICTIONS') == 0 },
                         { assert analysisIds.every { id -> new File(nativeDir, "${id}/${id}.regenie.gz").isFile() } },
-                        { assert analysisIds.every { id -> new File(harmonisedDir, "${id}/${id}.regenie.gwaslab.tsv.gz").isFile() } },
+                        { assert analysisIds.every { id -> new File(harmonisedDir, "${id}--regenie/${id}--regenie.canonical.tsv.gz").isFile() } },
                     )
                 } else {
                     def generated = commands(outputDir)
@@ -158,11 +158,11 @@ nextflow_pipeline {
                     def stable_name_native = getAllFilesFromDir("${params.outdir}/association/regenie", relative: true, includeDir: true).findAll { path -> path.toString() }
                     def stable_path_native = getAllFilesFromDir("${params.outdir}/association/regenie", ignoreFile: 'tests/.nftignore')
                     def stable_name_harmonised = getAllFilesFromDir("${params.outdir}/summary_statistics", relative: true, includeDir: true).findAll { path -> path.toString() }
-                    def stable_path_harmonised = getAllFilesFromDir("${params.outdir}/summary_statistics", ignoreFile: 'tests/.nftignore')
+                    def stable_path_harmonised = RELATIONAL.gzipTextHashes("${params.outdir}/summary_statistics")
                     assertAll(
                         { assert workflow.success },
                         { assert TRACE.tags(workflow, 'REGENIE_STEP2').sort() == analysisIds },
-                        { assert TRACE.tags(workflow, 'GWASLAB_HARMONIZE').sort() == analysisIds },
+                        { assert TRACE.tags(workflow, 'GWASLAB_HARMONIZE').sort() == analysisIds.collect { id -> "${id}--regenie" }.sort() },
                         { assert step1.size() == 2 },
                         { assert step2.size() == 2 },
                         { assert step1.count { command -> command.contains('--bt') } == 1 },
@@ -223,13 +223,13 @@ nextflow_pipeline {
                         'example_pgen_qt_reuse.regenie_step1_pred.list',
                     ] },
                     { assert analysisIds.every { id -> new File("${params.outdir}/association/regenie/${id}/${id}.regenie.gz").isFile() } },
-                    { assert analysisIds.every { id -> new File("${params.outdir}/summary_statistics/${id}/${id}.regenie.gwaslab.tsv.gz").isFile() } },
+                    { assert analysisIds.every { id -> new File("${params.outdir}/summary_statistics/${id}--regenie/${id}--regenie.canonical.tsv.gz").isFile() } },
                 ]
                 if (!mode.stub) {
                     def stable_name_native = getAllFilesFromDir("${params.outdir}/association/regenie", relative: true, includeDir: true).findAll { path -> path.toString() }
                     def stable_path_native = getAllFilesFromDir("${params.outdir}/association/regenie", ignoreFile: 'tests/.nftignore')
                     def stable_name_harmonised = getAllFilesFromDir("${params.outdir}/summary_statistics", relative: true, includeDir: true).findAll { path -> path.toString() }
-                    def stable_path_harmonised = getAllFilesFromDir("${params.outdir}/summary_statistics", ignoreFile: 'tests/.nftignore')
+                    def stable_path_harmonised = RELATIONAL.gzipTextHashes("${params.outdir}/summary_statistics")
                     assertions.addAll([
                         { assert snapshot(stable_name_native, stable_path_native).match('prediction-reuse-native') },
                         { assert snapshot(stable_name_harmonised, stable_path_harmonised).match('prediction-reuse-harmonised') },
@@ -278,7 +278,7 @@ nextflow_pipeline {
                     def stable_name_native = getAllFilesFromDir("${params.outdir}/association/regenie", relative: true, includeDir: true).findAll { path -> path.toString() }
                     def stable_path_native = getAllFilesFromDir("${params.outdir}/association/regenie", ignoreFile: 'tests/.nftignore')
                     def stable_name_harmonised = getAllFilesFromDir("${params.outdir}/summary_statistics", relative: true, includeDir: true).findAll { path -> path.toString() }
-                    def stable_path_harmonised = getAllFilesFromDir("${params.outdir}/summary_statistics", ignoreFile: 'tests/.nftignore')
+                    def stable_path_harmonised = RELATIONAL.gzipTextHashes("${params.outdir}/summary_statistics")
                     assertions.addAll([
                         { assert snapshot(stable_name_native, stable_path_native).match('prediction-identity-native') },
                         { assert snapshot(stable_name_harmonised, stable_path_harmonised).match('prediction-identity-harmonised') },
@@ -322,13 +322,13 @@ nextflow_pipeline {
                         'example_pgen_qt.regenie_step1_pred.list',
                     ] },
                     { assert new File("${params.outdir}/association/regenie/example_pgen_qt/example_pgen_qt.regenie.gz").isFile() },
-                    { assert new File("${params.outdir}/summary_statistics/example_pgen_qt/example_pgen_qt.regenie.gwaslab.tsv.gz").isFile() },
+                    { assert new File("${params.outdir}/summary_statistics/example_pgen_qt--regenie/example_pgen_qt--regenie.canonical.tsv.gz").isFile() },
                 ]
                 if (!mode.stub) {
                     def stable_name_native = getAllFilesFromDir("${params.outdir}/association/regenie", relative: true, includeDir: true).findAll { path -> path.toString() }
                     def stable_path_native = getAllFilesFromDir("${params.outdir}/association/regenie", ignoreFile: 'tests/.nftignore')
                     def stable_name_harmonised = getAllFilesFromDir("${params.outdir}/summary_statistics", relative: true, includeDir: true).findAll { path -> path.toString() }
-                    def stable_path_harmonised = getAllFilesFromDir("${params.outdir}/summary_statistics", ignoreFile: 'tests/.nftignore')
+                    def stable_path_harmonised = RELATIONAL.gzipTextHashes("${params.outdir}/summary_statistics")
                     assertions.addAll([
                         { assert snapshot(stable_name_native, stable_path_native).match('chunked-native') },
                         { assert snapshot(stable_name_harmonised, stable_path_harmonised).match('chunked-harmonised') },

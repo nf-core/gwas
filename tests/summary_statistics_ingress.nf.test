@@ -1,0 +1,58 @@
+nextflow_pipeline {
+
+    name "Test external summary-statistics ingress"
+    script "../main.nf"
+    tag "pipeline"
+    tag "summary_statistics"
+    tag "external_summary"
+
+    test("raw and canonical external sources converge on the canonical contract") {
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = null
+                analysis_manifest = null
+                summary_statistics_manifest = RELATIONAL.summaryStatistics(projectDir, outputDir, 'pipeline_external_ingress', { rows ->
+                    def raw = new LinkedHashMap(rows[0])
+                    raw.summary_statistics_id = 'external_raw'
+                    raw.trait_id = 'QT_external_raw'
+                    raw.source = RELATIONAL.canonicalSummary(outputDir, 'external_raw')
+                    raw.source_mode = 'raw'
+                    raw.source_format = 'gwaslab'
+                    rows << raw
+                })
+                reference_catalog = RELATIONAL.referenceCatalog(outputDir, 'pipeline_external_ingress')
+                method_options = RELATIONAL.methodOptions(outputDir, 'pipeline_external_ingress', [
+                    unary_requests: [
+                        'ldsc_h2--external_qt': [reference_bundle_id: 'ldsc_eur'],
+                        'ldsc_h2--external_raw': [reference_bundle_id: 'ldsc_eur'],
+                    ],
+                ])
+            }
+        }
+
+        then {
+            def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
+            def canonical = new File("${params.outdir}/summary_statistics/external_qt/external_qt.canonical.tsv.gz")
+            def raw = new File("${params.outdir}/summary_statistics/external_raw/external_raw.canonical.tsv.gz")
+            def canonicalProvenance = new groovy.json.JsonSlurper().parse(new File("${params.outdir}/summary_statistics/external_qt/external_qt.provenance.json"))
+            def rawProvenance = new groovy.json.JsonSlurper().parse(new File("${params.outdir}/summary_statistics/external_raw/external_raw.provenance.json"))
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'GWASLAB_HARMONIZE') == 1 },
+                { assert TRACE.count(workflow, 'CANONICALISE_SUMMARY_STATISTICS') == 2 },
+                { assert canonical.isFile() },
+                { assert raw.isFile() },
+                { assert canonicalProvenance.source_mode == 'canonical' },
+                { assert canonicalProvenance.transformation == 'validated_without_harmonisation' },
+                { assert canonicalProvenance.harmonization == null },
+                { assert rawProvenance.source_mode == 'raw' },
+                { assert rawProvenance.transformation == 'gwaslab_harmonised' },
+                { assert rawProvenance.harmonization.tool == 'GWASLab' },
+                { assert canonicalProvenance.canonical_columns == ['SNPID', 'CHR', 'POS', 'EA', 'NEA', 'STATUS', 'EAF', 'BETA', 'SE', 'P', 'N'] },
+                { assert rawProvenance.canonical_columns == ['SNPID', 'CHR', 'POS', 'EA', 'NEA', 'STATUS', 'EAF', 'BETA', 'SE', 'P', 'N'] },
+                { assert snapshot(removeNextflowVersion(versions.toString())).match('versions') },
+            )
+        }
+    }
+}

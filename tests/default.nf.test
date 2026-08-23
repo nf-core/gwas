@@ -23,7 +23,10 @@ nextflow_pipeline {
             def stable_name_association = getAllFilesFromDir("${params.outdir}/association", relative: true, includeDir: true).findAll { path -> path.toString() }
             def stable_path_association = getAllFilesFromDir("${params.outdir}/association", ignoreFile: 'tests/.nftignore')
             def stable_name_summary_statistics = getAllFilesFromDir("${params.outdir}/summary_statistics", relative: true, includeDir: true).findAll { path -> path.toString() }
-            def stable_path_summary_statistics = getAllFilesFromDir("${params.outdir}/summary_statistics", ignoreFile: 'tests/.nftignore')
+            // Canonical table content is stable after decompression. Provenance retains the exact
+            // source-byte checksum, which can legitimately change when an upstream tool rewrites an
+            // equivalent gzip stream; its schema and semantics are covered by the component tests.
+            def stable_path_summary_statistics = RELATIONAL.gzipTextHashes("${params.outdir}/summary_statistics")
             def stable_name_multiqc = getAllFilesFromDir("${params.outdir}/multiqc", relative: true, includeDir: true).findAll { path -> path.toString() }
             def stable_path_multiqc = getAllFilesFromDir(
                 "${params.outdir}",
