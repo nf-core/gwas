@@ -36,6 +36,10 @@
 
   > Hof JP, Speed D. LDAK-KVIK performs fast and powerful mixed-model association analysis of quantitative and binary phenotypes. Nat Genet. 2025;57(9):2116-2123. doi: 10.1038/s41588-025-02286-z. PubMed PMID: 40789918.
 
+- [LDSC](https://doi.org/10.1038/ng.3211)
+
+  > Bulik-Sullivan BK, Loh PR, Finucane HK, et al. LD Score regression distinguishes confounding from polygenicity in genome-wide association studies. Nat Genet. 2015;47(3):291-295. doi: 10.1038/ng.3211. PubMed PMID: 25642630; PubMed Central PMCID: PMC4495769.
+
 - [MultiQC](https://pubmed.ncbi.nlm.nih.gov/27312411/)
 
   > Ewels P, Magnusson M, Lundin S, Käller M. MultiQC: summarize analysis results for multiple tools and samples in a single report. Bioinformatics. 2016;32(19):3047-3048. doi: 10.1093/bioinformatics/btw354. PubMed PMID: 27312411; PubMed Central PMCID: PMC5039924.

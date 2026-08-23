@@ -196,6 +196,8 @@ The wrapper rejects whitespace or shell syntax, path separators, environment ass
 
 Summary requests use the same deterministic ownership boundary. LDAK receives exactly one staged `tagging_file`; LDSC receives separate staged `hapmap3_snplist`, `reference_ld_scores` and `regression_weights` roles. `native_args` may contain non-file scientific tokens only. Wrapper-owned operation, input, output and thread flags are rejected, as are any values that resemble undeclared files or paths.
 
+LDSC H2 always retains an observed-scale invocation. A binary summary additionally receives a liability-scale invocation only when both `sample_prevalence` and `population_prevalence` are declared. LDSC RG follows the same rule for its ordered endpoints: the observed-scale result is always retained, and a second invocation supplies prevalence only when at least one endpoint is binary and every binary endpoint declares both values. Quantitative endpoints in that mixed invocation use LDSC's native `nan` prevalence placeholder. Request-level `native_args` cannot override either prevalence flag.
+
 ```json
 {
   "unary_requests": {
