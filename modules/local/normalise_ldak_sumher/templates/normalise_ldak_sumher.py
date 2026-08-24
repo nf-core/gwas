@@ -52,20 +52,25 @@ if extra.get("Converged") != "YES":
     raise ValueError("LDAK SumHer did not report Converged YES")
 
 warnings = [line.strip() for line in log_text.splitlines() if line.strip().startswith("Warning,")]
-classification = "estimable"
-if observed_estimate is None or observed_se is None:
-    classification = "completed_nonestimable"
-elif not 0 <= observed_estimate <= 1 or warnings:
-    classification = "estimable_with_warning"
-
 rows = [["observed", observed_estimate, observed_se]]
 if HERS_LIABILITY and HERS_LIABILITY.exists():
     liability_estimate, liability_se = her_all(HERS_LIABILITY)
     rows.append(["liability", liability_estimate, liability_se])
-    if liability_estimate is None or liability_se is None:
-        classification = "completed_nonestimable"
-    elif classification == "estimable" and not 0 <= liability_estimate <= 1:
-        classification = "estimable_with_warning"
+
+effective_args = META.get("effective_native_args", [])
+option_names = [token.split("=", 1)[0] for token in effective_args if isinstance(token, str) and token.startswith("--")]
+large_effect_match = re.search(r"There are (\\d+) predictors that explain at least .*?; these will be excluded", log_text)
+overlap_proportion = number(overlap.get("Overlap_Proportion"))
+preparation = json.loads(PREPARATION.read_text(encoding="utf-8"))
+if "--check-sums" in option_names and "NO" in effective_args and overlap_proportion is not None and overlap_proportion < 0.8:
+    warnings.append("HIGH: summary-statistics coverage is below LDAK's approximate 80% guidance under an explicit incomplete-summary override")
+
+classification = "estimable"
+if any(estimate is None or standard_error is None for _, estimate, standard_error in rows):
+    classification = "completed_nonestimable"
+elif any(not 0 <= estimate <= 1 for _, estimate, _ in rows) or warnings:
+    classification = "estimable_with_warning"
+
 
 def rendered(value):
     return "NA" if value is None else format(value, ".17g")
@@ -76,14 +81,6 @@ with Path("heritability.tsv").open("w", encoding="utf-8", newline="") as handle:
     writer.writerow(["summary_statistics_id", "request_id", "method", "trait_id", "trait_type", "scale", "estimate", "standard_error", "classification"])
     for scale, estimate, standard_error in rows:
         writer.writerow([META["summary_statistics_id"], META["request_id"], META["method"], META["trait_id"], META["trait_type"], scale, rendered(estimate), rendered(standard_error), classification])
-
-effective_args = META.get("effective_native_args", [])
-option_names = [token.split("=", 1)[0] for token in effective_args if isinstance(token, str) and token.startswith("--")]
-large_effect_match = re.search(r"There are (\\d+) predictors that explain at least .*?; these will be excluded", log_text)
-overlap_proportion = number(overlap.get("Overlap_Proportion"))
-preparation = json.loads(PREPARATION.read_text(encoding="utf-8"))
-if "--check-sums" in option_names and "NO" in effective_args and overlap_proportion is not None and overlap_proportion < 0.8:
-    warnings.append("HIGH: summary-statistics coverage is below LDAK's approximate 80% guidance under an explicit incomplete-summary override")
 
 diagnostics = {
     "classification": classification,
