@@ -453,6 +453,153 @@ nextflow_function {
                 )
             }
         }
+
+        test("the ${method} firewall rejects the other summary-statistics operation") {
+            function "validateSummaryNativeArgumentTokens"
+
+            when {
+                function {
+                    """
+                    input[0] = 'method_options.json'
+                    input[1] = '${method == 'ldsc_h2' ? 'unary_requests' : 'pair_requests'}'
+                    input[2] = '${method}--example'
+                    input[3] = '${method}'
+                    input[4] = ['${method == 'ldsc_h2' ? '--rg' : '--h2'}']
+                    """
+                }
+            }
+
+            then {
+                assertAll(
+                    { assert function.failed },
+                    { assert function.stdout.join('\n').contains("selects a different primary operation from wrapper-owned method '${method}'") },
+                )
+            }
+        }
+    }
+
+    def ldscProtectedOptions = [
+        ldsc_h2: [
+            '--h2',
+            '--ref-ld-chr',
+            '--w-ld-chr',
+            '--samp-prev',
+            '--pop-prev',
+            '--out',
+            '--annot',
+            '--bfile',
+            '--cts-bin',
+            '--extract',
+            '--frqfile',
+            '--frqfile-chr',
+            '--h2-cts',
+            '--keep',
+            '--print-snps',
+            '--ref-ld',
+            '--ref-ld-chr-cts',
+            '--w-ld',
+            '--l2',
+            '--rg',
+        ],
+        ldsc_rg: [
+            '--rg',
+            '--ref-ld-chr',
+            '--w-ld-chr',
+            '--samp-prev',
+            '--pop-prev',
+            '--out',
+            '--annot',
+            '--bfile',
+            '--cts-bin',
+            '--extract',
+            '--frqfile',
+            '--frqfile-chr',
+            '--h2-cts',
+            '--keep',
+            '--print-snps',
+            '--ref-ld',
+            '--ref-ld-chr-cts',
+            '--w-ld',
+            '--l2',
+            '--h2',
+        ],
+    ]
+    ldscProtectedOptions.each { method, protectedOptions ->
+        def protectedSet = protectedOptions.toSet()
+        def properPrefixes = protectedOptions
+            .collectMany { option -> (3..<option.size()).collect { prefixLength -> option.substring(0, prefixLength) } }
+            .findAll { prefix -> !(prefix in protectedSet) }
+            .toSet()
+            .sort()
+
+        test("the ${method} matcher covers every proper prefix of every protected pinned-parser option") {
+            function "getLdscProtectedNativeOptionMatches"
+
+            when {
+                function {
+                    """
+                    input[0] = '${method}'
+                    input[1] = new groovy.json.JsonSlurper().parseText('${groovy.json.JsonOutput.toJson(properPrefixes)}')
+                    """
+                }
+            }
+
+            then {
+                assertAll(
+                    { assert function.success },
+                    { assert function.result.keySet().toSet() == properPrefixes.toSet() },
+                    { assert function.result.values().every { protection -> protection && !protection.exact } },
+                    { assert function.result.every { prefix, protection -> protection.matches.any { match -> match.option.startsWith(prefix) } } },
+                )
+            }
+        }
+    }
+
+    def ldscAbbreviationExamples = [
+        [name: 'annotation file', option: '--ann'],
+        [name: 'binary genotype prefix', option: '--bfi'],
+        [name: 'ambiguous category-bin prefix', option: '--cts-b'],
+        [name: 'partitioned heritability input', option: '--h2-c'],
+        [name: 'regression-weight reference', option: '--w-ld-c'],
+        [name: 'ambiguous LD-score reference', option: '--ref-ld-c'],
+        [name: 'LD-score operation', option: '--l'],
+    ]
+    ['ldsc_h2', 'ldsc_rg'].each { method ->
+        def methodExamples = ldscAbbreviationExamples + [
+            [
+                name: method == 'ldsc_h2' ? 'ambiguous RG-operation/reference prefix' : 'alternate heritability-operation prefix',
+                option: method == 'ldsc_h2' ? '--r' : '--h',
+            ],
+        ]
+        methodExamples.each { scenario ->
+            [
+                [name: 'bare', token: scenario.option],
+                [name: 'inline', token: "${scenario.option}=opaque_value"],
+            ].each { form ->
+                test("the ${method} firewall rejects ${form.name} ${scenario.name} abbreviation ${scenario.option}") {
+                    function "validateSummaryNativeArgumentTokens"
+
+                    when {
+                        function {
+                            """
+                            input[0] = 'method_options.json'
+                            input[1] = '${method == 'ldsc_h2' ? 'unary_requests' : 'pair_requests'}'
+                            input[2] = '${method}--example'
+                            input[3] = '${method}'
+                            input[4] = ['${form.token}']
+                            """
+                        }
+                    }
+
+                    then {
+                        assertAll(
+                            { assert function.failed },
+                            { assert function.stdout.join('\n').contains('protected LDSC option abbreviation') },
+                        )
+                    }
+                }
+            }
+        }
     }
 
     test("method option defaults have one canonical resolved shape") {

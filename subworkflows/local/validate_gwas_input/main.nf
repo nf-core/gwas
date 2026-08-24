@@ -932,6 +932,60 @@ def readReferenceCatalog(reference_catalog) {
     return resolved
 }
 
+def getLdscProtectedNativeOptionMatches(method, option_names) {
+    def protected_by_method = [
+        ldsc_h2: [
+            wrapper_owned: ['--h2', '--ref-ld-chr', '--w-ld-chr', '--samp-prev', '--pop-prev', '--out'],
+            typed_resource: [
+                '--annot',
+                '--bfile',
+                '--cts-bin',
+                '--extract',
+                '--frqfile',
+                '--frqfile-chr',
+                '--h2-cts',
+                '--keep',
+                '--print-snps',
+                '--ref-ld',
+                '--ref-ld-chr-cts',
+                '--w-ld',
+            ],
+            alternate_operation: ['--l2', '--rg'],
+        ],
+        ldsc_rg: [
+            wrapper_owned: ['--rg', '--ref-ld-chr', '--w-ld-chr', '--samp-prev', '--pop-prev', '--out'],
+            typed_resource: [
+                '--annot',
+                '--bfile',
+                '--cts-bin',
+                '--extract',
+                '--frqfile',
+                '--frqfile-chr',
+                '--h2-cts',
+                '--keep',
+                '--print-snps',
+                '--ref-ld',
+                '--ref-ld-chr-cts',
+                '--w-ld',
+            ],
+            alternate_operation: ['--l2', '--h2'],
+        ],
+    ]
+    def protection_sets = protected_by_method[method] ?: [:]
+    return option_names.collectEntries { option_name ->
+        def exact = protection_sets.collectMany { kind, options -> options.findAll { protected_option -> protected_option == option_name }.collect { protected_option -> [kind: kind, option: protected_option] } }
+        def prefix = option_name.startsWith('--') && option_name.size() > 2
+            ? protection_sets.collectMany { kind, options ->
+                options
+                    .findAll { protected_option -> protected_option.startsWith(option_name) }
+                    .collect { protected_option -> [kind: kind, option: protected_option] }
+            }
+            : []
+        def matches = exact ?: prefix
+        [(option_name): matches ? [exact: !exact.isEmpty(), matches: matches.unique()] : null]
+    }
+}
+
 def validateSummaryNativeArgumentTokens(method_options, namespace, request_id, method, native_args) {
     def fail = { reason ->
         error("[nf-core/gwas] ERROR: Method-options document '${method_options}', namespace '${namespace}', request_id '${request_id}', option 'native_args': ${reason}")
@@ -971,8 +1025,6 @@ def validateSummaryNativeArgumentTokens(method_options, namespace, request_id, m
             '--prevalence2',
             '--ascertainment2',
         ],
-        ldsc_h2: ['--h2', '--ref-ld-chr', '--w-ld-chr', '--samp-prev', '--pop-prev', '--out'],
-        ldsc_rg: ['--rg', '--ref-ld-chr', '--w-ld-chr', '--samp-prev', '--pop-prev', '--out'],
     ]
     def undeclared_file_options = [
         ldak_sumher: [
@@ -997,38 +1049,6 @@ def validateSummaryNativeArgumentTokens(method_options, namespace, request_id, m
             '--remove',
             '--weights',
         ],
-        ldsc_h2: [
-            '--annot',
-            '--bfile',
-            '--cts-bin',
-            '--extract',
-            '--frqfile',
-            '--frqfile-chr',
-            '--h2-cts',
-            '--keep',
-            '--print-snps',
-            '--ref-ld',
-            '--ref-ld-chr-cts',
-            '--w-ld',
-        ],
-        ldsc_rg: [
-            '--annot',
-            '--bfile',
-            '--cts-bin',
-            '--extract',
-            '--frqfile',
-            '--frqfile-chr',
-            '--h2-cts',
-            '--keep',
-            '--print-snps',
-            '--ref-ld',
-            '--ref-ld-chr-cts',
-            '--w-ld',
-        ],
-    ]
-    def alternate_operations = [
-        ldsc_h2: ['--l2'],
-        ldsc_rg: ['--l2'],
     ]
     native_args.eachWithIndex { token, index ->
         if (!(token instanceof String) || !token) {
@@ -1041,14 +1061,30 @@ def validateSummaryNativeArgumentTokens(method_options, namespace, request_id, m
             fail.call("token ${index + 1} '${token}' resembles an environment assignment; native arguments cannot alter the task environment")
         }
         def option_name = token.contains('=') ? token.substring(0, token.indexOf('=')) : token
-        if (option_name in (reserved_by_method[method] ?: [])) {
-            fail.call("token ${index + 1} '${token}' conflicts with wrapper-owned invocation mechanics")
+        if (method in ['ldsc_h2', 'ldsc_rg']) {
+            def protection = getLdscProtectedNativeOptionMatches(method, [option_name])[option_name]
+            if (protection) {
+                if (!protection.exact) {
+                    def matched_options = protection.matches.collect { match -> match.option }.unique().sort().join(', ')
+                    fail.call("token ${index + 1} '${token}' is a protected LDSC option abbreviation matching ${matched_options}; abbreviated options cannot bypass wrapper-owned invocation, typed-resource or primary-operation controls")
+                }
+                def kind = protection.matches.first().kind
+                if (kind == 'wrapper_owned') {
+                    fail.call("token ${index + 1} '${token}' conflicts with wrapper-owned invocation mechanics")
+                }
+                if (kind == 'typed_resource') {
+                    fail.call("token ${index + 1} '${token}' requires a typed staged resource, but this request architecture declares no such file role")
+                }
+                fail.call("token ${index + 1} '${token}' selects a different primary operation from wrapper-owned method '${method}'")
+            }
         }
-        if (option_name in (undeclared_file_options[method] ?: [])) {
-            fail.call("token ${index + 1} '${token}' requires a typed staged resource, but this request architecture declares no such file role")
-        }
-        if (option_name in (alternate_operations[method] ?: [])) {
-            fail.call("token ${index + 1} '${token}' selects a different primary operation from wrapper-owned method '${method}'")
+        else {
+            if (option_name in (reserved_by_method[method] ?: [])) {
+                fail.call("token ${index + 1} '${token}' conflicts with wrapper-owned invocation mechanics")
+            }
+            if (option_name in (undeclared_file_options[method] ?: [])) {
+                fail.call("token ${index + 1} '${token}' requires a typed staged resource, but this request architecture declares no such file role")
+            }
         }
         def argument_value = token.contains('=') ? token.substring(token.indexOf('=') + 1) : token
         if (!token.startsWith('--') || token.contains('=')) {
