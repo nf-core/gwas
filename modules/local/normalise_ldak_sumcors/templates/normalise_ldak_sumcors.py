@@ -46,17 +46,33 @@ if missing:
 observed = {component: [number(value) for value in native[component][:2]] for component in mandatory}
 log_text = LOG.read_text(encoding="utf-8")
 warnings = [line.strip() for line in log_text.splitlines() if line.strip().startswith("Warning,")]
-primary = [observed[component][index] for component in ["Her1_All", "Her2_All", "Coher_All", "Cor_All"] for index in [0, 1]]
-classification = "completed_nonestimable" if any(value is None for value in primary) else "estimable"
-if classification == "estimable" and (not 0 <= observed["Her1_All"][0] <= 1 or not 0 <= observed["Her2_All"][0] <= 1 or not -1 <= observed["Cor_All"][0] <= 1 or warnings):
-    classification = "estimable_with_warning"
-
 liability = None
+nonestimable = False
 if CORRELATIONS_LIABILITY and CORRELATIONS_LIABILITY.exists():
     liability_native = key_values(CORRELATIONS_LIABILITY)
     liability = {component: [number(value) for value in liability_native.get(component, [])[:2]] for component in ["Her1_All", "Her2_All", "Coher_All", "Cor_All"]}
     if any(len(values) < 2 or value is None for values in liability.values() for value in values):
-        classification = "completed_nonestimable"
+        nonestimable = True
+
+overlap = key_values(OVERLAP)
+left_preparation = json.loads(LEFT_PREPARATION.read_text(encoding="utf-8"))
+right_preparation = json.loads(RIGHT_PREPARATION.read_text(encoding="utf-8"))
+effective_args = META.get("effective_native_args", [])
+option_names = [token.split("=", 1)[0] for token in effective_args if isinstance(token, str) and token.startswith("--")]
+left_excluded_match = re.search(r"There are (\\d+) predictors that explain at least .*? for Trait 1; these will be excluded", log_text)
+right_excluded_match = re.search(r"There are (\\d+) predictors that explain at least .*? for Trait 2; these will be excluded", log_text)
+predictors_used_match = re.search(r"usually tens of thousands of predictors \\(not (\\d+)\\)", log_text)
+overlap_proportion = number(overlap.get("Overlap_Proportion", [None])[0])
+if "--check-sums" in option_names and "NO" in effective_args and overlap_proportion is not None and overlap_proportion < 0.8:
+    warnings.append("HIGH: summary-statistics coverage is below LDAK's approximate 80% guidance under an explicit incomplete-summary override")
+
+primary = [observed[component][index] for component in ["Her1_All", "Her2_All", "Coher_All", "Cor_All"] for index in [0, 1]]
+if nonestimable or any(value is None for value in primary):
+    classification = "completed_nonestimable"
+elif not 0 <= observed["Her1_All"][0] <= 1 or not 0 <= observed["Her2_All"][0] <= 1 or not -1 <= observed["Cor_All"][0] <= 1 or warnings:
+    classification = "estimable_with_warning"
+else:
+    classification = "estimable"
 
 
 def rendered(value):
@@ -82,17 +98,6 @@ with Path("genetic_correlation.tsv").open("w", encoding="utf-8", newline="") as 
     writer.writerow(["relationship_id", "request_id", "method", "left_summary_statistics_id", "right_summary_statistics_id", "left_trait_id", "right_trait_id", "estimate", "standard_error", "classification"])
     writer.writerow([META["relationship_id"], META["request_id"], META["method"], META["left_summary_statistics_id"], META["right_summary_statistics_id"], META["left_trait_id"], META["right_trait_id"], rendered(observed["Cor_All"][0]), rendered(observed["Cor_All"][1]), classification])
 
-overlap = key_values(OVERLAP)
-left_preparation = json.loads(LEFT_PREPARATION.read_text(encoding="utf-8"))
-right_preparation = json.loads(RIGHT_PREPARATION.read_text(encoding="utf-8"))
-effective_args = META.get("effective_native_args", [])
-option_names = [token.split("=", 1)[0] for token in effective_args if isinstance(token, str) and token.startswith("--")]
-left_excluded_match = re.search(r"There are (\\d+) predictors that explain at least .*? for Trait 1; these will be excluded", log_text)
-right_excluded_match = re.search(r"There are (\\d+) predictors that explain at least .*? for Trait 2; these will be excluded", log_text)
-predictors_used_match = re.search(r"usually tens of thousands of predictors \\(not (\\d+)\\)", log_text)
-overlap_proportion = number(overlap.get("Overlap_Proportion", [None])[0])
-if "--check-sums" in option_names and "NO" in effective_args and overlap_proportion is not None and overlap_proportion < 0.8:
-    warnings.append("HIGH: summary-statistics coverage is below LDAK's approximate 80% guidance under an explicit incomplete-summary override")
 diagnostics = {
     "classification": classification,
     "tagging_file_predictors": overlap.get("Tagging_File_Predictors", [None])[0],
