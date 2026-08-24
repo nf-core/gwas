@@ -932,7 +932,7 @@ def readReferenceCatalog(reference_catalog) {
     return resolved
 }
 
-def getLdscProtectedNativeOptionMatches(method, option_names) {
+def getLdscProtectedNativeArgumentMatches(method, argument_tokens) {
     def protected_by_method = [
         ldsc_h2: [
             wrapper_owned: ['--h2', '--ref-ld-chr', '--w-ld-chr', '--samp-prev', '--pop-prev', '--out'],
@@ -972,7 +972,8 @@ def getLdscProtectedNativeOptionMatches(method, option_names) {
         ],
     ]
     def protection_sets = protected_by_method[method] ?: [:]
-    return option_names.collectEntries { option_name ->
+    return argument_tokens.collectEntries { argument_token ->
+        def option_name = argument_token.contains('=') ? argument_token.substring(0, argument_token.indexOf('=')) : argument_token
         def exact = protection_sets.collectMany { kind, options -> options.findAll { protected_option -> protected_option == option_name }.collect { protected_option -> [kind: kind, option: protected_option] } }
         def prefix = option_name.startsWith('--') && option_name.size() > 2
             ? protection_sets.collectMany { kind, options ->
@@ -982,7 +983,7 @@ def getLdscProtectedNativeOptionMatches(method, option_names) {
             }
             : []
         def matches = exact ?: prefix
-        [(option_name): matches ? [exact: !exact.isEmpty(), matches: matches.unique()] : null]
+        [(argument_token): matches ? [option_name: option_name, exact: !exact.isEmpty(), matches: matches.unique()] : null]
     }
 }
 
@@ -1062,7 +1063,7 @@ def validateSummaryNativeArgumentTokens(method_options, namespace, request_id, m
         }
         def option_name = token.contains('=') ? token.substring(0, token.indexOf('=')) : token
         if (method in ['ldsc_h2', 'ldsc_rg']) {
-            def protection = getLdscProtectedNativeOptionMatches(method, [option_name])[option_name]
+            def protection = getLdscProtectedNativeArgumentMatches(method, [token])[token]
             if (protection) {
                 if (!protection.exact) {
                     def matched_options = protection.matches.collect { match -> match.option }.unique().sort().join(', ')

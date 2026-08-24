@@ -531,15 +531,19 @@ nextflow_function {
             .findAll { prefix -> !(prefix in protectedSet) }
             .toSet()
             .sort()
+        def properPrefixArguments = properPrefixes
+            .collectMany { prefix -> [prefix, "${prefix}=opaque_value"] }
+            .sort()
 
-        test("the ${method} matcher covers every proper prefix of every protected pinned-parser option") {
-            function "getLdscProtectedNativeOptionMatches"
+        test("the ${method} matcher covers bare and inline forms of every proper protected-option prefix") {
+            function "getLdscProtectedNativeArgumentMatches"
+            tag "ldsc_prefix_firewall"
 
             when {
                 function {
                     """
                     input[0] = '${method}'
-                    input[1] = new groovy.json.JsonSlurper().parseText('${groovy.json.JsonOutput.toJson(properPrefixes)}')
+                    input[1] = new groovy.json.JsonSlurper().parseText('${groovy.json.JsonOutput.toJson(properPrefixArguments)}')
                     """
                 }
             }
@@ -547,9 +551,9 @@ nextflow_function {
             then {
                 assertAll(
                     { assert function.success },
-                    { assert function.result.keySet().toSet() == properPrefixes.toSet() },
+                    { assert function.result.keySet().toSet() == properPrefixArguments.toSet() },
                     { assert function.result.values().every { protection -> protection && !protection.exact } },
-                    { assert function.result.every { prefix, protection -> protection.matches.any { match -> match.option.startsWith(prefix) } } },
+                    { assert function.result.every { _argument, protection -> protection.matches.any { match -> match.option.startsWith(protection.option_name) } } },
                 )
             }
         }
@@ -578,6 +582,7 @@ nextflow_function {
             ].each { form ->
                 test("the ${method} firewall rejects ${form.name} ${scenario.name} abbreviation ${scenario.option}") {
                     function "validateSummaryNativeArgumentTokens"
+                    tag "ldsc_prefix_firewall"
 
                     when {
                         function {
