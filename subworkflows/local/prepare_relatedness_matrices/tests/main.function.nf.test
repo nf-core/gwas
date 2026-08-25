@@ -5,22 +5,19 @@ nextflow_function {
     tag "function"
     tag "relatedness"
 
-    // The reuse key decides how many relatedness matrices a run builds, and two of its properties
-    // cannot be observed from a pipeline run today.
+    // The reuse key decides how many relatedness matrices a run builds, and two of its properties are
+    // most directly observable at the function boundary.
     //
     // "The same construction settings reached by two different spellings produce one key" needs a key
     // component whose value can be spelled two ways, and "different construction settings produce two
-    // keys" needs a key component that a route actually varies. The only route wired so far is the
-    // GCTA dense GRM, whose settings map is empty by construction — it is built over every variant of
-    // the cohort bundle with no MAF filter, no SNP group and no weighting — so at the pipeline level
-    // both properties are invisible. They become observable at the LDAK route (`ldak_model`,
-    // `ldak_power`, which are also the only samplesheet columns carrying a schema default) and at the
-    // LD- and MAF-stratified GCTA route (`gcta_ldms_maf_edges`).
+    // keys" needs a key component that a route actually varies. The GCTA dense GRM settings map is empty
+    // by construction — it is built over every variant of the cohort bundle with no MAF filter, no SNP
+    // group and no weighting — while the LDAK route (`ldak_model`, `ldak_power`) and the LD- and
+    // MAF-stratified GCTA route (`gcta_ldms_maf_edges`) expose varying key components.
     //
-    // So they are asserted here instead, against the functions that implement them, rather than left
-    // unasserted until a later route lands or faked with a synthetic samplesheet column. What a
-    // pipeline run can still show — that one cohort's traits share a build and two cohorts do not, and
-    // that the published path segment is this key — is in tests/relatedness_matrix_ldak.nf.test.
+    // These properties are therefore asserted against the functions that implement them rather than
+    // faked with a synthetic samplesheet column. Pipeline tests separately show that one cohort's traits
+    // share a build while two cohorts do not, and that the published path segment uses this key.
 
     test("canonicalisation renders equal-meaning numbers alike whatever spelled them") {
 

@@ -97,9 +97,7 @@ workflow GWAS {
         [meta, genotype_files]
     }
     ch_genotype_requests = ch_genotype_requests.mix(
-        ch_relationships
-            .filter { meta, _genotype_files, _pair_quant_covariates, _pair_cat_covariates -> meta.matrix_kind == 'gcta_ldms' }
-            .map { meta, genotype_files, _pair_quant_covariates, _pair_cat_covariates -> [meta, genotype_files] }
+        ch_relationships.filter { meta, _genotype_files, _pair_quant_covariates, _pair_cat_covariates -> meta.matrix_kind == 'gcta_ldms' }.map { meta, genotype_files, _pair_quant_covariates, _pair_cat_covariates -> [meta, genotype_files] }
     )
 
     // Matrix preparation additionally receives the optional LDAK weights Path. It derives identity from the
@@ -510,33 +508,22 @@ workflow GWAS {
     // downstream request or its regression reference/weights. A content-derived key therefore lets unary,
     // pairwise, primary and named sensitivity requests reuse the same expensive preparation without making
     // ancestry, bundle names, H2/RG native arguments or output identity part of that derivation.
-    def ldsc_munging_key = { summary_statistics_id, hapmap3_snplist ->
-        digestIdentityText([
-            'adapter=nfcore_gwas_canonical_v1_to_ldsc_sumstats_v1',
-            "summary_statistics_id=${summary_statistics_id}",
-            "hapmap3_sha256=${digestFileBytes(hapmap3_snplist)}",
-        ].join('\n'))
-    }
-
     def ch_ldsc_munging_requests = ch_unary_requests
         .filter { meta, _hapmap3_snplist, _reference_ld_scores, _regression_weights, _tagging_file -> meta.method == 'ldsc_h2' }
         .map { meta, hapmap3_snplist, _reference_ld_scores, _regression_weights, _tagging_file ->
-            def key = ldsc_munging_key(meta.summary_statistics_id, hapmap3_snplist)
+            def key = getLdscMungingKey(meta.summary_statistics_id, hapmap3_snplist)
             [meta.summary_statistics_id, key, hapmap3_snplist]
         }
         .mix(
-            ch_pair_requests
-                .filter { meta, _hapmap3_snplist, _reference_ld_scores, _regression_weights, _tagging_file -> meta.method == 'ldsc_rg' }
-                .flatMap { meta, hapmap3_snplist, _reference_ld_scores, _regression_weights, _tagging_file ->
-                    [meta.left_summary_statistics_id, meta.right_summary_statistics_id].collect { summary_statistics_id ->
-                        [summary_statistics_id, ldsc_munging_key(summary_statistics_id, hapmap3_snplist), hapmap3_snplist]
-                    }
+            ch_pair_requests.filter { meta, _hapmap3_snplist, _reference_ld_scores, _regression_weights, _tagging_file -> meta.method == 'ldsc_rg' }.flatMap { meta, hapmap3_snplist, _reference_ld_scores, _regression_weights, _tagging_file ->
+                [meta.left_summary_statistics_id, meta.right_summary_statistics_id].collect { summary_statistics_id ->
+                    [summary_statistics_id, getLdscMungingKey(summary_statistics_id, hapmap3_snplist), hapmap3_snplist]
                 }
+            }
         )
         .unique { _summary_statistics_id, key, _hapmap3_snplist -> key }
 
-    def ch_canonical_by_summary_id = CANONICALISE_SUMMARY_STATISTICS.out.summary_statistics
-        .map { meta, canonical_summary_statistics -> [meta.summary_statistics_id, meta, canonical_summary_statistics] }
+    def ch_canonical_by_summary_id = CANONICALISE_SUMMARY_STATISTICS.out.summary_statistics.map { meta, canonical_summary_statistics -> [meta.summary_statistics_id, meta, canonical_summary_statistics] }
 
     def ch_ldsc_munging_invocations = ch_ldsc_munging_requests
         .combine(ch_canonical_by_summary_id, by: 0)
@@ -572,7 +559,7 @@ workflow GWAS {
     def ch_ldsc_h2_requests = ch_unary_requests
         .filter { meta, _hapmap3_snplist, _reference_ld_scores, _regression_weights, _tagging_file -> meta.method == 'ldsc_h2' }
         .map { meta, hapmap3_snplist, reference_ld_scores, regression_weights, _tagging_file ->
-            [ldsc_munging_key(meta.summary_statistics_id, hapmap3_snplist), meta, reference_ld_scores, regression_weights]
+            [getLdscMungingKey(meta.summary_statistics_id, hapmap3_snplist), meta, reference_ld_scores, regression_weights]
         }
         .combine(ch_ldsc_munged, by: 0)
 
@@ -618,12 +605,12 @@ workflow GWAS {
     def ch_ldsc_rg_left = ch_pair_requests
         .filter { meta, _hapmap3_snplist, _reference_ld_scores, _regression_weights, _tagging_file -> meta.method == 'ldsc_rg' }
         .map { meta, hapmap3_snplist, reference_ld_scores, regression_weights, _tagging_file ->
-            def left_key = ldsc_munging_key(meta.left_summary_statistics_id, hapmap3_snplist)
+            def left_key = getLdscMungingKey(meta.left_summary_statistics_id, hapmap3_snplist)
             [left_key, meta, hapmap3_snplist, reference_ld_scores, regression_weights]
         }
         .combine(ch_ldsc_munged, by: 0)
         .map { left_key, meta, hapmap3_snplist, reference_ld_scores, regression_weights, left_munging_meta, left_sumstats, left_munging_log ->
-            def right_key = ldsc_munging_key(meta.right_summary_statistics_id, hapmap3_snplist)
+            def right_key = getLdscMungingKey(meta.right_summary_statistics_id, hapmap3_snplist)
             [right_key, left_key, meta, reference_ld_scores, regression_weights, left_sumstats, left_munging_log]
         }
 
@@ -686,7 +673,7 @@ workflow GWAS {
         .map { meta, observed_log -> [meta.request_id, meta, observed_log] }
         .join(
             LDSC_H2_LIABILITY.out.log.map { meta, liability_log -> [meta.request_id, liability_log] },
-            remainder: true,
+            remainder: true
         )
         .join(ch_ldsc_h2_observed.munging_log, failOnDuplicate: true, failOnMismatch: true)
         .map { _request_id, meta, observed_log, liability_log, munging_log -> [meta, observed_log, liability_log ?: [], [munging_log]] }
@@ -695,7 +682,7 @@ workflow GWAS {
         .map { meta, observed_log -> [meta.request_id, meta, observed_log] }
         .join(
             LDSC_RG_LIABILITY.out.log.map { meta, liability_log -> [meta.request_id, liability_log] },
-            remainder: true,
+            remainder: true
         )
         .join(ch_ldsc_rg_observed.munging_logs, failOnDuplicate: true, failOnMismatch: true)
         .map { _request_id, meta, observed_log, liability_log, munging_logs -> [meta, observed_log, liability_log ?: [], munging_logs] }
@@ -716,9 +703,7 @@ workflow GWAS {
         .filter { meta, _grm_files -> !meta.relationship_id }
         .map { meta, grm_files -> [meta, [], grm_files, 'greml'] }
         .mix(
-            PREPARE_RELATEDNESS_MATRICES.out.gcta_ldms
-                .filter { meta, _mgrm, _grm_files -> !meta.relationship_id }
-                .map { meta, mgrm, grm_files -> [meta, mgrm, grm_files, 'greml_ldms'] }
+            PREPARE_RELATEDNESS_MATRICES.out.gcta_ldms.filter { meta, _mgrm, _grm_files -> !meta.relationship_id }.map { meta, mgrm, grm_files -> [meta, mgrm, grm_files, 'greml_ldms'] }
         )
 
     def ch_greml_inputs = ch_greml_matrices
@@ -772,8 +757,7 @@ workflow GWAS {
             [meta.request_id, meta, phenotype, quant_covariates, cat_covariates, pair_log]
         }
 
-    def ch_dense_prepared_pairs = ch_prepared_pairs
-        .filter { _request_id, pair_meta, _phenotype, _quant_covariates, _cat_covariates, _pair_log -> pair_meta.method == 'gcta_bivariate_reml' }
+    def ch_dense_prepared_pairs = ch_prepared_pairs.filter { _request_id, pair_meta, _phenotype, _quant_covariates, _cat_covariates, _pair_log -> pair_meta.method == 'gcta_bivariate_reml' }
 
     def ch_bivariate_invocations = ch_bivariate_matrices
         .join(ch_dense_prepared_pairs, failOnDuplicate: true, failOnMismatch: true)
@@ -822,8 +806,7 @@ workflow GWAS {
             [meta.request_id, meta + [matrix_basename: mgrm.baseName], mgrm, grm_files]
         }
 
-    def ch_ldms_prepared_pairs = ch_prepared_pairs
-        .filter { _request_id, pair_meta, _phenotype, _quant_covariates, _cat_covariates, _pair_log -> pair_meta.method == 'gcta_bivariate_reml_ldms' }
+    def ch_ldms_prepared_pairs = ch_prepared_pairs.filter { _request_id, pair_meta, _phenotype, _quant_covariates, _cat_covariates, _pair_log -> pair_meta.method == 'gcta_bivariate_reml_ldms' }
 
     def ch_bivariate_ldms_invocations = ch_bivariate_ldms_matrices
         .join(ch_ldms_prepared_pairs, failOnDuplicate: true, failOnMismatch: true)
@@ -1064,4 +1047,14 @@ def getLdakSummaryArguments(meta) {
 
 def getLdakSummaryRuntime() {
     return 'ghcr.io/lyh970817/gwas/ldak:6.3-b755ab7@sha256:f2b2157559e4346cab5e9f478ab70fc76359743ef06522fed9ad23769d735a6e'
+}
+
+def getLdscMungingKey(summary_statistics_id, hapmap3_snplist) {
+    return digestIdentityText(
+        [
+            'adapter=nfcore_gwas_canonical_v1_to_ldsc_sumstats_v1',
+            "summary_statistics_id=${summary_statistics_id}",
+            "hapmap3_sha256=${digestFileBytes(hapmap3_snplist)}",
+        ].join('\n')
+    )
 }

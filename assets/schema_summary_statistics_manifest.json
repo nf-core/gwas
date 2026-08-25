@@ -127,12 +127,18 @@
         "oneOf": [
             {
                 "title": "External summary-statistics origin",
-                "required": ["trait_id", "trait_type", "source", "source_mode", "source_format", "genome_build", "ancestry", "source_method"],
+                "required": [
+                    "trait_id",
+                    "trait_type",
+                    "source",
+                    "source_mode",
+                    "source_format",
+                    "genome_build",
+                    "ancestry",
+                    "source_method"
+                ],
                 "not": {
-                    "anyOf": [
-                        { "required": ["producer_analysis_id"] },
-                        { "required": ["producer_association_method"] }
-                    ]
+                    "anyOf": [{ "required": ["producer_analysis_id"] }, { "required": ["producer_association_method"] }]
                 }
             },
             {

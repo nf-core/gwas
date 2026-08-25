@@ -1,6 +1,6 @@
 # Metro map
 
-The pipeline overview is generated from `assets/metro_map.mmd` with [nf-metro](https://github.com/pinin4fjords/nf-metro). Update the source whenever a public route or reuse boundary changes, then regenerate both committed images from the project development shell (`nix-shell` or direnv):
+The pipeline overview is generated from `assets/metro_map.mmd` with [nf-metro](https://github.com/pinin4fjords/nf-metro). Update the source whenever a public route or reuse boundary changes, then regenerate both committed images in an environment with Python 3 and CairoSVG available:
 
 ```bash
 python3 -m venv .venv-nf-metro

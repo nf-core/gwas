@@ -6,13 +6,11 @@ nextflow_workflow {
     tag "subworkflow"
     tag "genotypes"
 
-    // The pipeline-level suite can see that a cohort was prepared once, because preparation runs a
-    // programme and therefore appears in the execution trace. It cannot yet see the other half of the
-    // claim — that every analysis unit on that cohort comes out the far side of the seam — because no
-    // route consumes the prepared bundle until the association tickets land. That half is measured
-    // here instead, at the seam itself, and it is the direct regression test for the operator:
-    // `join` would emit one analysis unit per cohort instead of all of them, and its
-    // `failOnDuplicate` form would abort on the second.
+    // The pipeline-level suite can see that a cohort was prepared once because preparation appears in
+    // the execution trace. This focused test verifies the other half of the contract directly at the
+    // seam: every analysis unit on that cohort receives the prepared bundle. A `join` would emit one
+    // analysis unit per cohort instead of all of them, and its `failOnDuplicate` form would abort on the
+    // second.
 
     test("every analysis unit on a cohort receives that cohort's bundle") {
 

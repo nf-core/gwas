@@ -1,12 +1,8 @@
 // Run REGENIE Step 1 fitting and Step 2 association across PLINK-format genotype shards.
 // Every constituent process reports directly to the run-wide versions topic, so this subworkflow emits no versions.
 //
-// LOCAL SUBMISSION NOTE:
-// nf-core/gwas does not call this generic fit-to-association composition because its
-// pipeline-local REGENIE route reuses one fitted prediction bundle across multiple
-// analysis requests. This subworkflow is retained as an independent nf-core/modules
-// submission candidate for callers that want Step 1 and Step 2 composed per request.
-// Remove this pipeline-specific note from the upstream submission.
+// The pipeline uses a separate route that reuses one fitted prediction bundle across multiple
+// analysis requests. This reusable composition instead fits and associates per request.
 
 // SUBWORKFLOW: Consisting entirely of nf-core/modules
 include { PLINK_FIT_REGENIE } from '../plink_fit_regenie/main'

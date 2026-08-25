@@ -71,10 +71,8 @@ tests/fixtures/nf-test.sh test --tag test --profile +docker --verbose
 ```
 
 The public test profiles consume the static relational manifests and compact VCF published by
-`nf-core/test-datasets`. The wrapper also materializes PLINK layouts for focused input-representation tests, then
-sets `GWAS_TEST_FIXTURES` to the verified content-addressed cache entry. To test an unmerged fixture checkout or
-public companion branch, set `GWAS_FIXTURE_SOURCE` to that local directory or raw-content URL;
-`GWAS_TEST_FIXTURES` is reserved for the complete materialized runtime bundle.
+`nf-core/test-datasets`. The wrapper also materializes PLINK layouts for focused input-representation tests and
+supplies the verified content-addressed bundle to the test suite.
 
 If you have added new functionality, ensure you update the test assertions in the `.nf.test` files in the `tests/` directory.
 Update the snapshots with the following command:

@@ -1,12 +1,8 @@
 // Run LDAK-KVIK Step 1 once and Step 2 across PLINK 1 genotype shards for one focal analysis.
 // Every constituent process reports directly to the run-wide versions topic, so this subworkflow emits no versions.
 //
-// LOCAL SUBMISSION NOTE:
-// nf-core/gwas does not call this generic fit-to-association composition because its
-// pipeline-local LDAK-KVIK route reuses one fitted prediction bundle across multiple
-// analysis requests. This subworkflow is retained as an independent nf-core/modules
-// submission candidate for callers that want Step 1 and Step 2 composed per request.
-// Remove this pipeline-specific note from the upstream submission.
+// The pipeline uses a separate route that reuses one fitted prediction bundle across multiple
+// analysis requests. This reusable composition instead fits and associates per request.
 
 // SUBWORKFLOW: Consisting entirely of upstream-ready nf-core/modules
 include { LDAK_THINCOMMON } from '../../../modules/local/ldak/thincommon/main'

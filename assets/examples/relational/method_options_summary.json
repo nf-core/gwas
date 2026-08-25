@@ -1,18 +1,18 @@
 {
-  "unary_requests": {
-    "ldsc_h2--heterogeneous_qt--plink2": {
-      "reference_bundle_id": "ldsc_eur"
+    "unary_requests": {
+        "ldsc_h2--heterogeneous_qt--plink2": {
+            "reference_bundle_id": "ldsc_eur"
+        },
+        "ldak_sumher--published_qt_raw": {
+            "reference_bundle_id": "ldak_bld_eur"
+        }
     },
-    "ldak_sumher--published_qt_raw": {
-      "reference_bundle_id": "ldak_bld_eur"
+    "pair_requests": {
+        "ldsc_rg--internal_external": {
+            "reference_bundle_id": "ldsc_eur"
+        },
+        "ldak_sumcors--internal_external": {
+            "reference_bundle_id": "ldak_thin_eur"
+        }
     }
-  },
-  "pair_requests": {
-    "ldsc_rg--internal_external": {
-      "reference_bundle_id": "ldsc_eur"
-    },
-    "ldak_sumcors--internal_external": {
-      "reference_bundle_id": "ldak_thin_eur"
-    }
-  }
 }

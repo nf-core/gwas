@@ -60,7 +60,7 @@ output:
       - ldsc:
           type: string
           description: The tool name
-      - "python -c 'import importlib.metadata; print(importlib.metadata.version(\"ldsc\"))'":
+      - 'python -c ''import importlib.metadata; print(importlib.metadata.version("ldsc"))''':
           type: eval
           description: The expression used to obtain the LDSC distribution version
   versions_ldsc_native:
@@ -101,7 +101,7 @@ topics:
       - ldsc:
           type: string
           description: The tool name
-      - "python -c 'import importlib.metadata; print(importlib.metadata.version(\"ldsc\"))'":
+      - 'python -c ''import importlib.metadata; print(importlib.metadata.version("ldsc"))''':
           type: eval
           description: The expression used to obtain the LDSC distribution version
     - - "${task.process}":

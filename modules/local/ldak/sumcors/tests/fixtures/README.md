@@ -10,4 +10,4 @@ ldak --linear trait2 --bfile human --pheno quant2.pheno --extract predictors.txt
 ldak --calc-tagging test --bfile human --extract predictors.txt --power -0.25 --max-threads 2
 ```
 
-Only `trait1.summaries`, `trait2.summaries`, and `test.tagging`, the native mandatory inputs exercised by this module, are retained. They should move to `nf-core/test-datasets` before an upstream module submission.
+Only `trait1.summaries`, `trait2.summaries`, and `test.tagging`, the native mandatory inputs exercised by this module, are retained.
