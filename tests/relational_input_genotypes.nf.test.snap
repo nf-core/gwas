@@ -19,6 +19,9 @@
     "vcf-versions": {
         "content": [
             {
+                "CANONICALISE_SUMMARY_STATISTICS": {
+                    "python": "3.14.5"
+                },
                 "GWASLAB_HARMONIZE": {
                     "gwaslab": "4.1.9",
                     "python": "3.12.13"
@@ -41,11 +44,14 @@
             "nf-test": "0.9.3",
             "nextflow": "25.10.4"
         },
-        "timestamp": "2026-08-02T08:21:57.233256706"
+        "timestamp": "2026-08-25T08:50:00.7368076"
     },
     "plink2-versions": {
         "content": [
             {
+                "CANONICALISE_SUMMARY_STATISTICS": {
+                    "python": "3.14.5"
+                },
                 "GWASLAB_HARMONIZE": {
                     "gwaslab": "4.1.9",
                     "python": "3.12.13"
@@ -65,7 +71,7 @@
             "nf-test": "0.9.3",
             "nextflow": "25.10.4"
         },
-        "timestamp": "2026-08-02T08:21:11.735358896"
+        "timestamp": "2026-08-25T08:49:06.782674489"
     },
     "plink2-association": {
         "content": [
@@ -104,6 +110,9 @@
     "plink1-versions": {
         "content": [
             {
+                "CANONICALISE_SUMMARY_STATISTICS": {
+                    "python": "3.14.5"
+                },
                 "GWASLAB_HARMONIZE": {
                     "gwaslab": "4.1.9",
                     "python": "3.12.13"
@@ -126,6 +135,6 @@
             "nf-test": "0.9.3",
             "nextflow": "25.10.4"
         },
-        "timestamp": "2026-08-02T08:22:41.018229047"
+        "timestamp": "2026-08-25T08:49:33.573290965"
     }
 }

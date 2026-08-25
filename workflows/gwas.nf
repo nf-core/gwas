@@ -320,14 +320,15 @@ workflow GWAS {
     // identifier — the method is a separate key, because the analysis is what the published summary
     // statistics directory is keyed by and the method is what distinguishes the files inside it.
     //
-    // PLINK 2 splits its result across four optional emissions, one per regression it may have fitted,
-    // and exactly one of them is populated for a given analysis, so the four are mixed back into one.
+    // The pipeline's PLINK 2 policy emits linear results for quantitative traits and logistic-hybrid results
+    // for binary traits. Select those two supported forms explicitly so a generic module stub that materialises
+    // every optional output preserves the same one-result-per-analysis contract as a real configured run.
     def ch_association_results = channel.empty()
 
-    def ch_plink2_results = PLINK2_GLM.out.linear
-    ch_plink2_results = ch_plink2_results.mix(PLINK2_GLM.out.logistic)
-    ch_plink2_results = ch_plink2_results.mix(PLINK2_GLM.out.logistic_hybrid)
-    ch_plink2_results = ch_plink2_results.mix(PLINK2_GLM.out.firth)
+    def ch_plink2_results = PLINK2_GLM.out.linear.filter { meta, _sumstats -> !meta.is_binary }
+    ch_plink2_results = ch_plink2_results.mix(
+        PLINK2_GLM.out.logistic_hybrid.filter { meta, _sumstats -> meta.is_binary }
+    )
 
     ch_association_results = ch_association_results.mix(
         ch_plink2_results.map { meta, sumstats -> [meta + [method: 'plink2'], sumstats] }

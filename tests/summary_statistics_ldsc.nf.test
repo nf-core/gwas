@@ -80,7 +80,7 @@ nextflow_pipeline {
                 { assert h2Provenance.reference_validation == 'structural_availability_only' },
                 { assert h2Provenance.native.keySet() as Set == ['estimates', 'intercept', 'lambda_gc', 'mean_chi_squared', 'ratio', 'regression_snps'] as Set },
                 { assert h2Provenance.munging.adapter_contract == 'nfcore_gwas_canonical_v1_to_ldsc_sumstats_v1' },
-                { assert h2Provenance.execution.ldsc_container == System.getenv('LDSC_TEST_CONTAINER') },
+                { assert h2Provenance.execution.ldsc_container == (System.getenv('LDSC_TEST_CONTAINER') ?: 'ghcr.io/lyh970817/gwas/ldsc:3.0.2-cbiit-6c67395@sha256:77fbb697c16a559c3fe75204b1e7ab6a0202afcf10b8a8629bcc98592b0e412b') },
                 { assert rgProvenance.endpoints.left.summary_statistics_id == 'external_qt' },
                 { assert rgProvenance.endpoints.right.summary_statistics_id == 'external_bt' },
                 { assert rgProvenance.artifacts.native == ['native.observed.log', 'native.liability.log'] },

@@ -2,6 +2,9 @@
     "binary-versions": {
         "content": [
             {
+                "CANONICALISE_SUMMARY_STATISTICS": {
+                    "python": "3.14.5"
+                },
                 "GWASLAB_HARMONIZE": {
                     "gwaslab": "4.1.9",
                     "python": "3.12.13"
@@ -24,11 +27,14 @@
             "nf-test": "0.9.3",
             "nextflow": "25.10.4"
         },
-        "timestamp": "2026-08-13T14:21:47.835600181"
+        "timestamp": "2026-08-25T09:00:01.540438903"
     },
     "association-versions": {
         "content": [
             {
+                "CANONICALISE_SUMMARY_STATISTICS": {
+                    "python": "3.14.5"
+                },
                 "CUSTOM_GCTAMERGEGRMPARTS": {
                     "coreutils": 9.5
                 },
@@ -78,7 +84,7 @@
             "nf-test": "0.9.3",
             "nextflow": "25.10.4"
         },
-        "timestamp": "2026-08-13T14:22:34.14460938"
+        "timestamp": "2026-08-25T09:00:21.289533142"
     },
     "heritability-versions": {
         "content": [

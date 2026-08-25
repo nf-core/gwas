@@ -196,9 +196,9 @@ nextflow_pipeline {
             expected: "unordered endpoint binding duplicates relationship_id 'qt_bt'",
         ],
         [
-            name: 'reserved summary endpoint',
+            name: 'incomplete summary endpoint pair',
             mutateRelationships: { rows -> rows[0].left_summary_statistics_id = 'summary_qt' },
-            expected: 'summary-statistics endpoints are reserved for the later SumCors and LDSC relationship routes',
+            expected: 'summary-statistics endpoint slots must be populated together',
         ],
     ]
 
