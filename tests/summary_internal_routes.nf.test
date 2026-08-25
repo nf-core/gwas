@@ -1,0 +1,97 @@
+nextflow_pipeline {
+
+    name "Test pipeline-generated summaries across downstream summary routes"
+    script "../main.nf"
+    tag "pipeline"
+    tag "summary_statistics"
+    tag "internal_summary"
+    tag "heritability"
+    tag "genetic_correlation"
+
+    test("stub association summaries join all unary and pair summary estimators") {
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, 'internal_summary_routes')
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, 'internal_summary_routes') { rows ->
+                    rows.clear()
+                    def quantitative = RELATIONAL.analysis(projectDir, 'example_pgen_qt')
+                    quantitative.association_methods = 'gcta_fastgwa'
+                    rows << quantitative
+                    def binary = RELATIONAL.analysis(projectDir, 'example_pgen_bt')
+                    binary.association_methods = 'gcta_fastgwa'
+                    binary.population_prevalence = 0.1
+                    binary.sample_prevalence = 0.2
+                    rows << binary
+                }
+                summary_statistics_manifest = RELATIONAL.summaryStatistics(projectDir, outputDir, 'internal_summary_routes') { rows ->
+                    rows.clear()
+                    rows << RELATIONAL.internalSummary('example_pgen_qt', 'gcta_fastgwa', 'ldak_sumher,ldsc_h2')
+                    rows << RELATIONAL.internalSummary('example_pgen_bt', 'gcta_fastgwa')
+                }
+                relationship_manifest = RELATIONAL.summaryRelationships(projectDir, outputDir, 'internal_summary_routes') { rows ->
+                    rows[0].relationship_id = 'internal_pair'
+                    rows[0].left_summary_statistics_id = 'example_pgen_qt--gcta_fastgwa'
+                    rows[0].right_summary_statistics_id = 'example_pgen_bt--gcta_fastgwa'
+                    rows[0].relationship_methods = 'ldak_sumcors,ldsc_rg'
+                }
+                reference_catalog = RELATIONAL.referenceCatalog(outputDir, 'internal_summary_routes')
+                method_options = RELATIONAL.methodOptions(outputDir, 'internal_summary_routes', [
+                    unary_requests: [
+                        'ldak_sumher--example_pgen_qt--gcta_fastgwa': [reference_bundle_id: 'ldak_thin_eur'],
+                        'ldsc_h2--example_pgen_qt--gcta_fastgwa': [reference_bundle_id: 'ldsc_eur'],
+                    ],
+                    pair_requests: [
+                        'ldak_sumcors--internal_pair': [reference_bundle_id: 'ldak_thin_eur'],
+                        'ldsc_rg--internal_pair': [reference_bundle_id: 'ldsc_eur'],
+                    ],
+                ])
+            }
+        }
+
+        then {
+            def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
+            def qtSummary = new File("${params.outdir}/summary_statistics/example_pgen_qt--gcta_fastgwa")
+            def binarySummary = new File("${params.outdir}/summary_statistics/example_pgen_bt--gcta_fastgwa")
+            def sumherRequest = new File("${params.outdir}/requests/ldak_sumher/ldak_sumher--example_pgen_qt--gcta_fastgwa")
+            def sumcorsRequest = new File("${params.outdir}/requests/ldak_sumcors/ldak_sumcors--internal_pair")
+            def h2Request = new File("${params.outdir}/requests/ldsc_h2/ldsc_h2--example_pgen_qt--gcta_fastgwa")
+            def rgRequest = new File("${params.outdir}/requests/ldsc_rg/ldsc_rg--internal_pair")
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'GCTA_FASTGWA') == 2 },
+                { assert TRACE.count(workflow, 'GWASLAB_HARMONIZE') == 2 },
+                { assert TRACE.count(workflow, 'CANONICALISE_SUMMARY_STATISTICS') == 2 },
+                { assert TRACE.count(workflow, 'PREPARE_LDAK_SUMMARY_STATISTICS') == 2 },
+                { assert TRACE.count(workflow, 'LDAK_SUMHER') == 1 },
+                { assert TRACE.count(workflow, 'LDAK_SUMCORS') == 1 },
+                { assert TRACE.count(workflow, 'LDSC_MUNGESUMSTATS') == 2 },
+                { assert TRACE.count(workflow, 'LDSC_H2_OBSERVED') == 1 },
+                { assert TRACE.count(workflow, 'LDSC_H2_LIABILITY') == 0 },
+                { assert TRACE.count(workflow, 'LDSC_RG_OBSERVED') == 1 },
+                { assert TRACE.count(workflow, 'LDSC_RG_LIABILITY') == 1 },
+                { assert TRACE.count(workflow, 'NORMALISE_LDAK_SUMHER') == 1 },
+                { assert TRACE.count(workflow, 'NORMALISE_LDAK_SUMCORS') == 1 },
+                { assert TRACE.count(workflow, 'NORMALISE_LDSC') == 2 },
+                { assert new File(qtSummary, 'example_pgen_qt--gcta_fastgwa.canonical.tsv.gz').isFile() },
+                { assert new File(binarySummary, 'example_pgen_bt--gcta_fastgwa.canonical.tsv.gz').isFile() },
+                { assert new File(sumherRequest, 'provenance.json').isFile() },
+                { assert new File(sumcorsRequest, 'provenance.json').isFile() },
+                { assert new File(h2Request, 'native.observed.log').isFile() },
+                { assert !new File(h2Request, 'native.liability.log').exists() },
+                { assert new File(rgRequest, 'native.observed.log').isFile() },
+                { assert new File(rgRequest, 'native.liability.log').isFile() },
+                { assert snapshot(removeNextflowVersion(versions.toString())).match('versions') },
+                { assert snapshot(
+                    RELATIONAL.gzipTextHashes("${params.outdir}/summary_statistics"),
+                    new File(sumherRequest, 'provenance.json').text,
+                    new File(sumcorsRequest, 'provenance.json').text,
+                    new File(h2Request, 'provenance.json').text,
+                    new File(rgRequest, 'provenance.json').text,
+                ).match() },
+            )
+        }
+    }
+}

@@ -1,0 +1,112 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/modules/meta-schema.json
+name: "plink2_makebed"
+description: Convert a PLINK 2 PGEN/PVAR/PSAM fileset to PLINK BED/BIM/FAM
+keywords:
+  - plink2
+  - pgen
+  - bed
+  - genotype
+tools:
+  - "plink2":
+      description: "Whole genome association analysis toolset designed for large-scale genetic analyses."
+      homepage: "https://www.cog-genomics.org/plink/2.0/"
+      documentation: "https://www.cog-genomics.org/plink/2.0/data"
+      tool_dev_url: "https://github.com/chrchang/plink-ng"
+      licence: ["GPL-3.0-or-later"]
+      identifier: "biotools:plink"
+input:
+  - - meta:
+        type: map
+        description: |
+          Groovy map containing PLINK 2 genotype metadata
+          e.g. `[ id:'plink_simulated' ]`
+    - pgen:
+        type: file
+        description: PLINK 2 binary genotype file; must share its basename with the PSAM and PVAR files
+        pattern: "*.pgen"
+        ontologies: []
+    - psam:
+        type: file
+        description: PLINK 2 sample information file; must share its basename with the PGEN and PVAR files
+        pattern: "*.psam"
+        ontologies: []
+    - pvar:
+        type: file
+        description: PLINK 2 variant information file; must share its basename with the PGEN and PSAM files
+        pattern: "*.pvar"
+        ontologies: []
+output:
+  bed:
+    - - meta:
+          type: map
+          description: |
+            Groovy map containing genotype metadata
+            e.g. `[ id:'plink_simulated' ]`
+      - "${prefix}.bed":
+          type: file
+          description: PLINK binary genotype file
+          pattern: "*.bed"
+          ontologies: []
+      - "${prefix}.bim":
+          type: file
+          description: PLINK extended MAP file
+          pattern: "*.bim"
+          ontologies:
+            - edam: "http://edamontology.org/format_3285" # PLINK BIM
+      - "${prefix}.fam":
+          type: file
+          description: PLINK sample information file
+          pattern: "*.fam"
+          ontologies:
+            - edam: "http://edamontology.org/format_3286" # PLINK FAM
+  log:
+    - - meta:
+          type: map
+          description: |
+            Groovy map containing genotype metadata
+            e.g. `[ id:'plink_simulated' ]`
+      - "${prefix}.log":
+          type: file
+          description: PLINK 2 conversion log
+          pattern: "*.log"
+          ontologies:
+            - edam: "http://edamontology.org/format_2330" # Text
+  versions_plink2:
+    - - "${task.process}":
+          type: string
+          description: The process the version was collected from
+      - "plink2":
+          type: string
+          description: The tool name
+      - "plink2 --version 2>&1 | sed 's/^PLINK v//; s/ 64.*\\$//'":
+          type: eval
+          description: The command used to retrieve the PLINK 2 version
+topics:
+  versions:
+    - - ${task.process}:
+          type: string
+          description: The process the version was collected from
+      - plink2:
+          type: string
+          description: The tool name
+      - "plink2 --version 2>&1 | sed 's/^PLINK v//; s/ 64.*\\$//'":
+          type: eval
+          description: The command used to retrieve the PLINK 2 version
+authors:
+  - "@andongni"
+maintainers:
+  - "@andongni"
+containers:
+  conda:
+    linux/amd64:
+      lock_file: "modules/nf-core/plink2/makebed/.conda-lock/linux_amd64-bd-e6710830a4b7f0c6_1.txt"
+  docker:
+    linux/amd64:
+      build_id: "bd-e6710830a4b7f0c6_1"
+      name: "community.wave.seqera.io/library/plink2:2.0.0a.6.9--e6710830a4b7f0c6"
+      scan_id: "sc-c6b7ce6ed60d6033_1"
+  singularity:
+    linux/amd64:
+      build_id: "bd-038e91647305849b_1"
+      name: "oras://community.wave.seqera.io/library/plink2:2.0.0a.6.9--038e91647305849b"
+      https: "https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/22/22dd30b4bc53d1ba88fcd146a2dd562659c9aaa3f0f1712542fb2b4048b454b7/data"

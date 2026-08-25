@@ -1,0 +1,131 @@
+nextflow_pipeline {
+
+    name "Test GCTA GREML-LDMS heritability route"
+    script "../main.nf"
+    tag "pipeline"
+    tag "heritability"
+    tag "gcta"
+    tag "gcta_greml_ldms"
+    config "../conf/test_gcta_greml_ldms.config"
+
+    def inputs = { output_dir, project_dir ->
+        def analyses = RELATIONAL.analyses(project_dir, output_dir, 'gcta_greml_ldms', { rows ->
+            rows.clear()
+            ['ldms_same_1', 'ldms_same_2', 'ldms_different_edges', 'ldms_different_bins'].each { id ->
+                def row = RELATIONAL.analysis(project_dir, 'example_bfile_qt')
+                row.analysis_id = id
+                row.association_methods = ''
+                row.heritability_methods = 'gcta_greml_ldms'
+                rows << row
+            }
+        })
+        def options = RELATIONAL.methodOptions(output_dir, 'gcta_greml_ldms', [
+            ldms_same_1: [gcta: [ld_score_region_kb: 50, ld_bins: 1, ldms_maf_edges: [0.0, 0.5]]],
+            ldms_same_2: [gcta: [ld_score_region_kb: 50, ld_bins: 1, ldms_maf_edges: [0.0, 0.5]]],
+            ldms_different_edges: [gcta: [ld_score_region_kb: 50, ld_bins: 1, ldms_maf_edges: [0.0, 0.2, 0.5]]],
+            ldms_different_bins: [gcta: [ld_score_region_kb: 50, ld_bins: 2, ldms_maf_edges: [0.0, 0.5]]],
+        ])
+        return [
+            cohort: RELATIONAL.cohorts(project_dir, output_dir, 'gcta_greml_ldms', { rows ->
+                rows[0] = RELATIONAL.cohort('example_bfile')
+            }),
+            analysis: analyses,
+            options: options,
+        ]
+    }
+
+    def executionModes = [
+        [suffix: '', stub: false],
+        [suffix: ' - stub', stub: true],
+    ]
+
+    executionModes.each { mode ->
+        test("the GCTA GREML-LDMS profile publishes native results and reuses stratified matrices by scientific identity${mode.suffix}") {
+
+            if (mode.stub) {
+                options "-stub"
+            }
+
+            when {
+                params {
+                    outdir = "$outputDir"
+                    def linked = inputs(outputDir, projectDir)
+                    cohort_manifest = linked.cohort
+                    analysis_manifest = linked.analysis
+                    method_options = linked.options
+                }
+            }
+
+            then {
+                def heritability = new File("${params.outdir}/heritability")
+                def individual = new File(heritability, 'individual/gcta_greml_ldms')
+                def analysis_ids = [
+                    'ldms_different_bins',
+                    'ldms_different_edges',
+                    'ldms_same_1',
+                    'ldms_same_2',
+                ]
+                def results = analysis_ids.collectEntries { analysis_id ->
+                    [(analysis_id): new File(individual, "${analysis_id}/${analysis_id}.gcta_greml_ldms.hsq")]
+                }
+
+                if (mode.stub) {
+                    assertAll(
+                        { assert workflow.success },
+                        // The stub run proves the same invocation topology as the real profile without
+                        // pretending that placeholder scientific content is suitable for hashing.
+                        { assert TRACE.count(workflow, 'PLINK2_MAKEBED') == 1 },
+                        { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 3 },
+                        { assert TRACE.count(workflow, 'CUSTOM_GCTASTRATIFYLDSCORES') == 3 },
+                        { assert TRACE.count(workflow, 'CUSTOM_GCTACREATEMGRMMANIFEST') == 3 },
+                        { assert TRACE.count(workflow, 'GCTA_REMLLDMS') == 4 },
+                        { assert heritability.list().toList() == ['individual'] },
+                        { assert new File(heritability, 'individual').list().toList() == ['gcta_greml_ldms'] },
+                        { assert individual.list().toList().sort() == analysis_ids },
+                        { assert results.values().every { result -> result.isFile() } },
+                    )
+                } else {
+                    def same_sources = results.ldms_same_1
+                        .readLines()
+                        .tail()
+                        .collect { line -> line.split('\t').first() }
+                    def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
+                    def stable_name_heritability = getAllFilesFromDir(
+                        "${params.outdir}/heritability",
+                        relative: true,
+                        includeDir: true,
+                    ).findAll { path -> path.toString() }
+                    def stable_path_heritability = getAllFilesFromDir(
+                        "${params.outdir}/heritability",
+                        ignoreFile: 'tests/.nftignore',
+                    )
+
+                    assertAll(
+                        { assert workflow.success },
+                        // The equivalent 0;0.5 and 0.0;0.50 declarations share one build. A different
+                        // populated MAF edge list and a different LD-bin count each fork the scientific matrix key.
+                        { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 3 },
+                        { assert TRACE.count(workflow, 'CUSTOM_GCTASTRATIFYLDSCORES') == 3 },
+                        { assert TRACE.count(workflow, 'GCTA_MAKEGRMPART') == 10 },
+                        { assert TRACE.count(workflow, 'CUSTOM_GCTACREATEMGRMMANIFEST') == 3 },
+                        { assert TRACE.count(workflow, 'GCTA_REMLLDMS') == 4 },
+                        { assert heritability.list().toList() == ['individual'] },
+                        { assert new File(heritability, 'individual').list().toList() == ['gcta_greml_ldms'] },
+                        { assert individual.list().toList().sort() == analysis_ids },
+                        { assert results.values().every { result ->
+                            result.readLines().first().split('\t').toList() == ['Source', 'Variance', 'SE']
+                        } },
+                        // The profile declares `0;0.5`: two semicolon-delimited edges define exactly
+                        // one MAF interval, crossed with one LD bin. GCTA therefore reports exactly one
+                        // native genetic Source row rather than merely satisfying a process-count proxy.
+                        { assert same_sources.findAll { source -> source ==~ /V\(G\d*\)/ } == ['V(G)'] },
+                        { assert same_sources.containsAll(['V(e)', 'Vp', 'V(G)/Vp', 'n']) },
+                        { assert versions.text.contains('GCTA_REMLLDMS') },
+                        { assert snapshot(stable_name_heritability, stable_path_heritability).match('heritability') },
+                        { assert snapshot(removeNextflowVersion(versions.toString())).match('versions') },
+                    )
+                }
+            }
+        }
+    }
+}

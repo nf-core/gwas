@@ -1,0 +1,70 @@
+{
+    "versions": {
+        "content": [
+            {
+                "CUSTOM_GCTACREATEMGRMMANIFEST": {
+                    "coreutils": 9.5
+                },
+                "CUSTOM_GCTAMERGEGRMPARTS": {
+                    "coreutils": 9.5
+                },
+                "CUSTOM_GCTASTRATIFYLDSCORES": {
+                    "r-base": "4.2.1"
+                },
+                "GCTA_CALCULATELDSCORES": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_MAKEGRMPART": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_REMLLDMS": {
+                    "gcta": "1.94.1"
+                },
+                "NORMALISE_PHENOTYPES": {
+                    "python": "3.14.5"
+                },
+                "PLINK2_MAKEBED": {
+                    "plink2": "2.0.0-a.6.9LM"
+                },
+                "PLINK2_MAKEPGEN": {
+                    "plink2": "2.0.0-a.6.9LM"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-07-30T00:55:21.551159823"
+    },
+    "heritability": {
+        "content": [
+            [
+                "individual",
+                "individual/gcta_greml_ldms",
+                "individual/gcta_greml_ldms/ldms_different_bins",
+                "individual/gcta_greml_ldms/ldms_different_bins/ldms_different_bins.gcta_greml_ldms.hsq",
+                "individual/gcta_greml_ldms/ldms_different_edges",
+                "individual/gcta_greml_ldms/ldms_different_edges/ldms_different_edges.gcta_greml_ldms.hsq",
+                "individual/gcta_greml_ldms/ldms_same_1",
+                "individual/gcta_greml_ldms/ldms_same_1/ldms_same_1.gcta_greml_ldms.hsq",
+                "individual/gcta_greml_ldms/ldms_same_2",
+                "individual/gcta_greml_ldms/ldms_same_2/ldms_same_2.gcta_greml_ldms.hsq"
+            ],
+            [
+                "ldms_different_bins.gcta_greml_ldms.hsq:md5,b0b893c27948aad255fc3e6f544a7429",
+                "ldms_different_edges.gcta_greml_ldms.hsq:md5,92c41000ec3d486536abd196692ab68b",
+                "ldms_same_1.gcta_greml_ldms.hsq:md5,3475afa4e0119452ee59e94502a1ccd7",
+                "ldms_same_2.gcta_greml_ldms.hsq:md5,3475afa4e0119452ee59e94502a1ccd7"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-12T21:29:07.764090069"
+    }
+}

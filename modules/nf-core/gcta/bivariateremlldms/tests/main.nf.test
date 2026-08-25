@@ -89,7 +89,7 @@ nextflow_process {
         }
 
         run("GCTA_MAKEGRMPART", alias: "GCTA_MAKEGRMPART_LDMS1") {
-            script "../../makegrmpart/main.nf"
+            script "../../../../local/gcta/makegrmpart/main.nf"
             process {
                 """
                 file('plink_simulated.mbfile').text = 'plink_simulated\\n'
@@ -118,7 +118,7 @@ nextflow_process {
         }
 
         run("GCTA_MAKEGRMPART", alias: "GCTA_MAKEGRMPART_LDMS2") {
-            script "../../makegrmpart/main.nf"
+            script "../../../../local/gcta/makegrmpart/main.nf"
             process {
                 """
                 file('plink_simulated.mbfile').text = 'plink_simulated\\n'

@@ -16,18 +16,12 @@ input:
           Groovy Map containing GRM context.
           Expected keys:
             - id (string): Output prefix for adjusted GRM files.
-    - combined_grm_bin:
+    - grm_files:
         type: file
-        description: Input GRM binary matrix (`.grm.bin`)
-    - combined_grm_id:
-        type: file
-        description: Input GRM sample identifiers (`.grm.id`)
-    - combined_grm_details:
-        type: file
-        description: Input GRM details (`.grm.details`)
-    - combined_grm_adjust:
-        type: file
-        description: Input GRM adjustment factors (`.grm.adjust`)
+        description: Input GRM bundle containing binary matrix, sample identifiers,
+          details, and adjustment factors files
+        pattern: "*.{grm.bin,grm.id,grm.details,grm.adjust}"
+        ontologies: []
   - - meta2:
         type: map
         description: |
@@ -37,38 +31,56 @@ input:
     - phenotype_file:
         type: file
         description: Headerless phenotype file passed to `--pheno`
-    - mpheno:
-        type: integer
-        description: Optional phenotype column index passed to `--mpheno`; pass [] to use fallback `1`
+        ontologies: []
   - - meta3:
         type: map
-        description: Metadata map paired with quantitative covariates input.
-    - quant_covariates_file:
+        description: Metadata map paired with optional keep input.
+    - keep_file:
         type: file
-        description: Optional quantitative covariates file passed to `--covar`; pass [] when absent
+        optional: true
+        description: Optional keep file for sample filtering passed to `--keep`; supply the same subset that the downstream Haseman-Elston or PCGC analysis will use, or provide `[]` when absent
+        ontologies: []
+  - - meta4:
+        type: map
+        description: Metadata map paired with matrix-adjustment covariates input.
+    - adjustment_covariates_file:
+        type: file
+        optional: true
+        description: Optional headerless numerical design passed to `--covar`; categorical factors must already be treatment-coded because `--adjust-grm` rejects `--factors`
+        ontologies: []
 output:
   adjusted_grm:
     - - meta:
           type: map
           description: GRM metadata map propagated from input
-      - meta2:
-          type: map
-          description: Phenotype metadata map propagated from input
       - "${prefix}.grm.bin":
           type: file
           description: Adjusted GRM binary matrix
+          ontologies: []
       - "${prefix}.grm.id":
           type: file
           description: Adjusted GRM sample identifiers
+          ontologies: []
       - "${prefix}.grm.details":
           type: file
           description: Adjusted GRM details
+          ontologies: []
       - "${prefix}.grm.adjust":
           type: file
           description: Adjusted GRM adjustment factors
+          ontologies: []
       - "${prefix}.grm.root":
           type: file
           description: Adjusted GRM root file required by LDAK HE and PCGC
+          ontologies: []
+  log:
+    - - meta:
+          type: map
+          description: Metadata map propagated from input
+      - "${prefix}.log":
+          type: file
+          description: LDAK GRM adjustment log file (`<prefix>.log`)
+          ontologies: []
   versions_ldak6:
     - - ${task.process}:
           type: string

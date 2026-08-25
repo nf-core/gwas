@@ -19,13 +19,12 @@ process LDAK_CREATETHINWEIGHTS {
     script:
     prefix = task.ext.prefix ?: "${meta.id}"
     """
-
-    gawk '{print \$1, 1}' < ${thin_predictors_file} > ${prefix}.weights.thin
+    gawk '{print \$1, 1}' < "${thin_predictors_file}" > "${prefix}.weights.thin"
     """
 
     stub:
     prefix = task.ext.prefix ?: "${meta.id}"
     """
-    touch ${prefix}.weights.thin
+    touch "${prefix}.weights.thin"
     """
 }

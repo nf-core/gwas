@@ -2,6 +2,19 @@ lint:
   files_exist:
     - conf/igenomes.config
     - conf/igenomes_ignored.config
+    # The single module config is split into per-method-family files under `conf/modules/`, so that a
+    # new association or heritability route adds a file instead of editing a shared one. Both this
+    # `files_exist` entry and the `modules_config` toggle below are required: the first stops lint
+    # demanding the deleted file, the second stops the `withName:` check reading it.
+    - conf/modules.config
+  files_unchanged:
+    - .github/workflows/branch.yml
+    - .github/workflows/linting.yml
+  modules_config: false
+  # The retired `--input` parameter is exercised only by a migration-diagnostic test. It is intentionally
+  # absent from `nextflow_schema.json`; listing it here keeps the diagnostic without restoring the contract.
+  nextflow_config:
+    - params.input
 nf_core_version: 4.0.3
 repository_type: pipeline
 template:

@@ -1,0 +1,174 @@
+nextflow_pipeline {
+
+    name "Test relational GCTA fastGWA method configuration"
+    script "../main.nf"
+    tag "pipeline"
+    tag "relational"
+    tag "association"
+    tag "gcta"
+    tag "gcta_fastgwa"
+
+    def workFiles = { outputDir ->
+        def files = []
+        new File(new File(outputDir.toString()).parentFile, 'work').eachFileRecurse { entry ->
+            if (entry.isFile()) {
+                files << entry
+            }
+        }
+        return files
+    }
+
+    def gzipRows = { entry ->
+        return new java.util.zip.GZIPInputStream(new FileInputStream(entry))
+            .withReader('UTF-8') { reader -> reader.readLines() }
+    }
+
+    test("quantitative and binary analyses retain identity while equivalent sparse settings reuse one matrix") {
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, 'gcta_fastgwa_routes')
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, 'gcta_fastgwa_routes', { rows ->
+                    def equivalent = new LinkedHashMap(rows[0])
+                    equivalent.analysis_id = 'fastgwa_equivalent'
+                    rows << equivalent
+                    def different = new LinkedHashMap(rows[0])
+                    different.analysis_id = 'fastgwa_different'
+                    rows << different
+                    def binary = RELATIONAL.analysis(projectDir, 'example_pgen_bt')
+                    binary.analysis_id = 'fastgwa_binary'
+                    rows << binary
+                    rows.each { row ->
+                        row.association_methods = 'gcta_fastgwa'
+                        row.heritability_methods = ''
+                    }
+                })
+                method_options = RELATIONAL.methodOptions(outputDir, 'gcta_fastgwa_routes', [
+                    fastgwa_equivalent: [gcta: [sparse_cutoff: 0.05]],
+                    fastgwa_different: [gcta: [sparse_cutoff: 0.025]],
+                ])
+                gcta_grm_parts = 1
+                save_relatedness_matrices = true
+            }
+        }
+
+        then {
+            def analysisIds = ['example_pgen_qt', 'fastgwa_binary', 'fastgwa_different', 'fastgwa_equivalent']
+            def association = new File("${params.outdir}/association/gcta_fastgwa")
+            def summaryStatistics = new File("${params.outdir}/summary_statistics")
+            def matrices = new File("${params.outdir}/quality_control/relatedness_matrices")
+            def harmonisedResults = analysisIds.collect { analysisId ->
+                new File(summaryStatistics, "${analysisId}--gcta_fastgwa/${analysisId}--gcta_fastgwa.canonical.tsv.gz")
+            }
+            def commandFiles = workFiles(outputDir).findAll { entry ->
+                entry.name == '.command.sh' && entry.text.contains('--grm-sparse') && entry.text.contains('--fastGWA-mlm')
+            }
+            def binaryCommand = commandFiles.find { entry -> entry.text.contains('--fastGWA-mlm-binary') }
+            def binaryNative = new File(association, 'fastgwa_binary/fastgwa_binary.gcta_fastgwa.fastGWA')
+            def harmonisedTables = harmonisedResults.collect { result ->
+                def rows = gzipRows(result)
+                [rows: rows, header: rows.first().split('\t').toList()]
+            }
+            def stableNameAssociation = getAllFilesFromDir(
+                association.toString(),
+                relative: true,
+                includeDir: true,
+            ).findAll { path -> path.toString() }
+            def stablePathAssociation = getAllFilesFromDir(
+                association.toString(),
+                ignoreFile: 'tests/.nftignore',
+            )
+            def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
+            assertAll(
+                { assert workflow.success },
+                // The default and explicit 0.05 settings share one sparse family. A valid 0.025 override
+                // changes the scientific identity and therefore builds a second dense base and sparse matrix.
+                { assert TRACE.count(workflow, 'GCTA_MAKEGRMPART') == 2 },
+                { assert TRACE.count(workflow, 'CUSTOM_GCTAMERGEGRMPARTS') == 2 },
+                { assert TRACE.count(workflow, 'GCTA_MAKEBKSPARSE') == 2 },
+                { assert matrices.list().size() == 2 },
+                { assert TRACE.count(workflow, 'GCTA_FASTGWA') == 4 },
+                { assert TRACE.count(workflow, 'GWASLAB_HARMONIZE') == 4 },
+                { assert TRACE.tags(workflow, 'GCTA_FASTGWA').sort() == analysisIds },
+                { assert association.list().toList().sort() == analysisIds },
+                { assert summaryStatistics.list().toList().sort() == analysisIds.collect { id -> "${id}--gcta_fastgwa" }.sort() },
+                { assert harmonisedResults.every { result -> result.isFile() } },
+                { assert commandFiles.size() == 4 },
+                { assert commandFiles.count { entry -> entry.text.contains('--fastGWA-mlm-binary') } == 1 },
+                { assert commandFiles.every { entry -> !entry.text.contains('--fastGWA-lr') } },
+                { assert binaryCommand != null },
+                { assert binaryNative.readLines().first().split('\t').toList().containsAll(['N', 'BETA']) },
+                { assert harmonisedTables.every { table -> table.header.containsAll(['BETA', 'N']) } },
+                { assert harmonisedTables.every { table ->
+                    def beta = table.header.indexOf('BETA')
+                    def sampleCount = table.header.indexOf('N')
+                    table.rows.tail().every { row ->
+                        def columns = row.split('\t')
+                        columns[beta] && columns[sampleCount]
+                    }
+                } },
+                { assert snapshot(stableNameAssociation, stablePathAssociation).match('association') },
+                { assert snapshot(removeNextflowVersion(versions.toString())).match('versions') },
+            )
+        }
+    }
+
+    def invalidOptions = [
+        [
+            name: 'invalid scalar type',
+            value: 'close',
+            reason: 'number between 0 and 1',
+            associationMethod: 'gcta_fastgwa',
+            heritabilityMethod: '',
+        ],
+        [
+            name: 'out of range value',
+            value: 1.01,
+            reason: 'number between 0 and 1',
+            associationMethod: 'gcta_fastgwa',
+            heritabilityMethod: '',
+        ],
+        [
+            name: 'unselected fastGWA option',
+            value: 0.025,
+            reason: "consumed by 'gcta_fastgwa' only",
+            associationMethod: '',
+            heritabilityMethod: 'gcta_greml',
+        ],
+    ]
+
+    invalidOptions.each { scenario ->
+        test("method-options rejects ${scenario.name} before matrix construction") {
+            when {
+                params {
+                    outdir = "$outputDir"
+                    cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, "gcta_sparse_${scenario.name.replace(' ', '_')}")
+                    analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, "gcta_sparse_${scenario.name.replace(' ', '_')}", { rows ->
+                        rows[0].association_methods = scenario.associationMethod
+                        rows[0].heritability_methods = scenario.heritabilityMethod
+                    })
+                    method_options = RELATIONAL.methodOptions(
+                        outputDir,
+                        "gcta_sparse_${scenario.name.replace(' ', '_')}",
+                        [example_pgen_qt: [gcta: [sparse_cutoff: scenario.value]]],
+                    )
+                    gcta_grm_parts = 1
+                }
+            }
+
+            then {
+                def report = VALIDATION.report(outputDir, workflow.stdout)
+                assertAll(
+                    { assert !workflow.success },
+                    { assert report.contains(params.method_options.toString()) },
+                    { assert report.contains("analysis_id 'example_pgen_qt'") },
+                    { assert report.contains("option 'gcta.sparse_cutoff'") },
+                    { assert report.contains(scenario.reason) },
+                    { assert TRACE.count(workflow, 'GCTA_MAKEGRMPART') == 0 },
+                    { assert TRACE.count(workflow, 'GCTA_MAKEBKSPARSE') == 0 },
+                    { assert TRACE.count(workflow, 'GCTA_FASTGWA') == 0 },
+                )
+            }
+        }
+    }
+}

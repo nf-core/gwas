@@ -1,0 +1,97 @@
+{
+    "versions": {
+        "content": [
+            {
+                "CANONICALISE_SUMMARY_STATISTICS": {
+                    "python": "3.14.5"
+                },
+                "CUSTOM_GCTAMERGEGRMPARTS": {
+                    "coreutils": 9.5
+                },
+                "GCTA_FASTGWA": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_MAKEBKSPARSE": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_MAKEGRMPART": {
+                    "gcta": "1.94.1"
+                },
+                "GWASLAB_HARMONIZE": {
+                    "gwaslab": "4.1.9",
+                    "python": "3.12.13"
+                },
+                "LDAK_SUMCORS": {
+                    "ldak": 6.3
+                },
+                "LDAK_SUMHER": {
+                    "ldak": 6.3
+                },
+                "LDSC_H2_OBSERVED": {
+                    "ldsc": "3.0.2",
+                    "ldsc_native": "3.0.1",
+                    "ldsc_source_revision": "6c673952cee74bd5c57aef1555a03b1c015399a0",
+                    "python": "3.9.13"
+                },
+                "LDSC_MUNGESUMSTATS": {
+                    "ldsc": "3.0.2",
+                    "ldsc_native": "3.0.1",
+                    "ldsc_source_revision": "6c673952cee74bd5c57aef1555a03b1c015399a0",
+                    "python": "3.9.13"
+                },
+                "LDSC_RG_LIABILITY": {
+                    "ldsc": "3.0.2",
+                    "ldsc_native": "3.0.1",
+                    "ldsc_source_revision": "6c673952cee74bd5c57aef1555a03b1c015399a0",
+                    "python": "3.9.13"
+                },
+                "LDSC_RG_OBSERVED": {
+                    "ldsc": "3.0.2",
+                    "ldsc_native": "3.0.1",
+                    "ldsc_source_revision": "6c673952cee74bd5c57aef1555a03b1c015399a0",
+                    "python": "3.9.13"
+                },
+                "NORMALISE_LDAK_SUMCORS": {
+                    "python": "3.14.5"
+                },
+                "NORMALISE_LDAK_SUMHER": {
+                    "python": "3.14.5"
+                },
+                "NORMALISE_LDSC": {
+                    "python": "3.14.5"
+                },
+                "NORMALISE_PHENOTYPES": {
+                    "python": "3.14.5"
+                },
+                "PREPARE_LDAK_SUMMARY_STATISTICS": {
+                    "python": "3.14.5"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-24T07:12:19.057787623"
+    },
+    "stub association summaries join all unary and pair summary estimators": {
+        "content": [
+            [
+                "example_pgen_bt--gcta_fastgwa/example_pgen_bt--gcta_fastgwa.canonical.tsv.gz:md5,732ad2c66fce5b1a72bc87862cae65bc",
+                "example_pgen_qt--gcta_fastgwa/example_pgen_qt--gcta_fastgwa.canonical.tsv.gz:md5,732ad2c66fce5b1a72bc87862cae65bc"
+            ],
+            "{\"schema_version\":\"1.0\",\"request_id\":\"ldak_sumher--example_pgen_qt--gcta_fastgwa\",\"method\":\"ldak_sumher\",\"classification\":\"completed_nonestimable\",\"stub\":true}\n",
+            "{\"schema_version\":\"1.0\",\"relationship_id\":\"internal_pair\",\"request_id\":\"ldak_sumcors--internal_pair\",\"method\":\"ldak_sumcors\",\"classification\":\"completed_nonestimable\",\"stub\":true}\n",
+            "{\"schema_version\":\"1.0\",\"request_id\":\"ldsc_h2--example_pgen_qt--gcta_fastgwa\",\"method\":\"ldsc_h2\",\"classification\":\"completed_nonestimable\",\"stub\":true}\n",
+            "{\"schema_version\":\"1.0\",\"request_id\":\"ldsc_rg--internal_pair\",\"method\":\"ldsc_rg\",\"classification\":\"completed_nonestimable\",\"stub\":true}\n"
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-24T07:01:29.658614726"
+    }
+}

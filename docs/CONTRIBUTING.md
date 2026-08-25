@@ -67,14 +67,18 @@ Once you have made your changes, run the pipeline with nf-test to test them loca
 For additional information, use the `--verbose` flag to view the Nextflow console log output.
 
 ```bash
-nf-test test --tag test --profile +docker --verbose
+tests/fixtures/nf-test.sh test --tag test --profile +docker --verbose
 ```
+
+The public test profiles consume the static relational manifests and compact VCF published by
+`nf-core/test-datasets`. The wrapper also materializes PLINK layouts for focused input-representation tests and
+supplies the verified content-addressed bundle to the test suite.
 
 If you have added new functionality, ensure you update the test assertions in the `.nf.test` files in the `tests/` directory.
 Update the snapshots with the following command:
 
 ```bash
-nf-test test --tag test --profile +docker --verbose --update-snapshots
+tests/fixtures/nf-test.sh test --tag test --profile +docker --verbose --update-snapshot
 ```
 
 When you create a pull request with changes, GitHub Actions will run automatic tests.

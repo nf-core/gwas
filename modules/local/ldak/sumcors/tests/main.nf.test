@@ -1,0 +1,131 @@
+nextflow_process {
+
+    name "Test nf-core LDAK_SUMCORS module"
+    config "./nextflow.config"
+    script "../main.nf"
+    process "LDAK_SUMCORS"
+
+    tag "modules"
+    tag "modules_local"
+    tag "modules_nfcore"
+    tag "ldak"
+    tag "ldak/sumcors"
+
+    test("official compact fixture - quantitative trait pair") {
+
+        when {
+            params {
+                module_args = "--cutoff 0.01 --check-sums NO"
+            }
+            process {
+                """
+                input[0] = [
+                    [ id: "trait1" ],
+                    file(params.ldak_sumcors_fixture_base_path + "trait1.summaries", checkIfExists: true)
+                ]
+                input[1] = [
+                    [ id: "trait2" ],
+                    file(params.ldak_sumcors_fixture_base_path + "trait2.summaries", checkIfExists: true)
+                ]
+                input[2] = [
+                    [ id: "human_default" ],
+                    file(params.ldak_sumcors_fixture_base_path + "test.tagging", checkIfExists: true)
+                ]
+                """
+            }
+        }
+
+        then {
+            def command = path(process.out.correlations.get(0)[2]).parent.resolve(".command.sh").text.replaceAll(/\s+/, " ")
+            assertAll(
+                { assert process.success },
+                { assert process.out.correlations.size() == 1 },
+                { assert process.out.correlations.get(0)[0].id == "trait1" },
+                { assert process.out.correlations.get(0)[1].id == "trait2" },
+                { assert process.out.correlations_full.size() == 1 },
+                { assert process.out.labels.size() == 1 },
+                { assert process.out.progress.size() == 1 },
+                { assert process.out.overlap.size() == 1 },
+                { assert process.out.correlations_liability.size() == 0 },
+                { assert process.out.versions_ldak.get(0)[2] == "6.3" },
+                { assert command.contains('--sum-cors "trait1_trait2"') },
+                { assert command.contains('--summary "trait1/trait1.summaries"') },
+                { assert command.contains('--summary2 "trait2/trait2.summaries"') },
+                { assert command.contains('--tagfile "tagging/test.tagging"') },
+                { assert command.contains("--cutoff 0.01 --check-sums NO") },
+                { assert path(process.out.correlations.get(0)[2]).text.contains("Cor_All") },
+                { assert snapshot(sanitizeOutput(process.out, unstableKeys: ["log"])).match() }
+            )
+        }
+    }
+
+    test("official compact fixture - stub with liability output") {
+
+        options "-stub"
+
+        when {
+            params {
+                module_args = "--prevalence 0.1 --ascertainment 0.4 --prevalence2 0.2 --ascertainment2 0.5"
+            }
+            process {
+                """
+                input[0] = [
+                    [ id: "trait1_stub" ],
+                    file(params.ldak_sumcors_fixture_base_path + "trait1.summaries", checkIfExists: true)
+                ]
+                input[1] = [
+                    [ id: "trait2_stub" ],
+                    file(params.ldak_sumcors_fixture_base_path + "trait2.summaries", checkIfExists: true)
+                ]
+                input[2] = [
+                    [ id: "human_default" ],
+                    file(params.ldak_sumcors_fixture_base_path + "test.tagging", checkIfExists: true)
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.correlations_liability.size() == 1 },
+                { assert process.out.correlations_liability.get(0)[0].id == "trait1_stub" },
+                { assert process.out.correlations_liability.get(0)[1].id == "trait2_stub" },
+                { assert process.out.versions_ldak.get(0)[2] == "6.3" },
+                { assert snapshot(sanitizeOutput(process.out, unstableKeys: ["log"])).match() }
+            )
+        }
+    }
+
+    test("second-trait summary statistics with no tagging-file overlap fail") {
+
+        when {
+            params {
+                module_args = "--cutoff 0.01 --check-sums NO"
+            }
+            process {
+                """
+                input[0] = [
+                    [ id: "trait1" ],
+                    file(params.ldak_sumcors_fixture_base_path + "trait1.summaries", checkIfExists: true)
+                ]
+                input[1] = [
+                    [ id: "invalid" ],
+                    file(params.ldak_sumcors_fixture_base_path + "invalid.summaries", checkIfExists: true)
+                ]
+                input[2] = [
+                    [ id: "human_default" ],
+                    file(params.ldak_sumcors_fixture_base_path + "test.tagging", checkIfExists: true)
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.failed },
+                { assert process.errorReport.contains("contains summary statistics for none of the 512 predictors") }
+            )
+        }
+    }
+}

@@ -19,51 +19,45 @@ input:
     - phenotype_file:
         type: file
         description: Headerless phenotype file passed to `--pheno`
-    - mpheno:
-        type: integer
-        description: Optional phenotype column index passed to `--mpheno`; pass [] to use fallback `1`
+        ontologies: []
     - prevalence:
         type: float
-        description: Optional disease prevalence passed to `--prevalence`; pass [] when absent
+        description: Required population disease prevalence passed to `--prevalence`, strictly between zero and one
   - - meta2:
         type: map
         description: |
           Groovy Map containing GRM metadata.
           Expected keys:
             - id (string): GRM identifier.
-    - grm_bin:
+    - grm_files:
         type: file
-        description: GRM binary matrix (`.grm.bin`)
-    - grm_id:
-        type: file
-        description: GRM sample identifiers (`.grm.id`)
-    - grm_details:
-        type: file
-        description: GRM details (`.grm.details`)
-    - grm_adjust:
-        type: file
-        description: GRM adjustment factors (`.grm.adjust`)
-    - grm_root:
-        type: file
-        description: Optional adjusted GRM root file (`.grm.root`); pass [] for non-adjusted GRM
+        description: GRM bundle (`.grm.bin`, `.grm.id`, `.grm.details`, `.grm.adjust`, and optionally `.grm.root` for an adjusted GRM)
+        pattern: "*.{grm.bin,grm.id,grm.details,grm.adjust,grm.root}"
+        ontologies: []
   - - meta3:
         type: map
         description: Metadata map paired with optional keep input.
     - keep_file:
         type: file
+        optional: true
         description: Optional keep file for sample filtering; pass [] when GRM is pre-filtered
+        ontologies: []
   - - meta4:
         type: map
         description: Metadata map paired with optional quantitative covariates input.
     - quant_covariates_file:
         type: file
+        optional: true
         description: Optional quantitative covariates file passed to `--covar`; pass [] when absent
+        ontologies: []
   - - meta5:
         type: map
         description: Metadata map paired with optional categorical covariates input.
     - cat_covariates_file:
         type: file
+        optional: true
         description: Optional categorical covariates file passed to `--factors`; pass [] when absent
+        ontologies: []
 output:
   pcgc_results:
     - - meta:
@@ -72,48 +66,69 @@ output:
       - "${prefix}.pcgc":
           type: file
           description: PCGC summary output (`<prefix>.pcgc`)
+          ontologies: []
   pcgc_marginal:
     - - meta:
           type: map
           description: Metadata map propagated from input
       - "${prefix}.pcgc.marginal":
           type: file
+          optional: true
           description: Optional marginal PCGC output (`<prefix>.pcgc.marginal`)
+          ontologies: []
   coeff:
     - - meta:
           type: map
           description: Metadata map propagated from input
       - "${prefix}.coeff":
           type: file
+          optional: true
           description: Optional coefficient output (`<prefix>.coeff`)
+          ontologies: []
   combined:
     - - meta:
           type: map
           description: Metadata map propagated from input
       - "${prefix}.combined":
           type: file
+          optional: true
           description: Optional combined output (`<prefix>.combined`)
+          ontologies: []
   cross:
     - - meta:
           type: map
           description: Metadata map propagated from input
       - "${prefix}.cross":
           type: file
+          optional: true
           description: Optional cross output (`<prefix>.cross`)
+          ontologies: []
   progress:
     - - meta:
           type: map
           description: Metadata map propagated from input
       - "${prefix}.progress":
           type: file
+          optional: true
           description: Optional progress output (`<prefix>.progress`)
+          ontologies: []
   share:
     - - meta:
           type: map
           description: Metadata map propagated from input
       - "${prefix}.share":
           type: file
+          optional: true
           description: Optional share output (`<prefix>.share`)
+          ontologies: []
+  log:
+    - - meta:
+          type: map
+          description: Metadata map propagated from input
+      - "${prefix}.log":
+          type: file
+          description: LDAK PCGC log file (`<prefix>.log`)
+          ontologies: []
   versions_ldak6:
     - - ${task.process}:
           type: string

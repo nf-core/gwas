@@ -1,0 +1,76 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/modules/meta-schema.json
+name: "ldak_filter"
+description: Identify a maximal subset of unrelated individuals from a linkage disequilibrium-adjusted kinship (LDAK) genomic relationship matrix (GRM)
+keywords:
+  - ldak
+  - grm
+  - relatedness
+  - kinship
+tools:
+  - ldak6:
+      description: LDAK toolset for kinship, heritability, and association analyses
+      homepage: https://dougspeed.com/ldak/
+      documentation: https://dougspeed.com/ldak/
+      licence: ["GPL-3.0-or-later"]
+input:
+  - - meta:
+        type: map
+        description: |
+          Groovy Map containing GRM metadata.
+          Only `meta.id` is required; it provides the default output prefix.
+    - grm_files:
+        type: file
+        description: LDAK GRM bundle sharing a common basename, containing the binary
+          matrix, sample identifiers, details, and adjustment factor files
+        pattern: "*.{grm.bin,grm.id,grm.details,grm.adjust}"
+        ontologies: []
+output:
+  filtered_list:
+    - - meta:
+          type: map
+          description: Metadata map propagated from input
+      - "*.keep":
+          type: file
+          description: Sample identifiers retained after relatedness filtering (`<prefix>.keep`)
+          ontologies: []
+      - "*.lose":
+          type: file
+          description: Sample identifiers removed by relatedness filtering (`<prefix>.lose`)
+          ontologies: []
+  maxrel:
+    - - meta:
+          type: map
+          description: Metadata map propagated from input
+      - "*.maxrel":
+          type: file
+          optional: true
+          description: Adaptive maximum-relatedness diagnostic; emitted only when LDAK chooses the threshold automatically
+          ontologies: []
+  versions_ldak6:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - ldak6:
+          type: string
+          description: The tool name
+      - ldak6 --version 2>&1 | grep -oP '(?<=^Version )[0-9.]+':
+          type: eval
+          description: The expression used to obtain the version of the tool
+topics:
+  versions:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - ldak6:
+          type: string
+          description: The tool name
+      - ldak6 --version 2>&1 | grep -oP '(?<=^Version )[0-9.]+':
+          type: eval
+          description: The expression used to obtain the version of the tool
+notes: |
+  This module implements unrelated-sample selection only. LDAK's default relatedness rule is used unless a native `--max-rel <float>` selector is supplied through `task.ext.args`. LDAK 6.1 emits `.maxrel` only for the adaptive default, not when `--max-rel` is explicit.
+  Native `--min-rel` switches to related-sample selection and produces a different output family, so it is outside this component contract.
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"

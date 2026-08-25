@@ -1,0 +1,185 @@
+{
+    "prediction-identity-harmonised": {
+        "content": [
+            [
+                "example_pgen_qt--regenie",
+                "example_pgen_qt--regenie/example_pgen_qt--regenie.canonical.tsv.gz",
+                "example_pgen_qt--regenie/example_pgen_qt--regenie.provenance.json",
+                "example_pgen_qt_no_covariates--regenie",
+                "example_pgen_qt_no_covariates--regenie/example_pgen_qt_no_covariates--regenie.canonical.tsv.gz",
+                "example_pgen_qt_no_covariates--regenie/example_pgen_qt_no_covariates--regenie.provenance.json"
+            ],
+            [
+                "example_pgen_qt--regenie/example_pgen_qt--regenie.canonical.tsv.gz:md5,e9c6b3a429d4d9f90b6b5a3e7b317afa",
+                "example_pgen_qt_no_covariates--regenie/example_pgen_qt_no_covariates--regenie.canonical.tsv.gz:md5,e15cfb82b7787b620dd656b17ba3f369"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-24T03:40:49.459735276"
+    },
+    "versions": {
+        "content": [
+            {
+                "CANONICALISE_SUMMARY_STATISTICS": {
+                    "python": "3.14.5"
+                },
+                "GWASLAB_HARMONIZE": {
+                    "gwaslab": "4.1.9",
+                    "python": "3.12.13"
+                },
+                "NORMALISE_PHENOTYPES": {
+                    "python": "3.14.5"
+                },
+                "REGENIE_STEP1": {
+                    "regenie": "4.1.2"
+                },
+                "REGENIE_STEP2": {
+                    "regenie": "4.1.2"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-24T03:09:51.462215695"
+    },
+    "prediction-reuse-harmonised": {
+        "content": [
+            [
+                "example_pgen_qt--regenie",
+                "example_pgen_qt--regenie/example_pgen_qt--regenie.canonical.tsv.gz",
+                "example_pgen_qt--regenie/example_pgen_qt--regenie.provenance.json",
+                "example_pgen_qt_reuse--regenie",
+                "example_pgen_qt_reuse--regenie/example_pgen_qt_reuse--regenie.canonical.tsv.gz",
+                "example_pgen_qt_reuse--regenie/example_pgen_qt_reuse--regenie.provenance.json"
+            ],
+            [
+                "example_pgen_qt--regenie/example_pgen_qt--regenie.canonical.tsv.gz:md5,e9c6b3a429d4d9f90b6b5a3e7b317afa",
+                "example_pgen_qt_reuse--regenie/example_pgen_qt_reuse--regenie.canonical.tsv.gz:md5,e9c6b3a429d4d9f90b6b5a3e7b317afa"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-24T03:40:01.582433637"
+    },
+    "traits-harmonised": {
+        "content": [
+            [
+                "example_pgen_bt--regenie",
+                "example_pgen_bt--regenie/example_pgen_bt--regenie.canonical.tsv.gz",
+                "example_pgen_bt--regenie/example_pgen_bt--regenie.provenance.json",
+                "example_pgen_qt--regenie",
+                "example_pgen_qt--regenie/example_pgen_qt--regenie.canonical.tsv.gz",
+                "example_pgen_qt--regenie/example_pgen_qt--regenie.provenance.json"
+            ],
+            [
+                "example_pgen_bt--regenie/example_pgen_bt--regenie.canonical.tsv.gz:md5,abe0367397b0d0fdaf715faed4b97124",
+                "example_pgen_qt--regenie/example_pgen_qt--regenie.canonical.tsv.gz:md5,e9c6b3a429d4d9f90b6b5a3e7b317afa"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-24T03:39:13.446458609"
+    },
+    "prediction-reuse-native": {
+        "content": [
+            [
+                "example_pgen_qt",
+                "example_pgen_qt/example_pgen_qt.regenie.gz",
+                "example_pgen_qt_reuse",
+                "example_pgen_qt_reuse/example_pgen_qt_reuse.regenie.gz"
+            ],
+            [
+                "example_pgen_qt.regenie.gz:md5,87c65e520bab6bc45ba60955fc8214cd",
+                "example_pgen_qt_reuse.regenie.gz:md5,87c65e520bab6bc45ba60955fc8214cd"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-12T21:06:41.514036964"
+    },
+    "prediction-identity-native": {
+        "content": [
+            [
+                "example_pgen_qt",
+                "example_pgen_qt/example_pgen_qt.regenie.gz",
+                "example_pgen_qt_no_covariates",
+                "example_pgen_qt_no_covariates/example_pgen_qt_no_covariates.regenie.gz"
+            ],
+            [
+                "example_pgen_qt.regenie.gz:md5,87c65e520bab6bc45ba60955fc8214cd",
+                "example_pgen_qt_no_covariates.regenie.gz:md5,1a77d818292c73e84ccf1dadcfb3b0bd"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-12T21:07:54.012260719"
+    },
+    "traits-native": {
+        "content": [
+            [
+                "example_pgen_bt",
+                "example_pgen_bt/example_pgen_bt.regenie.gz",
+                "example_pgen_qt",
+                "example_pgen_qt/example_pgen_qt.regenie.gz"
+            ],
+            [
+                "example_pgen_bt.regenie.gz:md5,a23e6dff8af61c3b7612951485294653",
+                "example_pgen_qt.regenie.gz:md5,87c65e520bab6bc45ba60955fc8214cd"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-12T21:04:52.915088496"
+    },
+    "chunked-harmonised": {
+        "content": [
+            [
+                "example_pgen_qt--regenie",
+                "example_pgen_qt--regenie/example_pgen_qt--regenie.canonical.tsv.gz",
+                "example_pgen_qt--regenie/example_pgen_qt--regenie.provenance.json"
+            ],
+            [
+                "example_pgen_qt--regenie/example_pgen_qt--regenie.canonical.tsv.gz:md5,e9c6b3a429d4d9f90b6b5a3e7b317afa"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-24T03:41:36.366071109"
+    },
+    "chunked-native": {
+        "content": [
+            [
+                "example_pgen_qt",
+                "example_pgen_qt/example_pgen_qt.regenie.gz"
+            ],
+            [
+                "example_pgen_qt.regenie.gz:md5,87c65e520bab6bc45ba60955fc8214cd"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-12T21:08:56.20662977"
+    }
+}

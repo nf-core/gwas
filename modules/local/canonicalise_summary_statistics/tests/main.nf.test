@@ -1,0 +1,144 @@
+nextflow_process {
+
+    name "Test Process CANONICALISE_SUMMARY_STATISTICS"
+    script "../main.nf"
+    process "CANONICALISE_SUMMARY_STATISTICS"
+    config "./nextflow.config"
+
+    tag "modules"
+    tag "modules_local"
+    tag "canonicalise_summary_statistics"
+
+    def metadata = { id ->
+        [
+            id: id,
+            summary_statistics_id: id,
+            trait_id: 'QT_external',
+            trait_type: 'quantitative',
+            build: 'GRCh37',
+            ancestry: 'EUR',
+            source_kind: 'external',
+            source_mode: 'canonical',
+            source_format: 'nfcore_gwas_canonical_v1',
+            source_method: 'published_gwas',
+            source_release: 'v1',
+            source_name: 'source.tsv',
+            producer_analysis_id: null,
+            producer_association_method: null,
+            population_prevalence: null,
+            sample_prevalence: null,
+            transformation: 'validated_without_harmonisation',
+            harmonization: null,
+            access_constraints: 'controlled_access',
+        ]
+    }
+
+    def table = { outputDir, name, header = 'SNPID\tCHR\tPOS\tEA\tNEA\tSTATUS\tEAF\tBETA\tSE\tP\tN' ->
+        def source = new File(outputDir.toString(), "${name}.tsv")
+        source.text = "${header}\nrs1\t1\t1\tA\tG\t1900000\t0.25\t0.1\t0.01\t1e-4\t1000\n"
+        source
+    }
+
+    test("validate and deterministically compress a canonical table with provenance") {
+        when {
+            def source = table(outputDir, 'external_qt')
+            process {
+                """
+                input[0] = [new groovy.json.JsonSlurper().parseText('${groovy.json.JsonOutput.toJson(metadata('external_qt'))}'), file('${source}', checkIfExists: true), file('${source}', checkIfExists: true)]
+                """
+            }
+        }
+
+        then {
+            def summary = process.out.summary_statistics.get(0)
+            def provenance = new groovy.json.JsonSlurper().parse(new File(process.out.provenance.get(0).get(1).toString()))
+            assertAll(
+                { assert process.success },
+                { assert summary[0].summary_statistics_id == 'external_qt' },
+                { assert new File(summary[1].toString()).name == 'external_qt.canonical.tsv.gz' },
+                { assert provenance.summary_statistics_id == 'external_qt' },
+                { assert provenance.canonical_contract_version == 'nfcore_gwas_canonical_v1' },
+                { assert !provenance.containsKey('population_prevalence') },
+                { assert !provenance.containsKey('sample_prevalence') },
+                { assert provenance.canonical_columns == ['SNPID', 'CHR', 'POS', 'EA', 'NEA', 'STATUS', 'EAF', 'BETA', 'SE', 'P', 'N'] },
+                { assert provenance.variant_rows == 1 },
+                { assert provenance.serialization == 'deterministic_gzip' },
+                { assert provenance.source_name == 'source.tsv' },
+                { assert provenance.source_sha256 != provenance.canonical_sha256 },
+                { assert provenance.access_constraints == 'controlled_access' },
+            )
+        }
+    }
+
+    test("reject a table that does not satisfy the canonical contract") {
+        when {
+            def source = table(outputDir, 'missing_status', 'SNPID\tCHR\tPOS\tEA\tNEA\tEAF\tBETA\tSE\tP\tN')
+            process {
+                """
+                input[0] = [new groovy.json.JsonSlurper().parseText('${groovy.json.JsonOutput.toJson(metadata('missing_status'))}'), file('${source}', checkIfExists: true), file('${source}', checkIfExists: true)]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.failed },
+                { assert process.errorReport.contains('header is missing required columns: STATUS') },
+            )
+        }
+    }
+
+    test("preserve an already-compressed canonical table byte for byte") {
+        when {
+            def plain = table(outputDir, 'external_qt_compressed')
+            def source = new File(outputDir.toString(), 'external_qt_compressed.tsv.gz')
+            source.withOutputStream { output ->
+                def gzip = new java.util.zip.GZIPOutputStream(output)
+                gzip.write(plain.bytes)
+                gzip.close()
+            }
+            process {
+                """
+                input[0] = [new groovy.json.JsonSlurper().parseText('${groovy.json.JsonOutput.toJson(metadata('external_qt_compressed') + [population_prevalence: 0.1, sample_prevalence: 0.2])}'), file('${source}', checkIfExists: true), file('${source}', checkIfExists: true)]
+                """
+            }
+        }
+
+        then {
+            def summary = new File(process.out.summary_statistics.get(0).get(1).toString())
+            def provenance = new groovy.json.JsonSlurper().parse(new File(process.out.provenance.get(0).get(1).toString()))
+            assertAll(
+                { assert process.success },
+                { assert summary.isFile() },
+                { assert provenance.serialization == 'byte_preserving_copy' },
+                { assert provenance.source_sha256 == provenance.canonical_sha256 },
+                { assert provenance.population_prevalence == 0.1 },
+                { assert provenance.sample_prevalence == 0.2 },
+            )
+        }
+    }
+
+    test("stub emits the canonical contract and valid version metadata") {
+        options "-stub"
+
+        when {
+            def source = table(outputDir, 'stub')
+            process {
+                """
+                input[0] = [new groovy.json.JsonSlurper().parseText('${groovy.json.JsonOutput.toJson(metadata('stub'))}'), file('${source}', checkIfExists: true), file('${source}', checkIfExists: true)]
+                """
+            }
+        }
+
+        then {
+            def summary = new File(process.out.summary_statistics.get(0).get(1).toString())
+            def versions = new File(process.out.versions.get(0).toString())
+            assertAll(
+                { assert process.success },
+                { assert summary.isFile() },
+                { assert versions.readLines().first().endsWith(':') },
+                { assert versions.text.contains('python:') },
+            )
+        }
+    }
+}

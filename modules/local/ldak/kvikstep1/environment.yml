@@ -5,5 +5,4 @@ channels:
   - bioconda
   - genomedk
 dependencies:
-  - conda-forge::r-base=4.3.1
   - genomedk::ldak6=6.1

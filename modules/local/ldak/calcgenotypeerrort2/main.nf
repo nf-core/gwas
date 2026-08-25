@@ -23,7 +23,7 @@ process LDAK_CALCGENOTYPEERRORT2 {
     stub:
     prefix = task.ext.prefix ?: "${meta.id}"
     """
-cat <<'TXT' > ${prefix}.txt
+cat <<'TXT' > "${prefix}.txt"
 LDAK Genotype Error Analysis Results (T2 Statistic)
 =====================================================
 

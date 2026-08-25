@@ -1,0 +1,34 @@
+{
+    "versions": {
+        "content": [
+            {
+                "CANONICALISE_SUMMARY_STATISTICS": {
+                    "python": "3.14.5"
+                },
+                "LDAK_SUMCORS": {
+                    "ldak": 6.3
+                },
+                "LDAK_SUMHER": {
+                    "ldak": 6.3
+                },
+                "NORMALISE_LDAK_SUMCORS": {
+                    "python": "3.14.5"
+                },
+                "NORMALISE_LDAK_SUMHER": {
+                    "python": "3.14.5"
+                },
+                "PREPARE_LDAK_SUMMARY_STATISTICS": {
+                    "python": "3.14.5"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-24T06:02:12.676873621"
+    }
+}

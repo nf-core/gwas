@@ -1,0 +1,74 @@
+name: ldak_thincommon
+description: Select common, moderately linkage-disequilibrium-pruned predictors with LDAK for dense-data Step 1 analyses
+keywords:
+  - ldak
+  - thinning
+  - predictors
+  - association
+tools:
+  - ldak6:
+      description: LDAK toolset for kinship, heritability, and association analyses
+      homepage: https://dougspeed.com/ldak/
+      documentation: https://dougspeed.com/ldak/
+input:
+  - - meta:
+        type: map
+        description: |
+          Groovy Map containing genotype-bundle metadata.
+          Expected keys:
+            - id (string): Sample identifier
+    - bed:
+        type: file
+        description: PLINK BED genotype file
+        ontologies: []
+    - bim:
+        type: file
+        description: PLINK BIM variant file
+        ontologies: []
+    - fam:
+        type: file
+        description: PLINK FAM sample file
+        ontologies: []
+output:
+  predictors:
+    - - meta:
+          type: map
+          description: Metadata map carried forward from input
+      - "${prefix}.in":
+          type: file
+          description: Common predictors selected by LDAK for dense-data Step 1 analyses
+          ontologies: []
+  progress:
+    - - meta:
+          type: map
+          description: Metadata map carried forward from input
+      - "${prefix}.progress":
+          type: file
+          optional: true
+          description: LDAK progress log
+          ontologies: []
+  versions_ldak6:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - ldak6:
+          type: string
+          description: The tool name
+      - ldak6 --version 2>&1 | grep -oP '(?<=^Version )[0-9.]+':
+          type: eval
+          description: The expression used to obtain the version of the tool
+topics:
+  versions:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - ldak6:
+          type: string
+          description: The tool name
+      - ldak6 --version 2>&1 | grep -oP '(?<=^Version )[0-9.]+':
+          type: eval
+          description: The expression used to obtain the version of the tool
+authors:
+  - "@andongni"
+maintainers:
+  - "@andongni"

@@ -1,52 +1,111 @@
 {
-    "-profile test": {
+    "versions": {
         "content": [
             {
-                "PLINK_GWAS": {
-                    "plink": "1.90b6.21"
+                "CANONICALISE_SUMMARY_STATISTICS": {
+                    "python": "3.14.5"
                 },
-                "PLINK_VCF": {
-                    "plink": "1.90b6.21"
+                "GWASLAB_HARMONIZE": {
+                    "gwaslab": "4.1.9",
+                    "python": "3.12.13"
+                },
+                "NORMALISE_PHENOTYPES": {
+                    "python": "3.14.5"
+                },
+                "PLINK2_GLM": {
+                    "plink2": "2.0.0-a.6.9LM"
+                },
+                "PLINK2_VCF": {
+                    "plink2": "2.0.0-a.6.9LM"
                 },
                 "Workflow": {
                     "nf-core/gwas": "v1.0.0dev"
                 }
-            },
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-24T02:50:16.617583182"
+    },
+    "association": {
+        "content": [
             [
-                "multiqc",
-                "multiqc/multiqc_data",
-                "multiqc/multiqc_data/llms-full.txt",
-                "multiqc/multiqc_data/multiqc.log",
-                "multiqc/multiqc_data/multiqc.parquet",
-                "multiqc/multiqc_data/multiqc_citations.txt",
-                "multiqc/multiqc_data/multiqc_data.json",
-                "multiqc/multiqc_data/multiqc_software_versions.txt",
-                "multiqc/multiqc_data/multiqc_sources.txt",
-                "multiqc/multiqc_report.html",
-                "pipeline_info",
-                "pipeline_info/nf_core_gwas_software_mqc_versions.yml",
-                "plink",
-                "plink/gwas_test.bed",
-                "plink/gwas_test.bim",
-                "plink/gwas_test.fam",
-                "plink_gwas",
-                "plink_gwas/gwas_test.log",
-                "plink_gwas/gwas_test.nosex",
-                "plink_gwas/gwas_test.qassoc"
+                "plink2",
+                "plink2/example_quantitative",
+                "plink2/example_quantitative/example_quantitative.plink2.glm.linear"
             ],
             [
-                "multiqc_citations.txt:md5,4c806e63a283ec1b7e78cdae3a923d4f",
-                "gwas_test.bed:md5,d5efe0ad4dd37f0490d063163023cb79",
-                "gwas_test.bim:md5,e12740fefcbb82b109160058b5a11873",
-                "gwas_test.fam:md5,e7509b8cb3837a74e9e1c6b7a886d496",
-                "gwas_test.nosex:md5,b1070bae19884e8c62af9e5cfc0e91f6",
-                "gwas_test.qassoc:md5,5139def55df276b4b96cdfb4f901b986"
+                "example_quantitative.plink2.glm.linear:md5,d90113562b608a71d4f69f961b6ddfcb"
             ]
         ],
         "meta": {
             "nf-test": "0.9.3",
             "nextflow": "25.10.4"
         },
-        "timestamp": "2026-07-09T12:01:02.392849789"
+        "timestamp": "2026-08-24T02:59:35.765728314"
+    },
+    "summary_statistics": {
+        "content": [
+            [
+                "example_quantitative--plink2",
+                "example_quantitative--plink2/example_quantitative--plink2.canonical.tsv.gz",
+                "example_quantitative--plink2/example_quantitative--plink2.provenance.json"
+            ],
+            [
+                "example_quantitative--plink2/example_quantitative--plink2.canonical.tsv.gz:md5,d713f6552c48f21c495c454f3686ed45"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-24T03:36:42.90723335"
+    },
+    "multiqc": {
+        "content": [
+            [
+                "multiqc_data",
+                "multiqc_data/llms-full.txt",
+                "multiqc_data/multiqc.log",
+                "multiqc_data/multiqc.parquet",
+                "multiqc_data/multiqc_citations.txt",
+                "multiqc_data/multiqc_data.json",
+                "multiqc_data/multiqc_nf-core-gwas-analysis-plan-table.txt",
+                "multiqc_data/multiqc_software_versions.txt",
+                "multiqc_data/multiqc_sources.txt",
+                "multiqc_plots",
+                "multiqc_plots/pdf",
+                "multiqc_plots/pdf/nf-core-gwas-analysis-plan-table.pdf",
+                "multiqc_plots/png",
+                "multiqc_plots/png/nf-core-gwas-analysis-plan-table.png",
+                "multiqc_plots/svg",
+                "multiqc_plots/svg/nf-core-gwas-analysis-plan-table.svg",
+                "multiqc_report.html"
+            ],
+            [
+                "multiqc_citations.txt:md5,4c806e63a283ec1b7e78cdae3a923d4f",
+                "multiqc_nf-core-gwas-analysis-plan-table.txt:md5,8e693726660f64ba09e7e037818b986b"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-13T13:52:30.611629782"
+    },
+    "pipeline_info": {
+        "content": [
+            [
+                "nf_core_gwas_software_mqc_versions.yml"
+            ],
+            []
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-07-30T05:11:18.631927776"
     }
 }

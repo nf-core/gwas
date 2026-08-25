@@ -1,0 +1,35 @@
+nextflow_function {
+
+    name "Test LDAK-KVIK prediction identity"
+    script "../main.nf"
+    tag "function"
+    tag "ldak"
+    tag "kvik"
+    tag "prediction"
+
+    test("the route-local key covers predictor policy and scientific files") {
+        function "buildKvikPredictionKey"
+
+        when {
+            function {
+                """
+                def fixtures = '${FIXTURES.base(projectDir)}results/fixtures/pheno_cov/'
+                def qcovar = file(fixtures + 'example.qcovar', checkIfExists: true)
+                input[0] = [cohort: 'example_pgen', trait: 'QT', is_binary: false]
+                input[1] = file(fixtures + 'example.pheno', checkIfExists: true)
+                input[2] = qcovar
+                input[3] = file(fixtures + 'example.catcovar', checkIfExists: true)
+                input[4] = 'provided'
+                input[5] = qcovar
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == 'a0ebcec31af9' },
+            )
+        }
+    }
+}

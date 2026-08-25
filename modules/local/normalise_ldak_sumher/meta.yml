@@ -1,0 +1,76 @@
+name: normalise_ldak_sumher
+description: Normalize LDAK SumHer outputs into heritability, diagnostics and request provenance views
+keywords:
+  - ldak
+  - sumher
+  - heritability
+  - provenance
+tools:
+  - python:
+      description: Python standard-library runtime
+      homepage: https://www.python.org/
+      documentation: https://docs.python.org/3/
+input:
+  - - meta:
+        type: map
+        description: Resolved SumHer request, endpoint, reference and effective-option metadata
+    - hers:
+        type: file
+        description: Native SumHer heritability table
+        pattern: "*.hers"
+    - extra:
+        type: file
+        description: Native SumHer fit diagnostics
+        pattern: "*.extra"
+    - overlap:
+        type: file
+        description: Native SumHer tagging overlap diagnostics
+        pattern: "*.overlap"
+    - ldak_log:
+        type: file
+        description: Captured native LDAK log
+        pattern: "*.log"
+    - preparation:
+        type: file
+        description: Canonical-to-LDAK preparation provenance
+        pattern: "*.preparation.json"
+    - hers_liability:
+        type: file
+        optional: true
+        description: Native liability-scale SumHer table when both prevalence values were supplied
+        pattern: "*.hers.liab"
+output:
+  heritability:
+    - - meta:
+          type: map
+          description: Resolved request metadata propagated from input
+      - heritability.tsv:
+          type: file
+          description: Observed and available liability-scale total heritability estimates
+  diagnostics:
+    - - meta:
+          type: map
+          description: Resolved request metadata propagated from input
+      - diagnostics.tsv:
+          type: file
+          description: Convergence, overlap, predictor-count and likelihood diagnostics
+  provenance:
+    - - meta:
+          type: map
+          description: Resolved request metadata propagated from input
+      - provenance.json:
+          type: file
+          description: Request, endpoint, reference, policy, execution, warning and native-artifact provenance
+  versions:
+    - versions.yml:
+        type: file
+        description: Software versions
+topics:
+  versions:
+    - versions.yml:
+        type: file
+        description: Software versions
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"

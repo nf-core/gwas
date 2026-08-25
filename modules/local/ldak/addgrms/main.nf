@@ -21,20 +21,19 @@ process LDAK_ADDGRMS {
     prefix = task.ext.prefix ?: "${meta.id}"
 
     """
-
     ldak6 \
-        --add-grm ${prefix} \
-        --mgrm ${mgrm_file} \
-        --max-threads ${task.cpus} \
+        --add-grm "${prefix}" \
+        --mgrm "${mgrm_file}" \
+        --max-threads "${task.cpus}" \
         ${args}
     """
 
     stub:
     prefix = task.ext.prefix ?: "${meta.id}"
     """
-    touch ${prefix}.grm.bin
-    touch ${prefix}.grm.id
-    touch ${prefix}.grm.details
-    touch ${prefix}.grm.adjust
+    touch "${prefix}.grm.bin"
+    touch "${prefix}.grm.id"
+    touch "${prefix}.grm.details"
+    touch "${prefix}.grm.adjust"
     """
 }

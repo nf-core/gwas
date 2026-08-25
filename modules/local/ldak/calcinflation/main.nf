@@ -18,13 +18,13 @@ process LDAK_CALCINFLATION {
 
     script:
     prefix = task.ext.prefix ?: "${meta.id}"
-    quarter_reml_files_r = quarter_reml_files.sort { a, b -> a.name <=> b.name }.collect { quarterFile -> "\"${quarterFile}\"" }.join(', ')
+    quarter_reml_files_r = quarter_reml_files.sort { a, b -> a.name <=> b.name }.collect { quarter_file -> "\"${quarter_file}\"" }.join(', ')
     template('calc_inflation.R')
 
     stub:
     prefix = task.ext.prefix ?: "${meta.id}"
     """
-cat <<'TXT' > ${prefix}.txt
+cat <<'TXT' > "${prefix}.txt"
 LDAK Inflation Analysis Results
 ================================
 

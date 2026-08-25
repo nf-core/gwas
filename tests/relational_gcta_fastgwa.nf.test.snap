@@ -1,0 +1,63 @@
+{
+    "versions": {
+        "content": [
+            {
+                "CANONICALISE_SUMMARY_STATISTICS": {
+                    "python": "3.14.5"
+                },
+                "CUSTOM_GCTAMERGEGRMPARTS": {
+                    "coreutils": 9.5
+                },
+                "GCTA_FASTGWA": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_MAKEBKSPARSE": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_MAKEGRMPART": {
+                    "gcta": "1.94.1"
+                },
+                "GWASLAB_HARMONIZE": {
+                    "gwaslab": "4.1.9",
+                    "python": "3.12.13"
+                },
+                "NORMALISE_PHENOTYPES": {
+                    "python": "3.14.5"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-24T02:56:57.924972453"
+    },
+    "association": {
+        "content": [
+            [
+                "example_pgen_qt",
+                "example_pgen_qt/example_pgen_qt.gcta_fastgwa.fastGWA",
+                "fastgwa_binary",
+                "fastgwa_binary/fastgwa_binary.gcta_fastgwa.fastGWA",
+                "fastgwa_different",
+                "fastgwa_different/fastgwa_different.gcta_fastgwa.fastGWA",
+                "fastgwa_equivalent",
+                "fastgwa_equivalent/fastgwa_equivalent.gcta_fastgwa.fastGWA"
+            ],
+            [
+                "example_pgen_qt.gcta_fastgwa.fastGWA:md5,d756c893ac9fc977735a6dc3b7ba4dd7",
+                "fastgwa_binary.gcta_fastgwa.fastGWA:md5,75c148759d97f6b14999db7bd00bf7fe",
+                "fastgwa_different.gcta_fastgwa.fastGWA:md5,d756c893ac9fc977735a6dc3b7ba4dd7",
+                "fastgwa_equivalent.gcta_fastgwa.fastGWA:md5,d756c893ac9fc977735a6dc3b7ba4dd7"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-24T03:01:07.680852987"
+    }
+}

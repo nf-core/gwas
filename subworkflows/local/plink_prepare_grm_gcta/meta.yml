@@ -1,0 +1,43 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
+name: "plink_prepare_grm_gcta"
+description: Construct and merge dense GCTA genetic relationship matrix parts
+keywords:
+  - gcta
+  - genome relationship matrix
+  - grm
+  - scatter gather
+components:
+  - gcta/makegrmpart
+  - custom/gctamergegrmparts
+input:
+  - ch_genotypes:
+      description: PLINK multi-file bundle for the focal analysis. Public outputs retain meta.
+      structure: [map meta, path mfile, path bed_pgen, path bim_pvar, path fam_psam]
+      pattern: "*.{mbfile,mpfile}, *.{bed,pgen}, *.{bim,pvar}, *.{fam,psam}"
+      ontologies:
+        - edam: "http://edamontology.org/format_3003"
+        - edam: "http://edamontology.org/format_2330"
+  - ch_snp_group_file:
+      description: Optional SNP group file in the second metadata-bearing tuple; use [] when absent.
+      structure: "[map meta2, path snp_group_file|[]]"
+      pattern: "*"
+      optional: true
+      ontologies:
+        - edam: "http://edamontology.org/format_2330"
+  - ch_n_parts:
+      description: Requested GRM part count in the third metadata-bearing tuple.
+      structure: [map meta3, integer requested_parts]
+output:
+  - grm_files:
+      description: Merged dense-GRM bundle for each focal analysis.
+      structure: [map meta, path grm_files]
+      pattern: "*.grm.{bin,N.bin,id}"
+      ontologies:
+        - edam: "http://edamontology.org/format_2330"
+  - effective_parts:
+      description: Number of GRM parts merged for each focal analysis.
+      structure: [map meta, integer effective_parts]
+authors:
+  - "@andongni"
+maintainers:
+  - "@andongni"

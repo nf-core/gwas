@@ -1,0 +1,55 @@
+{
+    "versions": {
+        "content": [
+            {
+                "CANONICALISE_SUMMARY_STATISTICS": {
+                    "python": "3.14.5"
+                },
+                "GWASLAB_HARMONIZE": {
+                    "gwaslab": "4.1.9",
+                    "python": "3.12.13"
+                },
+                "NORMALISE_PHENOTYPES": {
+                    "python": "3.14.5"
+                },
+                "PLINK2_GLM": {
+                    "plink2": "2.0.0-a.6.9LM"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-24T03:03:08.676184771"
+    },
+    "association": {
+        "content": [
+            [
+                "plink2",
+                "plink2/example_pgen_bt",
+                "plink2/example_pgen_bt/example_pgen_bt.plink2.glm.logistic.hybrid",
+                "plink2/example_pgen_bt_no_covariates",
+                "plink2/example_pgen_bt_no_covariates/example_pgen_bt_no_covariates.plink2.glm.logistic.hybrid",
+                "plink2/example_pgen_qt",
+                "plink2/example_pgen_qt/example_pgen_qt.plink2.glm.linear",
+                "plink2/example_pgen_qt_no_covariates",
+                "plink2/example_pgen_qt_no_covariates/example_pgen_qt_no_covariates.plink2.glm.linear"
+            ],
+            [
+                "example_pgen_bt.plink2.glm.logistic.hybrid:md5,07b1fa1fdd9005f879fb11ec2b9cc28c",
+                "example_pgen_bt_no_covariates.plink2.glm.logistic.hybrid:md5,f6802bccc1f209ccd8522f15cac0ee5c",
+                "example_pgen_qt.plink2.glm.linear:md5,e7a2df794ed53292921b94b05582d6e8",
+                "example_pgen_qt_no_covariates.plink2.glm.linear:md5,d90113562b608a71d4f69f961b6ddfcb"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-12T22:16:08.323589874"
+    }
+}

@@ -5,6 +5,11 @@
         "https://github.com/nf-core/modules.git": {
             "modules": {
                 "nf-core": {
+                    "gawk": {
+                        "branch": "master",
+                        "git_sha": "6d46786420b4d7bc88eba026eb389c0c5535d120",
+                        "installed_by": ["modules"]
+                    },
                     "gcta/addgrms": {
                         "branch": "master",
                         "git_sha": "322f285e0947592f92b73ef416fcce281f7e42be",
@@ -25,9 +30,9 @@
                         "git_sha": "12b957f0599c720ed004d792db68330d32d43b9e",
                         "installed_by": ["modules"]
                     },
-                    "gcta/calculateldscores": {
+                    "gcta/fastgwa": {
                         "branch": "master",
-                        "git_sha": "d9638aa098951f787be592b1cd8b0bc6190ac911",
+                        "git_sha": "b5e95182ba240127c1c78f33d405a35fe0fc5302",
                         "installed_by": ["modules"]
                     },
                     "gcta/grmcutoff": {
@@ -40,47 +45,15 @@
                         "git_sha": "a70e3c6922b068ed104a75364deb61c21a0164f2",
                         "installed_by": ["modules"]
                     },
-                    "gcta/makebksparse": {
-                        "branch": "master",
-                        "git_sha": "65e342c70141c64cd53cb8078abdcf0871900e57",
-                        "installed_by": ["modules"]
-                    },
                     "gcta/makegrm": {
                         "branch": "master",
                         "git_sha": "8d62f188367734e425e921c327ad3c1c319e73ab",
-                        "installed_by": ["modules"]
-                    },
-                    "gcta/makegrmpart": {
-                        "branch": "master",
-                        "git_sha": "dde039f4668e0f086e8e057c9a0e011bc1af0a9f",
-                        "installed_by": ["modules"]
-                    },
-                    "gcta/reml": {
-                        "branch": "master",
-                        "git_sha": "14864d74a613753d64cf84aa55852237eb72dde8",
-                        "installed_by": ["modules"]
-                    },
-                    "gcta/remlldms": {
-                        "branch": "master",
-                        "git_sha": "55d6d1341fa866c42fd3909a5eb52167af75127b",
                         "installed_by": ["modules"]
                     },
                     "multiqc": {
                         "branch": "master",
                         "git_sha": "008f9d3e61209bf995edac3ba531f54e269e1215",
                         "installed_by": ["modules"]
-                    },
-                    "plink/gwas": {
-                        "branch": "master",
-                        "git_sha": "2d5c9c019a4848ae6fb27dd5280e4e2307a18f74",
-                        "installed_by": ["modules"],
-                        "patch": "modules/nf-core/plink/gwas/plink-gwas.diff"
-                    },
-                    "plink/vcf": {
-                        "branch": "master",
-                        "git_sha": "6d46786420b4d7bc88eba026eb389c0c5535d120",
-                        "installed_by": ["modules"],
-                        "patch": "modules/nf-core/plink/vcf/plink-vcf.diff"
                     },
                     "regenie/runl0": {
                         "branch": "master",

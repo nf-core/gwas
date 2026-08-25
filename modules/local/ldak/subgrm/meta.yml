@@ -1,0 +1,78 @@
+name: ldak_subgrm
+description: Extract a sub-matrix of a linkage disequilibrium-adjusted kinship (LDAK) genomic relationship matrix (GRM) restricted to a list of samples to keep
+keywords:
+  - ldak
+  - grm
+  - kinship
+  - subset
+tools:
+  - ldak6:
+      description: LDAK toolset for kinship, heritability, and association analyses
+      homepage: https://dougspeed.com/ldak/
+      documentation: https://dougspeed.com/ldak/
+input:
+  - - meta:
+        type: map
+        description: |
+          Groovy Map containing GRM metadata.
+          Expected keys:
+            - id (string): Output prefix used for the `<id>.grm.*` sub-matrix files. Must differ from
+              the input GRM prefix to avoid overwriting the input files (override with `ext.prefix`).
+    - grm_files:
+        type: file
+        description: LDAK GRM bundle sharing a common basename, containing the binary
+          matrix, sample identifiers, details, and adjustment factor files
+        pattern: "*.{grm.bin,grm.id,grm.details,grm.adjust}"
+        ontologies: []
+    - keep:
+        type: file
+        description: |
+          Sample identifiers to retain in the sub-matrix, one sample per line as whitespace-separated
+          family and individual identifiers (for example an LDAK `.keep` list or a GRM `.grm.id` file).
+        ontologies: []
+output:
+  sub_grm:
+    - - meta:
+          type: map
+          description: Metadata map propagated from input
+      - "${prefix}.grm.bin":
+          type: file
+          description: Sub-matrix GRM binary matrix (`<prefix>.grm.bin`)
+          ontologies: []
+      - "${prefix}.grm.id":
+          type: file
+          description: Sub-matrix GRM sample identifiers (`<prefix>.grm.id`)
+          ontologies: []
+      - "${prefix}.grm.details":
+          type: file
+          description: Sub-matrix GRM details (`<prefix>.grm.details`)
+          ontologies: []
+      - "${prefix}.grm.adjust":
+          type: file
+          description: Sub-matrix GRM adjustment factors (`<prefix>.grm.adjust`)
+          ontologies: []
+  versions_ldak6:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - ldak6:
+          type: string
+          description: The tool name
+      - ldak6 --version 2>&1 | grep -oP '(?<=^Version )[0-9.]+':
+          type: eval
+          description: The expression used to obtain the version of the tool
+topics:
+  versions:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - ldak6:
+          type: string
+          description: The tool name
+      - ldak6 --version 2>&1 | grep -oP '(?<=^Version )[0-9.]+':
+          type: eval
+          description: The expression used to obtain the version of the tool
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"

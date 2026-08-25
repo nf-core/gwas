@@ -1,0 +1,235 @@
+{
+    "versions": {
+        "content": [
+            {
+                "CANONICALISE_SUMMARY_STATISTICS": {
+                    "python": "3.14.5"
+                },
+                "CUSTOM_GCTACREATEMGRMMANIFEST": {
+                    "coreutils": 9.5
+                },
+                "CUSTOM_GCTAMERGEGRMPARTS": {
+                    "coreutils": 9.5
+                },
+                "CUSTOM_GCTASTRATIFYLDSCORES": {
+                    "r-base": "4.2.1"
+                },
+                "GCTA_BIVARIATEREML": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_BIVARIATEREMLLDMS": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_CALCULATELDSCORES": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_FASTGWA": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_MAKEBKSPARSE": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_MAKEGRMPART": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_REML": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_REMLLDMS": {
+                    "gcta": "1.94.1"
+                },
+                "GWASLAB_HARMONIZE": {
+                    "gwaslab": "4.1.9",
+                    "python": "3.12.13"
+                },
+                "LDAK_ADJUSTGRM": {
+                    "ldak6": 6
+                },
+                "LDAK_CALCKINS": {
+                    "ldak6": 6
+                },
+                "LDAK_FILTER": {
+                    "ldak6": 6
+                },
+                "LDAK_HE": {
+                    "ldak6": 6
+                },
+                "LDAK_KVIKSTEP1": {
+                    "ldak6": 6
+                },
+                "LDAK_KVIKSTEP2": {
+                    "ldak6": 6
+                },
+                "LDAK_PCGC": {
+                    "ldak6": 6
+                },
+                "LDAK_REML": {
+                    "ldak6": 6
+                },
+                "LDAK_SUBGRM": {
+                    "ldak6": 6
+                },
+                "NORMALISE_GCTA_BIVARIATE": {
+                    "python": "3.14.5"
+                },
+                "NORMALISE_PHENOTYPES": {
+                    "python": "3.14.5"
+                },
+                "PLINK2_GLM": {
+                    "plink2": "2.0.0-a.6.9LM"
+                },
+                "PLINK2_MAKEBED": {
+                    "plink2": "2.0.0-a.6.9LM"
+                },
+                "PLINK2_VCF": {
+                    "plink2": "2.0.0-a.6.9LM"
+                },
+                "PREPARE_BIVARIATE_TRAITS": {
+                    "python": "3.14.5"
+                },
+                "REGENIE_STEP1": {
+                    "regenie": "4.1.2"
+                },
+                "REGENIE_STEP2": {
+                    "regenie": "4.1.2"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-24T03:26:12.387787897"
+    },
+    "association": {
+        "content": [
+            [
+                "gcta_fastgwa",
+                "gcta_fastgwa/heterogeneous_bt",
+                "gcta_fastgwa/heterogeneous_bt/heterogeneous_bt.gcta_fastgwa.fastGWA",
+                "gcta_fastgwa/heterogeneous_qt",
+                "gcta_fastgwa/heterogeneous_qt/heterogeneous_qt.gcta_fastgwa.fastGWA",
+                "ldak_kvik",
+                "ldak_kvik/heterogeneous_bt",
+                "ldak_kvik/heterogeneous_bt/heterogeneous_bt.ldak_kvik.step2.assoc",
+                "ldak_kvik/heterogeneous_qt",
+                "ldak_kvik/heterogeneous_qt/heterogeneous_qt.ldak_kvik.step2.assoc",
+                "plink2",
+                "plink2/heterogeneous_bt",
+                "plink2/heterogeneous_bt/heterogeneous_bt.plink2.glm.logistic.hybrid",
+                "plink2/heterogeneous_qt",
+                "plink2/heterogeneous_qt/heterogeneous_qt.plink2.glm.linear",
+                "regenie",
+                "regenie/heterogeneous_qt",
+                "regenie/heterogeneous_qt/heterogeneous_qt.regenie.gz"
+            ],
+            [
+                "heterogeneous_bt.gcta_fastgwa.fastGWA:md5,75c148759d97f6b14999db7bd00bf7fe",
+                "heterogeneous_qt.gcta_fastgwa.fastGWA:md5,d756c893ac9fc977735a6dc3b7ba4dd7",
+                "heterogeneous_bt.ldak_kvik.step2.assoc:md5,8435a2b63c69a428bd49adb1d28f03c0",
+                "heterogeneous_qt.ldak_kvik.step2.assoc:md5,d900ec29ee8c14586bf8d9045f315d1b",
+                "heterogeneous_bt.plink2.glm.logistic.hybrid:md5,07b1fa1fdd9005f879fb11ec2b9cc28c",
+                "heterogeneous_qt.plink2.glm.linear:md5,e7a2df794ed53292921b94b05582d6e8",
+                "heterogeneous_qt.regenie.gz:md5,87c65e520bab6bc45ba60955fc8214cd"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-13T14:38:39.735101822"
+    },
+    "summary_statistics": {
+        "content": [
+            [
+                "heterogeneous_bt--gcta_fastgwa",
+                "heterogeneous_bt--gcta_fastgwa/heterogeneous_bt--gcta_fastgwa.canonical.tsv.gz",
+                "heterogeneous_bt--gcta_fastgwa/heterogeneous_bt--gcta_fastgwa.provenance.json",
+                "heterogeneous_bt--ldak_kvik",
+                "heterogeneous_bt--ldak_kvik/heterogeneous_bt--ldak_kvik.canonical.tsv.gz",
+                "heterogeneous_bt--ldak_kvik/heterogeneous_bt--ldak_kvik.provenance.json",
+                "heterogeneous_bt--plink2",
+                "heterogeneous_bt--plink2/heterogeneous_bt--plink2.canonical.tsv.gz",
+                "heterogeneous_bt--plink2/heterogeneous_bt--plink2.provenance.json",
+                "heterogeneous_qt--gcta_fastgwa",
+                "heterogeneous_qt--gcta_fastgwa/heterogeneous_qt--gcta_fastgwa.canonical.tsv.gz",
+                "heterogeneous_qt--gcta_fastgwa/heterogeneous_qt--gcta_fastgwa.provenance.json",
+                "heterogeneous_qt--ldak_kvik",
+                "heterogeneous_qt--ldak_kvik/heterogeneous_qt--ldak_kvik.canonical.tsv.gz",
+                "heterogeneous_qt--ldak_kvik/heterogeneous_qt--ldak_kvik.provenance.json",
+                "heterogeneous_qt--plink2",
+                "heterogeneous_qt--plink2/heterogeneous_qt--plink2.canonical.tsv.gz",
+                "heterogeneous_qt--plink2/heterogeneous_qt--plink2.provenance.json",
+                "heterogeneous_qt--regenie",
+                "heterogeneous_qt--regenie/heterogeneous_qt--regenie.canonical.tsv.gz",
+                "heterogeneous_qt--regenie/heterogeneous_qt--regenie.provenance.json"
+            ],
+            [
+                "heterogeneous_bt--gcta_fastgwa/heterogeneous_bt--gcta_fastgwa.canonical.tsv.gz:md5,62a9e3f4686436e25bf553c316749960",
+                "heterogeneous_bt--ldak_kvik/heterogeneous_bt--ldak_kvik.canonical.tsv.gz:md5,5ac23344d8288444e4d289d6a280a572",
+                "heterogeneous_bt--plink2/heterogeneous_bt--plink2.canonical.tsv.gz:md5,bbc39031b55260a8f43b2db552f212b6",
+                "heterogeneous_qt--gcta_fastgwa/heterogeneous_qt--gcta_fastgwa.canonical.tsv.gz:md5,45d8a16e24ebba350e6e70c16d3abc32",
+                "heterogeneous_qt--ldak_kvik/heterogeneous_qt--ldak_kvik.canonical.tsv.gz:md5,06495c6743f296a1503271f24216d27c",
+                "heterogeneous_qt--plink2/heterogeneous_qt--plink2.canonical.tsv.gz:md5,9271b822551d2d0b47015dd539c28e48",
+                "heterogeneous_qt--regenie/heterogeneous_qt--regenie.canonical.tsv.gz:md5,e9c6b3a429d4d9f90b6b5a3e7b317afa"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-24T03:37:10.080018365"
+    },
+    "heritability": {
+        "content": [
+            [
+                "gcta_greml",
+                "gcta_greml/heterogeneous_bt",
+                "gcta_greml/heterogeneous_bt/heterogeneous_bt.gcta_greml.hsq",
+                "gcta_greml/heterogeneous_qt",
+                "gcta_greml/heterogeneous_qt/heterogeneous_qt.gcta_greml.hsq",
+                "gcta_greml_ldms",
+                "gcta_greml_ldms/heterogeneous_bt",
+                "gcta_greml_ldms/heterogeneous_bt/heterogeneous_bt.gcta_greml_ldms.hsq",
+                "gcta_greml_ldms/heterogeneous_qt",
+                "gcta_greml_ldms/heterogeneous_qt/heterogeneous_qt.gcta_greml_ldms.hsq",
+                "ldak_he",
+                "ldak_he/heterogeneous_bt",
+                "ldak_he/heterogeneous_bt/heterogeneous_bt.ldak_he.he",
+                "ldak_he/heterogeneous_qt",
+                "ldak_he/heterogeneous_qt/heterogeneous_qt.ldak_he.he",
+                "ldak_pcgc",
+                "ldak_pcgc/heterogeneous_bt",
+                "ldak_pcgc/heterogeneous_bt/heterogeneous_bt.ldak_pcgc.pcgc",
+                "ldak_pcgc/heterogeneous_bt/heterogeneous_bt.ldak_pcgc.pcgc.marginal",
+                "ldak_reml",
+                "ldak_reml/heterogeneous_bt",
+                "ldak_reml/heterogeneous_bt/heterogeneous_bt.ldak_reml.reml",
+                "ldak_reml/heterogeneous_bt/heterogeneous_bt.ldak_reml.reml.liab",
+                "ldak_reml/heterogeneous_qt",
+                "ldak_reml/heterogeneous_qt/heterogeneous_qt.ldak_reml.reml"
+            ],
+            [
+                "heterogeneous_bt.gcta_greml.hsq:md5,549e77997ae811ba26f1575eedeb00d7",
+                "heterogeneous_qt.gcta_greml.hsq:md5,3475afa4e0119452ee59e94502a1ccd7",
+                "heterogeneous_bt.gcta_greml_ldms.hsq:md5,38d69502b784df0b2dbe7a8bb90b46b5",
+                "heterogeneous_qt.gcta_greml_ldms.hsq:md5,b0b893c27948aad255fc3e6f544a7429",
+                "heterogeneous_bt.ldak_he.he:md5,9d1cc93a0a8e8a24fefd2232c28b82e6",
+                "heterogeneous_qt.ldak_he.he:md5,b71335568c37a227600eb39367079855",
+                "heterogeneous_bt.ldak_pcgc.pcgc:md5,37451b9d8fe15877849315b3eb4ff311",
+                "heterogeneous_bt.ldak_pcgc.pcgc.marginal:md5,903c5f5182cc3113e6ae247ff20f62b1",
+                "heterogeneous_bt.ldak_reml.reml:md5,08f6f83d6ac56b235d2859d929b3b80f",
+                "heterogeneous_bt.ldak_reml.reml.liab:md5,1402a426eddc22e6611074f304e16082",
+                "heterogeneous_qt.ldak_reml.reml:md5,6d8452f526c1adc1f0a757020a233d2c"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-13T14:38:39.766332156"
+    }
+}

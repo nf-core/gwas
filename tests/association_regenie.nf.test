@@ -1,0 +1,341 @@
+nextflow_pipeline {
+
+    name "Test relational REGENIE association route"
+    script "../main.nf"
+    tag "pipeline"
+    tag "association"
+    tag "regenie"
+    tag "relational"
+
+    def commands = { output_dir ->
+        def scripts = []
+        new File(new File(output_dir.toString()).parentFile, 'work').eachFileRecurse { entry ->
+            if (entry.isFile() && entry.name == '.command.sh') {
+                scripts << entry.text
+            }
+        }
+        return scripts.findAll { command -> command ==~ /(?s).*\nregenie \\\n.*/ }
+    }
+
+    def manifests = { output_dir, project_dir, name, Closure analyses ->
+        return [
+            cohort: RELATIONAL.cohorts(project_dir, output_dir, name),
+            analysis: RELATIONAL.analyses(project_dir, output_dir, name, { rows ->
+                analyses(rows)
+                rows.each { row -> row.association_methods = 'regenie' }
+            }),
+        ]
+    }
+
+    def prediction_files = { outdir, analysis_id ->
+        def directory = new File("${outdir}/intermediates/association_predictions/regenie/${analysis_id}")
+        return directory.exists() ? directory.list().toList().sort() : []
+    }
+
+    def execution_modes = [
+        [suffix: '', stub: false],
+        [suffix: ' - stub', stub: true],
+    ]
+
+    test("per-analysis REGENIE method options change fitted-model identity and Step 2 policy") {
+        config "../conf/test_regenie_standard.config"
+        tag "regenie_method_options"
+
+        when {
+            params {
+                outdir = "$outputDir"
+                def linked = manifests(outputDir, projectDir, 'regenie_method_options', { rows ->
+                    rows[0] = RELATIONAL.analysis(projectDir, 'example_pgen_bt')
+                    def custom = new LinkedHashMap(rows[0])
+                    custom.analysis_id = 'example_pgen_bt_custom'
+                    rows << custom
+                })
+                cohort_manifest = linked.cohort
+                analysis_manifest = linked.analysis
+                method_options = RELATIONAL.methodOptions(outputDir, 'regenie_method_options', [
+                    example_pgen_bt_custom: [regenie: [step1_bsize: 2000, firth: false, min_mac: 5]],
+                ])
+            }
+        }
+
+        then {
+            def generated = commands(outputDir)
+            def step1 = generated.findAll { command -> command.contains('--step 1') }
+            def step2 = generated.findAll { command -> command.contains('--step 2') }
+            def custom = step2.find { command -> command.contains('--minMAC 5') }
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'REGENIE_STEP1') == 2 },
+                { assert step1.any { command -> command.contains('--bsize 1000') } },
+                { assert step1.any { command -> command.contains('--bsize 2000') } },
+                { assert custom != null },
+                { assert !custom.contains('--firth') },
+                { assert step2.find { command -> !command.contains('--minMAC') }.contains('--firth') },
+            )
+        }
+    }
+
+    def invalidMethodOptions = [
+        [name: 'unknown option', options: [mystery: true], expected: ["option 'regenie.mystery'", 'unknown option']],
+        [name: 'operational option', options: [step1_mode: 'chunked'], expected: ["option 'regenie.step1_mode'", 'run/profile configuration']],
+        [name: 'invalid Step 1 block size', options: [step1_bsize: 1.5], expected: ["option 'regenie.step1_bsize'", 'positive integer']],
+        [name: 'negative minimum MAC', options: [min_mac: -1], expected: ["option 'regenie.min_mac'", 'non-negative']],
+        [name: 'quantitative Firth option', options: [firth: false], expected: ["option 'regenie.firth'", 'binary-trait']],
+    ]
+
+    invalidMethodOptions.each { scenario ->
+        test("method-options rejects REGENIE ${scenario.name} before tasks") {
+            config "../conf/test_regenie_standard.config"
+            tag "regenie_method_options"
+
+            when {
+                params {
+                    outdir = "$outputDir"
+                    def linked = manifests(outputDir, projectDir, "regenie_invalid_${scenario.name.replace(' ', '_')}", { _rows -> })
+                    cohort_manifest = linked.cohort
+                    analysis_manifest = linked.analysis
+                    method_options = RELATIONAL.methodOptions(outputDir, "regenie_invalid_${scenario.name.replace(' ', '_')}", [
+                        example_pgen_qt: [regenie: scenario.options],
+                    ])
+                }
+            }
+
+            then {
+                def report = VALIDATION.report(outputDir, workflow.stdout)
+                assertAll(
+                    { assert !workflow.success },
+                    { assert scenario.expected.every { fragment -> report.contains(fragment) } },
+                    { assert TRACE.count(workflow, 'REGENIE_STEP1') == 0 },
+                    { assert TRACE.count(workflow, 'REGENIE_STEP2') == 0 },
+                )
+            }
+        }
+    }
+
+    execution_modes.each { mode ->
+        test("linked quantitative and binary analyses route trait flags and optional covariates${mode.suffix}") {
+
+            config "../conf/test_regenie_standard.config"
+            tag "regenie_relational_traits"
+            if (mode.stub) {
+                options "-stub"
+            }
+
+            when {
+                params {
+                    outdir = "$outputDir"
+                    def linked = manifests(outputDir, projectDir, 'regenie_traits', { rows ->
+                        def binary = RELATIONAL.analysis(projectDir, 'example_pgen_bt')
+                        binary.quant_covariates = ''
+                        binary.cat_covariates = ''
+                        rows << binary
+                    })
+                    cohort_manifest = linked.cohort
+                    analysis_manifest = linked.analysis
+                    save_association_predictions = false
+                }
+            }
+
+            then {
+                def analysisIds = ['example_pgen_bt', 'example_pgen_qt']
+                def nativeDir = new File("${params.outdir}/association/regenie")
+                def harmonisedDir = new File("${params.outdir}/summary_statistics")
+                if (mode.stub) {
+                    assertAll(
+                        { assert workflow.success },
+                        { assert TRACE.count(workflow, 'REGENIE_STEP1') == 2 },
+                        { assert TRACE.count(workflow, 'REGENIE_STEP2') == 2 },
+                        { assert TRACE.count(workflow, 'GWASLAB_HARMONIZE') == 2 },
+                        { assert TRACE.count(workflow, 'ATTRIBUTE_REGENIE_PREDICTIONS') == 0 },
+                        { assert analysisIds.every { id -> new File(nativeDir, "${id}/${id}.regenie.gz").isFile() } },
+                        { assert analysisIds.every { id -> new File(harmonisedDir, "${id}--regenie/${id}--regenie.canonical.tsv.gz").isFile() } },
+                    )
+                } else {
+                    def generated = commands(outputDir)
+                    def step1 = generated.findAll { command -> command.contains('--step 1') }
+                    def step2 = generated.findAll { command -> command.contains('--step 2') }
+                    def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
+                    def stable_name_native = getAllFilesFromDir("${params.outdir}/association/regenie", relative: true, includeDir: true).findAll { path -> path.toString() }
+                    def stable_path_native = getAllFilesFromDir("${params.outdir}/association/regenie", ignoreFile: 'tests/.nftignore')
+                    def stable_name_harmonised = getAllFilesFromDir("${params.outdir}/summary_statistics", relative: true, includeDir: true).findAll { path -> path.toString() }
+                    def stable_path_harmonised = RELATIONAL.gzipTextHashes("${params.outdir}/summary_statistics")
+                    assertAll(
+                        { assert workflow.success },
+                        { assert TRACE.tags(workflow, 'REGENIE_STEP2').sort() == analysisIds },
+                        { assert TRACE.tags(workflow, 'GWASLAB_HARMONIZE').sort() == analysisIds.collect { id -> "${id}--regenie" }.sort() },
+                        { assert step1.size() == 2 },
+                        { assert step2.size() == 2 },
+                        { assert step1.count { command -> command.contains('--bt') } == 1 },
+                        { assert step2.count { command -> command.contains('--bt') } == 1 },
+                        { assert step2.find { command -> command.contains('--bt') }.contains('--firth') },
+                        { assert step2.find { command -> command.contains('--bt') }.contains('--approx') },
+                        { assert step2.find { command -> command.contains('--bt') }.contains('--pThresh 0.01') },
+                        { assert generated.every { command -> command.contains('--phenoColList PHENO') } },
+                        { assert generated.every { command -> !command.contains('--minMAC') } },
+                        { assert !new File("${params.outdir}/intermediates/association_predictions/regenie").exists() },
+                        { assert snapshot(stable_name_native, stable_path_native).match('traits-native') },
+                        { assert snapshot(stable_name_harmonised, stable_path_harmonised).match('traits-harmonised') },
+                        { assert snapshot(removeNextflowVersion(versions.toString())).match('versions') },
+                    )
+                }
+            }
+        }
+    }
+
+    execution_modes.each { mode ->
+        test("identical Step 1 inputs reuse one prediction bundle attributed to every analysis${mode.suffix}") {
+
+            config "../conf/test_regenie_standard.config"
+            tag "regenie_prediction_reuse"
+            if (mode.stub) {
+                options "-stub"
+            }
+
+            when {
+                params {
+                    outdir = "$outputDir"
+                    def linked = manifests(outputDir, projectDir, 'regenie_reuse', { rows ->
+                        def reuse = new LinkedHashMap(rows[0])
+                        reuse.analysis_id = 'example_pgen_qt_reuse'
+                        rows << reuse
+                    })
+                    cohort_manifest = linked.cohort
+                    analysis_manifest = linked.analysis
+                    save_association_predictions = true
+                }
+            }
+
+            then {
+                def analysisIds = ['example_pgen_qt', 'example_pgen_qt_reuse']
+                def assertions = [
+                    { assert workflow.success },
+                    { assert TRACE.count(workflow, 'REGENIE_STEP1') == 1 },
+                    { assert TRACE.count(workflow, 'REGENIE_STEP2') == 2 },
+                    { assert TRACE.tags(workflow, 'REGENIE_STEP2').sort() == analysisIds },
+                    { assert TRACE.count(workflow, 'ATTRIBUTE_REGENIE_PREDICTIONS') == 2 },
+                    { assert TRACE.tags(workflow, 'ATTRIBUTE_REGENIE_PREDICTIONS').sort() == analysisIds },
+                    { assert prediction_files(params.outdir, 'example_pgen_qt') == [
+                        'example_pgen_qt.regenie_step1_1.loco.gz',
+                        'example_pgen_qt.regenie_step1_pred.list',
+                    ] },
+                    { assert prediction_files(params.outdir, 'example_pgen_qt_reuse') == [
+                        'example_pgen_qt_reuse.regenie_step1_1.loco.gz',
+                        'example_pgen_qt_reuse.regenie_step1_pred.list',
+                    ] },
+                    { assert analysisIds.every { id -> new File("${params.outdir}/association/regenie/${id}/${id}.regenie.gz").isFile() } },
+                    { assert analysisIds.every { id -> new File("${params.outdir}/summary_statistics/${id}--regenie/${id}--regenie.canonical.tsv.gz").isFile() } },
+                ]
+                if (!mode.stub) {
+                    def stable_name_native = getAllFilesFromDir("${params.outdir}/association/regenie", relative: true, includeDir: true).findAll { path -> path.toString() }
+                    def stable_path_native = getAllFilesFromDir("${params.outdir}/association/regenie", ignoreFile: 'tests/.nftignore')
+                    def stable_name_harmonised = getAllFilesFromDir("${params.outdir}/summary_statistics", relative: true, includeDir: true).findAll { path -> path.toString() }
+                    def stable_path_harmonised = RELATIONAL.gzipTextHashes("${params.outdir}/summary_statistics")
+                    assertions.addAll([
+                        { assert snapshot(stable_name_native, stable_path_native).match('prediction-reuse-native') },
+                        { assert snapshot(stable_name_harmonised, stable_path_harmonised).match('prediction-reuse-harmonised') },
+                    ])
+                }
+                assertAll(*assertions)
+            }
+        }
+    }
+
+    execution_modes.each { mode ->
+        test("a covariate change prevents Step 1 prediction reuse${mode.suffix}") {
+
+            config "../conf/test_regenie_standard.config"
+            tag "regenie_prediction_identity"
+            if (mode.stub) {
+                options "-stub"
+            }
+
+            when {
+                params {
+                    outdir = "$outputDir"
+                    def linked = manifests(outputDir, projectDir, 'regenie_distinct_covariates', { rows ->
+                        def withoutCovariates = new LinkedHashMap(rows[0])
+                        withoutCovariates.analysis_id = 'example_pgen_qt_no_covariates'
+                        withoutCovariates.quant_covariates = ''
+                        withoutCovariates.cat_covariates = ''
+                        rows << withoutCovariates
+                    })
+                    cohort_manifest = linked.cohort
+                    analysis_manifest = linked.analysis
+                    save_association_predictions = true
+                }
+            }
+
+            then {
+                def analysisIds = ['example_pgen_qt', 'example_pgen_qt_no_covariates']
+                def assertions = [
+                    { assert workflow.success },
+                    { assert TRACE.count(workflow, 'REGENIE_STEP1') == 2 },
+                    { assert TRACE.count(workflow, 'REGENIE_STEP2') == 2 },
+                    { assert TRACE.count(workflow, 'ATTRIBUTE_REGENIE_PREDICTIONS') == 2 },
+                    { assert analysisIds.every { id -> prediction_files(params.outdir, id).size() == 2 } },
+                ]
+                if (!mode.stub) {
+                    def stable_name_native = getAllFilesFromDir("${params.outdir}/association/regenie", relative: true, includeDir: true).findAll { path -> path.toString() }
+                    def stable_path_native = getAllFilesFromDir("${params.outdir}/association/regenie", ignoreFile: 'tests/.nftignore')
+                    def stable_name_harmonised = getAllFilesFromDir("${params.outdir}/summary_statistics", relative: true, includeDir: true).findAll { path -> path.toString() }
+                    def stable_path_harmonised = RELATIONAL.gzipTextHashes("${params.outdir}/summary_statistics")
+                    assertions.addAll([
+                        { assert snapshot(stable_name_native, stable_path_native).match('prediction-identity-native') },
+                        { assert snapshot(stable_name_harmonised, stable_path_harmonised).match('prediction-identity-harmonised') },
+                    ])
+                }
+                assertAll(*assertions)
+            }
+        }
+    }
+
+    execution_modes.each { mode ->
+        test("chunked Step 1 remains available from linked manifests${mode.suffix}") {
+
+            config "../conf/test_regenie_chunked.config"
+            tag "regenie_relational_chunked"
+            if (mode.stub) {
+                options "-stub"
+            }
+
+            when {
+                params {
+                    outdir = "$outputDir"
+                    def linked = manifests(outputDir, projectDir, 'regenie_chunked', { _rows -> })
+                    cohort_manifest = linked.cohort
+                    analysis_manifest = linked.analysis
+                }
+            }
+
+            then {
+                def assertions = [
+                    { assert workflow.success },
+                    { assert TRACE.count(workflow, 'REGENIE_STEP1') == 0 },
+                    { assert TRACE.count(workflow, 'REGENIE_SPLITL0') == 1 },
+                    { assert TRACE.count(workflow, 'REGENIE_RUNL0') > 0 },
+                    { assert TRACE.count(workflow, 'REGENIE_RUNL1') == 1 },
+                    { assert TRACE.count(workflow, 'REGENIE_STEP2') == 1 },
+                    { assert TRACE.count(workflow, 'GWASLAB_HARMONIZE') == 1 },
+                    { assert TRACE.count(workflow, 'ATTRIBUTE_REGENIE_PREDICTIONS') == 1 },
+                    { assert prediction_files(params.outdir, 'example_pgen_qt') == [
+                        'example_pgen_qt.regenie_step1_1.loco.gz',
+                        'example_pgen_qt.regenie_step1_pred.list',
+                    ] },
+                    { assert new File("${params.outdir}/association/regenie/example_pgen_qt/example_pgen_qt.regenie.gz").isFile() },
+                    { assert new File("${params.outdir}/summary_statistics/example_pgen_qt--regenie/example_pgen_qt--regenie.canonical.tsv.gz").isFile() },
+                ]
+                if (!mode.stub) {
+                    def stable_name_native = getAllFilesFromDir("${params.outdir}/association/regenie", relative: true, includeDir: true).findAll { path -> path.toString() }
+                    def stable_path_native = getAllFilesFromDir("${params.outdir}/association/regenie", ignoreFile: 'tests/.nftignore')
+                    def stable_name_harmonised = getAllFilesFromDir("${params.outdir}/summary_statistics", relative: true, includeDir: true).findAll { path -> path.toString() }
+                    def stable_path_harmonised = RELATIONAL.gzipTextHashes("${params.outdir}/summary_statistics")
+                    assertions.addAll([
+                        { assert snapshot(stable_name_native, stable_path_native).match('chunked-native') },
+                        { assert snapshot(stable_name_harmonised, stable_path_harmonised).match('chunked-harmonised') },
+                    ])
+                }
+                assertAll(*assertions)
+            }
+        }
+    }
+}

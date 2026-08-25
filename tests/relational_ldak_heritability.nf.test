@@ -1,0 +1,210 @@
+nextflow_pipeline {
+
+    name "Test relational LDAK heritability method configuration"
+    script "../main.nf"
+    tag "pipeline"
+    tag "relational"
+    tag "heritability"
+    tag "ldak"
+
+
+    test("quantitative and binary traits share one matrix while REML HE and PCGC retain analysis attribution") {
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, 'ldak_heritability_routes')
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, 'ldak_heritability_routes', { rows ->
+                    rows[0].association_methods = ''
+                    rows[0].heritability_methods = 'ldak_reml,ldak_he'
+
+                    def binaryWithoutPrevalence = RELATIONAL.analysis(projectDir, 'example_pgen_bt')
+                    binaryWithoutPrevalence.analysis_id = 'binary_without_prevalence'
+                    binaryWithoutPrevalence.association_methods = ''
+                    binaryWithoutPrevalence.heritability_methods = 'ldak_reml,ldak_he'
+                    rows << binaryWithoutPrevalence
+
+                    def binaryAllEstimators = RELATIONAL.analysis(projectDir, 'example_pgen_bt')
+                    binaryAllEstimators.analysis_id = 'binary_all_estimators'
+                    binaryAllEstimators.association_methods = ''
+                    binaryAllEstimators.heritability_methods = 'ldak_reml,ldak_he,ldak_pcgc'
+                    binaryAllEstimators.population_prevalence = 0.1
+                    rows << binaryAllEstimators
+                })
+                gcta_grm_parts = 1
+            }
+        }
+
+        then {
+            def reml = new File("${params.outdir}/heritability/individual/ldak_reml")
+            def he = new File("${params.outdir}/heritability/individual/ldak_he")
+            def pcgc = new File("${params.outdir}/heritability/individual/ldak_pcgc")
+            def stableNameHeritability = getAllFilesFromDir(
+                "${params.outdir}/heritability/individual",
+                relative: true,
+                includeDir: true,
+            ).findAll { path -> path.toString() }
+            def stablePathHeritability = getAllFilesFromDir(
+                "${params.outdir}/heritability/individual",
+                ignoreFile: 'tests/.nftignore',
+            )
+            def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'PLINK2_MAKEBED') == 1 },
+                { assert TRACE.count(workflow, 'LDAK_CALCKINS') == 1 },
+                { assert TRACE.count(workflow, 'LDAK_REML') == 3 },
+                { assert TRACE.count(workflow, 'LDAK_HE') == 3 },
+                { assert TRACE.count(workflow, 'LDAK_PCGC') == 1 },
+                { assert reml.list().toList().sort() == ['binary_all_estimators', 'binary_without_prevalence', 'example_pgen_qt'] },
+                { assert he.list().toList().sort() == ['binary_all_estimators', 'binary_without_prevalence', 'example_pgen_qt'] },
+                { assert pcgc.list().toList() == ['binary_all_estimators'] },
+                { assert snapshot(stableNameHeritability, stablePathHeritability).match('heritability') },
+                { assert snapshot(removeNextflowVersion(versions.toString())).match('versions') },
+            )
+        }
+    }
+
+    test("relatedness filtering applies to one analysis and defines a distinct deduplicated matrix") {
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, 'ldak_filter_identity')
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, 'ldak_filter_identity', { rows ->
+                    ['shared_matrix', 'filtered_matrix'].each { analysisId ->
+                        def analysis = new LinkedHashMap(rows[0])
+                        analysis.analysis_id = analysisId
+                        rows << analysis
+                    }
+                    rows.each { row ->
+                        row.association_methods = ''
+                        row.heritability_methods = 'ldak_reml'
+                    }
+                })
+                method_options = RELATIONAL.methodOptions(outputDir, 'ldak_filter_identity', [
+                    filtered_matrix: [ldak: [relatedness_filter: true]],
+                ])
+                gcta_grm_parts = 1
+                save_relatedness_matrices = true
+            }
+        }
+
+        then {
+            def matrices = new File("${params.outdir}/quality_control/relatedness_matrices")
+            def keys = matrices.list().toList()
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'LDAK_CALCKINS') == 2 },
+                { assert TRACE.count(workflow, 'LDAK_FILTER') == 1 },
+                { assert TRACE.count(workflow, 'LDAK_SUBGRM') == 1 },
+                { assert TRACE.count(workflow, 'LDAK_REML') == 3 },
+                { assert keys.size() == 2 },
+                { assert keys.every { key -> key ==~ /[0-9a-f]{12}/ } },
+                { assert new File("${params.outdir}/heritability/individual/ldak_reml/example_pgen_qt/example_pgen_qt.ldak_reml.reml").isFile() },
+                { assert new File("${params.outdir}/heritability/individual/ldak_reml/shared_matrix/shared_matrix.ldak_reml.reml").isFile() },
+                { assert new File("${params.outdir}/heritability/individual/ldak_reml/filtered_matrix/filtered_matrix.ldak_reml.reml").isFile() },
+            )
+        }
+    }
+
+    test("model power and weight content define matrix identity while equivalent inputs reuse construction") {
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, 'ldak_matrix_identity')
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, 'ldak_matrix_identity', { rows ->
+                    ['equivalent_default', 'custom_model', 'custom_power', 'weights_a', 'weights_b', 'weights_changed'].each { analysisId ->
+                        def analysis = new LinkedHashMap(rows[0])
+                        analysis.analysis_id = analysisId
+                        rows << analysis
+                    }
+                    rows.each { row ->
+                        row.association_methods = ''
+                        row.heritability_methods = 'ldak_reml'
+                    }
+                })
+                method_options = RELATIONAL.methodOptions(outputDir, 'ldak_matrix_identity', [
+                    equivalent_default: [ldak: [model: 'human_default', power: -0.25, weights_policy: 'equal']],
+                    custom_model: [ldak: [model: 'custom']],
+                    custom_power: [ldak: [model: 'custom', power: -0.5]],
+                    weights_a: [ldak: [weights_policy: 'provided', weights: RELATIONAL.resource(outputDir, 'weights-a.txt', 'rs1 1\n')]],
+                    weights_b: [ldak: [weights_policy: 'provided', weights: RELATIONAL.resource(outputDir, 'weights-b.txt', 'rs1 1\n')]],
+                    weights_changed: [ldak: [weights_policy: 'provided', weights: RELATIONAL.resource(outputDir, 'weights-changed.txt', 'rs1 2\n')]],
+                ])
+                gcta_grm_parts = 1
+                save_relatedness_matrices = true
+            }
+        }
+
+        then {
+            def matrices = new File("${params.outdir}/quality_control/relatedness_matrices")
+            def keys = matrices.list().toList()
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'LDAK_CALCKINS') == 5 },
+                { assert TRACE.count(workflow, 'LDAK_REML') == 7 },
+                { assert keys.size() == 5 },
+                { assert keys.every { key -> key ==~ /[0-9a-f]{12}/ } },
+            )
+        }
+    }
+
+    def invalidPrevalence = [
+        [
+            name: 'quantitative prevalence',
+            source: 'example_pgen_qt',
+            methods: 'ldak_reml',
+            prevalence: 0.1,
+            expected: ['population_prevalence', 'no meaning on a quantitative trait'],
+        ],
+        [
+            name: 'PCGC without prevalence',
+            source: 'example_pgen_bt',
+            methods: 'ldak_pcgc',
+            prevalence: '',
+            expected: ['population_prevalence', "'ldak_pcgc' always estimates on the liability scale and requires a population prevalence"],
+        ],
+        [
+            name: 'HE-only prevalence',
+            source: 'example_pgen_bt',
+            methods: 'ldak_he',
+            prevalence: 0.1,
+            expected: ['population_prevalence', 'none of the selected estimators consumes it'],
+        ],
+    ]
+
+    invalidPrevalence.each { scenario ->
+        test("linked manifests reject ${scenario.name} before LDAK matrix construction") {
+            when {
+                params {
+                    outdir = "$outputDir"
+                    cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, "ldak_prevalence_${scenario.name.replace(' ', '_')}")
+                    analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, "ldak_prevalence_${scenario.name.replace(' ', '_')}", { rows ->
+                        rows[0] = RELATIONAL.analysis(projectDir, scenario.source)
+                        rows[0].association_methods = ''
+                        rows[0].heritability_methods = scenario.methods
+                        rows[0].population_prevalence = scenario.prevalence
+                    })
+                    gcta_grm_parts = 1
+                }
+            }
+
+            then {
+                def report = VALIDATION.report(outputDir, workflow.stdout)
+                assertAll(
+                    { assert !workflow.success },
+                    { assert report.contains(params.analysis_manifest.toString()) },
+                    { assert report.contains("analysis_id '${scenario.source}'") },
+                    { assert scenario.expected.every { fragment -> report.contains(fragment) } },
+                    { assert TRACE.count(workflow, 'LDAK_CALCKINS') == 0 },
+                    { assert TRACE.count(workflow, 'LDAK_REML') == 0 },
+                    { assert TRACE.count(workflow, 'LDAK_HE') == 0 },
+                    { assert TRACE.count(workflow, 'LDAK_PCGC') == 0 },
+                )
+            }
+        }
+    }
+}

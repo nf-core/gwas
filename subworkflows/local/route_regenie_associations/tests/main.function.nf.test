@@ -1,0 +1,31 @@
+nextflow_function {
+
+    name "Test REGENIE prediction identity"
+    script "../main.nf"
+    tag "function"
+    tag "regenie"
+    tag "prediction"
+
+    test("the route-local key covers fitted-model scientific inputs") {
+        function "buildRegeniePredictionKey"
+
+        when {
+            function {
+                """
+                def fixtures = '${FIXTURES.base(projectDir)}results/fixtures/pheno_cov/'
+                input[0] = [cohort: 'example_pgen', trait: 'QT', is_binary: false]
+                input[1] = file(fixtures + 'example.pheno', checkIfExists: true)
+                input[2] = file(fixtures + 'example.qcovar', checkIfExists: true)
+                input[3] = 1000
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == '8a7da5fd936b' },
+            )
+        }
+    }
+}

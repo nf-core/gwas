@@ -1,0 +1,723 @@
+nextflow_function {
+
+    name "Test linked GWAS input contract functions"
+    script "../main.nf"
+    tag "function"
+    tag "input"
+
+    test("quantitative fastGWA maps the native beta and sample-count columns") {
+        function "getAssociationColumnMappingJson"
+
+        when {
+            function {
+                """
+                input[0] = 'gcta_fastgwa'
+                input[1] = false
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert new groovy.json.JsonSlurper().parseText(function.result) == [
+                    snpid: 'SNP',
+                    chrom: 'CHR',
+                    pos: 'POS',
+                    ea: 'A1',
+                    nea: 'A2',
+                    eaf: 'AF1',
+                    n: 'N',
+                    beta: 'BETA',
+                    se: 'SE',
+                    p: 'P',
+                ] },
+            )
+        }
+    }
+
+    test("binary fastGWA retains the native beta mapping without inventing an odds-ratio column") {
+        function "getAssociationColumnMappingJson"
+
+        when {
+            function {
+                """
+                input[0] = 'gcta_fastgwa'
+                input[1] = true
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert new groovy.json.JsonSlurper().parseText(function.result) == [
+                    snpid: 'SNP',
+                    chrom: 'CHR',
+                    pos: 'POS',
+                    ea: 'A1',
+                    nea: 'A2',
+                    eaf: 'AF1',
+                    n: 'N',
+                    beta: 'BETA',
+                    se: 'SE',
+                    p: 'P',
+                ] },
+            )
+        }
+    }
+
+    test("quantitative KVIK maps its A1 frequency and effective analysis size without an extra Z field") {
+        function "getAssociationColumnMappingJson"
+        tag "kvik_mapping"
+
+        when {
+            function {
+                """
+                input[0] = 'ldak_kvik'
+                input[1] = false
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert new groovy.json.JsonSlurper().parseText(function.result) == [
+                    snpid: 'Predictor',
+                    chrom: 'Chromosome',
+                    pos: 'Basepair',
+                    ea: 'A1',
+                    nea: 'A2',
+                    eaf: 'EAF',
+                    neff: 'N',
+                    p: 'Wald_P',
+                    beta: 'Effect',
+                    se: 'SE',
+                ] },
+            )
+        }
+    }
+
+    test("the association mapping registry preserves its established public projection") {
+        function "getAssociationColumnMappings"
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result.keySet().toList() == ['plink2', 'regenie', 'gcta_fastgwa', 'ldak_kvik'] },
+                { assert function.result.values().every { mapping -> mapping.keySet().every { section -> section in ['common', 'quantitative', 'binary'] } } },
+                { assert function.result.plink2.keySet().toList() == ['common'] },
+                { assert function.result.ldak_kvik.keySet().toList() == ['common', 'quantitative', 'binary'] },
+            )
+        }
+    }
+
+    test("method capabilities retain selector, matrix, prevalence and citation knowledge") {
+        function "getMethodCapabilities"
+        tag "summary_capabilities"
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result.keySet().toList() == [
+                    'plink2',
+                    'regenie',
+                    'gcta_fastgwa',
+                    'ldak_kvik',
+                    'gcta_greml',
+                    'gcta_greml_ldms',
+                    'gcta_bivariate_reml',
+                    'gcta_bivariate_reml_ldms',
+                    'ldak_sumher',
+                    'ldak_sumcors',
+                    'ldsc_h2',
+                    'ldsc_rg',
+                    'ldak_reml',
+                    'ldak_he',
+                    'ldak_pcgc',
+                ] },
+                { assert function.result.gcta_fastgwa.matrix_kind == 'gcta_sparse' },
+                { assert function.result.gcta_greml.matrix_kind == 'gcta_dense' },
+                { assert function.result.gcta_greml_ldms.matrix_kind == 'gcta_ldms' },
+                { assert function.result.gcta_bivariate_reml.domain == 'pairwise' },
+                { assert function.result.gcta_bivariate_reml.matrix_kind == 'gcta_dense' },
+                { assert function.result.gcta_bivariate_reml_ldms.domain == 'pairwise' },
+                { assert function.result.gcta_bivariate_reml_ldms.matrix_kind == 'gcta_ldms' },
+                { assert function.result.ldak_sumher.domain == 'summary_unary' },
+                { assert function.result.ldak_sumher.reference_family == 'ldak' },
+                { assert function.result.ldak_sumher.consumes_population_prevalence },
+                { assert function.result.ldak_sumcors.endpoint_domain == 'summary_statistics' },
+                { assert function.result.ldak_sumcors.consumes_population_prevalence },
+                { assert function.result.ldak_sumcors.consumes_sample_prevalence },
+                { assert function.result.ldsc_h2.reference_family == 'ldsc' },
+                { assert function.result.ldsc_h2.consumes_sample_prevalence },
+                { assert function.result.ldsc_rg.endpoint_domain == 'summary_statistics' },
+                { assert function.result.ldsc_rg.consumes_population_prevalence },
+                { assert function.result.ldsc_rg.consumes_sample_prevalence },
+                { assert function.result.ldak_reml.matrix_kind == 'ldak_kinship' },
+                { assert function.result.ldak_pcgc.requires_population_prevalence },
+                { assert function.result.ldak_he.citation_key == function.result.ldak_pcgc.citation_key },
+            )
+        }
+    }
+
+    test("pair LDMS settings resolve independently of either endpoint analysis") {
+        function "resolvePairLdmsMatrixSettings"
+
+        when {
+            function {
+                """
+                input[0] = [ld_score_region_kb: 50, ld_bins: 1, ldms_maf_edges: [0, 0.5]]
+                input[1] = [ld_score_region_kb: 200, ld_bins: 4, maf_edges: [0, 0.01, 0.05, 0.2, 0.5]]
+                input[2] = { option, reason -> error("\${option}: \${reason}") }
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == [ld_score_region_kb: 50, ld_bins: 1, maf_edges: [0, 0.5]] },
+            )
+        }
+    }
+
+    def invalidPairLdmsSettings = [
+        [name: 'non-positive LD bins', options: [ld_bins: 0], expected: 'ld_bins: expected one positive integer'],
+        [name: 'non-increasing MAF boundaries', options: [ldms_maf_edges: [0, 0.05, 0.01, 0.5]], expected: 'ldms_maf_edges: boundaries must be strictly increasing'],
+    ]
+
+    invalidPairLdmsSettings.each { scenario ->
+        test("pair LDMS settings reject ${scenario.name}") {
+            function "resolvePairLdmsMatrixSettings"
+
+            when {
+                function {
+                    """
+                    input[0] = ${scenario.options.inspect()}
+                    input[1] = [ld_score_region_kb: 200, ld_bins: 4, maf_edges: [0, 0.01, 0.05, 0.2, 0.5]]
+                    input[2] = { option, reason -> error("\${option}: \${reason}") }
+                    """
+                }
+            }
+
+            then {
+                assertAll(
+                    { assert function.failed },
+                    { assert function.stdout.join('\n').contains(scenario.expected) },
+                )
+            }
+        }
+    }
+
+    test("internal summary-statistics identities are explicit and deterministic") {
+        function "getSummaryStatisticsId"
+
+        when {
+            function {
+                """
+                input[0] = 'analysis_a'
+                input[1] = 'regenie'
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == 'analysis_a--regenie' },
+            )
+        }
+    }
+
+    def prevalenceCases = [
+        [
+            name: 'quantitative pair omits prevalence',
+            left: [is_binary: false, population_prevalence: null],
+            right: [is_binary: false, population_prevalence: null],
+            expected: [],
+        ],
+        [
+            name: 'binary left mixed pair retains the sole prevalence',
+            left: [is_binary: true, population_prevalence: 0.2],
+            right: [is_binary: false, population_prevalence: null],
+            expected: [0.2],
+        ],
+        [
+            name: 'binary right mixed pair retains the sole prevalence',
+            left: [is_binary: false, population_prevalence: null],
+            right: [is_binary: true, population_prevalence: 0.1],
+            expected: [0.1],
+        ],
+        [
+            name: 'complete binary pair retains ordered prevalences',
+            left: [is_binary: true, population_prevalence: 0.2],
+            right: [is_binary: true, population_prevalence: 0.1],
+            expected: [0.2, 0.1],
+        ],
+        [
+            name: 'incomplete binary pair omits native conversion',
+            left: [is_binary: true, population_prevalence: 0.2],
+            right: [is_binary: true, population_prevalence: null],
+            expected: [],
+        ],
+    ]
+
+    prevalenceCases.each { scenario ->
+        test("${scenario.name}") {
+            function "getGctaBivariatePrevalence"
+
+            when {
+                function {
+                    """
+                    input[0] = new groovy.json.JsonSlurper().parseText('${groovy.json.JsonOutput.toJson(scenario.left)}')
+                    input[1] = new groovy.json.JsonSlurper().parseText('${groovy.json.JsonOutput.toJson(scenario.right)}')
+                    """
+                }
+            }
+
+            then {
+                assertAll(
+                    { assert function.success },
+                    { assert function.result == scenario.expected },
+                )
+            }
+        }
+    }
+
+    test("the pair firewall permits non-file scientific GCTA arguments") {
+        function "validateNativeArgumentTokens"
+
+        when {
+            function {
+                """
+                input[0] = 'method_options.json'
+                input[1] = 'gcta_bivariate_reml--example'
+                input[2] = ['--reml-maxit', '500', '--reml-bivar-nocove']
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == ['--reml-maxit', '500', '--reml-bivar-nocove'] },
+            )
+        }
+    }
+
+    def firewallCases = [
+        [name: 'wrapper output', args: ['--out', 'hijacked'], expected: 'wrapper-owned invocation mechanics'],
+        [name: 'alternate operation', args: ['--pca', '10'], expected: 'different primary GCTA operation'],
+        [name: 'file-taking input', args: ['--keep', 'samples.txt'], expected: 'wrapper-owned invocation mechanics'],
+        [name: 'undeclared file-like value', args: ['--mystery', 'samples.txt'], expected: 'undeclared file input'],
+        [name: 'inline undeclared file-like value', args: ['--mystery=samples.txt'], expected: 'undeclared file input'],
+        [name: 'path separator', args: ['--mystery', '../samples'], expected: 'path separator'],
+        [name: 'environment assignment', args: ['--reml-maxit', 'KEY=value'], expected: 'environment assignment'],
+    ]
+
+    firewallCases.each { scenario ->
+        test("the pair firewall rejects ${scenario.name}") {
+            function "validateNativeArgumentTokens"
+
+            when {
+                function {
+                    """
+                    input[0] = 'method_options.json'
+                    input[1] = 'gcta_bivariate_reml--example'
+                    input[2] = ${groovy.json.JsonOutput.toJson(scenario.args)}
+                    """
+                }
+            }
+
+            then {
+                assertAll(
+                    { assert function.failed },
+                    { assert function.stdout.join('\n').contains(scenario.expected) },
+                )
+            }
+        }
+    }
+
+    test("the summary firewall rejects inline undeclared files") {
+        function "validateSummaryNativeArgumentTokens"
+
+        when {
+            function {
+                """
+                input[0] = 'method_options.json'
+                input[1] = 'unary_requests'
+                input[2] = 'ldsc_h2--example'
+                input[3] = 'ldsc_h2'
+                input[4] = ['--mystery=samples.sumstats']
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.failed },
+                { assert function.stdout.join('\n').contains('undeclared file input') },
+            )
+        }
+    }
+
+    test("the summary firewall permits non-file LDSC scientific arguments") {
+        function "validateSummaryNativeArgumentTokens"
+
+        when {
+            function {
+                """
+                input[0] = 'method_options.json'
+                input[1] = 'pair_requests'
+                input[2] = 'ldsc_rg--example'
+                input[3] = 'ldsc_rg'
+                input[4] = ['--n-blocks', '20', '--intercept-gencov=0']
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == ['--n-blocks', '20', '--intercept-gencov=0'] },
+            )
+        }
+    }
+
+    def ldscFileOptions = [
+        '--annot',
+        '--bfile',
+        '--cts-bin',
+        '--extract',
+        '--frqfile',
+        '--frqfile-chr',
+        '--h2-cts',
+        '--keep',
+        '--print-snps',
+        '--ref-ld',
+        '--ref-ld-chr-cts',
+        '--w-ld',
+    ]
+    ['ldsc_h2', 'ldsc_rg'].each { method ->
+        ldscFileOptions.each { option ->
+            [
+                [name: 'bare', args: [option, 'opaque_resource']],
+                [name: 'inline', args: ["${option}=opaque_resource"]],
+            ].each { form ->
+                test("the ${method} firewall structurally rejects ${form.name} ${option}") {
+                    function "validateSummaryNativeArgumentTokens"
+
+                    when {
+                        function {
+                            """
+                            input[0] = 'method_options.json'
+                            input[1] = '${method == 'ldsc_h2' ? 'unary_requests' : 'pair_requests'}'
+                            input[2] = '${method}--example'
+                            input[3] = '${method}'
+                            input[4] = ${groovy.json.JsonOutput.toJson(form.args)}
+                            """
+                        }
+                    }
+
+                    then {
+                        assertAll(
+                            { assert function.failed },
+                            { assert function.stdout.join('\n').contains('requires a typed staged resource') },
+                        )
+                    }
+                }
+            }
+        }
+
+        test("the ${method} firewall rejects the alternate LD-score operation") {
+            function "validateSummaryNativeArgumentTokens"
+
+            when {
+                function {
+                    """
+                    input[0] = 'method_options.json'
+                    input[1] = '${method == 'ldsc_h2' ? 'unary_requests' : 'pair_requests'}'
+                    input[2] = '${method}--example'
+                    input[3] = '${method}'
+                    input[4] = ['--l2']
+                    """
+                }
+            }
+
+            then {
+                assertAll(
+                    { assert function.failed },
+                    { assert function.stdout.join('\n').contains("selects a different primary operation from wrapper-owned method '${method}'") },
+                )
+            }
+        }
+
+        test("the ${method} firewall rejects the other summary-statistics operation") {
+            function "validateSummaryNativeArgumentTokens"
+
+            when {
+                function {
+                    """
+                    input[0] = 'method_options.json'
+                    input[1] = '${method == 'ldsc_h2' ? 'unary_requests' : 'pair_requests'}'
+                    input[2] = '${method}--example'
+                    input[3] = '${method}'
+                    input[4] = ['${method == 'ldsc_h2' ? '--rg' : '--h2'}']
+                    """
+                }
+            }
+
+            then {
+                assertAll(
+                    { assert function.failed },
+                    { assert function.stdout.join('\n').contains("selects a different primary operation from wrapper-owned method '${method}'") },
+                )
+            }
+        }
+    }
+
+    def ldscProtectedOptions = [
+        ldsc_h2: [
+            '--h2',
+            '--ref-ld-chr',
+            '--w-ld-chr',
+            '--samp-prev',
+            '--pop-prev',
+            '--out',
+            '--annot',
+            '--bfile',
+            '--cts-bin',
+            '--extract',
+            '--frqfile',
+            '--frqfile-chr',
+            '--h2-cts',
+            '--keep',
+            '--print-snps',
+            '--ref-ld',
+            '--ref-ld-chr-cts',
+            '--w-ld',
+            '--l2',
+            '--rg',
+        ],
+        ldsc_rg: [
+            '--rg',
+            '--ref-ld-chr',
+            '--w-ld-chr',
+            '--samp-prev',
+            '--pop-prev',
+            '--out',
+            '--annot',
+            '--bfile',
+            '--cts-bin',
+            '--extract',
+            '--frqfile',
+            '--frqfile-chr',
+            '--h2-cts',
+            '--keep',
+            '--print-snps',
+            '--ref-ld',
+            '--ref-ld-chr-cts',
+            '--w-ld',
+            '--l2',
+            '--h2',
+        ],
+    ]
+    ldscProtectedOptions.each { method, protectedOptions ->
+        def protectedSet = protectedOptions.toSet()
+        def properPrefixes = protectedOptions
+            .collectMany { option -> (3..<option.size()).collect { prefixLength -> option.substring(0, prefixLength) } }
+            .findAll { prefix -> !(prefix in protectedSet) }
+            .toSet()
+            .sort()
+        def properPrefixArguments = properPrefixes
+            .collectMany { prefix -> [prefix, "${prefix}=opaque_value"] }
+            .sort()
+
+        test("the ${method} matcher covers bare and inline forms of every proper protected-option prefix") {
+            function "getLdscProtectedNativeArgumentMatches"
+            tag "ldsc_prefix_firewall"
+
+            when {
+                function {
+                    """
+                    input[0] = '${method}'
+                    input[1] = new groovy.json.JsonSlurper().parseText('${groovy.json.JsonOutput.toJson(properPrefixArguments)}')
+                    """
+                }
+            }
+
+            then {
+                assertAll(
+                    { assert function.success },
+                    { assert function.result.keySet().toSet() == properPrefixArguments.toSet() },
+                    { assert function.result.values().every { protection -> protection && !protection.exact } },
+                    { assert function.result.every { _argument, protection -> protection.matches.any { match -> match.option.startsWith(protection.option_name) } } },
+                )
+            }
+        }
+    }
+
+    def ldscAbbreviationExamples = [
+        [name: 'annotation file', option: '--ann'],
+        [name: 'binary genotype prefix', option: '--bfi'],
+        [name: 'ambiguous category-bin prefix', option: '--cts-b'],
+        [name: 'partitioned heritability input', option: '--h2-c'],
+        [name: 'regression-weight reference', option: '--w-ld-c'],
+        [name: 'ambiguous LD-score reference', option: '--ref-ld-c'],
+        [name: 'LD-score operation', option: '--l'],
+    ]
+    ['ldsc_h2', 'ldsc_rg'].each { method ->
+        def methodExamples = ldscAbbreviationExamples + [
+            [
+                name: method == 'ldsc_h2' ? 'ambiguous RG-operation/reference prefix' : 'alternate heritability-operation prefix',
+                option: method == 'ldsc_h2' ? '--r' : '--h',
+            ],
+        ]
+        methodExamples.each { scenario ->
+            [
+                [name: 'bare', token: scenario.option],
+                [name: 'inline', token: "${scenario.option}=opaque_value"],
+            ].each { form ->
+                test("the ${method} firewall rejects ${form.name} ${scenario.name} abbreviation ${scenario.option}") {
+                    function "validateSummaryNativeArgumentTokens"
+                    tag "ldsc_prefix_firewall"
+
+                    when {
+                        function {
+                            """
+                            input[0] = 'method_options.json'
+                            input[1] = '${method == 'ldsc_h2' ? 'unary_requests' : 'pair_requests'}'
+                            input[2] = '${method}--example'
+                            input[3] = '${method}'
+                            input[4] = ['${form.token}']
+                            """
+                        }
+                    }
+
+                    then {
+                        assertAll(
+                            { assert function.failed },
+                            { assert function.stdout.join('\n').contains('protected LDSC option abbreviation') },
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    test("method option defaults have one canonical resolved shape") {
+        function "getMethodOptionDefaults"
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result.gcta == [
+                    grm_maf: null,
+                    grm_extract: [],
+                    reml_no_constrain: false,
+                    sparse_cutoff: 0.05,
+                    ld_score_region_kb: 200,
+                    ld_bins: 4,
+                    ldms_maf_edges: [0, 0.01, 0.05, 0.2, 0.5],
+                ] },
+                { assert function.result.ldak == [
+                    model: 'human_default',
+                    power: -0.25,
+                    weights_policy: 'equal',
+                    weights: [],
+                    relatedness_filter: false,
+                    kvik_step1_subset: 'all',
+                    predictor_extract: [],
+                ] },
+                { assert function.result.regenie == [
+                    step1_bsize: 1000,
+                    firth: true,
+                    firth_approx: true,
+                    firth_p_threshold: 0.01,
+                    min_mac: null,
+                ] },
+            )
+        }
+    }
+
+    test("method-family object errors retain GCTA-first attribution") {
+        function "validateMethodOptions"
+
+        when {
+            function {
+                """
+                input[0] = file('${RELATIONAL.methodOptions(outputDir, 'family_object_order', [
+                    example: [regenie: [], ldak: [], gcta: []],
+                ])}', checkIfExists: true)
+                input[1] = [[[id: 'example', association_methods: 'regenie,gcta_fastgwa', heritability_methods: 'ldak_reml', trait_type: 'quantitative']]]
+                """
+            }
+        }
+
+        then {
+            def report = function.stdout.join('\n')
+            assertAll(
+                { assert function.failed },
+                { assert report.contains("option 'gcta': expected an option object") },
+                { assert !report.contains("option 'ldak': expected an option object") },
+                { assert !report.contains("option 'regenie': expected an option object") },
+            )
+        }
+    }
+
+    test("unknown options retain REGENIE-first attribution") {
+        function "validateMethodOptions"
+
+        when {
+            function {
+                """
+                input[0] = file('${RELATIONAL.methodOptions(outputDir, 'unknown_option_order', [
+                    example: [gcta: [mystery: true], ldak: [mystery: true], regenie: [mystery: true]],
+                ])}', checkIfExists: true)
+                input[1] = [[[id: 'example', association_methods: 'regenie,gcta_fastgwa', heritability_methods: 'ldak_reml', trait_type: 'quantitative']]]
+                """
+            }
+        }
+
+        then {
+            def report = function.stdout.join('\n')
+            assertAll(
+                { assert function.failed },
+                { assert report.contains("option 'regenie.mystery': unknown option") },
+                { assert !report.contains("option 'gcta.mystery': unknown option") },
+                { assert !report.contains("option 'ldak.mystery': unknown option") },
+            )
+        }
+    }
+
+    test("invalid resolved values retain REGENIE-first attribution") {
+        function "validateMethodOptions"
+
+        when {
+            function {
+                """
+                input[0] = file('${RELATIONAL.methodOptions(outputDir, 'resolution_order', [
+                    example: [
+                        gcta: [sparse_cutoff: 2],
+                        ldak: [power: 'not-a-number'],
+                        regenie: [step1_bsize: 1.5],
+                    ],
+                ])}', checkIfExists: true)
+                input[1] = [[[id: 'example', association_methods: 'regenie,gcta_fastgwa', heritability_methods: 'ldak_reml', trait_type: 'quantitative']]]
+                """
+            }
+        }
+
+        then {
+            def report = function.stdout.join('\n')
+            assertAll(
+                { assert function.failed },
+                { assert report.contains("option 'regenie.step1_bsize': expected one positive integer") },
+                { assert !report.contains("option 'gcta.sparse_cutoff'") },
+                { assert !report.contains("option 'ldak.power'") },
+            )
+        }
+    }
+}

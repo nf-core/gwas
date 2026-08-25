@@ -1,0 +1,825 @@
+nextflow_function {
+
+    name "Test relatedness matrix identity functions"
+    script "../main.nf"
+    tag "function"
+    tag "relatedness"
+
+    // The reuse key decides how many relatedness matrices a run builds, and two of its properties are
+    // most directly observable at the function boundary.
+    //
+    // "The same construction settings reached by two different spellings produce one key" needs a key
+    // component whose value can be spelled two ways, and "different construction settings produce two
+    // keys" needs a key component that a route actually varies. The GCTA dense GRM settings map is empty
+    // by construction — it is built over every variant of the cohort bundle with no MAF filter, no SNP
+    // group and no weighting — while the LDAK route (`ldak_model`, `ldak_power`) and the LD- and
+    // MAF-stratified GCTA route (`gcta_ldms_maf_edges`) expose varying key components.
+    //
+    // These properties are therefore asserted against the functions that implement them rather than
+    // faked with a synthetic samplesheet column. Pipeline tests separately show that one cohort's traits
+    // share a build while two cohorts do not, and that the published path segment uses this key.
+
+    test("canonicalisation renders equal-meaning numbers alike whatever spelled them") {
+
+        function "canonicaliseDeclaredValue"
+
+        when {
+            function {
+                """
+                input[0] = [4, 4.0, '4', '4.00', '4e0', ' 4 ']
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                // An Integer from a typed samplesheet column, a BigDecimal from an untyped one, and
+                // the four ways a CSV cell or a JSON default can spell the same count, all reduced to
+                // one rendering. Comparing them unrendered is what would give one matrix six keys.
+                { assert function.result == '[4,4,4,4,4,4]' },
+            )
+        }
+    }
+
+    test("canonicalisation renders a fractional value alike however it was written") {
+
+        function "canonicaliseDeclaredValue"
+
+        when {
+            function {
+                """
+                input[0] = [-0.25, '-0.25', '-.25', '-2.5e-1', '-0.2500', 0.1d, '0.1']
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                // The last two are the reason BigDecimal is constructed from the value's text rather
+                // than from a double: `new BigDecimal(0.1d)` is
+                // 0.1000000000000000055511151231257827, which would split a schema default of 0.1 from
+                // a samplesheet cell of '0.1' and build the same matrix twice.
+                { assert function.result == '[-0.25,-0.25,-0.25,-0.25,-0.25,0.1,0.1]' },
+            )
+        }
+    }
+
+    test("canonicalisation keeps an unset value distinct from an empty, a zero and a false one") {
+
+        function "canonicaliseDeclaredValue"
+
+        when {
+            function {
+                """
+                input[0] = [null, '', 0, false, '0']
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                // "The researcher declared nothing" is not the same statement as "the researcher
+                // declared zero", and neither is "the researcher declared no filter". Only the last
+                // two coincide, and they mean the same number.
+                { assert function.result == '[null,,0,false,0]' },
+            )
+        }
+    }
+
+    test("canonicalisation renders a settings map by sorted key so declaration order cannot fork it") {
+
+        function "canonicaliseDeclaredValue"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    [power: '-0.25', model: 'human_default'],
+                    [model: 'human_default', power: -0.25],
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                // Two settings maps that a route could build in either order, rendered identically.
+                { assert function.result == '[{model=human_default,power=-0.25},{model=human_default,power=-0.25}]' },
+            )
+        }
+    }
+
+    test("an identifier that spells a number is still rendered as the name it is") {
+
+        function "canonicaliseIdentifier"
+
+        when {
+            function {
+                """
+                input[0] = ['01', '1', '7.0', '+7', '1e3', '1000', ' example_pgen ', ['b.pvar', 'a.pgen']]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                // The counterpart of the four tests above, and the reason there are two renderings
+                // rather than one. A cohort id, a genotype format, a genotype file name and a matrix
+                // kind are names: `01` and `1` are two cohorts a researcher can put side by side in one
+                // samplesheet, and the preflight and PREPARE_COHORT_GENOTYPES both treat them as two.
+                // Rendering them the way a declared value is rendered would collapse them onto one
+                // reuse key, and one cohort's analyses would be estimated against the other cohort's
+                // relatedness matrix. Only surrounding whitespace is taken off.
+                { assert function.result == '[01,1,7.0,+7,1e3,1000,example_pgen,[b.pvar,a.pgen]]' },
+            )
+        }
+    }
+
+    // The digests below are pinned as literals rather than snapshotted, for two reasons. The key is a
+    // path segment a researcher reads and quotes, published as
+    // `quality_control/relatedness_matrices/<key>/`, so it is part of the output contract; and resume
+    // works only because the key does not move when a samplesheet gains a row, so a silent change to
+    // how it is derived would rebuild every matrix of every existing run. Both make an accidental
+    // change something a test should refuse rather than record.
+    //
+    // `3b47382e01cd` is the same twelve characters tests/relatedness_matrix.nf.test asserts as the
+    // published directory name for cohort `example_pgen`.
+
+    test("the reuse key of the demo cohort's dense GCTA matrix") {
+
+        function "buildRelatednessMatrixKey"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    cohort: 'example_pgen',
+                    genotype_format: 'plink2',
+                    genotypes: ['example_all.pgen', 'example_all.psam', 'example_all.pvar'],
+                    kind: 'gcta_dense',
+                ]
+                input[1] = [:]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == '3b47382e01cd' },
+            )
+        }
+    }
+
+    test("the reuse key does not depend on the order the components were declared in") {
+
+        function "buildRelatednessMatrixKey"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    kind: 'gcta_dense',
+                    genotypes: ['example_all.pgen', 'example_all.psam', 'example_all.pvar'],
+                    genotype_format: 'plink2',
+                    cohort: 'example_pgen',
+                ]
+                input[1] = [:]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                // The same twelve characters as the test above, declared backwards. A key that moved
+                // with declaration order would rebuild every matrix whenever a route reordered the
+                // map it hands in.
+                { assert function.result == '3b47382e01cd' },
+            )
+        }
+    }
+
+    test("a cohort whose id spells a number keeps its own reuse key") {
+
+        function "buildRelatednessMatrixKey"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    cohort: '01',
+                    genotype_format: 'plink2',
+                    genotypes: ['example_all.pgen', 'example_all.psam', 'example_all.pvar'],
+                    kind: 'gcta_dense',
+                ]
+                input[1] = [:]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                // Cohort `01` and cohort `1` are two cohorts — the preflight lets a samplesheet carry
+                // both, and PREPARE_COHORT_GENOTYPES prepares two bundles — so they must be two keys.
+                // Two batches of one study named `01` and `1`, whose genotype files follow one naming
+                // convention in two directories, differ in nothing else the key looks at, so if the
+                // cohort id were read as a number this pair would share one matrix and one of the two
+                // cohorts' heritability estimates would be computed against the other's relatedness.
+                { assert function.result == '04aee77dcbcb' },
+                { assert function.result != 'f5b4be2796c6' },
+            )
+        }
+    }
+
+    test("the reuse key of the cohort that spells the same number differently") {
+
+        function "buildRelatednessMatrixKey"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    cohort: '1',
+                    genotype_format: 'plink2',
+                    genotypes: ['example_all.pgen', 'example_all.psam', 'example_all.pvar'],
+                    kind: 'gcta_dense',
+                ]
+                input[1] = [:]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                // The other half of the pair above, pinned so that neither key can drift onto the
+                // other.
+                { assert function.result == 'f5b4be2796c6' },
+                { assert function.result != '04aee77dcbcb' },
+            )
+        }
+    }
+
+    test("a construction setting changes the reuse key") {
+
+        function "buildRelatednessMatrixKey"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    cohort: 'example_pgen',
+                    genotype_format: 'plink2',
+                    genotypes: ['example_all.pgen', 'example_all.psam', 'example_all.pvar'],
+                    kind: 'gcta_dense',
+                ]
+                input[1] = [power: -0.25]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                // The settings map participates in the digest: the same cohort with a setting on it is
+                // a different matrix from the same cohort without one, and neither collapses onto the
+                // other. `power` stands in for whichever setting the first route to declare one
+                // registers, since the dense GCTA route declares none.
+                { assert function.result == '8a5eaf4206a3' },
+                { assert function.result != '3b47382e01cd' },
+            )
+        }
+    }
+
+    test("a construction setting reaching the key by another spelling does not fork it") {
+
+        function "buildRelatednessMatrixKey"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    cohort: 'example_pgen',
+                    genotype_format: 'plink2',
+                    genotypes: ['example_all.pgen', 'example_all.psam', 'example_all.pvar'],
+                    kind: 'gcta_dense',
+                ]
+                input[1] = [power: '-.2500']
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                // The same twelve characters as the test above, where the setting arrived as the
+                // number -0.25 rather than as a string a CSV parser produced. This is the whole of
+                // "key components are canonicalised before hashing": one matrix, one key, whichever
+                // side of the samplesheet-or-schema-default seam the value came from.
+                { assert function.result == '8a5eaf4206a3' },
+            )
+        }
+    }
+
+    test("a different construction setting is a different matrix") {
+
+        function "buildRelatednessMatrixKey"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    cohort: 'example_pgen',
+                    genotype_format: 'plink2',
+                    genotypes: ['example_all.pgen', 'example_all.psam', 'example_all.pvar'],
+                    kind: 'gcta_dense',
+                ]
+                input[1] = [power: -0.5]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == '7bb1fa679843' },
+                { assert function.result != '8a5eaf4206a3' },
+            )
+        }
+    }
+
+
+    test("heritability selectors ask for their tool-specific relatedness matrices") {
+
+        function "getRelatednessMatrixKinds"
+
+        when {
+            function {
+                """
+                input[0] = [id: 'example_pgen_qt', heritability_methods: ['gcta_greml', 'ldak_reml']]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == ['gcta_dense', 'ldak_kinship'] },
+            )
+        }
+    }
+
+    test("the GCTA LDMS and fastGWA selectors request their own matrix families") {
+
+        function "getRelatednessMatrixKinds"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    id: 'example_bfile_qt',
+                    association_methods: ['gcta_fastgwa'],
+                    heritability_methods: ['gcta_greml', 'gcta_greml_ldms'],
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                // Matrix families do not cross-reuse: the dense GREML matrix, the LDMS MGRM and the
+                // sparse fastGWA matrix have distinct formats and scientific construction settings.
+                { assert function.result == ['gcta_dense', 'gcta_ldms', 'gcta_sparse'] },
+            )
+        }
+    }
+
+    test("each relationship request asks only for its selected method matrix family") {
+
+        function "getRelatednessMatrixKinds"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    id: 'gcta_bivariate_reml_ldms--qt_bt',
+                    relationship_id: 'qt_bt',
+                    method: 'gcta_bivariate_reml_ldms',
+                    relationship_methods: ['gcta_bivariate_reml', 'gcta_bivariate_reml_ldms'],
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == ['gcta_ldms'] },
+            )
+        }
+    }
+
+    test("several LDAK estimators share one LDAK kinship kind") {
+
+        function "getRelatednessMatrixKinds"
+
+        when {
+            function {
+                """
+                input[0] = [id: 'example_bfile_qt', heritability_methods: ['ldak_reml', 'ldak_he', 'ldak_pcgc']]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == ['ldak_kinship'] },
+            )
+        }
+    }
+
+    test("GCTA LDMS construction settings are explicit key components") {
+
+        function "getRelatednessMatrixSettings"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    id: 'analysis',
+                    method_options: [gcta: [
+                        ld_score_region_kb: 100,
+                        ld_bins: 8,
+                        ldms_maf_edges: [0.0, 0.01, 0.05, 0.5],
+                    ]],
+                ]
+                input[1] = 'gcta_ldms'
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == [
+                    ld_score_region_kb: 100,
+                    ld_bins: 8,
+                    maf_edges: [0.0, 0.01, 0.05, 0.5],
+                ] },
+            )
+        }
+    }
+
+    test("LDAK kinship settings include a requested analysis filter") {
+
+        function "getRelatednessMatrixSettings"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    id: 'example_pgen_bt',
+                    method_options: [
+                        gcta: [:],
+                        ldak: [
+                            model: 'human_default',
+                            power: -0.25,
+                            relatedness_filter: true,
+                        ],
+                    ],
+                ]
+                input[1] = 'ldak_kinship'
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == [model: 'human_default', power: -0.25, weights: [mode: 'equal'], relatedness_filter: true] },
+            )
+        }
+    }
+
+    test("the fastGWA sparse cutoff is an explicit matrix key component") {
+
+        function "getRelatednessMatrixSettings"
+
+        when {
+            function {
+                """
+                input[0] = [id: 'analysis', method_options: [gcta: [sparse_cutoff: 0.025]]]
+                input[1] = 'gcta_sparse'
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == [cutoff: 0.025] },
+            )
+        }
+    }
+
+    test("an absent GCTA extraction resource retains the all-variants identity") {
+
+        function "getMethodResourceIdentity"
+
+        when {
+            function {
+                """
+                input[0] = []
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == [mode: 'all'] },
+            )
+        }
+    }
+
+    ['method-resource-a.txt', 'renamed-method-resource.txt'].each { resource_name ->
+        test("GCTA extraction resource identity ignores the path ${resource_name}") {
+
+            function "getMethodResourceIdentity"
+
+            when {
+                function {
+                    """
+                    input[0] = file('${RELATIONAL.resource(outputDir, resource_name, 'rs1\nrs2\n')}', checkIfExists: true)
+                    """
+                }
+            }
+
+            then {
+                assertAll(
+                    { assert function.success },
+                    { assert function.result == [mode: 'file', sha256: '3f11acf34ac2ee2c8a8005373a55b7f08cd39014cef30511a4213081f221add3'] },
+                    { assert !function.result.toString().contains(resource_name) },
+                )
+            }
+        }
+    }
+
+    test("changed GCTA extraction resource bytes change the identity") {
+
+        function "getMethodResourceIdentity"
+
+        when {
+            function {
+                """
+                input[0] = file('${RELATIONAL.resource(outputDir, 'changed-method-resource.txt', 'rs1\nrs3\n')}', checkIfExists: true)
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == [mode: 'file', sha256: '36e37838599ebe28544a66c30985821d0d8ef333475cbb4c164178ce37d72bb9'] },
+                { assert function.result.sha256 != '3f11acf34ac2ee2c8a8005373a55b7f08cd39014cef30511a4213081f221add3' },
+            )
+        }
+    }
+
+    test("LDAK supplied-weight settings use only the file content identity") {
+
+        function "getRelatednessMatrixSettings"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    id: 'example_pgen_bt',
+                    method_options: [
+                        gcta: [:],
+                        ldak: [
+                            model: 'custom',
+                            power: -0.5,
+                        ],
+                    ],
+                ]
+                input[1] = 'ldak_kinship'
+                input[2] = [
+                    mode: 'file',
+                    sha256: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == [
+                    model: 'custom',
+                    power: -0.5,
+                    weights: [
+                        mode: 'file',
+                        sha256: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+                    ],
+                ] },
+                { assert !function.result.toString().contains('weights.txt') },
+                { assert !function.result.toString().contains('/') },
+            )
+        }
+    }
+
+    test("an LDAK request has a filter-specific equal-weight key") {
+
+        function "buildRelatednessMatrixRequest"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    id: 'example_pgen_bt',
+                    cohort: 'example_pgen',
+                    genotype_format: 'plink2',
+                    heritability_methods: ['ldak_reml'],
+                    method_options: [
+                        gcta: [:],
+                        ldak: [
+                            model: 'human_default',
+                            power: '-.2500',
+                            relatedness_filter: true,
+                        ],
+                    ],
+                ]
+                input[1] = [
+                    file('example_all.pvar'),
+                    file('example_all.pgen'),
+                    file('example_all.psam'),
+                ]
+                input[2] = 'ldak_kinship'
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                // Independently derived from the canonical identity/settings string with `sha256sum`.
+                { assert function.result.key == 'b93562d2908b' },
+                { assert function.result.settings == [model: 'human_default', power: '-.2500', weights: [mode: 'equal'], relatedness_filter: true] },
+                { assert function.result.filter_relatedness },
+            )
+        }
+    }
+
+    test("a request carries the key, the identity behind it and the inputs outside it") {
+
+        function "buildRelatednessMatrixRequest"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    id: 'example_pgen_qt',
+                    cohort: 'example_pgen',
+                    genotype_format: 'plink2',
+                    heritability_methods: ['gcta_greml'],
+                    method_options: [
+                        gcta: [grm_maf: null, grm_extract: []],
+                        ldak: [:],
+                    ],
+                ]
+                input[1] = [
+                    file('example_all.pvar'),
+                    file('example_all.pgen'),
+                    file('example_all.psam'),
+                ]
+                input[2] = 'gcta_dense'
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                // The genotypes were handed in unsorted and by absolute path, and the key is the one
+                // the sorted basenames give: a digest that varied with the order a samplesheet listed
+                // three files in, or with where the fixture bundle happens to sit on disk, would be
+                // neither reusable nor publishable as a path.
+                { assert function.result == [
+                    kind: 'gcta_dense',
+                    cohort: 'example_pgen',
+                    settings: [:],
+                    key: '3b47382e01cd',
+                    gcta_extract: [],
+                ] },
+            )
+        }
+    }
+
+    test("a matrix-defining GCTA override changes the request key") {
+
+        function "buildRelatednessMatrixRequest"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    id: 'example_pgen_bt',
+                    cohort: 'example_pgen',
+                    genotype_format: 'plink2',
+                    heritability_methods: ['gcta_greml'],
+                    method_options: [gcta: [grm_maf: 0.01, grm_extract: [], reml_no_constrain: false], ldak: [:]],
+                ]
+                input[1] = [
+                    file('example_all.pgen'),
+                    file('example_all.psam'),
+                    file('example_all.pvar'),
+                ]
+                input[2] = 'gcta_dense'
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result.settings == [maf: 0.01] },
+                { assert function.result.key != '3b47382e01cd' },
+                { assert !function.result.containsKey('parts') },
+            )
+        }
+    }
+
+    test("operational GCTA partitioning is absent from every matrix request") {
+
+        function "buildRelatednessMatrixRequest"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    id: 'example_pgen_bt',
+                    cohort: 'example_pgen',
+                    genotype_format: 'plink2',
+                    association_methods: ['gcta_fastgwa'],
+                    heritability_methods: ['ldak_reml'],
+                    method_options: [
+                        gcta: [:],
+                        ldak: [
+                            model: 'human_default',
+                            power: -0.25,
+                            relatedness_filter: false,
+                        ],
+                    ],
+                ]
+                input[1] = [
+                    file('example_all.pgen'),
+                    file('example_all.psam'),
+                    file('example_all.pvar'),
+                ]
+                input[2] = 'ldak_kinship'
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert !function.result.containsKey('parts') },
+            )
+        }
+    }
+
+    test("an unregistered matrix kind is refused rather than silently given no settings") {
+
+        function "getRelatednessMatrixSettings"
+
+        when {
+            function {
+                """
+                input[0] = [id: 'example_pgen_qt', method_options: [gcta: [:], ldak: [:]]]
+                input[1] = 'gcta_unknown'
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                // The failure mode this guards is the worst one available: a route that registers a
+                // kind but forgets its settings would get an empty settings map, and two genuinely
+                // different matrices would silently collapse onto one key.
+                { assert function.failed },
+                { assert function.stdout.join('\n').contains("no relatedness matrix settings are registered for kind 'gcta_unknown'") },
+            )
+        }
+    }
+}

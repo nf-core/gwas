@@ -1,0 +1,56 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
+name: plink_prepare_grm_ldak
+description: Calculate LDAK genetic relationship matrix bundles from PLINK1 data, optionally retaining unrelated samples
+keywords:
+  - ldak
+  - grm
+  - genetic-relationship-matrix
+  - relatedness
+  - plink
+components:
+  - ldak/calckins
+  - ldak/filter
+  - ldak/subgrm
+input:
+  - ch_genotypes:
+      description: PLINK1 genotypes and required LDAK kinship power for the focal analysis. Public outputs retain meta.
+      structure: [map meta, path bed, path bim, path fam, number power]
+      pattern: "*.bed, *.bim, *.fam"
+      ontologies: []
+  - ch_weights:
+      description: Optional LDAK predictor weights in the second metadata-bearing tuple; use [] when absent.
+      structure: "[map meta2, path weights_file|[]]"
+      pattern: "*.{txt,weights}"
+      optional: true
+      ontologies: []
+  - ch_filter_relatedness:
+      description: Per-analysis relatedness route selector in the third metadata-bearing tuple; true applies LDAK filtering.
+      structure: [map meta3, boolean filter_relatedness]
+output:
+  - meta:
+      type: map
+      description: Unchanged focal genotype metadata.
+  - analysis_grm:
+      type: file
+      description: Selected GRM bundle; all samples directly or unrelated samples after filtering
+      pattern: "*.grm.{bin,id,details,adjust}"
+      ontologies: []
+  - unfiltered_grm:
+      type: file
+      description: All-sample GRM bundle
+      pattern: "*.grm.{bin,id,details,adjust}"
+      ontologies: []
+  - filtered_list:
+      type: file
+      description: LDAK relatedness-filter keep and lose files for analyses routed through filtering
+      pattern: "*.{keep,lose}"
+      ontologies: []
+  - maxrel:
+      type: file
+      description: LDAK maximum-relatedness diagnostic for analyses routed through filtering
+      pattern: "*.maxrel"
+      ontologies: []
+authors:
+  - "@andongni"
+maintainers:
+  - "@andongni"

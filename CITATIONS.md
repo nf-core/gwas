@@ -10,9 +10,47 @@
 
 ## Pipeline tools
 
+- [GCTA](https://doi.org/10.1016/j.ajhg.2010.11.011)
+
+  > Yang J, Lee SH, Goddard ME, Visscher PM. GCTA: a tool for genome-wide complex trait analysis. Am J Hum Genet. 2011;88(1):76-82. doi: 10.1016/j.ajhg.2010.11.011. PubMed PMID: 21167468; PubMed Central PMCID: PMC3014363.
+
+- [GCTA fastGWA](https://doi.org/10.1038/s41588-019-0530-8)
+
+  > Jiang L, Zheng Z, Qi T, et al. A resource-efficient tool for mixed model association analysis of large-scale data. Nat Genet. 2019;51(12):1749-1755. doi: 10.1038/s41588-019-0530-8. PubMed PMID: 31740819.
+
+- [GCTA GREML-LDMS](https://doi.org/10.1038/ng.3390)
+
+  > Yang J, Bakshi A, Zhu Z, et al. Genetic variance estimation with imputed variants finds negligible missing heritability for human height and body mass index. Nat Genet. 2015;47(10):1114-1120. doi: 10.1038/ng.3390. PubMed PMID: 26323059.
+
+- [GCTA bivariate REML](https://doi.org/10.1093/bioinformatics/bts474)
+
+  > Lee SH, Yang J, Goddard ME, Visscher PM, Wray NR. Estimation of pleiotropy between complex diseases using single-nucleotide polymorphism-derived genomic relationships and restricted maximum likelihood. Bioinformatics. 2012;28(19):2540-2542. doi: 10.1093/bioinformatics/bts474. PubMed PMID: 22843982.
+
+- [GWASLab](https://cloufield.github.io/gwaslab/)
+
+- [LDAK](https://doi.org/10.1016/j.ajhg.2012.10.010)
+
+  > Speed D, Hemani G, Johnson MR, Balding DJ. Improved heritability estimation from genome-wide SNPs. Am J Hum Genet. 2012;91(6):1011-1021. doi: 10.1016/j.ajhg.2012.10.010. PubMed PMID: 23217325; PubMed Central PMCID: PMC3516604.
+
+- [LDAK-KVIK](https://doi.org/10.1038/s41588-025-02286-z)
+
+  > Hof JP, Speed D. LDAK-KVIK performs fast and powerful mixed-model association analysis of quantitative and binary phenotypes. Nat Genet. 2025;57(9):2116-2123. doi: 10.1038/s41588-025-02286-z. PubMed PMID: 40789918.
+
+- [LDSC](https://doi.org/10.1038/ng.3211)
+
+  > Bulik-Sullivan BK, Loh PR, Finucane HK, et al. LD Score regression distinguishes confounding from polygenicity in genome-wide association studies. Nat Genet. 2015;47(3):291-295. doi: 10.1038/ng.3211. PubMed PMID: 25642630; PubMed Central PMCID: PMC4495769.
+
 - [MultiQC](https://pubmed.ncbi.nlm.nih.gov/27312411/)
 
-> Ewels P, Magnusson M, Lundin S, Käller M. MultiQC: summarize analysis results for multiple tools and samples in a single report. Bioinformatics. 2016 Oct 1;32(19):3047-8. doi: 10.1093/bioinformatics/btw354. Epub 2016 Jun 16. PubMed PMID: 27312411; PubMed Central PMCID: PMC5039924.
+  > Ewels P, Magnusson M, Lundin S, Käller M. MultiQC: summarize analysis results for multiple tools and samples in a single report. Bioinformatics. 2016;32(19):3047-3048. doi: 10.1093/bioinformatics/btw354. PubMed PMID: 27312411; PubMed Central PMCID: PMC5039924.
+
+- [PLINK 2](https://doi.org/10.1186/s13742-015-0047-8)
+
+  > Chang CC, Chow CC, Tellier L, Vattikuti S, Purcell SM, Lee JJ. Second-generation PLINK: rising to the challenge of larger and richer datasets. GigaScience. 2015;4:7. doi: 10.1186/s13742-015-0047-8. PubMed PMID: 25722852; PubMed Central PMCID: PMC4342193.
+
+- [REGENIE](https://doi.org/10.1038/s41588-021-00870-7)
+
+  > Mbatchou J, Barnard L, Backman J, et al. Computationally efficient whole-genome regression for quantitative and binary traits. Nat Genet. 2021;53(7):1097-1103. doi: 10.1038/s41588-021-00870-7. PubMed PMID: 34017140.
 
 ## Software packaging/containerisation tools
 
