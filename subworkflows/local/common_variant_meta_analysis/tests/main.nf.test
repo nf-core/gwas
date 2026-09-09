@@ -1,0 +1,105 @@
+nextflow_workflow {
+
+    name "Test Subworkflow COMMON_VARIANT_META_ANALYSIS"
+    script "../main.nf"
+    workflow "COMMON_VARIANT_META_ANALYSIS"
+    config "./nextflow.config"
+
+    tag "subworkflows"
+    tag "subworkflows_local"
+    tag "common_variant_meta_analysis"
+
+    def parent = { directory, name, offset ->
+        def target = new File(directory.toString(), "${name}.tsv")
+        target.text = 'SNPID\tCHR\tPOS\tEA\tNEA\tSTATUS\tEAF\tBETA\tSE\tP\tN\n' +
+            "rs1\t1\t1000\tA\tG\t9999999\t${0.20d + offset}\t${0.10d + offset}\t0.02\t1e-6\t4000\n"
+        target
+    }
+
+    def request = { outputDir, id, models ->
+        def files = (0..<5).collect { index -> parent(outputDir, "${id}_${index}", index * 0.05d) }
+        def staged = files.collect { file -> "file('${file}', checkIfExists: true)" }.join(', ')
+        """
+        input[0] = Channel.of([
+            [id: '${id}'],
+            [${staged}],
+            ['one', 'two', 'three', 'four', 'five'],
+            'gwaslab',
+            'GRCh37',
+            'quantitative',
+            ${groovy.json.JsonOutput.toJson(models)},
+            ${models.contains('mrmega') ? '1' : 'null'},
+        ])
+        """
+    }
+
+    test("fixed-only selection leaves every optional model output absent") {
+        options "-stub -resume"
+
+        when {
+            workflow {
+                request(outputDir, 'fixed_only', ['fixed'])
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert workflow.out.fixed.size() == 1 },
+                { assert workflow.out.gwaslab_log.size() == 1 },
+                { assert workflow.out.random_effects.empty },
+                { assert workflow.out.metasoft_result.empty },
+                { assert workflow.out.metasoft_log.empty },
+                { assert workflow.out.mrmega_result.empty },
+                { assert workflow.out.mrmega_log.empty },
+            )
+        }
+    }
+
+    test("random and RE2 selections expose separate native outputs") {
+        options "-stub"
+
+        when {
+            workflow {
+                request(outputDir, 'random_re2', ['fixed', 'random', 're2'])
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert workflow.out.fixed.size() == 1 },
+                { assert workflow.out.gwaslab_log.size() == 1 },
+                { assert workflow.out.random_effects.size() == 1 },
+                { assert workflow.out.metasoft_result.size() == 1 },
+                { assert workflow.out.metasoft_log.size() == 1 },
+                { assert workflow.out.mrmega_result.empty },
+                { assert workflow.out.mrmega_log.empty },
+                { assert workflow.out.metasoft_result.get(0)[0].id == 'random_re2' },
+            )
+        }
+    }
+
+    test("MR-MEGA selection runs one genome-wide native invocation") {
+        options "-stub"
+
+        when {
+            workflow {
+                request(outputDir, 'mrmega', ['fixed', 'mrmega'])
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert workflow.out.fixed.size() == 1 },
+                { assert workflow.out.gwaslab_log.size() == 1 },
+                { assert workflow.out.random_effects.empty },
+                { assert workflow.out.metasoft_result.empty },
+                { assert workflow.out.mrmega_result.size() == 1 },
+                { assert workflow.out.mrmega_log.size() == 1 },
+                { assert workflow.out.mrmega_result.get(0)[0].id == 'mrmega' },
+            )
+        }
+    }
+}

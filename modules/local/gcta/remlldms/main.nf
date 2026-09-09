@@ -7,7 +7,7 @@ process GCTA_REMLLDMS {
         : 'community.wave.seqera.io/library/gcta:1.94.1--9bc35dc424fcf6e9'}"
 
     input:
-    tuple val(meta), path(mgrm_file), path(grm_files)
+    tuple val(meta), path(grm_files), val(grm_prefixes)
     tuple val(meta2), path(phenotypes_file)
     tuple val(meta3), path(quant_covariates_file)
     tuple val(meta4), path(cat_covariates_file)
@@ -23,9 +23,13 @@ process GCTA_REMLLDMS {
     script:
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
+    def mgrm_entries = grm_prefixes.collect { grm_prefix -> "\"${grm_prefix}\"" }.join(' ')
+    def mgrm_file = "${prefix}.mgrm"
     def qcovar_param = quant_covariates_file ? "--qcovar \"${quant_covariates_file}\"" : ''
     def covar_param = cat_covariates_file ? "--covar \"${cat_covariates_file}\"" : ''
     """
+    printf '%s\n' ${mgrm_entries} > "${mgrm_file}"
+
     gcta \\
         --reml \\
         --mgrm "${mgrm_file}" \\

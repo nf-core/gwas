@@ -1,15 +1,15 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/modules/meta-schema.json
 name: "custom_gctamergegrmparts"
-description: Concatenate row-partitioned GCTA dense GRM files into a single GRM bundle
+description: Concatenate explicitly ordered row-partitioned GCTA dense GRM files into one bundle
 keywords:
   - gcta
   - genome-wide complex trait analysis
   - grm
-  - genomic relationship matrix
+  - genetic relationship matrix
   - merge
 tools:
-  - custom:
-      description: Checked-in bash helper concatenating GCTA --make-grm-part outputs
+  - "custom_gctamergegrmparts":
+      description: "A static helper for concatenating GCTA --make-grm-part outputs in explicit numeric part order."
       homepage: "https://github.com/nf-core/modules"
       documentation: "https://yanglab.westlake.edu.cn/software/gcta/#MakingaGRM"
       licence: ["MIT"]
@@ -20,9 +20,12 @@ input:
         description: Groovy map containing GRM identity
     - grm_files:
         type: file
-        description: Complete set of row-partitioned GRM files for one stratum (.grm.bin, .grm.N.bin and .grm.id parts, any order)
+        description: Complete set of row-partitioned GRM files staged for the ordered part records
         pattern: "*.grm.*"
         ontologies: []
+    - ordered_parts:
+        type: list
+        description: Numeric-part-ordered records naming each staged GRM binary, sample-count and ID part
 output:
   grm_files:
     - - meta:
@@ -30,7 +33,7 @@ output:
           description: Groovy map containing GRM identity
       - "${prefix}.grm.*":
           type: file
-          description: Concatenated GCTA dense-GRM bundle (.grm.bin, .grm.N.bin and .grm.id)
+          description: Concatenated GCTA dense-GRM bundle in explicit numeric part order
           pattern: "*.grm.*"
           ontologies: []
   versions:

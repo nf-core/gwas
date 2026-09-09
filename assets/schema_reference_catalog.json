@@ -26,10 +26,7 @@
                     "variant_id_system": { "type": "string", "pattern": "^\\S+$" },
                     "hapmap3_snplist": { "type": "string", "format": "file-path", "exists": true },
                     "reference_ld_scores": { "type": "string", "format": "directory-path", "exists": true },
-                    "regression_weights": { "type": "string", "format": "directory-path", "exists": true },
-                    "hapmap3_sha256": { "type": "string", "pattern": "^[a-fA-F0-9]{64}$" },
-                    "reference_ld_scores_sha256": { "type": "string", "pattern": "^[a-fA-F0-9]{64}$" },
-                    "regression_weights_sha256": { "type": "string", "pattern": "^[a-fA-F0-9]{64}$" }
+                    "regression_weights": { "type": "string", "format": "directory-path", "exists": true }
                 }
             }
         },
@@ -48,8 +45,7 @@
                         "type": "string",
                         "enum": ["BLD-LDAK", "Baseline-LD-v2.2", "LDAK-Thin", "Uniform-GCTA", "Human-Default"]
                     },
-                    "tagging_file": { "type": "string", "format": "file-path", "exists": true },
-                    "tagging_sha256": { "type": "string", "pattern": "^[a-fA-F0-9]{64}$" }
+                    "tagging_file": { "type": "string", "format": "file-path", "exists": true }
                 }
             }
         }

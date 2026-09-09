@@ -58,7 +58,7 @@ nextflow_pipeline {
             def summaryStatistics = new File("${params.outdir}/summary_statistics")
             def matrices = new File("${params.outdir}/quality_control/relatedness_matrices")
             def harmonisedResults = analysisIds.collect { analysisId ->
-                new File(summaryStatistics, "${analysisId}--gcta_fastgwa/${analysisId}--gcta_fastgwa.canonical.tsv.gz")
+                new File(summaryStatistics, "${analysisId}--gcta_fastgwa/${analysisId}--gcta_fastgwa.gwaslab.tsv.gz")
             }
             def commandFiles = workFiles(outputDir).findAll { entry ->
                 entry.name == '.command.sh' && entry.text.contains('--grm-sparse') && entry.text.contains('--fastGWA-mlm')
@@ -81,12 +81,12 @@ nextflow_pipeline {
             def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
             assertAll(
                 { assert workflow.success },
-                // The default and explicit 0.05 settings share one sparse family. A valid 0.025 override
-                // changes the scientific identity and therefore builds a second dense base and sparse matrix.
-                { assert TRACE.count(workflow, 'GCTA_MAKEGRMPART') == 2 },
-                { assert TRACE.count(workflow, 'CUSTOM_GCTAMERGEGRMPARTS') == 2 },
+                // The default and explicit 0.05 settings share one sparse child. A valid 0.025 override
+                // creates a second child of the same dense base without repeating dense construction.
+                { assert TRACE.count(workflow, 'GCTA_MAKEGRMPART') == 1 },
+                { assert TRACE.count(workflow, 'CUSTOM_GCTAMERGEGRMPARTS') == 1 },
                 { assert TRACE.count(workflow, 'GCTA_MAKEBKSPARSE') == 2 },
-                { assert matrices.list().size() == 2 },
+                { assert matrices.list().size() == 3 },
                 { assert TRACE.count(workflow, 'GCTA_FASTGWA') == 4 },
                 { assert TRACE.count(workflow, 'GWASLAB_HARMONIZE') == 4 },
                 { assert TRACE.tags(workflow, 'GCTA_FASTGWA').sort() == analysisIds },
@@ -113,62 +113,128 @@ nextflow_pipeline {
         }
     }
 
-    def invalidOptions = [
-        [
-            name: 'invalid scalar type',
-            value: 'close',
-            reason: 'number between 0 and 1',
-            associationMethod: 'gcta_fastgwa',
-            heritabilityMethod: '',
-        ],
-        [
-            name: 'out of range value',
-            value: 1.01,
-            reason: 'number between 0 and 1',
-            associationMethod: 'gcta_fastgwa',
-            heritabilityMethod: '',
-        ],
-        [
-            name: 'unselected fastGWA option',
-            value: 0.025,
-            reason: "consumed by 'gcta_fastgwa' only",
-            associationMethod: '',
-            heritabilityMethod: 'gcta_greml',
-        ],
-    ]
+    test("sparse-child identity controls resume without rebuilding its dense parent") {
+        options "-stub"
 
-    invalidOptions.each { scenario ->
-        test("method-options rejects ${scenario.name} before matrix construction") {
-            when {
-                params {
-                    outdir = "$outputDir"
-                    cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, "gcta_sparse_${scenario.name.replace(' ', '_')}")
-                    analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, "gcta_sparse_${scenario.name.replace(' ', '_')}", { rows ->
-                        rows[0].association_methods = scenario.associationMethod
-                        rows[0].heritability_methods = scenario.heritabilityMethod
-                    })
-                    method_options = RELATIONAL.methodOptions(
-                        outputDir,
-                        "gcta_sparse_${scenario.name.replace(' ', '_')}",
-                        [example_pgen_qt: [gcta: [sparse_cutoff: scenario.value]]],
-                    )
-                    gcta_grm_parts = 1
-                }
-            }
-
-            then {
-                def report = VALIDATION.report(outputDir, workflow.stdout)
-                assertAll(
-                    { assert !workflow.success },
-                    { assert report.contains(params.method_options.toString()) },
-                    { assert report.contains("analysis_id 'example_pgen_qt'") },
-                    { assert report.contains("option 'gcta.sparse_cutoff'") },
-                    { assert report.contains(scenario.reason) },
-                    { assert TRACE.count(workflow, 'GCTA_MAKEGRMPART') == 0 },
-                    { assert TRACE.count(workflow, 'GCTA_MAKEBKSPARSE') == 0 },
-                    { assert TRACE.count(workflow, 'GCTA_FASTGWA') == 0 },
-                )
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, 'gcta_sparse_resume')
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, 'gcta_sparse_resume', { rows ->
+                    rows[0].association_methods = 'gcta_fastgwa'
+                    rows[0].heritability_methods = ''
+                })
+                gcta_grm_parts = 1
             }
         }
+
+        then {
+            def unchangedTrace = RESUME.rerun(outputDir, [:])
+            def changedOptions = RELATIONAL.methodOptions(outputDir, 'gcta_sparse_resume_changed', [
+                example_pgen_qt: [gcta: [sparse_cutoff: 0.025]],
+            ])
+            def changedTrace = RESUME.rerun(outputDir, [method_options: changedOptions])
+            def nativeResult = new File(
+                params.outdir.toString(),
+                'association/gcta_fastgwa/example_pgen_qt/example_pgen_qt.gcta_fastgwa.fastGWA',
+            )
+            assertAll(
+                { assert workflow.success },
+                { assert RESUME.statuses(unchangedTrace, 'GCTA_MAKEGRMPART') == ['CACHED'] },
+                { assert RESUME.statuses(unchangedTrace, 'CUSTOM_GCTAMERGEGRMPARTS') == ['CACHED'] },
+                { assert RESUME.statuses(unchangedTrace, 'GCTA_MAKEBKSPARSE') == ['CACHED'] },
+                { assert RESUME.statuses(unchangedTrace, 'GCTA_FASTGWA') == ['CACHED'] },
+                { assert RESUME.statuses(changedTrace, 'GCTA_MAKEGRMPART') == ['CACHED'] },
+                { assert RESUME.statuses(changedTrace, 'CUSTOM_GCTAMERGEGRMPARTS') == ['CACHED'] },
+                { assert RESUME.statuses(changedTrace, 'GCTA_MAKEBKSPARSE') == ['COMPLETED'] },
+                { assert RESUME.statuses(changedTrace, 'GCTA_FASTGWA') == ['COMPLETED'] },
+                { assert RESUME.tasks(changedTrace, 'GCTA_MAKEBKSPARSE').size() == 1 },
+                { assert RESUME.tasks(changedTrace, 'GCTA_FASTGWA').size() == 1 },
+                { assert nativeResult.isFile() },
+            )
+        }
     }
+
+    test("combined fastGWA and GREML options select one configured dense parent") {
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, 'gcta_combined_dense_parent')
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, 'gcta_combined_dense_parent', { rows ->
+                    rows[0].association_methods = 'gcta_fastgwa'
+                    rows[0].heritability_methods = 'gcta_greml'
+                })
+                method_options = RELATIONAL.methodOptions(outputDir, 'gcta_combined_dense_parent', [
+                    example_pgen_qt: [gcta: [
+                        grm_maf: 0.01,
+                        grm_extract: RELATIONAL.resource(outputDir, 'combined-gcta-extract.txt', 'rs1\nrs2\n'),
+                        sparse_cutoff: 0.025,
+                    ]],
+                ])
+                gcta_grm_parts = 1
+                save_relatedness_matrices = true
+            }
+        }
+
+        then {
+            def matrices = new File("${params.outdir}/quality_control/relatedness_matrices")
+            def heritability = new File("${params.outdir}/heritability/individual/gcta_greml")
+            def association = new File("${params.outdir}/association/gcta_fastgwa")
+            def originalMatrixKeys = matrices.list().toList().sort()
+            def originalHeritability = heritability.list().toList().sort()
+            def originalAssociation = association.list().toList().sort()
+            def unchangedTrace = RESUME.rerun(outputDir, [:])
+            def unchangedMatrixKeys = matrices.list().toList().sort()
+            def unchangedHeritability = heritability.list().toList().sort()
+            def unchangedAssociation = association.list().toList().sort()
+            def changedOptions = RELATIONAL.methodOptions(outputDir, 'gcta_combined_dense_parent_changed', [
+                example_pgen_qt: [gcta: [
+                    grm_maf: 0.02,
+                    grm_extract: RELATIONAL.resource(outputDir, 'combined-gcta-extract-changed.txt', 'rs1\nrs3\n'),
+                    sparse_cutoff: 0.025,
+                ]],
+            ])
+            def changedTrace = RESUME.rerun(outputDir, [method_options: changedOptions])
+            def updatedMatrixKeys = matrices.list().toList().sort()
+            def updatedHeritability = heritability.list().toList().sort()
+            def updatedAssociation = association.list().toList().sort()
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'GCTA_MAKEGRMPART') == 1 },
+                { assert TRACE.count(workflow, 'CUSTOM_GCTAMERGEGRMPARTS') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_MAKEBKSPARSE') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_REML') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_FASTGWA') == 1 },
+                { assert originalMatrixKeys.size() == 2 },
+                { assert originalHeritability == ['example_pgen_qt'] },
+                { assert originalAssociation == ['example_pgen_qt'] },
+                { assert RESUME.statuses(unchangedTrace, 'GCTA_MAKEGRMPART') == ['CACHED'] },
+                { assert RESUME.statuses(unchangedTrace, 'CUSTOM_GCTAMERGEGRMPARTS') == ['CACHED'] },
+                { assert RESUME.statuses(unchangedTrace, 'GCTA_MAKEBKSPARSE') == ['CACHED'] },
+                { assert RESUME.statuses(unchangedTrace, 'GCTA_REML') == ['CACHED'] },
+                { assert RESUME.statuses(unchangedTrace, 'GCTA_FASTGWA') == ['CACHED'] },
+                { assert unchangedMatrixKeys == originalMatrixKeys },
+                { assert unchangedHeritability == originalHeritability },
+                { assert unchangedAssociation == originalAssociation },
+                { assert RESUME.statuses(changedTrace, 'GCTA_MAKEGRMPART') == ['COMPLETED'] },
+                { assert RESUME.statuses(changedTrace, 'CUSTOM_GCTAMERGEGRMPARTS') == ['COMPLETED'] },
+                { assert RESUME.statuses(changedTrace, 'GCTA_MAKEBKSPARSE') == ['COMPLETED'] },
+                { assert RESUME.statuses(changedTrace, 'GCTA_REML') == ['COMPLETED'] },
+                { assert RESUME.statuses(changedTrace, 'GCTA_FASTGWA') == ['COMPLETED'] },
+                { assert RESUME.tasks(changedTrace, 'GCTA_MAKEGRMPART').size() == 1 },
+                { assert RESUME.tasks(changedTrace, 'CUSTOM_GCTAMERGEGRMPARTS').size() == 1 },
+                { assert RESUME.tasks(changedTrace, 'GCTA_MAKEBKSPARSE').size() == 1 },
+                { assert updatedMatrixKeys.size() == 4 },
+                { assert updatedMatrixKeys.containsAll(originalMatrixKeys) },
+                { assert updatedHeritability == originalHeritability },
+                { assert updatedAssociation == originalAssociation },
+            )
+        }
+    }
+
+    // The `gcta.sparse_cutoff` refusals this file used to drive are asserted, message and attribution alike,
+    // by `subworkflows/local/validate_gwas_input/tests/method_options_gcta.function.nf.test`; the family's
+    // pipeline sentinel is `relational_gcta_greml.nf.test`.
 }

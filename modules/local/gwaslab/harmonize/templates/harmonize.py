@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
 
 import json
-import math
-import numbers
 import os
-import shlex
 import sys
 
-# The packaged image is read-only at the locations selected by Numba and Matplotlib.
+# Importing GWASLab 4.1.9 as a non-root container user raises RuntimeError when
+# Numba cache=True targets the read-only package directory. Retire when the bioconda::gwaslab pin moves past the fix.
 os.environ.setdefault("NUMBA_CACHE_DIR", os.path.abspath(".numba_cache"))
 os.environ.setdefault("MPLCONFIGDIR", os.path.abspath(".matplotlib"))
 
@@ -21,8 +19,6 @@ def optional_path(value: str):
 def load_format(value: str):
     """Return a GWASLab format name or explicit constructor column mapping."""
     if not value.lstrip().startswith("{"):
-        if value.startswith("auto"):
-            raise ValueError("Automatic input-format detection is not supported")
         return value, {}
     mapping = json.loads(value)
     if not isinstance(mapping, dict) or not mapping:
@@ -38,6 +34,9 @@ def load_format(value: str):
 # the six significant digits the association programmes themselves write. GWASLab's remaining
 # defaults are left alone: allele frequencies already use a significant-digit format and P already
 # uses scientific notation.
+# GWASLab 4.1.9 to_format
+# defaults to {:.4f}, which zeroes small BETA/SE.
+# Retire if float_formats becomes GWASLab's default.
 FLOAT_FORMATS = {
     column: "{:.6e}"
     for column in [
@@ -58,20 +57,6 @@ FLOAT_FORMATS = {
     ]
 }
 prefix = "$task.ext.prefix" if "$task.ext.prefix" != "null" else "$meta.id"
-args = shlex.split("$task.ext.args" if "$task.ext.args" != "null" else "")
-allowed = {"--keep-invalid", "--ref-alt-freq"}
-unknown = [arg for arg in args if arg.startswith("--") and arg not in allowed]
-if unknown:
-    raise ValueError(f"Unsupported option(s): {', '.join(unknown)}")
-
-remove_invalid = "--keep-invalid" not in args
-ref_alt_freq = None
-if "--ref-alt-freq" in args:
-    index = args.index("--ref-alt-freq")
-    if index + 1 == len(args):
-        raise ValueError("--ref-alt-freq requires a value")
-    ref_alt_freq = args[index + 1]
-
 builds = {"GRCh37": "19", "GRCh38": "38"}
 if "$genome_build" not in builds:
     raise ValueError("genome_build must be GRCh37 or GRCh38")
@@ -88,29 +73,17 @@ sumstats.harmonize(
     ref_seq=optional_path("$reference_fasta"),
     ref_rsid_vcf=optional_path("$rsid_reference_vcf"),
     ref_infer=optional_path("$strand_reference_vcf"),
-    ref_alt_freq=ref_alt_freq,
     threads=$task.cpus,
-    remove=remove_invalid,
-    fix_id_kwargs={"fixchrpos": True},
-    sweep_mode=False,
 )
 if "$meta.method" == "ldak_kvik":
     if "N_EFF" not in sumstats.data.columns:
         raise ValueError("LDAK-KVIK harmonisation requires GWASLab's N_EFF column")
-    effective_n = sumstats.data["N_EFF"]
-    invalid_effective_n = effective_n.isna() | ~effective_n.map(
-        lambda value: isinstance(value, numbers.Real) and math.isfinite(value) and value > 0
-    )
-    if invalid_effective_n.any():
-        raise ValueError(
-            "LDAK-KVIK effective analysis sizes must be numeric, finite, non-null and greater than zero"
-        )
     if "N" in sumstats.data.columns:
         raise ValueError("LDAK-KVIK harmonisation cannot promote N_EFF because N already exists")
     sumstats.data.rename(columns={"N_EFF": "N"}, inplace=True)
 if "P" not in sumstats.data.columns:
     # REGENIE and some supported external formats report -log10(P) instead of P. The
-    # canonical contract requires P, so ask GWASLab to derive it from whichever
+    # pipeline-standard representation requires P, so ask GWASLab to derive it from whichever
     # standardised test-statistic column the explicit input format supplied.
     sumstats.fill_data(to_fill=["P"])
 sumstats.to_format(

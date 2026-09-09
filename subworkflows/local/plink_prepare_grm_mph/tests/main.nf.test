@@ -1,0 +1,120 @@
+nextflow_workflow {
+
+    name "Test the one-component native MPH matrix builder"
+    script "../main.nf"
+    workflow "PLINK_PREPARE_GRM_MPH"
+    tag "subworkflow"
+    tag "mph"
+    tag "grm"
+
+    // The shipped popgen trio is 200 samples by 220 variants on chromosome 1, FAM-ordered `per0..per199`, with
+    // no monomorphic variant. That last property is what makes the declared predictor count and MPH's own
+    // post-quality-control count comparable at all: MPH's entire default filter is dropping MAF == 0 variants,
+    // so on a fixture that has none the two must agree exactly.
+    def POPGEN = { member -> "file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.${member}', checkIfExists: true)" }
+    def genotypes = { meta -> "[${meta}, ${POPGEN('bed')}, ${POPGEN('bim')}, ${POPGEN('fam')}]" }
+
+    def countRows = { counts ->
+        def lines = new File(counts.toString()).readLines().findAll { line -> line.trim() }
+        return lines.drop(1).collectEntries { row -> [row.split('\t')[0], row.split('\t')[1] as int] }
+    }
+
+    def namesOf = { member -> (member instanceof List ? member : [member]).collect { entry -> new File(entry.toString()).name }.sort() }
+
+    test("a real one-component matrix covers the whole declared autosomal universe") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+                // The pipeline's own publication of this bundle is enabled here so that its absence below is
+                // evidence about the selector rather than about the switch.
+                save_relatedness_matrices = true
+            }
+            workflow {
+                """
+                input[0] = channel.of(${genotypes("[id: 'popgen_dense', key: 'popgen_dense_key']")})
+                input[1] = 22
+                """
+            }
+        }
+
+        then {
+            def matrix = workflow.out.grm_files.first()
+            def counts = countRows(workflow.out.counts.first()[1])
+            def binary = new File(matrix[1].find { entry -> entry.toString().endsWith('.grm.bin') }.toString())
+            def header = java.nio.ByteBuffer.wrap(binary.bytes[0..7] as byte[]).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+            def sampleCount = header.getInt()
+            def weightSum = header.getFloat()
+            def iids = new File(matrix[1].find { entry -> entry.toString().endsWith('.grm.iid') }.toString()).readLines().findAll { line -> line.trim() }
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'CUSTOM_MPHSNPINFO') == 1 },
+                { assert TRACE.count(workflow, 'MPH_MAKEGRM') == 1 },
+                { assert workflow.out.grm_files.size() == 1 },
+                { assert workflow.out.counts.size() == 1 },
+                // The whole matrix is the pair, never one member: MPH writes no `.grm.N.bin` and no `.grm.id`.
+                { assert namesOf(matrix[1]) == ['popgen_dense.grm.bin', 'popgen_dense.grm.iid'] },
+                { assert matrix[0] == [id: 'popgen_dense', key: 'popgen_dense_key'] },
+                { assert workflow.out.counts.first()[0] == [id: 'popgen_dense', key: 'popgen_dense_key'] },
+                // The one-component case declares exactly one weight column, named by the adapter rather than
+                // by this composition, plus the two universe-accounting rows.
+                { assert countRows(workflow.out.counts.first()[1]).keySet().toList() == ['all', '__unassigned__', '__bim_rows__'] },
+                { assert counts.all + counts.__unassigned__ == counts.__bim_rows__ },
+                { assert counts.__bim_rows__ == 220 },
+                // Every fixture variant is on chromosome 1, so the declared autosomal universe is all of them
+                // and nothing falls outside it.
+                { assert counts.all == 220 },
+                { assert counts.__unassigned__ == 0 },
+                // `.grm.bin` is `int32 n`, then a `float32` sum of the SNP weights, then a `float32` triangle.
+                { assert binary.length() == 8 + 4 * 200 * 201 / 2 },
+                { assert binary.length() == 80408 },
+                { assert sampleCount == 200 },
+                // The header float is the weight sum, not `sum2pq`. Every declared weight is 1 here and the
+                // fixture has no monomorphic variant for MPH to drop, so it must equal the declared count.
+                { assert weightSum == 220.0f },
+                { assert weightSum == counts.all as float },
+                // MPH indexes the matrix by the order of `.grm.iid` and detects no violation of that rule, so
+                // the sample map is asserted rather than assumed: one IID per line, FAM order, no duplicates.
+                { assert iids.size() == 200 },
+                { assert iids.first() == 'per0' },
+                { assert iids.last() == 'per199' },
+                { assert iids.unique().size() == 200 },
+                { assert iids.every { iid -> !iid.contains('\t') && !iid.contains(' ') } },
+                // The pipeline's publication selector for this bundle is qualified by the calling route, so it
+                // cannot match at composition scope and no output directory is written even with publication
+                // switched on. `MPH_MAKEGRM` has no bare selector, so nothing else publishes either.
+                { assert ((new File("${params.outdir}").list() ?: []) as List).findAll { entry -> entry != 'pipeline_info' } == [] },
+                // `.grm.bin` was measured to be byte-identical across `--num_threads` 1, 2 and 4, so the
+                // matrix content is snapshot-stable despite the thread count being a resource decision.
+                { assert snapshot(workflow.out).match() },
+            )
+        }
+    }
+
+    test("an empty request stream builds nothing") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                input[0] = channel.empty()
+                input[1] = 22
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'CUSTOM_MPHSNPINFO') == 0 },
+                { assert TRACE.count(workflow, 'MPH_MAKEGRM') == 0 },
+                { assert workflow.out.grm_files.size() == 0 },
+                { assert workflow.out.counts.size() == 0 },
+            )
+        }
+    }
+}

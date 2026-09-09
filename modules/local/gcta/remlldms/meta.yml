@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/modules/meta-schema.json
 name: "gcta_remlldms"
-description: Run REML-LDMS heritability estimation with an MGRM manifest
+description: Run REML-LDMS heritability estimation from an explicitly ordered GRM family
 keywords:
   - gcta
   - genome-wide complex trait analysis
@@ -23,22 +23,17 @@ input:
   - - meta:
         type: map
         description: |
-          Groovy map containing MGRM analysis metadata
+          Groovy map containing GRM family analysis metadata
           e.g. `[ id:'plink_simulated_ldms' ]`
-          `meta.id` supplies the overridable default output prefix, while
-          `mgrm_file` supplies the manifest passed to `--mgrm`.
-    - mgrm_file:
-        type: file
-        description: MGRM manifest file passed directly to `--mgrm`
-        pattern: "*.mgrm"
-        ontologies:
-          - edam: "http://edamontology.org/format_2330"
+          `meta.id` supplies the overridable default output prefix.
     - grm_files:
         type: file
-        description: GRM bundles referenced by `mgrm_file`; each manifest entry
-          should have matching `*.grm.{id,bin,N.bin}` files in this bundle
+        description: GRM bundles staged beside the task-local MGRM manifest
         pattern: "*.grm.*"
         ontologies: []
+    - grm_prefixes:
+        type: list
+        description: GRM basenames in the explicit component order written to the task-local MGRM manifest
   - - meta2:
         type: map
         description: |
@@ -77,7 +72,7 @@ output:
     - - meta:
           type: map
           description: |
-            Groovy map containing the unchanged input MGRM analysis metadata
+            Groovy map containing the unchanged input GRM-family analysis metadata
             e.g. `[ id:'plink_simulated_ldms' ]`
       - "*.hsq":
           type: file
@@ -89,7 +84,7 @@ output:
     - - meta:
           type: map
           description: |
-            Groovy map containing the unchanged input MGRM analysis metadata
+            Groovy map containing the unchanged input GRM-family analysis metadata
             e.g. `[ id:'plink_simulated_ldms' ]`
       - "*.log":
           type: file

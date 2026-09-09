@@ -92,27 +92,12 @@ nextflow_pipeline {
         }
     }
 
+    // The two sentinels of the GCTA method-option family and of resource resolution. Every other refusal
+    // these manifests used to drive is asserted, message and attribution alike, by
+    // `subworkflows/local/validate_gwas_input/tests/method_options_gcta.function.nf.test`; what only a
+    // pipeline run can show is that the manifest's own method selection reaches the resolver and that the
+    // refusal happens before any task is submitted, which is what these two keep.
     def invalidOptions = [
-        [
-            name: 'malformed document',
-            options: '{"example_pgen_qt":',
-            expected: ["analysis_id '<document>'", "option '<root>'", 'malformed JSON'],
-        ],
-        [
-            name: 'unknown analysis',
-            options: [missing_analysis: [gcta: [reml_no_constrain: true]]],
-            expected: ["analysis_id 'missing_analysis'", "option '<analysis>'", 'not declared in the analysis manifest'],
-        ],
-        [
-            name: 'unknown option',
-            options: [example_pgen_qt: [gcta: [mystery: true]]],
-            expected: ["analysis_id 'example_pgen_qt'", "option 'gcta.mystery'", 'unknown option'],
-        ],
-        [
-            name: 'invalid scalar type',
-            options: [example_pgen_qt: [gcta: [grm_maf: 'small']]],
-            expected: ["analysis_id 'example_pgen_qt'", "option 'gcta.grm_maf'", 'number between 0 and 0.5'],
-        ],
         [
             name: 'invalid resource',
             options: [example_pgen_qt: [gcta: [grm_extract: '/definitely/missing/extract.txt']]],
@@ -124,25 +109,6 @@ nextflow_pipeline {
             unselected: true,
             expected: ["analysis_id 'example_pgen_qt'", "option 'gcta.reml_no_constrain'", "does not select a GCTA method"],
         ],
-        [
-            name: 'dense MAF option on fastGWA',
-            options: [example_pgen_qt: [gcta: [grm_maf: 0.01]]],
-            associationMethod: 'gcta_fastgwa',
-            heritabilityMethod: '',
-            expected: ["analysis_id 'example_pgen_qt'", "option 'gcta.grm_maf'", "consumed by 'gcta_greml' only"],
-        ],
-        [
-            name: 'dense extract resource on fastGWA',
-            resourceOption: true,
-            associationMethod: 'gcta_fastgwa',
-            heritabilityMethod: '',
-            expected: ["analysis_id 'example_pgen_qt'", "option 'gcta.grm_extract'", "consumed by 'gcta_greml' only"],
-        ],
-        [
-            name: 'operational partition in document',
-            options: [example_pgen_qt: [gcta: [gcta_grm_parts: 2]]],
-            expected: ["analysis_id 'example_pgen_qt'", "option 'gcta.gcta_grm_parts'", 'run/profile configuration'],
-        ],
     ]
 
     invalidOptions.each { scenario ->
@@ -152,19 +118,13 @@ nextflow_pipeline {
                     outdir = "$outputDir"
                     cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, "gcta_options_${scenario.name.replace(' ', '_')}")
                     analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, "gcta_options_${scenario.name.replace(' ', '_')}", { rows ->
-                        rows[0].association_methods = scenario.containsKey('associationMethod')
-                            ? scenario.associationMethod
-                            : scenario.unselected ? 'plink2' : ''
-                        rows[0].heritability_methods = scenario.containsKey('heritabilityMethod')
-                            ? scenario.heritabilityMethod
-                            : scenario.unselected ? '' : 'gcta_greml'
+                        rows[0].association_methods = scenario.unselected ? 'regenie' : ''
+                        rows[0].heritability_methods = scenario.unselected ? '' : 'gcta_greml'
                     })
                     method_options = RELATIONAL.methodOptions(
                         outputDir,
                         "gcta_options_${scenario.name.replace(' ', '_')}",
-                        scenario.resourceOption
-                            ? [example_pgen_qt: [gcta: [grm_extract: RELATIONAL.resource(outputDir, 'fastgwa-unused-extract.txt', 'rs1\n')]]]
-                            : scenario.options,
+                        scenario.options,
                     )
                     gcta_grm_parts = 1
                 }
@@ -176,6 +136,9 @@ nextflow_pipeline {
                     { assert !workflow.success },
                     { assert report.contains(params.method_options.toString()) },
                     { assert scenario.expected.every { fragment -> report.contains(fragment) } },
+                    // Stronger than the named zero-counts it replaces: nothing at all was submitted, so the
+                    // refusal cannot have been reached through a task that ran and failed.
+                    { assert workflow.trace.tasks().isEmpty() },
                     { assert TRACE.count(workflow, 'GCTA_MAKEGRMPART') == 0 },
                 )
             }

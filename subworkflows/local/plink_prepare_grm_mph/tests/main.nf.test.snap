@@ -1,0 +1,55 @@
+{
+    "a real one-component matrix covers the whole declared autosomal universe": {
+        "content": [
+            {
+                "0": [
+                    [
+                        {
+                            "id": "popgen_dense",
+                            "key": "popgen_dense_key"
+                        },
+                        [
+                            "popgen_dense.grm.bin:md5,01f3a2f6d089b06505ce14309144ad2f",
+                            "popgen_dense.grm.iid:md5,4aaa3586dd143906e5db22334a257566"
+                        ]
+                    ]
+                ],
+                "1": [
+                    [
+                        {
+                            "id": "popgen_dense",
+                            "key": "popgen_dense_key"
+                        },
+                        "popgen_dense.snp_info.counts.tsv:md5,4c6fdce17849fb371d068e13598f9383"
+                    ]
+                ],
+                "counts": [
+                    [
+                        {
+                            "id": "popgen_dense",
+                            "key": "popgen_dense_key"
+                        },
+                        "popgen_dense.snp_info.counts.tsv:md5,4c6fdce17849fb371d068e13598f9383"
+                    ]
+                ],
+                "grm_files": [
+                    [
+                        {
+                            "id": "popgen_dense",
+                            "key": "popgen_dense_key"
+                        },
+                        [
+                            "popgen_dense.grm.bin:md5,01f3a2f6d089b06505ce14309144ad2f",
+                            "popgen_dense.grm.iid:md5,4aaa3586dd143906e5db22334a257566"
+                        ]
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-03T10:35:38.350967566",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

@@ -1,0 +1,242 @@
+nextflow_workflow {
+
+    name "Test LDAK summary-scale route"
+    script "../main.nf"
+    workflow "ROUTE_LDAK_SUMMARY_ANALYSES"
+    tag "subworkflow"
+    tag "ldak"
+    tag "ldak_sumher"
+    tag "ldak_sumcors"
+    tag "summary_statistics"
+
+    // Every case is stubbed, so the two staged resources only have to exist. Reusing one GWASLab file for
+    // several summary identities is deliberate: preparation reuse is keyed by `summary_statistics_id`, never
+    // by the bytes, and a shared file must not collapse two identities into one task.
+    def TAGGING = { project_dir -> "file('${project_dir}/subworkflows/local/route_ldak_summary_analyses/tests/reference.tagging', checkIfExists: true)" }
+    def GWASLAB = { project_dir -> "file('${project_dir}/subworkflows/local/route_ldak_summary_analyses/tests/canonical_summary_statistics.tsv', checkIfExists: true)" }
+
+    def gwaslabSummary = { project_dir, summary_id ->
+        """[
+            [
+                summary_statistics_id: '${summary_id}',
+                id: '${summary_id}',
+                trait_id: 'TRAIT_${summary_id}',
+                trait_type: 'quantitative',
+            ],
+            ${GWASLAB(project_dir)},
+        ]"""
+    }
+
+    def sumherRequest = { project_dir, request_suffix, summary_id, overrides = '' ->
+        """[
+            [
+                request_id: 'ldak_sumher--${request_suffix}',
+                method: 'ldak_sumher',
+                summary_statistics_id: '${summary_id}',
+                reference_bundle_id: 'ldak_test',
+                native_args: [],
+                trait_id: 'TRAIT_${summary_id}',
+                trait_type: 'quantitative',
+                is_binary: false,
+                population_prevalence: null,
+                sample_prevalence: null,
+                ${overrides}
+            ],
+            [], [], [],
+            ${TAGGING(project_dir)},
+        ]"""
+    }
+
+    def sumcorsRequest = { project_dir, request_suffix, left_summary_id, right_summary_id ->
+        """[
+            [
+                request_id: 'ldak_sumcors--${request_suffix}',
+                method: 'ldak_sumcors',
+                relationship_id: '${request_suffix}',
+                left_summary_statistics_id: '${left_summary_id}',
+                right_summary_statistics_id: '${right_summary_id}',
+                reference_bundle_id: 'ldak_test',
+                native_args: [],
+                left_is_binary: false,
+                right_is_binary: false,
+                left_population_prevalence: null,
+                left_sample_prevalence: null,
+                right_population_prevalence: null,
+                right_sample_prevalence: null,
+                left_trait_id: 'TRAIT_${left_summary_id}',
+                left_trait_type: 'quantitative',
+                right_trait_id: 'TRAIT_${right_summary_id}',
+                right_trait_type: 'quantitative',
+            ],
+            [], [], [],
+            ${TAGGING(project_dir)},
+        ]"""
+    }
+
+    test("preparation runs once per distinct summary identity however many requests reference it") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                input[0] = channel.of(
+                    ${sumherRequest(projectDir, 'qt1', 'external_qt1')},
+                    ${sumherRequest(projectDir, 'qt2', 'external_qt2')},
+                )
+                input[1] = channel.of(
+                    ${sumcorsRequest(projectDir, 'qt1_qt2', 'external_qt1', 'external_qt2')},
+                )
+                input[2] = channel.of(
+                    ${gwaslabSummary(projectDir, 'external_qt1')},
+                    ${gwaslabSummary(projectDir, 'external_qt2')},
+                    ${gwaslabSummary(projectDir, 'external_unreferenced')},
+                )
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                // Four request references resolve to two distinct summary identities, so preparation runs
+                // twice; the GWASLab summary no request named is never prepared.
+                { assert TRACE.count(workflow, 'PREPARE_LDAK_SUMMARY_STATISTICS') == 2 },
+                { assert TRACE.tags(workflow, 'PREPARE_LDAK_SUMMARY_STATISTICS') == ['external_qt1', 'external_qt2'] },
+                // Each request gets its own native invocation.
+                { assert TRACE.count(workflow, 'LDAK_SUMHER') == 2 },
+                { assert TRACE.count(workflow, 'LDAK_SUMCORS') == 1 },
+                // The pair invocation is tagged in the declared left-then-right order.
+                { assert TRACE.tags(workflow, 'LDAK_SUMCORS') == ['external_qt1_external_qt2'] },
+                { assert workflow.out.sumher_hers.size() == 2 },
+                { assert workflow.out.sumher_log.size() == 2 },
+                { assert workflow.out.sumcors_correlations.size() == 1 },
+                { assert workflow.out.sumcors_correlations_full.size() == 1 },
+                { assert workflow.out.sumcors_log.size() == 1 },
+                { assert workflow.out.sumher_hers.collect { meta, _hers -> meta.request_id }.sort() == ['ldak_sumher--qt1', 'ldak_sumher--qt2'] },
+                { assert workflow.out.sumcors_correlations[0][0].request_id == 'ldak_sumcors--qt1_qt2' },
+                // Publication stays keyed by request identity under the new controller scope.
+                { assert new File("${params.outdir}/requests/ldak_sumher/ldak_sumher--qt1/native.hers").isFile() },
+                { assert new File("${params.outdir}/requests/ldak_sumcors/ldak_sumcors--qt1_qt2/native.cors").isFile() },
+            )
+        }
+    }
+
+    test("a SumHer-only run resolves the liability branch per endpoint and leaves SumCors idle") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                input[0] = channel.of(
+                    ${sumherRequest(projectDir, 'complete', 'external_bt1', "is_binary: true, population_prevalence: 0.1, sample_prevalence: 0.4, trait_type: 'binary',")},
+                    ${sumherRequest(projectDir, 'incomplete', 'external_bt2', "is_binary: true, population_prevalence: 0.1, trait_type: 'binary',")},
+                )
+                input[1] = channel.empty()
+                input[2] = channel.of(
+                    ${gwaslabSummary(projectDir, 'external_bt1')},
+                    ${gwaslabSummary(projectDir, 'external_bt2')},
+                )
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'PREPARE_LDAK_SUMMARY_STATISTICS') == 2 },
+                { assert TRACE.count(workflow, 'LDAK_SUMHER') == 2 },
+                // Nothing on the SumCors side is constructed when no pair request selects it.
+                { assert TRACE.count(workflow, 'LDAK_SUMCORS') == 0 },
+                { assert workflow.out.sumcors_correlations.size() == 0 },
+                { assert workflow.out.sumcors_log.size() == 0 },
+                // A complete prevalence pair produces the liability artifacts; an incomplete one does not,
+                { assert new File("${params.outdir}/requests/ldak_sumher/ldak_sumher--complete/native.hers.liab").isFile() },
+                { assert !new File("${params.outdir}/requests/ldak_sumher/ldak_sumher--incomplete/native.hers.liab").exists() },
+                { assert workflow.out.sumher_hers.collect { meta, _hers -> meta.request_id }.sort() == ['ldak_sumher--complete', 'ldak_sumher--incomplete'] },
+                { assert workflow.out.sumher_hers_liability.size() == 1 },
+            )
+        }
+    }
+
+    test("a SumCors-only run resolves both endpoints in the declared order and leaves SumHer idle") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                input[0] = channel.empty()
+                input[1] = channel.of(
+                    ${sumcorsRequest(projectDir, 'forward', 'external_qt1', 'external_qt2')},
+                    ${sumcorsRequest(projectDir, 'reversed', 'external_qt2', 'external_qt1')},
+                )
+                input[2] = channel.of(
+                    ${gwaslabSummary(projectDir, 'external_qt1')},
+                    ${gwaslabSummary(projectDir, 'external_qt2')},
+                )
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                // Two pair requests over the same two summaries still prepare each summary once.
+                { assert TRACE.count(workflow, 'PREPARE_LDAK_SUMMARY_STATISTICS') == 2 },
+                { assert TRACE.count(workflow, 'LDAK_SUMCORS') == 2 },
+                { assert TRACE.count(workflow, 'LDAK_SUMHER') == 0 },
+                { assert workflow.out.sumher_hers.size() == 0 },
+                { assert workflow.out.sumher_log.size() == 0 },
+                // Each request keeps its own declared orientation rather than a canonicalised one.
+                { assert TRACE.tags(workflow, 'LDAK_SUMCORS') == ['external_qt1_external_qt2', 'external_qt2_external_qt1'] },
+                { assert workflow.out.sumcors_correlations.collect { meta, _meta2, _correlations -> meta.request_id }.sort() == ['ldak_sumcors--forward', 'ldak_sumcors--reversed'] },
+                { assert workflow.out.sumcors_correlations_full.size() == 2 },
+                { assert workflow.out.sumcors_log.size() == 2 },
+            )
+        }
+    }
+
+    test("a run selecting no summary-scale LDAK method executes nothing and emits nothing") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                input[0] = channel.empty()
+                input[1] = channel.empty()
+                input[2] = channel.of(
+                    ${gwaslabSummary(projectDir, 'external_qt1')},
+                )
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'PREPARE_LDAK_SUMMARY_STATISTICS') == 0 },
+                { assert TRACE.count(workflow, 'LDAK_SUMHER') == 0 },
+                { assert TRACE.count(workflow, 'LDAK_SUMCORS') == 0 },
+                { assert workflow.out.sumher_hers.size() == 0 },
+                { assert workflow.out.sumher_log.size() == 0 },
+                { assert workflow.out.sumcors_correlations.size() == 0 },
+                { assert workflow.out.sumcors_log.size() == 0 },
+            )
+        }
+    }
+}

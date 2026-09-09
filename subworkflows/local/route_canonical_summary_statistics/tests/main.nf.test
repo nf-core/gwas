@@ -1,0 +1,184 @@
+nextflow_workflow {
+
+    name "Test GWASLab summary-statistics route"
+    script "../main.nf"
+    workflow "ROUTE_CANONICAL_SUMMARY_STATISTICS"
+    tag "subworkflow"
+    tag "gwaslab"
+    tag "summary_statistics"
+    tag "external_summary"
+
+    def TESTS = { project_dir -> "${project_dir}/subworkflows/local/route_canonical_summary_statistics/tests" }
+    def RESOURCE = { project_dir, name -> "file('${TESTS(project_dir)}/${name}', checkIfExists: true)" }
+
+    def gwaslabReferences = { project_dir ->
+        """[
+            GRCh37: [
+                fasta: ${RESOURCE(project_dir, 'reference.fasta')},
+                fasta_index: ${RESOURCE(project_dir, 'reference.fasta.fai')},
+                rsid_vcf: ${RESOURCE(project_dir, 'rsid_reference.vcf')},
+                rsid_vcf_index: ${RESOURCE(project_dir, 'rsid_reference.vcf.tbi')},
+                strand_vcf: ${RESOURCE(project_dir, 'strand_reference.vcf')},
+                strand_vcf_index: ${RESOURCE(project_dir, 'strand_reference.vcf.tbi')},
+            ],
+            GRCh38: [
+                fasta: [],
+                fasta_index: [],
+                rsid_vcf: [],
+                rsid_vcf_index: [],
+                strand_vcf: [],
+                strand_vcf_index: [],
+            ],
+        ]"""
+    }
+
+    def associationResult = { project_dir, analysis_id, method, source, overrides = '' ->
+        """[
+            [
+                id: '${analysis_id}',
+                cohort: 'cohort_a',
+                trait: 'TRAIT_${analysis_id}',
+                trait_type: 'quantitative',
+                is_binary: false,
+                population_prevalence: null,
+                sample_prevalence: null,
+                build: 'GRCh37',
+                ancestry: 'EUR',
+                method: '${method}',
+                ${overrides}
+            ],
+            ${RESOURCE(project_dir, source)},
+        ]"""
+    }
+
+    def externalSummary = { project_dir, summary_id, source_format, source, overrides = '' ->
+        """[
+            [
+                id: '${summary_id}',
+                summary_statistics_id: '${summary_id}',
+                trait: 'TRAIT_${summary_id}',
+                trait_id: 'TRAIT_${summary_id}',
+                trait_type: 'quantitative',
+                is_binary: false,
+                population_prevalence: null,
+                sample_prevalence: null,
+                build: 'GRCh37',
+                ancestry: 'EUR',
+                source_kind: 'external',
+                source_format: '${source_format}',
+                source_method: 'gwas',
+                source_release: null,
+                source_name: '${source}',
+                producer_analysis_id: null,
+                producer_association_method: null,
+                access_constraints: null,
+                ${overrides}
+            ],
+            ${RESOURCE(project_dir, source)},
+        ]"""
+    }
+
+    test("every internal and external origin crosses GWASLab exactly once") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                input[0] = channel.of(
+                    ${associationResult(projectDir, 'qt1', 'regenie', 'regenie_results.tsv')},
+                    ${associationResult(projectDir, 'qt2', 'gcta_fastgwa', 'fastgwa_results.tsv')},
+                    ${associationResult(projectDir, 'qt3', 'ldak_kvik', 'fastgwa_results.tsv')},
+                    ${associationResult(projectDir, 'bt1', 'gcta_fastgwa', 'fastgwa_results.tsv', "trait_type: 'binary', is_binary: true, population_prevalence: 0.1, sample_prevalence: 0.4,")},
+                )
+                input[1] = channel.of(
+                    ${externalSummary(projectDir, 'external_ssf', 'ssf', 'external_raw.tsv')},
+                    ${externalSummary(projectDir, 'external_gwaslab', 'gwaslab', 'external_canonical.tsv')},
+                )
+                input[2] = ${gwaslabReferences(projectDir)}
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'GWASLAB_HARMONIZE') == 6 },
+                { assert TRACE.tags(workflow, 'GWASLAB_HARMONIZE').sort() == ['bt1--gcta_fastgwa', 'external_gwaslab', 'external_ssf', 'qt1--regenie', 'qt2--gcta_fastgwa', 'qt3--ldak_kvik'] },
+                { assert workflow.out.summary_statistics.size() == 6 },
+                { assert workflow.out.harmonization_log.size() == 6 },
+                { assert workflow.out.summary_statistics.every { record -> record.size() == 2 } },
+                { assert workflow.out.summary_statistics.collect { meta, _sumstats -> meta.summary_statistics_id }.sort() == ['bt1--gcta_fastgwa', 'external_gwaslab', 'external_ssf', 'qt1--regenie', 'qt2--gcta_fastgwa', 'qt3--ldak_kvik'] },
+                { assert workflow.out.summary_statistics.every { meta, _sumstats -> meta.id == meta.summary_statistics_id } },
+                { assert workflow.out.summary_statistics.find { meta, _sumstats -> meta.summary_statistics_id == 'qt1--regenie' }[0].source_kind == 'pipeline_generated' },
+                { assert workflow.out.summary_statistics.find { meta, _sumstats -> meta.summary_statistics_id == 'qt1--regenie' }[0].producer_association_method == 'regenie' },
+                { assert workflow.out.summary_statistics.find { meta, _sumstats -> meta.summary_statistics_id == 'external_gwaslab' }[0].source_format == 'gwaslab' },
+                { assert new File("${params.outdir}/summary_statistics/qt1--regenie/qt1--regenie.gwaslab.tsv.gz").isFile() },
+                { assert new File("${params.outdir}/summary_statistics/qt1--regenie/qt1--regenie.gwaslab.log").isFile() },
+                { assert new File("${params.outdir}/summary_statistics/external_ssf/external_ssf.gwaslab.tsv.gz").isFile() },
+                { assert new File("${params.outdir}/summary_statistics/external_gwaslab/external_gwaslab.gwaslab.tsv.gz").isFile() },
+                { assert new File("${params.outdir}/summary_statistics/external_ssf").list().sort() == ['external_ssf.gwaslab.log', 'external_ssf.gwaslab.tsv.gz'] },
+            )
+        }
+    }
+
+    test("GWASLab accepts configured and resource-free genome builds") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                input[0] = channel.of(
+                    ${associationResult(projectDir, 'grch37', 'regenie', 'regenie_results.tsv')},
+                    ${associationResult(projectDir, 'grch38', 'regenie', 'regenie_results.tsv', "build: 'GRCh38',")},
+                )
+                input[1] = channel.empty()
+                input[2] = ${gwaslabReferences(projectDir)}
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'GWASLAB_HARMONIZE') == 2 },
+                { assert workflow.out.summary_statistics.collect { meta, _sumstats -> meta.build }.sort() == ['GRCh37', 'GRCh38'] },
+                { assert new File("${params.outdir}/summary_statistics/grch38--regenie/grch38--regenie.gwaslab.tsv.gz").isFile() },
+            )
+        }
+    }
+
+    test("an empty route executes and emits nothing") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                input[0] = channel.empty()
+                input[1] = channel.empty()
+                input[2] = ${gwaslabReferences(projectDir)}
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'GWASLAB_HARMONIZE') == 0 },
+                { assert workflow.out.summary_statistics.size() == 0 },
+                { assert workflow.out.harmonization_log.size() == 0 },
+            )
+        }
+    }
+}

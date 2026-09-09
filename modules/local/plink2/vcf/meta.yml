@@ -1,6 +1,17 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/modules/meta-schema.json
 name: "plink2_vcf"
-description: Import VCF genotype data into a PLINK 2 PGEN/PVAR/PSAM fileset
+description: |
+  Import VCF genotype data into a PLINK 2 PGEN/PVAR/PSAM fileset.
+
+  Two import decisions the caller owns are not defaults worth inheriting silently: whether a VCF's single
+  sample identifier becomes both the family and the within-family identifier, and what a half-call resolves
+  to. The module decides neither; both arrive through `ext.args`.
+
+  ## Configuration contract
+
+  The module reads no pipeline metadata beyond `meta.id` for its tag and prefix. Callers supply import
+  options through `ext.args`. In this pipeline checkout, fixture materialization uses the module; the
+  analysis workflow accepts prebuilt PLINK bundles.
 keywords:
   - plink2
   - vcf

@@ -17,29 +17,34 @@
                 "LDAK_REML": {
                     "ldak6": 6
                 },
-                "NORMALISE_PHENOTYPES": {
-                    "python": "3.14.5"
-                },
                 "PLINK2_MAKEBED": {
                     "plink2": "2.0.0-a.6.9LM"
+                },
+                "PREPARE_GENOTYPE_SOURCE": {
+                    "python": "3.14.5"
+                },
+                "PREPARE_PHENOTYPE_INPUTS": {
+                    "python": "3.14.5"
                 },
                 "Workflow": {
                     "nf-core/gwas": "v1.0.0dev"
                 }
             }
         ],
+        "timestamp": "2026-09-10T06:16:52.808551017",
         "meta": {
-            "nf-test": "0.9.3",
-            "nextflow": "25.10.4"
-        },
-        "timestamp": "2026-07-31T19:47:33.393764671"
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
     },
     "heritability": {
         "content": [
             [
                 "ldak_he",
                 "ldak_he/binary_all_estimators",
+                "ldak_he/binary_all_estimators/binary_all_estimators.ldak_he.factor",
                 "ldak_he/binary_all_estimators/binary_all_estimators.ldak_he.he",
+                "ldak_he/binary_all_estimators/binary_all_estimators.ldak_he.he.liab",
                 "ldak_he/binary_without_prevalence",
                 "ldak_he/binary_without_prevalence/binary_without_prevalence.ldak_he.he",
                 "ldak_he/example_pgen_qt",
@@ -58,7 +63,9 @@
                 "ldak_reml/example_pgen_qt/example_pgen_qt.ldak_reml.reml"
             ],
             [
+                "binary_all_estimators.ldak_he.factor:md5,2c4417a10e53eb4476ef8a6e972a20cd",
                 "binary_all_estimators.ldak_he.he:md5,77a7f8890477907b8876da2e23df8d05",
+                "binary_all_estimators.ldak_he.he.liab:md5,3e96e585b27f262bba2203e1753ee2ca",
                 "binary_without_prevalence.ldak_he.he:md5,1a90b144de148e5f16db7a864ba3ab2d",
                 "example_pgen_qt.ldak_he.he:md5,eb3111bd7c17313f6519f359d9881c64",
                 "binary_all_estimators.ldak_pcgc.pcgc:md5,16b6fc63483c00028b9b945f7d1d7751",
@@ -69,10 +76,10 @@
                 "example_pgen_qt.ldak_reml.reml:md5,5ad47d3301856c0cd821140d8dcd1825"
             ]
         ],
+        "timestamp": "2026-09-10T03:09:02.704201274",
         "meta": {
-            "nf-test": "0.9.3",
-            "nextflow": "25.10.4"
-        },
-        "timestamp": "2026-08-12T23:14:38.917722013"
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
     }
 }

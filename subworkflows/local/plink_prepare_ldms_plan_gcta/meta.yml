@@ -1,0 +1,52 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
+name: "plink_prepare_ldms_plan_gcta"
+description: Build one ordered LD-by-MAF component plan from a PLINK 1 bundle, shared by every stratified matrix family
+keywords:
+  - gcta
+  - ldms
+  - linkage disequilibrium by minor allele frequency stratification
+  - component plan
+  - ld score
+  - variant partition
+components:
+  - gcta/calculateldscores
+  - custom/gctastratifyldscores
+input:
+  - ch_genotypes:
+      description: PLINK1 bundle for the focal plan. The three members share one basename. Public outputs retain meta.
+      structure: [map meta, path bed, path bim, path fam]
+      pattern: "*.{bed,bim,fam}"
+      ontologies:
+        - edam: "http://edamontology.org/format_3003"
+        - edam: "http://edamontology.org/format_2330"
+  - ch_ld_score_region_kb:
+      description: LD-score region size in kilobases in the second metadata-bearing tuple.
+      structure: [map meta2, integer ld_score_region_kb]
+  - ch_ld_bins:
+      description: Number of LD-score quantile bins in the third metadata-bearing tuple.
+      structure: [map meta3, integer ld_bins]
+  - ch_maf_edges:
+      description: MAF boundaries in the fourth metadata-bearing tuple.
+      structure: [map meta4, list maf_edges]
+output:
+  - plan:
+      description: |
+        Ordered stratum manifest and the SNP group files it names, one bundle per plan. Manifest rows are
+        LD-major and MAF-minor with empty strata omitted, and the group files partition the LD-score variant
+        set into disjoint groups. That set is the variants GCTA's LD-score pass retained, which may be a
+        proper subset of the BIM.
+      structure: [map meta, path strata_manifest, list snp_group_files]
+      pattern: "*.strata.tsv, *_snp_group*.txt"
+      ontologies:
+        - edam: "http://edamontology.org/format_3475"
+        - edam: "http://edamontology.org/format_2330"
+  - ld_scores:
+      description: Per-variant LD scores and allele frequencies the plan was derived from.
+      structure: [map meta, path ld_scores]
+      pattern: "*_gcta_ld.score.ld"
+      ontologies:
+        - edam: "http://edamontology.org/format_3475"
+authors:
+  - "@andongni"
+maintainers:
+  - "@andongni"

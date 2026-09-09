@@ -1,46 +1,44 @@
 // Route nf-core/gwas analysis records through REGENIE while reusing scientifically identical Step 1 fits.
-// This is pipeline-specific relational-input and publication policy, not an nf-core/modules submission candidate.
+// This is pipeline-specific relational-input policy, not an nf-core/modules submission candidate.
 // Every constituent process reports directly to the run-wide versions topic, so this subworkflow emits no versions.
 
 // SUBWORKFLOW: Upstream-ready REGENIE composition used inside a pipeline-local route
-include { PLINK_FIT_REGENIE             } from '../plink_fit_regenie/main'
-
-// MODULE: Local to the pipeline
-include { ATTRIBUTE_REGENIE_PREDICTIONS } from '../../../modules/local/attribute_regenie_predictions/main'
+include { PLINK_FIT_REGENIE           } from '../plink_fit_regenie/main'
 
 // MODULE: Installed directly from nf-core/modules
-include { REGENIE_STEP2                 } from '../../../modules/nf-core/regenie/step2/main'
+include { REGENIE_STEP2               } from '../../../modules/nf-core/regenie/step2/main'
 
 // FUNCTION: Local to the pipeline
-include { digestFileBytes               } from '../utils_nfcore_gwas_pipeline'
-include { buildCanonicalPredictionKey   } from '../utils_nfcore_gwas_pipeline'
+include { digestFileBytes             } from '../utils_nfcore_gwas_pipeline'
+include { buildCanonicalPredictionKey } from '../utils_nfcore_gwas_pipeline'
 
 workflow ROUTE_REGENIE_ASSOCIATIONS {
     take:
-    ch_analyses // channel: [ val(meta), path(pgen), path(psam), path(pvar), path(phenotype), path(covariates) ], covariates is [] when absent
+    ch_analyses // channel: [ val(meta), path(primary_genotype), path(variant_file), path(sample_file), path(phenotype), path(covariates), val(view_key) ], format-polymorphic member order, covariates is [] when absent
     step2_bsize // channel: val(step2_bsize)
     step1_mode // channel: val(step1_mode), 'standard' or 'chunked'
     step1_jobs // channel: val(step1_jobs), use null for standard mode
 
     main:
 
-    if (step1_mode == 'chunked' && step1_jobs == null) {
-        error("[nf-core/gwas] ERROR: --regenie_step1_jobs is required when --regenie_step1_mode is 'chunked'")
-    }
-
     // The reuse key is a private routing value rather than a custom meta field. One canonical request
     // drives each fit; the original analysis metadata stays beside every consumer and is restored below.
-    def ch_requests = ch_analyses.map { meta, pgen, psam, pvar, phenotype, covariates ->
+    def ch_requests = ch_analyses.map { meta, primary, variant_file, sample_file, phenotype, covariates, view_key ->
         def step1_bsize = meta.method_options.regenie.step1_bsize
-        def prediction_key = buildRegeniePredictionKey(meta, phenotype, covariates ?: [], step1_bsize)
-        def fit_meta = meta + [id: "${meta.cohort}.regenie.${prediction_key}"]
-        [prediction_key, meta, fit_meta, pgen, pvar, psam, phenotype, covariates ?: [], step1_bsize]
+        def prediction_key = buildRegeniePredictionKey(view_key, meta.is_binary, phenotype, covariates ?: [], step1_bsize)
+        def fit_meta = [id: "regenie.${prediction_key}", is_binary: meta.is_binary, cat_covariate_names: meta.cat_covariate_names]
+        [prediction_key, meta, fit_meta, primary, variant_file, sample_file, phenotype, covariates ?: [], step1_bsize]
     }
 
-    def ch_fit_requests = ch_requests.unique { prediction_key, _meta, _fit_meta, _pgen, _pvar, _psam, _phenotype, _covariates, _step1_bsize -> prediction_key }
+    def ch_fit_requests = ch_requests
+        .map { prediction_key, meta, fit_meta, primary, variant_file, sample_file, phenotype, covariates, step1_bsize ->
+            [prediction_key, [prediction_key, meta, fit_meta, primary, variant_file, sample_file, phenotype, covariates, step1_bsize]]
+        }
+        .groupTuple()
+        .map { _prediction_key, requests -> requests.sort { left, right -> left[1].id <=> right[1].id }.first() }
 
-    def ch_fit = ch_fit_requests.multiMap { _prediction_key, _meta, fit_meta, pgen, pvar, psam, phenotype, covariates, step1_bsize ->
-        genotypes: [fit_meta, pgen, pvar, psam]
+    def ch_fit = ch_fit_requests.multiMap { _prediction_key, _meta, fit_meta, primary, variant_file, sample_file, phenotype, covariates, step1_bsize ->
+        genotypes: [fit_meta, primary, variant_file, sample_file]
         pheno: [fit_meta, phenotype]
         covar: [fit_meta, covariates]
         bsize: [fit_meta, step1_bsize]
@@ -52,7 +50,7 @@ workflow ROUTE_REGENIE_ASSOCIATIONS {
 
     // PLINK_FIT_REGENIE returns only opaque fit metadata. Reattach the private key through the fit id
     // side channel, then combine one fitted bundle with every analysis request that consumes it.
-    def ch_fit_keys = ch_fit_requests.map { prediction_key, _meta, fit_meta, _pgen, _pvar, _psam, _phenotype, _covariates, _step1_bsize ->
+    def ch_fit_keys = ch_fit_requests.map { prediction_key, _meta, fit_meta, _primary, _variant_file, _sample_file, _phenotype, _covariates, _step1_bsize ->
         [fit_meta.id, prediction_key]
     }
 
@@ -66,18 +64,10 @@ workflow ROUTE_REGENIE_ASSOCIATIONS {
         .join(ch_fit_keys, failOnDuplicate: true, failOnMismatch: true)
         .map { _fit_id, predictions, loco, prediction_key -> [prediction_key, predictions, loco] }
 
-    def ch_attributed_predictions = ch_requests
-        .map { prediction_key, meta, _fit_meta, _pgen, _pvar, _psam, _phenotype, _covariates, _step1_bsize -> [prediction_key, meta.id, meta] }
-        .unique { _prediction_key, analysis_id, _meta -> analysis_id }
-        .combine(ch_prediction_bundles, by: 0)
-        .map { _prediction_key, _analysis_id, meta, predictions, loco -> [meta, predictions, loco] }
-
-    ATTRIBUTE_REGENIE_PREDICTIONS(ch_attributed_predictions)
-
     def ch_step2 = ch_requests
         .combine(ch_prediction_bundles, by: 0)
-        .multiMap { _prediction_key, meta, _fit_meta, pgen, pvar, psam, phenotype, covariates, _step1_bsize, predictions, loco ->
-            genotypes: [meta, pgen, pvar, psam]
+        .multiMap { _prediction_key, meta, _fit_meta, primary, variant_file, sample_file, phenotype, covariates, _step1_bsize, predictions, loco ->
+            genotypes: [meta, primary, variant_file, sample_file]
             predictions: [meta, predictions, loco]
             pheno: [meta, phenotype]
             covar: [meta, covariates]
@@ -87,10 +77,7 @@ workflow ROUTE_REGENIE_ASSOCIATIONS {
     REGENIE_STEP2(ch_step2.genotypes, ch_step2.predictions, ch_step2.pheno, ch_step2.covar, ch_step2.bsize)
 
     emit:
-    results     = REGENIE_STEP2.out.results // channel: [ val(meta), path(regenie_results) ]
-    logs        = PLINK_FIT_REGENIE.out.logs.mix(REGENIE_STEP2.out.log) // channel: [ val(meta), path(log) ]
-    predictions = ch_attributed_predictions.map { meta, predictions, _loco -> [meta, predictions] } // channel: [ val(meta), path(predictions) ]
-    loco        = ch_attributed_predictions.map { meta, _predictions, loco -> [meta, loco] } // channel: [ val(meta), path(loco) ]
+    results = REGENIE_STEP2.out.results // channel: [ val(meta), path(regenie_results) ]
 }
 
 /*
@@ -99,16 +86,18 @@ workflow ROUTE_REGENIE_ASSOCIATIONS {
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-// REGENIE Step 1 reuse requires every cohort-defining and scientific input to agree. Execution-only
-// controls are absent; Step 1 block size remains because it changes the fitted model.
-def buildRegeniePredictionKey(meta, phenotype, covariates, step1_bsize) {
+// REGENIE Step 1 reuse requires every scientific input to agree. The genotype view key arrives from
+// preparation as a tuple member: it is the cohort's immutable native view identity, so two cohorts holding
+// byte-identical genotypes share one fit and a changed bundle gets its own. Focal and downstream metadata
+// stay out.
+def buildRegeniePredictionKey(view_key, is_binary, phenotype, covariates, step1_bsize) {
     def identity = [
-        cohort: meta.cohort,
-        trait: meta.trait,
-        is_binary: meta.is_binary,
+        genotype_view: view_key,
+        is_binary: is_binary,
         phenotype: getPredictionInputIdentity(phenotype),
         covariates: getPredictionInputIdentity(covariates),
         step1_bsize: step1_bsize,
+        adapter_contract: 'regenie_4.1.2_step1_v1',
     ]
     return buildCanonicalPredictionKey(identity)
 }

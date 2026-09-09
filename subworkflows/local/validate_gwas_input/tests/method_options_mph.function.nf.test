@@ -1,0 +1,85 @@
+nextflow_function {
+
+    name "Test linked GWAS input contract functions"
+    script "../method_options.nf"
+    tag "function"
+    tag "input"
+
+    // The MPH-adjacent option rules, exercised through `validateMethodOptions` so that the
+    // "Method-options document '<path>', analysis_id '<id>', option '<family>.<option>': <reason>" attribution
+    // the pipeline cases pinned is asserted here too. The value rules for the `mph` family itself live in
+    // method_options.function.nf.test; what this file adds is the operational-key diagnostic and the four
+    // gates that decide whether a `gcta.*` option may sit beside an MPH selector — the stratified plan
+    // settings live in the `gcta` family but are consumed by every stratified estimator, so a row selecting
+    // MPH reaches them, and the two dense-predictor options are refused beside MPH rather than routed.
+    def invalidOptions = [
+        [
+            name: 'an operational thread count in the scientific document',
+            heritability: 'mph_reml',
+            options: [mph: [num_threads: 4]],
+            expected: "option 'mph.num_threads': operational tuning must be supplied through run/profile configuration",
+        ],
+        [
+            // The row selects a GCTA method, so it passes the family gate and reaches the per-option gate.
+            name: 'a plan setting on a row selecting no stratified estimator',
+            heritability: 'gcta_greml,mph_reml',
+            options: [gcta: [ld_bins: 2]],
+            expected: "option 'gcta.ld_bins': option is consumed by the LD- and MAF-stratified estimators gcta_greml_ldms, mph_reml_ldms only, none of which this analysis selects",
+        ],
+        [
+            // A row selecting only a one-component MPH estimator consumes no `gcta.*` option at all, so the
+            // family gate turns it away before the per-option gate above.
+            name: 'a plan setting on a row selecting only a one-component MPH estimator',
+            heritability: 'mph_reml',
+            options: [gcta: [ld_bins: 2]],
+            expected: "option 'gcta.ld_bins': analysis does not select a GCTA method",
+        ],
+        [
+            name: 'a GCTA dense MAF filter beside an MPH selector',
+            heritability: 'gcta_greml,mph_reml',
+            options: [gcta: [grm_maf: 0.05]],
+            expected: "option 'gcta.grm_maf': option restricts the GCTA dense predictor set only; the MPH matrices this analysis also selects (mph_reml) are built over the declared MPH variant universe",
+        ],
+        [
+            name: 'a GCTA dense extract list beside an MPH selector',
+            heritability: 'gcta_greml,mph_reml_ldms',
+            options: [gcta: [grm_extract: 'RESOURCE']],
+            expected: "option 'gcta.grm_extract': option restricts the GCTA dense predictor set only; the MPH matrices this analysis also selects (mph_reml_ldms) are built over the declared MPH variant universe",
+        ],
+    ]
+
+    invalidOptions.each { scenario ->
+        test("method-options rejects ${scenario.name}") {
+            function "validateMethodOptions"
+
+            when {
+                function {
+                    """
+                    input[0] = file('${RELATIONAL.methodOptions(
+                        outputDir,
+                        "mph_options_${scenario.name.replaceAll(/\W+/, '_')}",
+                        [example: scenario.options.collectEntries { family, options ->
+                            [(family): options.collectEntries { option, value ->
+                                [(option): value == 'RESOURCE'
+                                    ? RELATIONAL.resource(outputDir, "mph_options_${scenario.name.replaceAll(/\W+/, '_')}/extract.txt", 'rs1\nrs2\n')
+                                    : value]
+                            }]
+                        }],
+                    )}', checkIfExists: true)
+                    input[1] = [[[id: 'example', association_methods: '', heritability_methods: '${scenario.heritability}', trait_type: 'quantitative']]]
+                    """
+                }
+            }
+
+            then {
+                def report = function.stdout.join('\n')
+                assertAll(
+                    { assert function.failed },
+                    { assert report.contains("analysis_id 'example'") },
+                    { assert report.contains(scenario.expected) },
+                )
+            }
+        }
+    }
+
+}

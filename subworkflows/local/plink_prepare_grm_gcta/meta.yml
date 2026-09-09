@@ -34,9 +34,6 @@ output:
       pattern: "*.grm.{bin,N.bin,id}"
       ontologies:
         - edam: "http://edamontology.org/format_2330"
-  - effective_parts:
-      description: Number of GRM parts merged for each focal analysis.
-      structure: [map meta, integer effective_parts]
 authors:
   - "@andongni"
 maintainers:

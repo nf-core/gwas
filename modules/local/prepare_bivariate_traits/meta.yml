@@ -1,10 +1,11 @@
 name: prepare_bivariate_traits
-description: Build an ordered full-union two-trait phenotype and normalize relationship-owned covariates for GCTA bivariate REML
+description: Build an ordered full-union two-trait phenotype and normalize relationship-owned covariates for the individual-level pair estimators
 keywords:
   - phenotype
   - covariates
   - bivariate
   - gcta
+  - mph
 tools:
   - python:
       description: Python standard-library runtime
@@ -38,29 +39,38 @@ output:
       - "${prefix}.pheno":
           type: file
           description: Headerless full-union FID, IID, left trait and right trait table with NA missing values
-  quant_covariates:
+  named_quant_covariates:
     - - meta:
           type: map
           description: Pair-request metadata propagated from input
       - "${prefix}.qcovar":
           type: file
           optional: true
-          description: Headerless normalized relationship quantitative covariates
+          description: Headered normalized relationship quantitative covariates, for the name-keyed MPH interface
+  named_cat_covariates:
+    - - meta:
+          type: map
+          description: Pair-request metadata propagated from input
+      - "${prefix}.catcovar":
+          type: file
+          optional: true
+          description: Headered normalized relationship categorical covariates, for the name-keyed MPH interface
+  quant_covariates:
+    - - meta:
+          type: map
+          description: Pair-request metadata propagated from input
+      - "${prefix}.noheader.qcovar":
+          type: file
+          optional: true
+          description: Headerless normalized relationship quantitative covariates, for the GCTA estimators
   cat_covariates:
     - - meta:
           type: map
           description: Pair-request metadata propagated from input
-      - "${prefix}.covar":
+      - "${prefix}.noheader.catcovar":
           type: file
           optional: true
-          description: Headerless normalized relationship categorical covariates
-  log:
-    - - meta:
-          type: map
-          description: Pair-request metadata propagated from input
-      - "${prefix}.pair.log":
-          type: file
-          description: Deterministic endpoint union, overlap, missingness and relationship-covariate diagnostics
+          description: Headerless normalized relationship categorical covariates, for the GCTA estimators
   versions:
     - versions.yml:
         type: file

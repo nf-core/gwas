@@ -59,7 +59,6 @@ nextflow_pipeline {
                 { assert workflow.success },
                 { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 1 },
                 { assert TRACE.count(workflow, 'CUSTOM_GCTASTRATIFYLDSCORES') == 1 },
-                { assert TRACE.count(workflow, 'CUSTOM_GCTACREATEMGRMMANIFEST') == 1 },
                 { assert TRACE.tags(workflow, 'GCTA_REMLLDMS').sort() == ['example_pgen_bt_example_pgen_bt', 'example_pgen_qt_example_pgen_qt'] },
                 { assert binary.contains('/Vp_L') },
                 { assert !quantitative.contains('/Vp_L') },
@@ -126,87 +125,15 @@ nextflow_pipeline {
                 // scientific change creates one further content-derived family.
                 { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 4 },
                 { assert TRACE.count(workflow, 'CUSTOM_GCTASTRATIFYLDSCORES') == 4 },
-                { assert TRACE.count(workflow, 'CUSTOM_GCTACREATEMGRMMANIFEST') == 4 },
                 { assert TRACE.count(workflow, 'GCTA_REMLLDMS') == 5 },
                 { assert matrices.list().size() == 4 },
+                { assert matrices.listFiles().every { matrix -> matrix.listFiles().every { artifact -> !artifact.name.endsWith('.mgrm') } } },
                 { assert results.list().toList().sort() == ['different_bins', 'different_edges', 'different_region', 'example_pgen_qt', 'same_settings'] },
             )
         }
     }
 
-    def invalidOptions = [
-        [
-            name: 'non-positive LD-score region size',
-            options: [example_pgen_qt: [gcta: [ld_score_region_kb: 0]]],
-            option: 'gcta.ld_score_region_kb',
-            reason: 'positive integer',
-        ],
-        [
-            name: 'non-positive LD bin count',
-            options: [example_pgen_qt: [gcta: [ld_bins: 0]]],
-            option: 'gcta.ld_bins',
-            reason: 'positive integer',
-        ],
-        [
-            name: 'non-increasing MAF boundaries',
-            options: [example_pgen_qt: [gcta: [ldms_maf_edges: [0, 0.05, 0.01, 0.5]]]],
-            option: 'gcta.ldms_maf_edges',
-            reason: 'strictly increasing',
-        ],
-        [
-            name: 'LD-score region size on non-LDMS analysis',
-            options: [example_pgen_qt: [gcta: [ld_score_region_kb: 100]]],
-            option: 'gcta.ld_score_region_kb',
-            reason: "consumed by 'gcta_greml_ldms' only",
-            nonLdms: true,
-        ],
-        [
-            name: 'LD bin count on non-LDMS analysis',
-            options: [example_pgen_qt: [gcta: [ld_bins: 2]]],
-            option: 'gcta.ld_bins',
-            reason: "consumed by 'gcta_greml_ldms' only",
-            nonLdms: true,
-        ],
-        [
-            name: 'MAF boundaries on non-LDMS analysis',
-            options: [example_pgen_qt: [gcta: [ldms_maf_edges: [0, 0.05, 0.5]]]],
-            option: 'gcta.ldms_maf_edges',
-            reason: "consumed by 'gcta_greml_ldms' only",
-            nonLdms: true,
-        ],
-    ]
-
-    invalidOptions.each { scenario ->
-        test("method-options rejects ${scenario.name} before LDMS matrix construction") {
-            when {
-                params {
-                    outdir = "$outputDir"
-                    cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, "gcta_ldms_options_${scenario.name.replace(' ', '_')}")
-                    analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, "gcta_ldms_options_${scenario.name.replace(' ', '_')}", { rows ->
-                        rows[0].association_methods = ''
-                        rows[0].heritability_methods = scenario.nonLdms ? 'gcta_greml' : 'gcta_greml_ldms'
-                    })
-                    method_options = RELATIONAL.methodOptions(
-                        outputDir,
-                        "gcta_ldms_options_${scenario.name.replace(' ', '_')}",
-                        scenario.options,
-                    )
-                    gcta_grm_parts = 1
-                }
-            }
-
-            then {
-                def report = VALIDATION.report(outputDir, workflow.stdout)
-                assertAll(
-                    { assert !workflow.success },
-                    { assert report.contains(params.method_options.toString()) },
-                    { assert report.contains("analysis_id 'example_pgen_qt'") },
-                    { assert report.contains("option '${scenario.option}'") },
-                    { assert report.contains(scenario.reason) },
-                    { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 0 },
-                    { assert TRACE.count(workflow, 'GCTA_MAKEGRMPART') == 0 },
-                )
-            }
-        }
-    }
+    // The LDMS plan-setting refusals this file used to drive are asserted, message and attribution alike, by
+    // `subworkflows/local/validate_gwas_input/tests/method_options_gcta.function.nf.test`; the family's
+    // pipeline sentinel is `relational_gcta_greml.nf.test`.
 }

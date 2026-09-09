@@ -1,0 +1,72 @@
+nextflow_process {
+
+    name "Test Process CUSTOM_GCTAMERGEGRMPARTS"
+    script "../main.nf"
+    process "CUSTOM_GCTAMERGEGRMPARTS"
+
+    tag "modules"
+    tag "modules_local"
+    tag "custom"
+    tag "custom/gctamergegrmparts"
+
+    def grmParts = { directory ->
+        def labels = (1..12).collectEntries { part -> [(part): "source_${13 - part}"] }
+        def files = []
+        def records = []
+        (1..12).each { part ->
+            def label = labels[part]
+            def bin = new File(directory.toString(), "${label}.grm.bin")
+            def nBin = new File(directory.toString(), "${label}.grm.N.bin")
+            def id = new File(directory.toString(), "${label}.grm.id")
+            bin.text = "bin-${part}\n"
+            nBin.text = "n-${part}\n"
+            id.text = "id-${part}\n"
+            files.addAll([bin, nBin, id])
+            records << [part: part, bin: bin.name, n_bin: nBin.name, id: id.name]
+        }
+        [files: files.reverse(), records: records]
+    }
+
+    test("concatenate twelve parts in supplied numeric order rather than staged filename order") {
+        when {
+            def fixture = grmParts(outputDir)
+            process {
+                """
+                input[0] = [[id: 'joined'], ${fixture.files.collect { "file('${it}', checkIfExists: true)" }}, ${fixture.records.inspect()}]
+                """
+            }
+        }
+
+        then {
+            def outputs = process.out.grm_files.get(0).get(1)
+                .collectEntries { output -> [(file(output).name): file(output).text] }
+            assertAll(
+                { assert process.success },
+                { assert outputs['joined.grm.bin'] == (1..12).collect { part -> "bin-${part}\n" }.join() },
+                { assert outputs['joined.grm.N.bin'] == (1..12).collect { part -> "n-${part}\n" }.join() },
+                { assert outputs['joined.grm.id'] == (1..12).collect { part -> "id-${part}\n" }.join() },
+                { assert process.out.versions.size() == 1 },
+            )
+        }
+    }
+
+    test("stub preserves the merged GRM bundle contract") {
+        options "-stub"
+
+        when {
+            def fixture = grmParts(outputDir)
+            process {
+                """
+                input[0] = [[id: 'joined'], ${fixture.files.collect { "file('${it}', checkIfExists: true)" }}, ${fixture.records.inspect()}]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.grm_files.get(0).get(1).collect { file(it).name }.sort() == ['joined.grm.N.bin', 'joined.grm.bin', 'joined.grm.id'] },
+            )
+        }
+    }
+}

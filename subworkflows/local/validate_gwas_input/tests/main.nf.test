@@ -29,7 +29,7 @@ nextflow_workflow {
                 { assert records.size() == 1 },
                 { assert meta.id == 'example_pgen_qt' },
                 { assert meta.cohort == 'example_pgen' },
-                { assert meta.association_methods == ['plink2'] },
+                { assert meta.association_methods == ['regenie'] },
                 { assert meta.heritability_methods == [] },
                 { assert meta.genotype_format == 'plink2' },
                 { assert !meta.is_binary },
@@ -91,8 +91,7 @@ nextflow_workflow {
                 { assert workflow.success },
                 { assert workflow.out.analyses.size() == 0 },
                 { assert summariesById.keySet() == ['external_qt', 'external_bt'] as Set },
-                { assert summariesById.external_qt[0].source_mode == 'canonical' },
-                { assert summariesById.external_qt[0].canonical_contract_version == 'nfcore_gwas_canonical_v1' },
+                { assert summariesById.external_qt[0].source_format == 'gwaslab' },
                 { assert unary.collect { record -> record[0].request_id } as Set == ['ldsc_h2--external_qt', 'ldsc_h2--external_qt--alternate'] as Set },
                 { assert unary.find { record -> record[0].request_id.endsWith('--alternate') }[0].native_args == ['--chisq-max', '999'] },
                 { assert unary.every { record -> record[0].reference_bundle_id == 'ldsc_eur' } },
@@ -130,16 +129,16 @@ nextflow_workflow {
                 }}', checkIfExists: true)
                 input[2] = file('${RELATIONAL.summaryStatistics(projectDir, outputDir, 'internal_summary') { rows ->
                     rows.clear()
-                    rows << RELATIONAL.internalSummary('example_pgen_qt', 'plink2', 'ldsc_h2')
+                    rows << RELATIONAL.internalSummary('example_pgen_qt', 'regenie', 'ldsc_h2')
                     rows << RELATIONAL.summary(outputDir, 'external_bt')
                 }}', checkIfExists: true)
                 input[3] = file('${RELATIONAL.summaryRelationships(projectDir, outputDir, 'internal_summary') { rows ->
-                    rows[0].left_summary_statistics_id = 'example_pgen_qt--plink2'
+                    rows[0].left_summary_statistics_id = 'example_pgen_qt--regenie'
                     rows[0].relationship_methods = 'ldsc_rg'
                 }}', checkIfExists: true)
                 input[4] = file('${RELATIONAL.referenceCatalog(outputDir, 'internal_summary')}', checkIfExists: true)
                 input[5] = file('${RELATIONAL.methodOptions(outputDir, 'internal_summary', [
-                    unary_requests: ['ldsc_h2--example_pgen_qt--plink2': [reference_bundle_id: 'ldsc_eur']],
+                    unary_requests: ['ldsc_h2--example_pgen_qt--regenie': [reference_bundle_id: 'ldsc_eur']],
                     pair_requests: ['ldsc_rg--external_pair': [reference_bundle_id: 'ldsc_eur']],
                 ])}', checkIfExists: true)
                 """
@@ -155,12 +154,12 @@ nextflow_workflow {
                 { assert workflow.out.summary_statistics.size() == 1 },
                 { assert workflow.out.summary_statistics[0][0].summary_statistics_id == 'external_bt' },
                 { assert unary.size() == 1 },
-                { assert unary[0][0].summary_statistics_id == 'example_pgen_qt--plink2' },
+                { assert unary[0][0].summary_statistics_id == 'example_pgen_qt--regenie' },
                 { assert unary[0][0].source_kind == 'pipeline_generated' },
                 { assert unary[0][0].producer_analysis_id == 'example_pgen_qt' },
-                { assert unary[0][0].producer_association_method == 'plink2' },
+                { assert unary[0][0].producer_association_method == 'regenie' },
                 { assert pair.size() == 1 },
-                { assert pair[0][0].left_summary_statistics_id == 'example_pgen_qt--plink2' },
+                { assert pair[0][0].left_summary_statistics_id == 'example_pgen_qt--regenie' },
                 { assert pair[0][0].right_summary_statistics_id == 'external_bt' },
             )
         }
@@ -189,12 +188,12 @@ nextflow_workflow {
                 }}', checkIfExists: true)
                 input[2] = file('${RELATIONAL.summaryStatistics(projectDir, outputDir, 'internal_summary_prevalence') { rows ->
                     rows.clear()
-                    rows << RELATIONAL.internalSummary('example_pgen_bt', 'plink2', 'ldsc_h2')
+                    rows << RELATIONAL.internalSummary('example_pgen_bt', 'regenie', 'ldsc_h2')
                 }}', checkIfExists: true)
                 input[3] = null
                 input[4] = file('${RELATIONAL.referenceCatalog(outputDir, 'internal_summary_prevalence')}', checkIfExists: true)
                 input[5] = file('${RELATIONAL.methodOptions(outputDir, 'internal_summary_prevalence', [
-                    unary_requests: ['ldsc_h2--example_pgen_bt--plink2': [reference_bundle_id: 'ldsc_eur']],
+                    unary_requests: ['ldsc_h2--example_pgen_bt--regenie': [reference_bundle_id: 'ldsc_eur']],
                 ])}', checkIfExists: true)
                 """
             }
@@ -204,7 +203,7 @@ nextflow_workflow {
             def request = workflow.out.unary_requests[0][0]
             assertAll(
                 { assert workflow.success },
-                { assert request.summary_statistics_id == 'example_pgen_bt--plink2' },
+                { assert request.summary_statistics_id == 'example_pgen_bt--regenie' },
                 { assert request.population_prevalence == 0.1 },
                 { assert request.sample_prevalence == 0.2 },
             )
@@ -228,13 +227,13 @@ nextflow_workflow {
                 }}', checkIfExists: true)
                 input[2] = file('${RELATIONAL.summaryStatistics(projectDir, outputDir, 'pair_only_internal_prevalence') { rows ->
                     rows.clear()
-                    rows << RELATIONAL.internalSummary('example_pgen_qt', 'plink2')
-                    rows << RELATIONAL.internalSummary('example_pgen_bt', 'plink2')
+                    rows << RELATIONAL.internalSummary('example_pgen_qt', 'regenie')
+                    rows << RELATIONAL.internalSummary('example_pgen_bt', 'regenie')
                 }}', checkIfExists: true)
                 input[3] = file('${RELATIONAL.summaryRelationships(projectDir, outputDir, 'pair_only_internal_prevalence') { rows ->
                     rows[0].relationship_id = 'internal_pair'
-                    rows[0].left_summary_statistics_id = 'example_pgen_qt--plink2'
-                    rows[0].right_summary_statistics_id = 'example_pgen_bt--plink2'
+                    rows[0].left_summary_statistics_id = 'example_pgen_qt--regenie'
+                    rows[0].right_summary_statistics_id = 'example_pgen_bt--regenie'
                     rows[0].relationship_methods = 'ldak_sumcors,ldsc_rg'
                 }}', checkIfExists: true)
                 input[4] = file('${RELATIONAL.referenceCatalog(outputDir, 'pair_only_internal_prevalence')}', checkIfExists: true)
@@ -254,8 +253,8 @@ nextflow_workflow {
                 { assert workflow.success },
                 { assert workflow.out.unary_requests.size() == 0 },
                 { assert requests.keySet() == ['ldak_sumcors--internal_pair', 'ldsc_rg--internal_pair'] as Set },
-                { assert requests.values().every { meta -> meta.left_summary_statistics_id == 'example_pgen_qt--plink2' } },
-                { assert requests.values().every { meta -> meta.right_summary_statistics_id == 'example_pgen_bt--plink2' } },
+                { assert requests.values().every { meta -> meta.left_summary_statistics_id == 'example_pgen_qt--regenie' } },
+                { assert requests.values().every { meta -> meta.right_summary_statistics_id == 'example_pgen_bt--regenie' } },
                 { assert requests.values().every { meta -> !meta.left_is_binary } },
                 { assert requests.values().every { meta -> meta.left_population_prevalence == null } },
                 { assert requests.values().every { meta -> meta.left_sample_prevalence == null } },
@@ -266,28 +265,48 @@ nextflow_workflow {
         }
     }
 
-    test("pipeline-generated summaries require the producer-derived identity") {
-        tag "summary_invalid"
+    test("schema-optional manifest columns may be omitted") {
+        tag "manifest_schema"
 
         when {
             workflow {
                 """
-                input[0] = file('${RELATIONAL.cohorts(projectDir, outputDir, 'invalid_internal_id') { rows ->
-                    rows[0].pgen = RELATIONAL.resource(outputDir, 'invalid_internal_id/example.pgen', '')
-                    rows[0].psam = RELATIONAL.resource(outputDir, 'invalid_internal_id/example.psam', '#IID\nexample\n')
-                    rows[0].pvar = RELATIONAL.resource(outputDir, 'invalid_internal_id/example.pvar', '#CHROM\tPOS\tID\tREF\tALT\n1\t1\trs1\tG\tA\n')
-                }}', checkIfExists: true)
-                input[1] = file('${RELATIONAL.analyses(projectDir, outputDir, 'invalid_internal_id') { rows ->
-                    rows[0].phenotype = RELATIONAL.resource(outputDir, 'invalid_internal_id/example.pheno', 'FID IID QT\nexample example 1\n')
-                    rows[0].quant_covariates = ''
-                    rows[0].cat_covariates = ''
-                }}', checkIfExists: true)
-                input[2] = file('${RELATIONAL.summaryStatistics(projectDir, outputDir, 'invalid_internal_id') { rows ->
-                    rows.clear()
-                    def internal = RELATIONAL.internalSummary('example_pgen_qt', 'plink2', 'ldsc_h2')
-                    internal.summary_statistics_id = 'wrong_internal_id'
-                    rows << internal
-                }}', checkIfExists: true)
+                input[0] = file('${RELATIONAL.retainColumns(
+                    RELATIONAL.cohorts(projectDir, outputDir, 'omitted_optional_columns'),
+                    ['cohort_id', 'genome_build', 'ancestry', 'pgen', 'psam', 'pvar'],
+                )}', checkIfExists: true)
+                input[1] = file('${RELATIONAL.retainColumns(
+                    RELATIONAL.analyses(projectDir, outputDir, 'omitted_optional_columns'),
+                    ['analysis_id', 'cohort_id', 'trait_id', 'trait_type', 'phenotype', 'phenotype_column', 'association_methods'],
+                )}', checkIfExists: true)
+                input[2] = null
+                input[3] = null
+                input[4] = null
+                input[5] = null
+                """
+            }
+        }
+
+        then {
+            def analysis = workflow.out.analyses[0]
+            assertAll(
+                { assert workflow.success },
+                { assert analysis[0].id == 'example_pgen_qt' },
+                { assert analysis[1].collect { genotype -> genotype.toString().tokenize('.').last() } == ['pgen', 'psam', 'pvar'] },
+                { assert analysis[3..6].every { optional -> optional == [] } },
+            )
+        }
+    }
+
+    test("quoted manifest headers preserve the schema contract") {
+        tag "manifest_schema"
+
+        when {
+            workflow {
+                """
+                input[0] = file('${RELATIONAL.quoteHeaders(RELATIONAL.cohorts(projectDir, outputDir, 'quoted_headers'))}', checkIfExists: true)
+                input[1] = file('${RELATIONAL.quoteHeaders(RELATIONAL.analyses(projectDir, outputDir, 'quoted_headers'))}', checkIfExists: true)
+                input[2] = null
                 input[3] = null
                 input[4] = null
                 input[5] = null
@@ -297,34 +316,24 @@ nextflow_workflow {
 
         then {
             assertAll(
-                { assert !workflow.success },
-                { assert workflow.stdout.any { line -> line.contains("pipeline-generated result must use deterministic identifier 'example_pgen_qt--plink2'") } },
+                { assert workflow.success },
+                { assert workflow.out.analyses[0][0].id == 'example_pgen_qt' },
             )
         }
     }
 
-    test("external summaries cannot collide with pipeline-generated identities") {
-        tag "summary_invalid"
+    // A cohort that declares no view identity must carry no `genotype_view_id` key at all, not a null one:
+    // analysis metadata is a task-hash input everywhere downstream, so an unconditional null would move every
+    // existing analysis's hash and every pinned snapshot for cohorts that declare nothing.
+    test("an undeclared genotype view identity leaves the key absent from analysis metadata") {
+        tag "genotype_view_id"
 
         when {
             workflow {
                 """
-                input[0] = file('${RELATIONAL.cohorts(projectDir, outputDir, 'external_internal_collision') { rows ->
-                    rows[0].pgen = RELATIONAL.resource(outputDir, 'external_internal_collision/example.pgen', '')
-                    rows[0].psam = RELATIONAL.resource(outputDir, 'external_internal_collision/example.psam', '#IID\nexample\n')
-                    rows[0].pvar = RELATIONAL.resource(outputDir, 'external_internal_collision/example.pvar', '#CHROM\tPOS\tID\tREF\tALT\n1\t1\trs1\tG\tA\n')
-                }}', checkIfExists: true)
-                input[1] = file('${RELATIONAL.analyses(projectDir, outputDir, 'external_internal_collision') { rows ->
-                    rows[0].phenotype = RELATIONAL.resource(outputDir, 'external_internal_collision/example.pheno', 'FID IID QT\nexample example 1\n')
-                    rows[0].quant_covariates = ''
-                    rows[0].cat_covariates = ''
-                }}', checkIfExists: true)
-                input[2] = file('${RELATIONAL.summaryStatistics(projectDir, outputDir, 'external_internal_collision') { rows ->
-                    rows.clear()
-                    def external = RELATIONAL.summary(outputDir, 'external_qt')
-                    external.summary_statistics_id = 'example_pgen_qt--plink2'
-                    rows << external
-                }}', checkIfExists: true)
+                input[0] = file('${RELATIONAL.cohorts(projectDir, outputDir, 'undeclared_view_id')}', checkIfExists: true)
+                input[1] = file('${RELATIONAL.analyses(projectDir, outputDir, 'undeclared_view_id')}', checkIfExists: true)
+                input[2] = null
                 input[3] = null
                 input[4] = null
                 input[5] = null
@@ -334,9 +343,72 @@ nextflow_workflow {
 
         then {
             assertAll(
-                { assert !workflow.success },
-                { assert workflow.stdout.any { line -> line.contains("external result collides with pipeline-generated result 'example_pgen_qt--plink2'") } },
+                { assert workflow.success },
+                { assert !workflow.out.analyses[0][0].containsKey('genotype_view_id') },
             )
         }
     }
+
+    def declaredViewIds = [
+        [name: 'a bare hexadecimal digest', token: '52d1d326413775cd52d1d326413775cd52d1d326413775cd52d1d326413775cd'],
+        [name: 'a shortest-accepted digest', token: '52d1d326413775cd'],
+        [name: 'a backend-namespaced identity', token: 'biofuse:52d1d326413775cd'],
+    ]
+
+    declaredViewIds.each { scenario ->
+        test("${scenario.name} declared as genotype_view_id reaches the analysis metadata") {
+            tag "genotype_view_id"
+
+            when {
+                workflow {
+                    """
+                    input[0] = file('${RELATIONAL.cohorts(projectDir, outputDir, "declared_view_id_${scenario.token.replaceAll(/[^a-z0-9]/, '_')}", { rows -> rows[0].genotype_view_id = scenario.token })}', checkIfExists: true)
+                    input[1] = file('${RELATIONAL.analyses(projectDir, outputDir, "declared_view_id_${scenario.token.replaceAll(/[^a-z0-9]/, '_')}")}', checkIfExists: true)
+                    input[2] = null
+                    input[3] = null
+                    input[4] = null
+                    input[5] = null
+                    """
+                }
+            }
+
+            then {
+                assertAll(
+                    { assert workflow.success },
+                    { assert workflow.out.analyses[0][0].genotype_view_id == scenario.token },
+                )
+            }
+        }
+    }
+
+    // The pairing rule lives in the VALIDATE_GWAS_INPUT workflow body (main.nf), not in a resolver, so it has
+    // no function form. Its other half — a cohort manifest with no analysis manifest — stays at pipeline level
+    // in tests/relational_input_analyses.nf.test, where it also proves that a null --analysis_manifest passes
+    // nf-schema; this half needs no pipeline run to make its point and is asserted here instead.
+    test("an analysis manifest without a cohort manifest is rejected") {
+        tag "manifest_pairing"
+
+        when {
+            workflow {
+                """
+                input[0] = null
+                input[1] = file('${RELATIONAL.analyses(projectDir, outputDir, 'analysis_only')}', checkIfExists: true)
+                input[2] = null
+                input[3] = null
+                input[4] = null
+                input[5] = null
+                """
+            }
+        }
+
+        then {
+            def report = workflow.stdout.join('\n')
+            assertAll(
+                { assert !workflow.success },
+                { assert report.contains('--analysis_manifest') },
+                { assert report.contains('--cohort_manifest is missing; linked manifests require both') },
+            )
+        }
+    }
+
 }

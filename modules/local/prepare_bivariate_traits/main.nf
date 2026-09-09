@@ -12,9 +12,16 @@ process PREPARE_BIVARIATE_TRAITS {
 
     output:
     tuple val(meta), path("${prefix}.pheno"), emit: phenotype
-    tuple val(meta), path("${prefix}.qcovar"), emit: quant_covariates, optional: true
-    tuple val(meta), path("${prefix}.covar"), emit: cat_covariates, optional: true
-    tuple val(meta), path("${prefix}.pair.log"), emit: log
+    // One validated pair covariate table, serialised twice for the two interfaces that read it. GCTA rejects a
+    // header row, while MPH names its covariates on the command line and reports them back by name, so the
+    // headerless files feed the GCTA estimators and the headered ones feed the MPH serializer. Both are written
+    // from the same validated rows, so the researcher's file is normalised exactly once and no estimator
+    // independently redefines the pair's covariate set. The suffixes are `prepare_phenotype_inputs`': headered
+    // is `.qcovar`/`.catcovar` and headerless is `.noheader.*`.
+    tuple val(meta), path("${prefix}.qcovar"), emit: named_quant_covariates, optional: true
+    tuple val(meta), path("${prefix}.catcovar"), emit: named_cat_covariates, optional: true
+    tuple val(meta), path("${prefix}.noheader.qcovar"), emit: quant_covariates, optional: true
+    tuple val(meta), path("${prefix}.noheader.catcovar"), emit: cat_covariates, optional: true
     path 'versions.yml', emit: versions, topic: versions
 
     when:
@@ -33,23 +40,16 @@ process PREPARE_BIVARIATE_TRAITS {
 
     stub:
     prefix = task.ext.prefix ?: meta.request_id
-    def qcovar_stub = pair_quant_covariates ? "printf 'stub stub 0\\n' > \"${prefix}.qcovar\"" : ''
-    def covar_stub = pair_cat_covariates ? "printf 'stub stub 0\\n' > \"${prefix}.covar\"" : ''
+    def qcovar_stub = pair_quant_covariates
+        ? "printf 'FID IID STUBQ\\n' > \"${prefix}.qcovar\"\n    printf 'stub stub 0\\n' > \"${prefix}.noheader.qcovar\""
+        : ''
+    def covar_stub = pair_cat_covariates
+        ? "printf 'FID IID STUBC\\n' > \"${prefix}.catcovar\"\n    printf 'stub stub 0\\n' > \"${prefix}.noheader.catcovar\""
+        : ''
     """
     printf 'stub stub 0 0\n' > "${prefix}.pheno"
     ${qcovar_stub}
     ${covar_stub}
-    printf '%b\n' \
-        'left_samples\t1' \
-        'right_samples\t1' \
-        'endpoint_overlap_samples\t1' \
-        'union_samples\t1' \
-        'left_nonmissing\t1' \
-        'right_nonmissing\t1' \
-        'both_nonmissing\t1' \
-        'quantitative_covariate_samples\t${pair_quant_covariates ? 1 : 0}' \
-        'categorical_covariate_samples\t${pair_cat_covariates ? 1 : 0}' \
-        > "${prefix}.pair.log"
     printf '"%s":\n    python: %s\n' \
         '${task.process}' \
         "\$(python3 --version | sed 's/^Python //')" \

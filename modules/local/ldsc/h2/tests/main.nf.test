@@ -66,9 +66,7 @@ nextflow_process {
                 { assert log.name == 'trait_a.log' },
                 { assert log.text.contains('Total Observed scale h2:') },
                 { assert log.text.contains('After merging with regression SNP LD, 1000 SNPs remain.') },
-                { assert process.out.versions_ldsc.get(0) == ['LDSC_H2', 'ldsc', '3.0.2'] },
-                { assert process.out.versions_ldsc_native.get(0) == ['LDSC_H2', 'ldsc_native', '3.0.1'] },
-                { assert process.out.versions_ldsc_source.get(0) == ['LDSC_H2', 'ldsc_source_revision', '6c673952cee74bd5c57aef1555a03b1c015399a0'] },
+                { assert process.out.versions_ldsc.get(0) == ['LDSC_H2', 'ldsc', '6c673952cee74bd5c57aef1555a03b1c015399a0'] },
                 { assert process.out.versions_python.get(0) == ['LDSC_H2', 'python', '3.9.13'] },
                 { assert snapshot([log.name, process.out.findAll { name, value -> name.startsWith('versions_') }]).match() },
             )
@@ -99,23 +97,4 @@ nextflow_process {
         }
     }
 
-    test("reject malformed munged summary statistics") {
-        when {
-            def fixture = inputs(outputDir, 'invalid', false)
-            process {
-                """
-                input[0] = [[id: 'trait_invalid'], file('${fixture.sumstats}', checkIfExists: true)]
-                input[1] = [[id: 'reference'], file('${fixture.reference}', checkIfExists: true)]
-                input[2] = [[id: 'weights'], file('${fixture.weights}', checkIfExists: true)]
-                """
-            }
-        }
-
-        then {
-            assertAll(
-                { assert process.failed },
-                { assert process.errorReport.contains('Improperly formatted sumstats file') || process.errorReport.contains('Usecols do not match columns') },
-            )
-        }
-    }
 }

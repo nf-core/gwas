@@ -1,0 +1,46 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
+name: "plink_prepare_grm_mph"
+description: Build one native MPH genetic relationship matrix from a PLINK 1 bundle over a declared variant universe
+keywords:
+  - mph
+  - minque for partitioning heritability
+  - genome relationship matrix
+  - grm
+  - relatedness
+  - plink
+components:
+  - custom/mphsnpinfo
+  - mph/makegrm
+input:
+  - ch_genotypes:
+      description: PLINK1 bundle for the focal matrix. The three members share one basename. Public outputs retain meta.
+      structure: [map meta, path bed, path bim, path fam]
+      pattern: "*.{bed,bim,fam}"
+      ontologies:
+        - edam: "http://edamontology.org/format_3003"
+        - edam: "http://edamontology.org/format_2330"
+  - autosome_count:
+      description: |
+        Process-global highest integer chromosome code counted as autosomal. MPH applies no chromosome rule of
+        its own, so the universe is declared here rather than inherited from the BIM.
+      structure: [integer autosome_count]
+output:
+  - grm_files:
+      description: The complete MPH matrix as one collected path; the two members are never consumed apart.
+      structure: [map meta, path grm_files]
+      pattern: "*.grm.{bin,iid}"
+      ontologies:
+        - edam: "http://edamontology.org/format_2330"
+  - counts:
+      description: |
+        Declared predictor counts for the single `all` component, plus `__unassigned__` (BIM rows outside the
+        universe) and `__bim_rows__`. `predictor_count` is what MPH should report as its post-quality-control
+        variant count, and the pair is what lets a caller reconcile the two.
+      structure: [map meta, path counts_tsv]
+      pattern: "*.snp_info.counts.tsv"
+      ontologies:
+        - edam: "http://edamontology.org/format_3475"
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"

@@ -1,0 +1,105 @@
+name: "gwaslab_meta_analyze"
+description: Align GWAS summary statistics with GWASLab and run fixed and optional random-effects meta-analysis
+keywords:
+  - gwas
+  - genome-wide association study
+  - meta-analysis
+  - fixed effects
+  - random effects
+tools:
+  - "gwaslab":
+      description: A Python package for processing and analysing GWAS summary statistics
+      homepage: "https://cloufield.github.io/gwaslab/"
+      documentation: "https://cloufield.github.io/gwaslab/"
+      tool_dev_url: "https://github.com/Cloufield/gwaslab"
+      doi: "10.1093/bioinformatics/btae074"
+      licence:
+        - "GPL-3.0-only"
+input:
+  - - meta:
+        type: map
+        description: Groovy Map containing the meta-analysis request information
+    - sumstats:
+        type: file
+        description: Ordered parent GWAS summary-statistics files
+        pattern: "*.{tsv,tsv.gz}"
+        ontologies:
+          - edam: "http://edamontology.org/format_3475"
+    - study_names:
+        type: list
+        description: Study labels in the same declared order as the parent files
+    - input_format:
+        type: string
+        description: Explicit GWASLab input format shared by the parent files
+    - genome_build:
+        type: string
+        description: Shared human reference build, GRCh37 or GRCh38
+    - random_effects:
+        type: boolean
+        description: Whether to also run GWASLab's conventional random-effects model
+output:
+  fixed:
+    - - meta:
+          type: map
+          description: Groovy Map containing the meta-analysis request information
+      - "*.fixed.tsv.gz":
+          type: file
+          description: Native GWASLab fixed-effects meta-analysis table
+          pattern: "*.fixed.tsv.gz"
+          ontologies:
+            - edam: "http://edamontology.org/format_3475"
+  random_effects:
+    - - meta:
+          type: map
+          description: Groovy Map containing the meta-analysis request information
+      - "*.random.tsv.gz":
+          type: file
+          description: Native GWASLab random-effects meta-analysis table
+          pattern: "*.random.tsv.gz"
+          ontologies:
+            - edam: "http://edamontology.org/format_3475"
+  metasoft_input:
+    - - meta:
+          type: map
+          description: Groovy Map containing the meta-analysis request information
+      - "*.metasoft.input.txt":
+          type: file
+          description: Native METASOFT effect matrix in declared study order
+          pattern: "*.metasoft.input.txt"
+          ontologies: []
+  mrmega_input:
+    - - meta:
+          type: map
+          description: Groovy Map containing the meta-analysis request information
+      - "*.mrmega.tsv.gz":
+          type: file
+          description: Aligned GWASLab study columns required by the MR-MEGA adapter
+          pattern: "*.mrmega.tsv.gz"
+          ontologies:
+            - edam: "http://edamontology.org/format_3475"
+  log:
+    - - meta:
+          type: map
+          description: Groovy Map containing the meta-analysis request information
+      - "*.gwaslab.log":
+          type: file
+          description: GWASLab alignment and meta-analysis log
+          pattern: "*.gwaslab.log"
+          ontologies: []
+  versions:
+    - "versions.yml":
+        type: file
+        description: File containing software versions
+        pattern: "versions.yml"
+        ontologies: []
+topics:
+  versions:
+    - "versions.yml":
+        type: file
+        description: File containing software versions
+        pattern: "versions.yml"
+        ontologies: []
+authors:
+  - "@andongni"
+maintainers:
+  - "@andongni"

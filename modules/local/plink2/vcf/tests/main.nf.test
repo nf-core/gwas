@@ -1,0 +1,97 @@
+nextflow_process {
+
+    name "Test Process PLINK2_VCF"
+    script "../main.nf"
+    process "PLINK2_VCF"
+    config "./nextflow.config"
+
+    tag "modules"
+    tag "modules_local"
+    tag "plink2"
+    tag "plink2/vcf"
+
+    test("example_all - a VCF cohort is imported to one PGEN bundle under the declared import policy") {
+
+        when {
+            process {
+                """
+                input[0] = [
+                    [ id:'example_all' ],
+                    file('${FIXTURES.base(projectDir)}results/fixtures/genotypes/example_all.vcf.gz', checkIfExists: true),
+                ]
+                """
+            }
+        }
+
+        then {
+            def psam = path(process.out.pgen.get(0).get(2)).readLines().findAll { line -> line.trim() }
+            assertAll(
+                { assert process.success },
+                // Both import-policy flags reach the command. They are the whole policy: `--double-id` is what
+                // makes a VCF cohort's sample identifiers line up with the phenotype and covariate files its
+                // PLINK-supplied siblings use, and `--vcf-half-call error` refuses a half-call rather than
+                // silently choosing one of plink2's four resolutions.
+                { assert process.out.pgen.get(0).get(1).endsWith('example_all.pgen') },
+                { assert path(process.out.pgen.get(0).get(1)).exists() },
+                // `--double-id` sets the family identifier to the sample identifier, which is the only reason
+                // a VCF-supplied cohort is addressable by the same FID/IID pair as a PLINK-supplied one.
+                { assert psam.first().startsWith('#') },
+                { assert psam.tail().every { line ->
+                    def fields = line.trim().split(/\s+/)
+                    fields[0] == fields[1]
+                } },
+                { assert process.out.versions_plink2.get(0).get(1) == 'plink2' },
+                { assert process.out.versions_plink2.get(0).get(2) ==~ /^[0-9][^\s]*$/ },
+            )
+        }
+    }
+
+    test("example_all - the rendered command carries both import-policy flags") {
+
+        when {
+            process {
+                """
+                input[0] = [
+                    [ id:'example_all' ],
+                    file('${FIXTURES.base(projectDir)}results/fixtures/genotypes/example_all.vcf.gz', checkIfExists: true),
+                ]
+                """
+            }
+        }
+
+        then {
+            def command = path(process.out.pgen.get(0).get(1)).parent.resolve('.command.sh').text
+            assertAll(
+                { assert process.success },
+                { assert command.contains('--double-id') },
+                { assert command.contains('--vcf-half-call error') },
+            )
+        }
+    }
+
+    test("example_all - stub") {
+
+        options "-stub"
+
+        when {
+            process {
+                """
+                input[0] = [
+                    [ id:'example_all' ],
+                    file('${FIXTURES.base(projectDir)}results/fixtures/genotypes/example_all.vcf.gz', checkIfExists: true),
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.pgen.size() == 1 },
+                { assert process.out.pgen.get(0).get(1).endsWith('example_all.pgen') },
+                { assert process.out.pgen.get(0).get(2).endsWith('example_all.psam') },
+                { assert process.out.pgen.get(0).get(3).endsWith('example_all.pvar') },
+            )
+        }
+    }
+}

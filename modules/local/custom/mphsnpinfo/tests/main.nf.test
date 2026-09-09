@@ -1,0 +1,398 @@
+nextflow_process {
+
+    name "Test Process CUSTOM_MPHSNPINFO"
+    script "../main.nf"
+    process "CUSTOM_MPHSNPINFO"
+
+    tag "modules"
+    tag "modules_local"
+    tag "custom"
+    tag "custom/mphsnpinfo"
+
+    // The shipped popgen trio is 200 samples by 220 variants, every variant on chromosome 1 and none
+    // monomorphic. No variant name and no count is written down here: the group files are cut from the BIM at
+    // run time and every expectation is recomputed from the BIM the task actually staged, so a fixture that
+    // changes shape fails loudly instead of silently agreeing with a stale constant.
+    def popgenBim = "file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bim', checkIfExists: true)"
+
+    // The BIM as the task saw it, read back out of the task's own work directory beside the emitted CSV.
+    def stagedBim = { produced, name ->
+        path(produced).parent.resolve(name).readLines()
+            .findAll { line -> line.trim() }
+            .collect { line -> line.trim().tokenize() }
+    }
+
+    def rows = { produced -> path(produced).readLines().findAll { line -> line.trim() }.collect { line -> line.split(',', -1) as List } }
+
+    def countRows = { produced -> path(produced).readLines().findAll { line -> line.trim() }.collect { line -> line.split('\t', -1) as List } }
+
+    test("homo_sapiens popgen - the one-component plan writes one all-ones row per BIM variant") {
+
+        when {
+            process {
+                """
+                input[0] = [ [ id:'plink_simulated' ], ${popgenBim} ]
+                input[1] = [ [ id:'dense_plan' ], [], [], [ 'all' ] ]
+                input[2] = 22
+                """
+            }
+        }
+
+        then {
+            def csv = process.out.snp_info.get(0).get(1)
+            def counts = process.out.counts.get(0).get(1)
+            def variants = stagedBim(csv, 'plink_simulated.bim')
+            def autosomal = variants.findAll { fields -> fields[0].isInteger() && (fields[0] as int) >= 1 && (fields[0] as int) <= 22 }
+            assertAll(
+                { assert process.success },
+                // MPH keys the file on column 0 and addresses the weight column by header name, so the header
+                // is the whole interface: `SNP` plus the caller's column list in the caller's order.
+                { assert rows(csv).first() == ['SNP', 'all'] },
+                // One row per BIM line, in BIM order. That is what keeps the CSV auditable against the BIM,
+                // and it is the only reason a weight-0 row can stand in for an omitted variant without the
+                // pipeline losing track of which variants MPH was told about.
+                { assert rows(csv).tail().collect { row -> row[0] } == variants.collect { fields -> fields[1] } },
+                { assert rows(csv).tail().every { row -> row == [row[0], '1'] } },
+                // The column order is a contract the consumer reads off the tuple rather than by re-parsing
+                // the CSV, so the echo is asserted rather than assumed.
+                { assert process.out.snp_info.get(0).get(2) == ['all'] },
+                { assert countRows(counts) == [
+                    ['stratum_key', 'predictor_count'],
+                    ['all', autosomal.size().toString()],
+                    ['__unassigned__', (variants.size() - autosomal.size()).toString()],
+                    ['__bim_rows__', variants.size().toString()],
+                ] },
+                { assert snapshot(sanitizeOutput(process.out, unstableKeys: [])).match() }
+            )
+        }
+    }
+
+    test("homo_sapiens popgen - a two-stratum plan writes disjoint membership columns in the caller's order") {
+
+        when {
+            process {
+                """
+                def bimFile = ${popgenBim}
+                def variantNames = bimFile.text.readLines().findAll { line -> line.trim() }.collect { line -> line.trim().tokenize()[1] }
+
+                file('ld01_maf01_snp_group.txt').text = variantNames[0..49].join('\\n') + '\\n'
+                file('ld02_maf01_snp_group.txt').text = variantNames[50..99].join('\\n') + '\\n'
+                file('plan.strata.tsv').text = 'stratum_key\\tgroup_filename\\n' +
+                    'ld01_maf01\\tld01_maf01_snp_group.txt\\n' +
+                    'ld02_maf01\\tld02_maf01_snp_group.txt\\n'
+
+                input[0] = [ [ id:'plink_simulated' ], bimFile ]
+                input[1] = [
+                    [ id:'ld_maf_plan' ],
+                    file('plan.strata.tsv'),
+                    [ file('ld01_maf01_snp_group.txt'), file('ld02_maf01_snp_group.txt') ],
+                    [ 'ld01_maf01', 'ld02_maf01' ]
+                ]
+                input[2] = 22
+                """
+            }
+        }
+
+        then {
+            def csv = process.out.snp_info.get(0).get(1)
+            def counts = process.out.counts.get(0).get(1)
+            def variants = stagedBim(csv, 'plink_simulated.bim')
+            def data = rows(csv).tail()
+            assertAll(
+                { assert process.success },
+                // The column order is the caller's list, not the manifest's file order and not the order the
+                // group files happened to stage in. MPH addresses one column per matrix by name, so a
+                // transposed pair here would build both matrices from the wrong variant set at exit 0.
+                { assert rows(csv).first() == ['SNP', 'ld01_maf01', 'ld02_maf01'] },
+                { assert process.out.snp_info.get(0).get(2) == ['ld01_maf01', 'ld02_maf01'] },
+                { assert data.collect { row -> row[0] } == variants.collect { fields -> fields[1] } },
+                // Disjointness is what the module promises the caller: a variant counted into two components
+                // would be counted twice in the partition, and MPH would never mention it.
+                { assert data.every { row -> row.tail().count { value -> value == '1' } <= 1 } },
+                { assert data[0..49].every { row -> row.tail() == ['1', '0'] } },
+                { assert data[50..99].every { row -> row.tail() == ['0', '1'] } },
+                { assert data[100..-1].every { row -> row.tail() == ['0', '0'] } },
+                { assert countRows(counts) == [
+                    ['stratum_key', 'predictor_count'],
+                    ['ld01_maf01', '50'],
+                    ['ld02_maf01', '50'],
+                    ['__unassigned__', (variants.size() - 100).toString()],
+                    ['__bim_rows__', variants.size().toString()],
+                ] },
+                { assert snapshot(sanitizeOutput(process.out, unstableKeys: [])).match() }
+            )
+        }
+    }
+
+    test("homo_sapiens popgen - a variant in no group is written all-zero and counted as unassigned") {
+
+        when {
+            process {
+                """
+                def bimFile = ${popgenBim}
+                def variantNames = bimFile.text.readLines().findAll { line -> line.trim() }.collect { line -> line.trim().tokenize()[1] }
+
+                file('sparse_snp_group.txt').text = variantNames[0..4].join('\\n') + '\\n'
+                file('sparse.strata.tsv').text = 'stratum_key\\tgroup_filename\\nsparse\\tsparse_snp_group.txt\\n'
+
+                input[0] = [ [ id:'plink_simulated' ], bimFile ]
+                input[1] = [
+                    [ id:'sparse_plan' ],
+                    file('sparse.strata.tsv'),
+                    [ file('sparse_snp_group.txt') ],
+                    [ 'sparse' ]
+                ]
+                input[2] = 22
+                """
+            }
+        }
+
+        then {
+            def csv = process.out.snp_info.get(0).get(1)
+            def counts = process.out.counts.get(0).get(1)
+            def variants = stagedBim(csv, 'plink_simulated.bim')
+            def data = rows(csv).tail()
+            assertAll(
+                // A plan that covers part of the bundle is a legitimate partition, not an error. MPH treats a
+                // weight-0 row exactly as it treats an omitted row, so the unassigned rows stay in the file
+                // and are reconciled through the counts instead.
+                { assert process.success },
+                { assert data.size() == variants.size() },
+                { assert data[0..4].every { row -> row.tail() == ['1'] } },
+                { assert data[5..-1].every { row -> row.tail() == ['0'] } },
+                { assert countRows(counts) == [
+                    ['stratum_key', 'predictor_count'],
+                    ['sparse', '5'],
+                    ['__unassigned__', (variants.size() - 5).toString()],
+                    ['__bim_rows__', variants.size().toString()],
+                ] },
+                { assert snapshot(sanitizeOutput(process.out, unstableKeys: [])).match() }
+            )
+        }
+    }
+
+    test("a non-autosomal or unparseable chromosome code is written all-zero and counted as unassigned") {
+
+        when {
+            process {
+                """
+                // MPH ignores the chromosome column completely -- it builds a matrix from sex chromosomes,
+                // mitochondria and unparseable codes alike, with no warning at any point -- so the autosomal
+                // universe has to be declared here or the two tools silently disagree about the predictor set
+                // they were given from one bundle.
+                file('synthetic.bim').text = [
+                    '1\\tauto_1\\t0\\t1\\tA\\tG',
+                    '22\\tauto_22\\t0\\t2\\tA\\tG',
+                    '23\\tsex_23\\t0\\t3\\tA\\tG',
+                    '0\\tunplaced_0\\t0\\t4\\tA\\tG',
+                    'chr1\\ttext_chr1\\t0\\t5\\tA\\tG'
+                ].join('\\n') + '\\n'
+
+                input[0] = [ [ id:'synthetic' ], file('synthetic.bim') ]
+                input[1] = [ [ id:'dense_plan' ], [], [], [ 'all' ] ]
+                input[2] = 22
+                """
+            }
+        }
+
+        then {
+            def csv = process.out.snp_info.get(0).get(1)
+            def counts = process.out.counts.get(0).get(1)
+            assertAll(
+                { assert process.success },
+                { assert rows(csv) == [
+                    ['SNP', 'all'],
+                    ['auto_1', '1'],
+                    ['auto_22', '1'],
+                    ['sex_23', '0'],
+                    ['unplaced_0', '0'],
+                    ['text_chr1', '0'],
+                ] },
+                { assert countRows(counts) == [
+                    ['stratum_key', 'predictor_count'],
+                    ['all', '2'],
+                    ['__unassigned__', '3'],
+                    ['__bim_rows__', '5'],
+                ] },
+                { assert snapshot(sanitizeOutput(process.out, unstableKeys: [])).match() }
+            )
+        }
+    }
+
+    test("a variant in two group files is refused") {
+
+        when {
+            process {
+                """
+                def bimFile = ${popgenBim}
+                def variantNames = bimFile.text.readLines().findAll { line -> line.trim() }.collect { line -> line.trim().tokenize()[1] }
+
+                file('overlap_a_snp_group.txt').text = variantNames[0..9].join('\\n') + '\\n'
+                file('overlap_b_snp_group.txt').text = variantNames[9..19].join('\\n') + '\\n'
+                file('overlap.strata.tsv').text = 'stratum_key\\tgroup_filename\\n' +
+                    'overlap_a\\toverlap_a_snp_group.txt\\n' +
+                    'overlap_b\\toverlap_b_snp_group.txt\\n'
+
+                input[0] = [ [ id:'plink_simulated' ], bimFile ]
+                input[1] = [
+                    [ id:'overlap_plan' ],
+                    file('overlap.strata.tsv'),
+                    [ file('overlap_a_snp_group.txt'), file('overlap_b_snp_group.txt') ],
+                    [ 'overlap_a', 'overlap_b' ]
+                ]
+                input[2] = 22
+                """
+            }
+        }
+
+        then {
+            // Overlapping groups are representable in the output format -- two 1s in one row -- and MPH would
+            // accept the file, counting the shared variants once per matrix. Nothing downstream could detect
+            // it, so it is fatal here.
+            assertAll(
+                { assert !process.success },
+                { assert process.exitStatus != 0 },
+                { assert process.errorReport.contains('is in more than one group file') }
+            )
+        }
+    }
+
+    test("a group variant absent from the BIM is refused") {
+
+        when {
+            process {
+                """
+                def bimFile = ${popgenBim}
+                def variantNames = bimFile.text.readLines().findAll { line -> line.trim() }.collect { line -> line.trim().tokenize()[1] }
+
+                file('stray_snp_group.txt').text = (variantNames[0..4] + [ 'not_in_the_bim' ]).join('\\n') + '\\n'
+                file('stray.strata.tsv').text = 'stratum_key\\tgroup_filename\\nstray\\tstray_snp_group.txt\\n'
+
+                input[0] = [ [ id:'plink_simulated' ], bimFile ]
+                input[1] = [
+                    [ id:'stray_plan' ],
+                    file('stray.strata.tsv'),
+                    [ file('stray_snp_group.txt') ],
+                    [ 'stray' ]
+                ]
+                input[2] = 22
+                """
+            }
+        }
+
+        then {
+            // A group naming a variant the bundle does not carry means the component plan and the genotypes
+            // are two different views of the cohort. MPH would simply never see the name and would report a
+            // smaller component, so the divergence has to stop here.
+            assertAll(
+                { assert !process.success },
+                { assert process.exitStatus != 0 },
+                { assert process.errorReport.contains("SNP 'not_in_the_bim' is in group file") },
+                { assert process.errorReport.contains('the component plan and the genotype bundle are not the same view') }
+            )
+        }
+    }
+
+    test("a group variant outside the autosomal universe is refused") {
+
+        when {
+            process {
+                """
+                file('synthetic.bim').text = [
+                    '1\\tauto_1\\t0\\t1\\tA\\tG',
+                    '23\\tsex_23\\t0\\t2\\tA\\tG'
+                ].join('\\n') + '\\n'
+                file('sex_snp_group.txt').text = 'auto_1\\nsex_23\\n'
+                file('sex.strata.tsv').text = 'stratum_key\\tgroup_filename\\nsex\\tsex_snp_group.txt\\n'
+
+                input[0] = [ [ id:'synthetic' ], file('synthetic.bim') ]
+                input[1] = [
+                    [ id:'sex_plan' ],
+                    file('sex.strata.tsv'),
+                    [ file('sex_snp_group.txt') ],
+                    [ 'sex' ]
+                ]
+                input[2] = 22
+                """
+            }
+        }
+
+        then {
+            // A variant outside the universe is written weight 0 when it merely sits in the BIM, but a plan
+            // that explicitly claims it is asking for a component MPH would build and GCTA would not.
+            assertAll(
+                { assert !process.success },
+                { assert process.exitStatus != 0 },
+                { assert process.errorReport.contains("SNP 'sex_23' is in group file") },
+                { assert process.errorReport.contains('lies outside the autosomal universe (chromosome codes 1 to 22)') }
+            )
+        }
+    }
+
+    test("weight column names that disagree with the plan manifest are refused") {
+
+        when {
+            process {
+                """
+                def bimFile = ${popgenBim}
+                def variantNames = bimFile.text.readLines().findAll { line -> line.trim() }.collect { line -> line.trim().tokenize()[1] }
+
+                file('first_snp_group.txt').text = variantNames[0..4].join('\\n') + '\\n'
+                file('second_snp_group.txt').text = variantNames[5..9].join('\\n') + '\\n'
+                file('ordered.strata.tsv').text = 'stratum_key\\tgroup_filename\\n' +
+                    'first\\tfirst_snp_group.txt\\n' +
+                    'second\\tsecond_snp_group.txt\\n'
+
+                input[0] = [ [ id:'plink_simulated' ], bimFile ]
+                input[1] = [
+                    [ id:'ordered_plan' ],
+                    file('ordered.strata.tsv'),
+                    [ file('first_snp_group.txt'), file('second_snp_group.txt') ],
+                    [ 'second', 'first' ]
+                ]
+                input[2] = 22
+                """
+            }
+        }
+
+        then {
+            // The column order is component order for every consumer downstream. Silently writing the
+            // manifest's order under the caller's names would put each matrix on the other's variant set with
+            // no observable symptom, so the disagreement is fatal rather than reconciled.
+            assertAll(
+                { assert !process.success },
+                { assert process.exitStatus != 0 },
+                { assert process.errorReport.contains("does not match the plan manifest's stratum order") }
+            )
+        }
+    }
+
+    test("homo_sapiens popgen - stub") {
+
+        options "-stub"
+
+        when {
+            process {
+                """
+                input[0] = [ [ id:'plink_simulated' ], ${popgenBim} ]
+                input[1] = [ [ id:'ld_maf_plan' ], [], [], [ 'ld01_maf01', 'ld02_maf01' ] ]
+                input[2] = 22
+                """
+            }
+        }
+
+        then {
+            def csv = process.out.snp_info.get(0).get(1)
+            assertAll(
+                { assert process.success },
+                // The stub's width follows the caller's `weight_names`, so a stub run of a two-component plan
+                // yields a two-column CSV and the calling composition's stub topology is exercised for real
+                // rather than collapsing to a single component.
+                { assert rows(csv).first() == ['SNP', 'ld01_maf01', 'ld02_maf01'] },
+                { assert rows(csv).tail().every { row -> row.size() == 3 } },
+                { assert process.out.snp_info.get(0).get(2) == ['ld01_maf01', 'ld02_maf01'] },
+                { assert snapshot(sanitizeOutput(process.out, unstableKeys: [])).match() }
+            )
+        }
+    }
+}

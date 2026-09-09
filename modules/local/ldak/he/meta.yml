@@ -20,6 +20,9 @@ input:
         type: file
         description: Headerless phenotype file passed to `--pheno`
         ontologies: []
+    - prevalence:
+        type: float
+        description: Population prevalence for native liability-scale conversion of a binary phenotype; pass [] when unused
   - - meta2:
         type: map
         description: |
@@ -63,6 +66,24 @@ output:
       - "${prefix}.he":
           type: file
           description: HE summary output (`<prefix>.he`)
+          ontologies: []
+  he_liability:
+    - - meta:
+          type: map
+          description: Metadata map propagated from input
+      - "${prefix}.he.liab":
+          type: file
+          optional: true
+          description: Native liability-scale HE estimates for a binary phenotype with prevalence
+          ontologies: []
+  factor:
+    - - meta:
+          type: map
+          description: Metadata map propagated from input
+      - "${prefix}.factor":
+          type: file
+          optional: true
+          description: Native observed-to-liability conversion factors
           ontologies: []
   coeff:
     - - meta:

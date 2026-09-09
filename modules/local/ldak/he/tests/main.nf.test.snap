@@ -1,0 +1,350 @@
+{
+    "binary phenotype with prevalence - stub": {
+        "content": [
+            {
+                "coeff": [
+                    [
+                        {
+                            "id": "he_stub"
+                        },
+                        "he_stub.coeff:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "combined": [
+                    [
+                        {
+                            "id": "he_stub"
+                        },
+                        "he_stub.combined:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "cross": [
+                    [
+                        {
+                            "id": "he_stub"
+                        },
+                        "he_stub.cross:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "cross_across": [
+                    [
+                        {
+                            "id": "he_stub"
+                        },
+                        "he_stub.cross.across:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "cross_within": [
+                    [
+                        {
+                            "id": "he_stub"
+                        },
+                        "he_stub.cross.within:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "factor": [
+                    [
+                        {
+                            "id": "he_stub"
+                        },
+                        "he_stub.factor:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "he_across": [
+                    [
+                        {
+                            "id": "he_stub"
+                        },
+                        "he_stub.he.across:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "he_compare": [
+                    [
+                        {
+                            "id": "he_stub"
+                        },
+                        "he_stub.he.compare:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "he_liability": [
+                    [
+                        {
+                            "id": "he_stub"
+                        },
+                        "he_stub.he.liab:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "he_results": [
+                    [
+                        {
+                            "id": "he_stub"
+                        },
+                        "he_stub.he:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "he_within": [
+                    [
+                        {
+                            "id": "he_stub"
+                        },
+                        "he_stub.he.within:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "he_stub"
+                        },
+                        "he_stub.log"
+                    ]
+                ],
+                "progress": [
+                    [
+                        {
+                            "id": "he_stub"
+                        },
+                        "he_stub.progress:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "share": [
+                    [
+                        {
+                            "id": "he_stub"
+                        },
+                        "he_stub.share:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "share_across": [
+                    [
+                        {
+                            "id": "he_stub"
+                        },
+                        "he_stub.share.across:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "share_within": [
+                    [
+                        {
+                            "id": "he_stub"
+                        },
+                        "he_stub.share.within:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "versions_ldak6": [
+                    [
+                        "LDAK_HE",
+                        "ldak6",
+                        "6"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-10T02:56:18.434258249",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "quantitative phenotype without prevalence reports the observed scale": {
+        "content": [
+            {
+                "coeff": [
+                    [
+                        {
+                            "id": "he_quantitative"
+                        },
+                        "he_quantitative.coeff:md5,9b5d26afbcd8046434aa026f4640900d"
+                    ]
+                ],
+                "combined": [
+
+                ],
+                "cross": [
+                    [
+                        {
+                            "id": "he_quantitative"
+                        },
+                        "he_quantitative.cross:md5,572cfc55ce87690a6729a7be01092c4d"
+                    ]
+                ],
+                "cross_across": [
+
+                ],
+                "cross_within": [
+
+                ],
+                "factor": [
+
+                ],
+                "he_across": [
+
+                ],
+                "he_compare": [
+
+                ],
+                "he_liability": [
+
+                ],
+                "he_results": [
+                    [
+                        {
+                            "id": "he_quantitative"
+                        },
+                        "he_quantitative.he:md5,75bc337965232e1e4fd0e67f1c99b74a"
+                    ]
+                ],
+                "he_within": [
+
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "he_quantitative"
+                        },
+                        "he_quantitative.log"
+                    ]
+                ],
+                "progress": [
+                    [
+                        {
+                            "id": "he_quantitative"
+                        },
+                        "he_quantitative.progress:md5,251cc747fb88a183c52f844bab5122f3"
+                    ]
+                ],
+                "share": [
+                    [
+                        {
+                            "id": "he_quantitative"
+                        },
+                        "he_quantitative.share:md5,01b0b07a8fc56e5ad02a43b20beafe6d"
+                    ]
+                ],
+                "share_across": [
+
+                ],
+                "share_within": [
+
+                ],
+                "versions_ldak6": [
+                    [
+                        "LDAK_HE",
+                        "ldak6",
+                        "6"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-10T02:56:03.783716274",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "binary phenotype with prevalence reports the liability scale and conversion factors": {
+        "content": [
+            {
+                "coeff": [
+                    [
+                        {
+                            "id": "he_binary"
+                        },
+                        "he_binary.coeff:md5,05f015ac2bcbf3bea6359e99e288122e"
+                    ]
+                ],
+                "combined": [
+
+                ],
+                "cross": [
+                    [
+                        {
+                            "id": "he_binary"
+                        },
+                        "he_binary.cross:md5,7a7374f1ec4c0cceef8fe19a6b71d090"
+                    ]
+                ],
+                "cross_across": [
+
+                ],
+                "cross_within": [
+
+                ],
+                "factor": [
+                    [
+                        {
+                            "id": "he_binary"
+                        },
+                        "he_binary.factor:md5,2321f97e191230a6cb0c9e44aec77cbd"
+                    ]
+                ],
+                "he_across": [
+
+                ],
+                "he_compare": [
+
+                ],
+                "he_liability": [
+                    [
+                        {
+                            "id": "he_binary"
+                        },
+                        "he_binary.he.liab:md5,42858e8330afe8d5f8f0de0911c33983"
+                    ]
+                ],
+                "he_results": [
+                    [
+                        {
+                            "id": "he_binary"
+                        },
+                        "he_binary.he:md5,490050b6efc8bf6545857a618792f8ad"
+                    ]
+                ],
+                "he_within": [
+
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "he_binary"
+                        },
+                        "he_binary.log"
+                    ]
+                ],
+                "progress": [
+                    [
+                        {
+                            "id": "he_binary"
+                        },
+                        "he_binary.progress:md5,251cc747fb88a183c52f844bab5122f3"
+                    ]
+                ],
+                "share": [
+                    [
+                        {
+                            "id": "he_binary"
+                        },
+                        "he_binary.share:md5,01b0b07a8fc56e5ad02a43b20beafe6d"
+                    ]
+                ],
+                "share_across": [
+
+                ],
+                "share_within": [
+
+                ],
+                "versions_ldak6": [
+                    [
+                        "LDAK_HE",
+                        "ldak6",
+                        "6"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-10T02:56:11.339386303",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

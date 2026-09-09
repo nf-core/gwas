@@ -1,0 +1,81 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
+name: route_gcta_bivariate_relationships
+description: Route declared individual-level relationship requests from the shared prepared pair into native GCTA bivariate REML and HEreg outputs
+keywords:
+  - gcta
+  - bivariate reml
+  - haseman-elston regression
+  - ldms
+  - relationship
+  - genetic correlation
+components:
+  - gcta/bivariatereml
+  - gcta/bivariateremlldms
+  - gcta/bivariatehereg
+  - gcta/bivariateheregldms
+input:
+  - ch_relationships:
+      description: Validated relationship requests, one row per selected method
+      structure: "[map meta, [ path genotype_file, ... ], path pair_quant_covariates|[], path pair_cat_covariates|[]]"
+      pattern: "*.{bed,bim,fam,pgen,psam,pvar,vcf,vcf.gz,tsv,txt}"
+      ontologies: []
+  - ch_prepared_relationship_traits:
+      description: The shared prepared pair, one record per relationship, with headerless covariates and [] for an absent table
+      structure: "[map relationship_meta, path phenotype, path quant_covariates|[], path cat_covariates|[]]"
+      pattern: "*.{pheno,noheader.qcovar,noheader.catcovar}"
+      ontologies: []
+  - ch_relationship_dense_matrices:
+      description: Dense GCTA relatedness matrices fanned out per request
+      structure: "[map meta, [ path grm_file, ... ]]"
+      pattern: "*.grm.{bin,N.bin,id}"
+      ontologies: []
+  - ch_relationship_ldms_matrices:
+      description: LD- and MAF-stratified GCTA matrix families with explicit non-empty stratum prefix order, fanned out per request
+      structure: "[map meta, [ path grm_file, ... ], [ string grm_prefix, ... ]]"
+      pattern: "*.grm.{bin,N.bin,id}"
+      ontologies: []
+output:
+  - reml_results:
+      description: Native dense bivariate REML result
+      structure: "[map meta, path result]"
+      pattern: "*.hsq"
+      ontologies: []
+  - reml_log:
+      description: Native dense bivariate REML log
+      structure: "[map meta, path log]"
+      pattern: "*.log"
+      ontologies: []
+  - hereg_results:
+      description: Native dense bivariate HEreg result
+      structure: "[map meta, path result]"
+      pattern: "*.HEreg"
+      ontologies: []
+  - hereg_log:
+      description: Native dense bivariate HEreg log
+      structure: "[map meta, path log]"
+      pattern: "*.log"
+      ontologies: []
+  - reml_ldms_results:
+      description: Native LDMS bivariate REML result
+      structure: "[map meta, path result]"
+      pattern: "*.hsq"
+      ontologies: []
+  - reml_ldms_log:
+      description: Native LDMS bivariate REML log
+      structure: "[map meta, path log]"
+      pattern: "*.log"
+      ontologies: []
+  - hereg_ldms_results:
+      description: Native LDMS bivariate HEreg result
+      structure: "[map meta, path result]"
+      pattern: "*.HEreg"
+      ontologies: []
+  - hereg_ldms_log:
+      description: Native LDMS bivariate HEreg log
+      structure: "[map meta, path log]"
+      pattern: "*.log"
+      ontologies: []
+authors:
+  - "@andongni"
+maintainers:
+  - "@andongni"

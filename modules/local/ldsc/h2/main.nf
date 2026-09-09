@@ -13,9 +13,7 @@ process LDSC_H2 {
 
     output:
     tuple val(meta), path("${prefix}.log"), emit: log
-    tuple val("${task.process}"), val("ldsc"), eval("python -c 'import importlib.metadata; print(importlib.metadata.version(\"ldsc\"))'"), emit: versions_ldsc, topic: versions
-    tuple val("${task.process}"), val("ldsc_native"), eval("cat /opt/venv/ldsc-native-version"), emit: versions_ldsc_native, topic: versions
-    tuple val("${task.process}"), val("ldsc_source_revision"), eval("cat /opt/venv/ldsc-source-revision"), emit: versions_ldsc_source, topic: versions
+    tuple val("${task.process}"), val("ldsc"), eval("cat /opt/venv/ldsc-source-revision"), emit: versions_ldsc, topic: versions
     tuple val("${task.process}"), val("python"), eval("python --version 2>&1 | sed 's/^Python //'"), emit: versions_python, topic: versions
 
     script:
@@ -27,19 +25,18 @@ process LDSC_H2 {
     export OMP_NUM_THREADS="${task.cpus}"
     export MKL_NUM_THREADS="${task.cpus}"
 
+    # This LDSC release writes the complete native analysis log to stdout. Retain that stream under the
+    # declared result name; the file it opens at the same name is empty. Retire when the pinned CBIIT ldsc39
+    # revision moves to one whose --out .log carries the estimates.
     ldsc.py \
         --h2 "${sumstats}" \
         --ref-ld-chr "reference_ld_scores/" \
         --w-ld-chr "regression_weights/" \
         --out "${prefix}" \
         ${args} \
-        | tee "${prefix}.stdout.log"
+        > "${prefix}.stdout.log"
 
-    if [[ -s "${prefix}.log" ]]; then
-        rm "${prefix}.stdout.log"
-    else
-        mv "${prefix}.stdout.log" "${prefix}.log"
-    fi
+    mv "${prefix}.stdout.log" "${prefix}.log"
     """
 
     stub:

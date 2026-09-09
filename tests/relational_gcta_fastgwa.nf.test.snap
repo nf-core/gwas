@@ -2,9 +2,6 @@
     "versions": {
         "content": [
             {
-                "CANONICALISE_SUMMARY_STATISTICS": {
-                    "python": "3.14.5"
-                },
                 "CUSTOM_GCTAMERGEGRMPARTS": {
                     "coreutils": 9.5
                 },
@@ -21,7 +18,10 @@
                     "gwaslab": "4.1.9",
                     "python": "3.12.13"
                 },
-                "NORMALISE_PHENOTYPES": {
+                "PREPARE_GENOTYPE_SOURCE": {
+                    "python": "3.14.5"
+                },
+                "PREPARE_PHENOTYPE_INPUTS": {
                     "python": "3.14.5"
                 },
                 "Workflow": {
@@ -29,11 +29,11 @@
                 }
             }
         ],
+        "timestamp": "2026-09-10T06:07:40.953465661",
         "meta": {
-            "nf-test": "0.9.3",
-            "nextflow": "25.10.4"
-        },
-        "timestamp": "2026-08-24T02:56:57.924972453"
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
     },
     "association": {
         "content": [
@@ -54,10 +54,10 @@
                 "fastgwa_equivalent.gcta_fastgwa.fastGWA:md5,d756c893ac9fc977735a6dc3b7ba4dd7"
             ]
         ],
+        "timestamp": "2026-08-24T03:01:07.680852987",
         "meta": {
             "nf-test": "0.9.3",
             "nextflow": "25.10.4"
-        },
-        "timestamp": "2026-08-24T03:01:07.680852987"
+        }
     }
 }

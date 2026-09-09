@@ -69,10 +69,33 @@ runs:
         fixture_root=$(tests/fixtures/materialize.sh --profile "${{ inputs.profile }}")
         echo "GWAS_TEST_FIXTURES=$fixture_root" >> "$GITHUB_ENV"
 
+    # nextflow.config includes the nf-core custom_config_base nfcore_custom.config on every launch unless
+    # NXF_OFFLINE is set, which costs a raw.githubusercontent.com round trip plus the Groovy parse of ~80
+    # institutional profile blocks -- per test case, so once per case per shard per profile per Nextflow
+    # version. NXF_OFFLINE aborts a run rather than downloading when a plugin is missing, so the cache has
+    # to be warm first. Warming it explicitly beats probing for it: `run --help` resolves and installs
+    # exactly the plugin set this Nextflow needs (nf-schema plus the nf-tower core plugin), whichever
+    # version the matrix leg is running, and it fails loudly here rather than silently downgrading later.
+    - name: Warm the Nextflow plugin cache
+      shell: bash
+      run: nextflow run . --help > /dev/null
+
     - name: Run nf-test
       shell: bash
       env:
         NFT_WORKDIR: ${{ env.NFT_WORKDIR }}
+        # Must be the literal string 'true'. Nextflow compares against 'true' while the nf-core config
+        # test uses Groovy truth, so 'false' would disable the include and still leave Nextflow doing all
+        # of its online work.
+        NXF_OFFLINE: "true"
+        # Every test case is a fresh `nextflow run` process that lives a few seconds compiling Groovy,
+        # so the JVM never reaches C2. Nextflow's own launcher hands `-XX:TieredStopAtLevel=1` to every
+        # command except `run` and `node`, which is right for a production run and pure overhead here.
+        # NXF_JVM_ARGS rather than NXF_OPTS: NXF_OPTS is also spliced into the launcher's `java -version`
+        # probe, while NXF_JVM_ARGS reaches only the final JVM, and the launcher appends it last so it
+        # also overrides a heap set through NXF_OPTS. The heap cap is right-sized for the compact test
+        # fixture and must not be copied into production guidance.
+        NXF_JVM_ARGS: "-XX:TieredStopAtLevel=1 -Xss2m -Xms256m -Xmx1024m"
       run: |
         nf-test test \
           --profile=+${{ inputs.profile }} \

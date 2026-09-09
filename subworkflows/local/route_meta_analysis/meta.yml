@@ -1,0 +1,45 @@
+name: route_meta_analysis
+description: Resolve ordered base-summary membership and publish native and derived common-variant meta-analysis results
+keywords:
+  - meta-analysis
+  - genome-wide association study
+  - summary statistics
+components:
+  - common_variant_meta_analysis
+  - finalise_meta_analysis
+input:
+  - ch_requests:
+      type: channel
+      description: "[meta, ordered_source_summary_statistics_ids] with validated models, min_studies and optional axes"
+  - ch_summary_statistics:
+      type: channel
+      description: "[meta, gwaslab_summary_statistics] for each unique base summary identity"
+output:
+  - summary_statistics:
+      type: channel
+      description: "[meta, derived_gwaslab_summary] under the derived summary identity"
+  - fixed:
+      type: channel
+      description: "[meta, native_fixed] for every request"
+  - random_effects:
+      type: channel
+      description: "[meta, native_random] when random is selected"
+  - gwaslab_log:
+      type: channel
+      description: "[meta, native_log] for every request"
+  - metasoft_result:
+      type: channel
+      description: "[meta, native_result] when re2 is selected"
+  - metasoft_log:
+      type: channel
+      description: "[meta, native_log] when re2 is selected"
+  - mrmega_result:
+      type: channel
+      description: "[meta, native_result] when mrmega is selected"
+  - mrmega_log:
+      type: channel
+      description: "[meta, native_log] when mrmega is selected"
+authors:
+  - "@andongni"
+maintainers:
+  - "@andongni"

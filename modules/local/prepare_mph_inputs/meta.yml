@@ -1,0 +1,117 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/modules/meta-schema.json
+name: "prepare_mph_inputs"
+description: Serialise one analysis unit's prepared phenotype and covariate tables into the IID-keyed CSVs MPH consumes
+keywords:
+  - mph
+  - minque for partitioning heritability
+  - phenotype
+  - covariate
+  - serialisation
+  - heritability
+tools:
+  - "prepare_mph_inputs":
+      description: |
+        A Python 3 representation adapter. It rewrites the pipeline's prepared phenotype and covariate tables
+        into MPH's comma-separated, IID-keyed, empty-field-is-missing form, dummy-encodes
+        categorical covariates by the same rule the pipeline's other numeric design uses, prepends
+        the explicit intercept column MPH does not synthesise once a covariate is named.
+      homepage: "https://github.com/nf-core/gwas"
+      documentation: "https://nf-co.re/gwas"
+      # Pipeline-authored code carrying the pipeline's own licence. It invokes no third-party programme; MPH
+      # is GPL-3.0-only and is declared by the two `mph/*` modules that do.
+      licence: ["MIT"]
+      identifier: ""
+input:
+  - - meta:
+        type: map
+        description: |
+          Groovy Map containing the analysis unit's information and its ordered `mph_trait_names` list.
+    - phenotype_table:
+        type: file
+        description: |
+          Headerless `FID IID trait...` table with one column per name in the route's trait list. `NA`, `nan`,
+          `-9` and an empty cell are all missing.
+        pattern: "*.pheno"
+        ontologies:
+          - edam: "http://edamontology.org/format_3475"
+    - quant_covariates:
+        type: file
+        description: |
+          Optional headered `FID IID name...` quantitative covariate table. Use `[]` for absence. Values must
+          parse as numbers when present.
+        pattern: "*.qcovar"
+        ontologies:
+          - edam: "http://edamontology.org/format_3475"
+    - cat_covariates:
+        type: file
+        description: |
+          Optional headered `FID IID name...` categorical covariate table. Use `[]` for absence. Each column is
+          treatment-coded against its lexically first observed level, because MPH never expands a factor and
+          reports the resulting rank deficiency only as a warning at exit 0.
+        pattern: "*.catcovar"
+        ontologies:
+          - edam: "http://edamontology.org/format_3475"
+  - - meta2:
+        type: map
+        description: |
+          Groovy Map containing the matrix family's information.
+    - grm_iid:
+        type: file
+        description: |
+          The `.grm.iid` of the matrix family the fit will use. Every component of one family shares it. It
+          must be the genotype FAM's IID column in FAM order, which this module asserts because MPH indexes
+          the matrix by that order and checks nothing.
+        pattern: "*.grm.iid"
+        ontologies:
+          - edam: "http://edamontology.org/format_2330"
+    - fam:
+        type: file
+        description: |
+          The genotype FAM the matrix family was built from. It supplies the FID of each IID, which is what
+          makes an ambiguous `FID IID` pairing in the phenotype table detectable rather than silent: MPH keys
+          samples by IID alone.
+        pattern: "*.fam"
+        ontologies:
+          - edam: "http://edamontology.org/format_3475"
+output:
+  phenotype:
+    - - meta:
+          type: map
+          description: Groovy Map containing the analysis unit's information.
+      - "${prefix}.mph.pheno.csv":
+          type: file
+          description: |
+            IID-keyed phenotype CSV in matrix sample order, one column per trait, missing values written as
+            empty fields.
+          pattern: "*.mph.pheno.csv"
+          ontologies:
+            - edam: "http://edamontology.org/format_3752"
+  covariates:
+    - - meta:
+          type: map
+          description: Groovy Map containing the analysis unit's information.
+      - "${prefix}.mph.covar.csv":
+          type: file
+          description: |
+            IID-keyed covariate CSV, emitted only when the analysis declared covariates. Its first column after
+            the identifier is the literal `intercept`, which MPH synthesises only when no covariate is named.
+          pattern: "*.mph.covar.csv"
+          ontologies:
+            - edam: "http://edamontology.org/format_3752"
+  versions:
+    - "versions.yml":
+        type: file
+        description: File containing software versions
+        pattern: "versions.yml"
+        ontologies: []
+topics:
+  versions:
+    - "versions.yml":
+        type: file
+        description: File containing software versions
+        pattern: "versions.yml"
+        ontologies: []
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"

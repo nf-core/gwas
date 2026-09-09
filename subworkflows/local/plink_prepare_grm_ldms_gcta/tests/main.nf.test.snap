@@ -1,0 +1,129 @@
+{
+    "a real two-stratum family is built from the plan's own disjoint group files": {
+        "content": [
+            {
+                "0": [
+                    [
+                        {
+                            "id": "popgen_family",
+                            "key": "popgen_key"
+                        },
+                        [
+                            "popgen_family__000001.grm.N.bin:md5,b0b8427ecf3b2804ebd89f444d80255f",
+                            "popgen_family__000001.grm.bin:md5,9a07eb6c3887391b5030b0d6b0c99a70",
+                            "popgen_family__000001.grm.id:md5,4f9aa36c44a417ff6d7caa9841e66ad9",
+                            "popgen_family__000002.grm.N.bin:md5,b0b8427ecf3b2804ebd89f444d80255f",
+                            "popgen_family__000002.grm.bin:md5,b57e6e3377905657f1961cb4eee130f6",
+                            "popgen_family__000002.grm.id:md5,4f9aa36c44a417ff6d7caa9841e66ad9"
+                        ],
+                        [
+                            "popgen_family__000001",
+                            "popgen_family__000002"
+                        ]
+                    ]
+                ],
+                "1": [
+                    [
+                        {
+                            "id": "popgen_family",
+                            "key": "popgen_key"
+                        },
+                        "ldms",
+                        "ld01_maf01",
+                        {
+                            "model_key": "ldms",
+                            "stratum_key": "ld01_maf01",
+                            "ld_lower": "0",
+                            "ld_upper": "1",
+                            "maf_lower": "0",
+                            "maf_upper": "0.5",
+                            "predictor_count": "110",
+                            "group_filename": "popgen_family_snp_group_ld01_maf01.txt"
+                        }
+                    ],
+                    [
+                        {
+                            "id": "popgen_family",
+                            "key": "popgen_key"
+                        },
+                        "ldms",
+                        "ld02_maf01",
+                        {
+                            "model_key": "ldms",
+                            "stratum_key": "ld02_maf01",
+                            "ld_lower": "1",
+                            "ld_upper": "2",
+                            "maf_lower": "0",
+                            "maf_upper": "0.5",
+                            "predictor_count": "110",
+                            "group_filename": "popgen_family_snp_group_ld02_maf01.txt"
+                        }
+                    ]
+                ],
+                "grm_family": [
+                    [
+                        {
+                            "id": "popgen_family",
+                            "key": "popgen_key"
+                        },
+                        [
+                            "popgen_family__000001.grm.N.bin:md5,b0b8427ecf3b2804ebd89f444d80255f",
+                            "popgen_family__000001.grm.bin:md5,9a07eb6c3887391b5030b0d6b0c99a70",
+                            "popgen_family__000001.grm.id:md5,4f9aa36c44a417ff6d7caa9841e66ad9",
+                            "popgen_family__000002.grm.N.bin:md5,b0b8427ecf3b2804ebd89f444d80255f",
+                            "popgen_family__000002.grm.bin:md5,b57e6e3377905657f1961cb4eee130f6",
+                            "popgen_family__000002.grm.id:md5,4f9aa36c44a417ff6d7caa9841e66ad9"
+                        ],
+                        [
+                            "popgen_family__000001",
+                            "popgen_family__000002"
+                        ]
+                    ]
+                ],
+                "strata": [
+                    [
+                        {
+                            "id": "popgen_family",
+                            "key": "popgen_key"
+                        },
+                        "ldms",
+                        "ld01_maf01",
+                        {
+                            "model_key": "ldms",
+                            "stratum_key": "ld01_maf01",
+                            "ld_lower": "0",
+                            "ld_upper": "1",
+                            "maf_lower": "0",
+                            "maf_upper": "0.5",
+                            "predictor_count": "110",
+                            "group_filename": "popgen_family_snp_group_ld01_maf01.txt"
+                        }
+                    ],
+                    [
+                        {
+                            "id": "popgen_family",
+                            "key": "popgen_key"
+                        },
+                        "ldms",
+                        "ld02_maf01",
+                        {
+                            "model_key": "ldms",
+                            "stratum_key": "ld02_maf01",
+                            "ld_lower": "1",
+                            "ld_upper": "2",
+                            "maf_lower": "0",
+                            "maf_upper": "0.5",
+                            "predictor_count": "110",
+                            "group_filename": "popgen_family_snp_group_ld02_maf01.txt"
+                        }
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-03T10:33:59.093575894",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

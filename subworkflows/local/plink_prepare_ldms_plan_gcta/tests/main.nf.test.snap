@@ -1,0 +1,53 @@
+{
+    "a two-bin plan partitions the retained LD-score variants into ordered disjoint groups": {
+        "content": [
+            {
+                "0": [
+                    [
+                        {
+                            "id": "popgen_plan"
+                        },
+                        "popgen_plan.strata.tsv:md5,892d4b533cc784a3d36b72734c488bc1",
+                        [
+                            "popgen_plan_snp_group_ld01_maf01.txt:md5,50003a8a14579d958a46bb747d998c21",
+                            "popgen_plan_snp_group_ld02_maf01.txt:md5,16b353ad5bc56ac1deaf551083ddaf62"
+                        ]
+                    ]
+                ],
+                "1": [
+                    [
+                        {
+                            "id": "popgen_plan"
+                        },
+                        "popgen_plan_gcta_ld.score.ld:md5,5a4859a8538b2468ce58d798856889ce"
+                    ]
+                ],
+                "ld_scores": [
+                    [
+                        {
+                            "id": "popgen_plan"
+                        },
+                        "popgen_plan_gcta_ld.score.ld:md5,5a4859a8538b2468ce58d798856889ce"
+                    ]
+                ],
+                "plan": [
+                    [
+                        {
+                            "id": "popgen_plan"
+                        },
+                        "popgen_plan.strata.tsv:md5,892d4b533cc784a3d36b72734c488bc1",
+                        [
+                            "popgen_plan_snp_group_ld01_maf01.txt:md5,50003a8a14579d958a46bb747d998c21",
+                            "popgen_plan_snp_group_ld02_maf01.txt:md5,16b353ad5bc56ac1deaf551083ddaf62"
+                        ]
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-03T10:30:04.034597545",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

@@ -1,0 +1,200 @@
+nextflow_workflow {
+
+    name "Test Subworkflow ROUTE_MPH_HERITABILITY"
+    script "../main.nf"
+    workflow "ROUTE_MPH_HERITABILITY"
+    config "./nextflow.config"
+
+    tag "subworkflows"
+    tag "subworkflows_local"
+    tag "route_mph_heritability"
+    tag "mph"
+
+    // A stub run renders the stub script, so this file can assert topology, cardinality, identity and the
+    // guarded joins, and nothing about the rendered native arguments. Those belong to the real-mode pipeline
+    // route test, which is where `ext.args` actually exists.
+    options "-stub"
+
+    def matrixIdentity = { key, plan_key, components ->
+        [
+            key: key,
+            layer: 'base',
+            artifact_type: plan_key ? 'mph_ldms' : 'mph_dense',
+            settings: plan_key ? [format: 'mph_grm'] : [format: 'mph_grm', variant_universe: 'autosomes'],
+            plan_key: plan_key,
+            plan_settings: plan_key ? [ld_score_region_kb: 50, ld_bins: 2, maf_edges: [0, 0.5]] : null,
+            components: components,
+            variant_counts: [bim_rows: 2200, assigned: 2200, unassigned: 0],
+        ]
+    }
+
+    def analysisMeta = { analysis_id, methods ->
+        [
+            id: analysis_id,
+            trait: 'QT',
+            cohort: 'example_cohort',
+            heritability_methods: methods,
+            method_options: [mph: [iterations: null, tolerance: null, random_vectors: null, seed: 7, save_memory: false]],
+        ]
+    }
+
+    def resources = { outputDir, name ->
+        [
+            bed: RELATIONAL.resource(outputDir, "${name}.bed", 'genotypes\n'),
+            bim: RELATIONAL.resource(outputDir, "${name}.bim", '1\trs1\t0\t1\tA\tG\n'),
+            fam: RELATIONAL.resource(outputDir, "${name}.fam", 'F1\tS001\t0\t0\t0\t-9\n'),
+            phenotype: RELATIONAL.resource(outputDir, "${name}.noheader.pheno", 'F1\tS001\t0.5\n'),
+            qcovar: RELATIONAL.resource(outputDir, "${name}.qcovar", 'FID\tIID\tAGE\nF1\tS001\t30\n'),
+            catcovar: RELATIONAL.resource(outputDir, "${name}.catcovar", 'FID\tIID\tSEX\nF1\tS001\t1\n'),
+            dense_bin: RELATIONAL.resource(outputDir, "mph_dense.${name}.grm.bin", 'binary\n'),
+            dense_iid: RELATIONAL.resource(outputDir, "mph_dense.${name}.grm.iid", 'S001\n'),
+            ldms_bin_1: RELATIONAL.resource(outputDir, "mph_ldms.${name}__000001_ld01_maf01.grm.bin", 'binary\n'),
+            ldms_iid_1: RELATIONAL.resource(outputDir, "mph_ldms.${name}__000001_ld01_maf01.grm.iid", 'S001\n'),
+            ldms_bin_2: RELATIONAL.resource(outputDir, "mph_ldms.${name}__000002_ld02_maf01.grm.bin", 'binary\n'),
+            ldms_iid_2: RELATIONAL.resource(outputDir, "mph_ldms.${name}__000002_ld02_maf01.grm.iid", 'S001\n'),
+        ]
+    }
+
+    test("one analysis selecting both tokens fans out to two independent fits and two records") {
+
+        when {
+            def files = resources(outputDir, 'both')
+            def meta = analysisMeta('both', ['mph_reml', 'mph_reml_ldms'])
+            workflow {
+                """
+                def meta = ${meta.inspect()}
+                input[0] = channel.of([
+                    meta,
+                    ${matrixIdentity('dense000001', null, [[ordinal: 1, name: 'all', plan_predictor_count: 2200]]).inspect()},
+                    [file('${files.dense_bin}', checkIfExists: true), file('${files.dense_iid}', checkIfExists: true)],
+                ])
+                input[1] = channel.of([
+                    meta,
+                    ${matrixIdentity('ldms000001', 'plan000001', [[ordinal: 1, name: 'ld01_maf01', plan_predictor_count: 1100], [ordinal: 2, name: 'ld02_maf01', plan_predictor_count: 1100]]).inspect()},
+                    [
+                        file('${files.ldms_bin_1}', checkIfExists: true),
+                        file('${files.ldms_iid_1}', checkIfExists: true),
+                        file('${files.ldms_bin_2}', checkIfExists: true),
+                        file('${files.ldms_iid_2}', checkIfExists: true),
+                    ],
+                    ['mph_ldms.both__000001_ld01_maf01', 'mph_ldms.both__000002_ld02_maf01'],
+                ])
+                input[2] = channel.of([meta, file('${files.bed}', checkIfExists: true), file('${files.bim}', checkIfExists: true), file('${files.fam}', checkIfExists: true)])
+                input[3] = channel.of([meta, file('${files.phenotype}', checkIfExists: true), [], []])
+                input[4] = channel.of([meta, file('${files.qcovar}', checkIfExists: true), file('${files.catcovar}', checkIfExists: true)])
+                """
+            }
+        }
+
+        then {
+            def estimators = workflow.out.mph_results.collect { record -> record[0].mph_estimator }.sort()
+            assertAll(
+                { assert workflow.success },
+                // One analysis holding two matrix records becomes two fits and two native result records,
+                // each addressed by the selected token.
+                { assert workflow.out.mph_results.size() == 2 },
+                { assert workflow.out.mph_fixed.size() == 2 },
+                { assert workflow.out.mph_iterations.size() == 2 },
+                { assert workflow.out.mph_log.size() == 2 },
+                { assert estimators == ['mph_reml', 'mph_reml_ldms'] },
+                // The emitted identity is the focal analysis plus the selected token, and nothing else this
+                // route minted for its own use.
+                { assert workflow.out.mph_results.every { record -> record[0].id == 'both' } },
+                { assert workflow.out.mph_results.every { record -> !record[0].containsKey('mph_effective') } },
+                { assert workflow.out.mph_results.every { record -> !record[0].containsKey('mph_trait_names') } },
+            )
+        }
+    }
+
+    test("an analysis with no covariate tables fits the model MPH synthesises an intercept for") {
+
+        when {
+            def files = resources(outputDir, 'nocovar')
+            def meta = analysisMeta('nocovar', ['mph_reml'])
+            workflow {
+                """
+                def meta = ${meta.inspect()}
+                input[0] = channel.of([
+                    meta,
+                    ${matrixIdentity('dense000002', null, [[ordinal: 1, name: 'all', plan_predictor_count: 2200]]).inspect()},
+                    [file('${files.dense_bin}', checkIfExists: true), file('${files.dense_iid}', checkIfExists: true)],
+                ])
+                input[1] = channel.empty()
+                input[2] = channel.of([meta, file('${files.bed}', checkIfExists: true), file('${files.bim}', checkIfExists: true), file('${files.fam}', checkIfExists: true)])
+                input[3] = channel.of([meta, file('${files.phenotype}', checkIfExists: true), [], []])
+                input[4] = channel.of([meta, [], []])
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                // Absence travels as `[]` all the way to the atom, which is a different model rather than an
+                // empty column set: the serializer writes no covariate file, so MPH synthesises its intercept.
+                { assert workflow.out.mph_results.size() == 1 },
+                { assert workflow.out.mph_results.first()[0].mph_estimator == 'mph_reml' },
+            )
+        }
+    }
+
+    test("a selected MPH analysis with no PLINK 1 record fails the run rather than vanishing") {
+
+        when {
+            def files = resources(outputDir, 'nogenotypes')
+            def meta = analysisMeta('nogenotypes', ['mph_reml'])
+            workflow {
+                """
+                def meta = ${meta.inspect()}
+                input[0] = channel.of([
+                    meta,
+                    ${matrixIdentity('dense000003', null, [[ordinal: 1, name: 'all', plan_predictor_count: 2200]]).inspect()},
+                    [file('${files.dense_bin}', checkIfExists: true), file('${files.dense_iid}', checkIfExists: true)],
+                ])
+                input[1] = channel.empty()
+                input[2] = channel.empty()
+                input[3] = channel.of([meta, file('${files.phenotype}', checkIfExists: true), [], []])
+                input[4] = channel.of([meta, [], []])
+                """
+            }
+        }
+
+        then {
+            // The guarded join is the whole reason the ancillary streams are narrowed and re-keyed first: a
+            // `combine` would have dropped this analysis in silence, producing no task, no result and no error.
+            assertAll(
+                { assert !workflow.success },
+                { assert workflow.stdout.join('\n').contains('Join mismatch') || workflow.errorReport.contains('Join mismatch') },
+            )
+        }
+    }
+
+    test("a matrix record whose analysis declared no covariate stream fails the run rather than vanishing") {
+
+        when {
+            def files = resources(outputDir, 'noanalysis')
+            def meta = analysisMeta('noanalysis', ['mph_reml'])
+            workflow {
+                """
+                def meta = ${meta.inspect()}
+                input[0] = channel.of([
+                    meta,
+                    ${matrixIdentity('dense000004', null, [[ordinal: 1, name: 'all', plan_predictor_count: 2200]]).inspect()},
+                    [file('${files.dense_bin}', checkIfExists: true), file('${files.dense_iid}', checkIfExists: true)],
+                ])
+                input[1] = channel.empty()
+                input[2] = channel.of([meta, file('${files.bed}', checkIfExists: true), file('${files.bim}', checkIfExists: true), file('${files.fam}', checkIfExists: true)])
+                input[3] = channel.of([meta, file('${files.phenotype}', checkIfExists: true), [], []])
+                input[4] = channel.empty()
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert !workflow.success },
+                { assert workflow.stdout.join('\n').contains('Join mismatch') || workflow.errorReport.contains('Join mismatch') },
+            )
+        }
+    }
+}

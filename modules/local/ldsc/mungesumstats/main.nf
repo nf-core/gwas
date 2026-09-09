@@ -13,9 +13,7 @@ process LDSC_MUNGESUMSTATS {
     output:
     tuple val(meta), path("${prefix}.sumstats.gz"), emit: munged_sumstats
     tuple val(meta), path("${prefix}.log"), emit: log
-    tuple val("${task.process}"), val("ldsc"), eval("python -c 'import importlib.metadata; print(importlib.metadata.version(\"ldsc\"))'"), emit: versions_ldsc, topic: versions
-    tuple val("${task.process}"), val("ldsc_native"), eval("cat /opt/venv/ldsc-native-version"), emit: versions_ldsc_native, topic: versions
-    tuple val("${task.process}"), val("ldsc_source_revision"), eval("cat /opt/venv/ldsc-source-revision"), emit: versions_ldsc_source, topic: versions
+    tuple val("${task.process}"), val("ldsc"), eval("cat /opt/venv/ldsc-source-revision"), emit: versions_ldsc, topic: versions
     tuple val("${task.process}"), val("python"), eval("python --version 2>&1 | sed 's/^Python //'"), emit: versions_python, topic: versions
 
     script:
@@ -24,6 +22,9 @@ process LDSC_MUNGESUMSTATS {
     """
     export PYTHONUNBUFFERED=1
 
+    # The pinned munge_sumstats.py cannot read gzip
+    # input (read_header calls bytes.rstrip with a string); every pipeline LDSC input is a gzipped
+    # GWASLab table. Retire when the pin moves past the fix.
     sumstats_input="${sumstats}"
     if [[ "${sumstats}" == *.gz ]]; then
         gzip --decompress --stdout "${sumstats}" > ldsc_munge_input.tsv

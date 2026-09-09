@@ -10,20 +10,6 @@
                         [
                             "LDSC_MUNGESUMSTATS",
                             "ldsc",
-                            "3.0.2"
-                        ]
-                    ],
-                    "versions_ldsc_native": [
-                        [
-                            "LDSC_MUNGESUMSTATS",
-                            "ldsc_native",
-                            "3.0.1"
-                        ]
-                    ],
-                    "versions_ldsc_source": [
-                        [
-                            "LDSC_MUNGESUMSTATS",
-                            "ldsc_source_revision",
                             "6c673952cee74bd5c57aef1555a03b1c015399a0"
                         ]
                     ],

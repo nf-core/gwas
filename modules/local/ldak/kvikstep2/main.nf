@@ -53,10 +53,6 @@ process LDAK_KVIKSTEP2 {
     for assoc in "${prefix}".step2*.assoc; do
         summary="\${assoc%.assoc}.summaries"
         harmonisation_input="\${assoc%.assoc}.harmonisation.tsv"
-        if [[ ! -f "\${summary}" ]]; then
-            echo "LDAK-KVIK did not write the summary table required to recover per-variant effect-allele frequencies and effective analysis sizes: \${summary}" >&2
-            exit 1
-        fi
         awk '
             BEGIN { FS = OFS = "\\t" }
             NR == FNR {
@@ -67,10 +63,6 @@ process LDAK_KVIKSTEP2 {
                         if (\$i == "A2") summary_a2 = i
                         if (\$i == "n") summary_n = i
                         if (\$i == "A1Freq") summary_a1freq = i
-                    }
-                    if (!summary_predictor || !summary_a1 || !summary_a2 || !summary_n || !summary_a1freq) {
-                        print "LDAK-KVIK summary table lacks Predictor, A1, A2, n or A1Freq" > "/dev/stderr"
-                        exit 1
                     }
                     next
                 }
@@ -89,10 +81,6 @@ process LDAK_KVIKSTEP2 {
                     if (\$i == "Predictor") association_predictor = i
                     if (\$i == "A1") association_a1 = i
                     if (\$i == "A2") association_a2 = i
-                }
-                if (!association_predictor || !association_a1 || !association_a2) {
-                    print "LDAK-KVIK association table lacks Predictor, A1 or A2" > "/dev/stderr"
-                    exit 1
                 }
                 first = 1
                 for (i = 1; i <= NF; i++) {

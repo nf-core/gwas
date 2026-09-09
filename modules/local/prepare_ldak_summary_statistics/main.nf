@@ -8,19 +8,16 @@ process PREPARE_LDAK_SUMMARY_STATISTICS {
         : 'community.wave.seqera.io/library/python:3.14.5--dc8358b3c5eeb927'}"
 
     input:
-    tuple val(meta), path(canonical_summary_statistics)
+    tuple val(meta), path(gwaslab_summary_statistics)
 
     output:
     tuple val(meta), path("${prefix}.summaries"), emit: summary_statistics
-    tuple val(meta), path("${prefix}.preparation.json"), emit: preparation
     path 'versions.yml', emit: versions, topic: versions
 
     script:
     prefix = task.ext.prefix ?: "${meta.summary_statistics_id}.ldak"
-    input_literal = groovy.json.JsonOutput.toJson(canonical_summary_statistics.toString())
+    input_literal = groovy.json.JsonOutput.toJson(gwaslab_summary_statistics.toString())
     output_literal = groovy.json.JsonOutput.toJson("${prefix}.summaries")
-    preparation_literal = groovy.json.JsonOutput.toJson("${prefix}.preparation.json")
-    metadata_literal = groovy.json.JsonOutput.toJson(groovy.json.JsonOutput.toJson(meta))
     task_process_literal = groovy.json.JsonOutput.toJson(task.process.toString())
     template('prepare_ldak_summary_statistics.py')
 
@@ -28,7 +25,6 @@ process PREPARE_LDAK_SUMMARY_STATISTICS {
     prefix = task.ext.prefix ?: "${meta.summary_statistics_id}.ldak"
     """
     printf 'Predictor\tA1\tA2\tZ\tn\tA1Freq\n' > "${prefix}.summaries"
-    printf '{"schema_version":"1.0","summary_statistics_id":"%s","stub":true}\n' '${meta.summary_statistics_id}' > "${prefix}.preparation.json"
     printf '"${task.process}":\n    python: %s\n' "\$(python3 --version | sed 's/^Python //')" > versions.yml
     """
 }

@@ -60,26 +60,6 @@ output:
       - ldsc:
           type: string
           description: The tool name
-      - 'python -c ''import importlib.metadata; print(importlib.metadata.version("ldsc"))''':
-          type: eval
-          description: The expression used to obtain the LDSC distribution version
-  versions_ldsc_native:
-    - - "${task.process}":
-          type: string
-          description: The name of the process
-      - ldsc_native:
-          type: string
-          description: The native LDSC version name
-      - "cat /opt/venv/ldsc-native-version":
-          type: eval
-          description: The expression used to obtain the version reported by the LDSC command source
-  versions_ldsc_source:
-    - - "${task.process}":
-          type: string
-          description: The name of the process
-      - ldsc_source_revision:
-          type: string
-          description: The source revision name
       - "cat /opt/venv/ldsc-source-revision":
           type: eval
           description: The expression used to obtain the pinned CBIIT/ldsc source revision
@@ -101,24 +81,6 @@ topics:
       - ldsc:
           type: string
           description: The tool name
-      - 'python -c ''import importlib.metadata; print(importlib.metadata.version("ldsc"))''':
-          type: eval
-          description: The expression used to obtain the LDSC distribution version
-    - - "${task.process}":
-          type: string
-          description: The name of the process
-      - ldsc_native:
-          type: string
-          description: The native LDSC version name
-      - "cat /opt/venv/ldsc-native-version":
-          type: eval
-          description: The expression used to obtain the version reported by the LDSC command source
-    - - "${task.process}":
-          type: string
-          description: The name of the process
-      - ldsc_source_revision:
-          type: string
-          description: The source revision name
       - "cat /opt/venv/ldsc-source-revision":
           type: eval
           description: The expression used to obtain the pinned CBIIT/ldsc source revision
@@ -133,8 +95,7 @@ topics:
           description: The expression used to obtain the Python version
 notes: |
   The runtime pins the CBIIT/ldsc `ldsc39` revision `6c673952cee74bd5c57aef1555a03b1c015399a0`.
-  CBIIT's distribution metadata is `3.0.2` while `ldsc.__version__` is `3.0.1`;
-  both values and the exact source revision are emitted separately.
+  The exact source revision is emitted as the LDSC version identity.
   Optional non-file arguments use `task.ext.args`; callers must not duplicate the
   module-owned `--sumstats`, `--merge-alleles`, or `--out` options.
   The wrapper decompresses a gzip input into the task directory before invocation because

@@ -1,0 +1,206 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/modules/meta-schema.json
+name: "mph_reml"
+description: Fit an MPH restricted maximum likelihood variance-component model over one or more native MPH relationship matrices
+keywords:
+  - mph
+  - minque for partitioning heritability
+  - reml
+  - variance components
+  - heritability
+  - genome relationship matrix
+tools:
+  - "mph":
+      description: |
+        MPH fits linear mixed models to partition genetic variance by MINQUE with stochastic trace estimation.
+        `--reml` estimates one variance component per relationship matrix named in `--grm_list`, plus a
+        residual component, for the traits named in `--trait_names`.
+
+        The trace estimator is stochastic, so `--seed` and `--num_random_vectors` move the point estimate and
+        not merely its standard error. The thread count and `--save_memory` move it in the sixth
+        to seventh significant digit. A caller reproducing a fit must hold all four fixed.
+
+        MPH synthesises an intercept only when no covariate is named. A `--covariate_file` given
+        with `--covariate_names` fits exactly the named columns and no intercept, so a caller that wants one must
+        supply an explicit column of ones and name it. A `--covariate_file` given WITHOUT `--covariate_names`
+        is silently ignored, and `--covariate_names` given without a file resolves the names against the
+        phenotype file instead, so the two are always passed together or not at all.
+
+        A rank-deficient covariate design is a warning, not an error: MPH prunes columns until the
+        design has full rank, names none of the columns it dropped, and writes a complete, normal-looking
+        result. The column it drops can be the caller's own intercept. Reconciling the `covar` column of
+        `.mq.blue.csv` against the requested names is the only way to detect it.
+
+        MPH itself is GPL-3.0-only. The runtime image is `linux/amd64` only: the binary is statically linked
+        against Intel oneMKL, which is redistributed under the Intel Simplified Software License, with
+        `libiomp5` under the Intel EULA for Developer Tools, so the image as a whole is labelled
+        `GPL-3.0-only AND LicenseRef-IntelSimplifiedSoftwareOct2022 AND LicenseRef-IntelEULADeveloperToolsOct2021`.
+        There is no Conda package and no fallback for another architecture.
+      homepage: "https://jiang18.github.io/mph/"
+      documentation: "https://jiang18.github.io/mph/"
+      tool_dev_url: "https://github.com/jiang18/mph"
+      doi: "10.1093/bioinformatics/btae298"
+      licence: ["GPL-3.0-only"]
+      identifier: ""
+input:
+  - - meta:
+        type: map
+        description: |
+          Groovy Map containing sample information, e.g. `[ id:'sample1' ]`
+    - grm_files:
+        type: file
+        description: |
+          One or more `[.grm.bin, .grm.iid]` MPH matrix bundles staged flat. Every component of one family
+          shares the same `.grm.iid`, whose line order is what MPH indexes the matrix by: a `.grm.iid` that
+          does not match its own `.grm.bin` produces a complete, stable, wrong result at exit 0.
+          GCTA bundles are not accepted either, and MPH does not usefully refuse one.
+        pattern: "*.grm.{bin,iid}"
+        ontologies:
+          - edam: "http://edamontology.org/format_2330"
+    - grm_prefixes:
+        type: list
+        description: |
+          The staged matrix prefixes in component order, written one per line to the `--grm_list` file. The
+          list order is the row order of the result, and each prefix appears verbatim as that row's `vc_name`.
+  - - meta2:
+        type: map
+        description: |
+          Groovy Map containing the phenotype table's information, e.g. `[ id:'sample1' ]`
+    - phenotype_csv:
+        type: file
+        description: |
+          Comma-separated phenotype table with a header whose first column is the IID. Rows are matched by IID
+          and are order-independent; a missing value is an empty field, not `NA`.
+        pattern: "*.csv"
+        ontologies:
+          - edam: "http://edamontology.org/format_3752"
+    - trait_names:
+        type: list
+        description: |
+          The trait columns to fit, in order. Mandatory: omitting `--trait_names` prints an error and exits 0
+          having written nothing but the log. A name absent from the header exits 1. More than
+          one name makes this a multi-trait fit and adds `.mq.cor.csv` to the outputs.
+  - - meta3:
+        type: map
+        description: |
+          Groovy Map containing the covariate table's information, e.g. `[ id:'sample1' ]`
+    - covariate_csv:
+        type: file
+        description: |
+          Optional comma-separated covariate table with a header whose first column is the IID. Use `[]` for
+          absence, which is a different model rather than an empty one: MPH synthesises an intercept only when
+          no covariate is named. A sample with an empty covariate cell is dropped from the analysis
+          set.
+        pattern: "*.csv"
+        ontologies:
+          - edam: "http://edamontology.org/format_3752"
+    - covariate_names:
+        type: list
+        description: |
+          The covariate columns to fit, in order; use `[]` when no covariate file is supplied. MPH splits this
+          on commas, so no name may contain one. Include an explicit all-ones column here to fit
+          an intercept.
+output:
+  variance_components:
+    - - meta:
+          type: map
+          description: |
+            Groovy Map containing sample information, e.g. `[ id:'sample1' ]`
+      - "${prefix}.mq.vc.csv":
+          type: file
+          description: |
+            Primary result: one row per component per trait pair, `err` last, with the component's
+            post-quality-control variant count `m`, its variance, standard error, proportion of variance
+            explained and enrichment, followed by the enrichment and variance-component sampling covariance
+            blocks named by `vc_name`. A negative variance is native and unconstrained.
+          pattern: "*.mq.vc.csv"
+          ontologies:
+            - edam: "http://edamontology.org/format_3752"
+  fixed_effects:
+    - - meta:
+          type: map
+          description: |
+            Groovy Map containing sample information, e.g. `[ id:'sample1' ]`
+      - "${prefix}.mq.blue.csv":
+          type: file
+          description: Best linear unbiased estimates of the fitted covariates and their sampling covariance.
+          pattern: "*.mq.blue.csv"
+          ontologies:
+            - edam: "http://edamontology.org/format_3752"
+  iterations:
+    - - meta:
+          type: map
+          description: |
+            Groovy Map containing sample information, e.g. `[ id:'sample1' ]`
+      - "${prefix}.mq.iter.csv":
+          type: file
+          description: |
+            Per-iteration solver trace: trait count, the non-missing analysis set size, the matrix count, the
+            log-likelihood and the predicted log-likelihood change.
+          pattern: "*.mq.iter.csv"
+          ontologies:
+            - edam: "http://edamontology.org/format_3752"
+  projected_phenotypes:
+    - - meta:
+          type: map
+          description: |
+            Groovy Map containing sample information, e.g. `[ id:'sample1' ]`
+      - "${prefix}.mq.py.csv":
+          type: file
+          description: Projected phenotype per individual, one row per retained sample.
+          pattern: "*.mq.py.csv"
+          ontologies:
+            - edam: "http://edamontology.org/format_3752"
+  correlations:
+    - - meta:
+          type: map
+          description: |
+            Groovy Map containing sample information, e.g. `[ id:'sample1' ]`
+      - "${prefix}.mq.cor.csv":
+          type: file
+          description: |
+            Native genetic correlations for a multi-trait fit: one row per matrix plus `err` and the aggregate
+            `G`. Written only when more than one trait is named. The `trait_x`/`trait_y` order is MPH's own and
+            has been observed reversed relative to `--trait_names`, so a caller must select by name.
+          pattern: "*.mq.cor.csv"
+          ontologies:
+            - edam: "http://edamontology.org/format_3752"
+  log:
+    - - meta:
+          type: map
+          description: |
+            Groovy Map containing sample information, e.g. `[ id:'sample1' ]`
+      - "${prefix}.log":
+          type: file
+          description: |
+            Tee'd MPH standard output: the echoed option block including the effective thread count, the
+            non-missing analysis set size, the random-vector line, the iteration trace, and the `Warning:` and
+            `Error:` lines MPH prints at exit 0.
+          pattern: "*.log"
+          ontologies: []
+  versions_mph:
+    - - "${task.process}":
+          type: string
+          description: The process the version was collected from
+      - mph:
+          type: string
+          description: The tool name
+      - "(mph 2>&1 || true) | sed -n 's/^[*] Version \\([0-9][0-9.]*\\).*/\\1/p'":
+          type: eval
+          description: |
+            The command used to retrieve the MPH version. MPH has neither `--version` nor `--help`: it prints
+            its banner and exits 1, which is why the invocation tolerates a non-zero status.
+topics:
+  versions:
+    - - "${task.process}":
+          type: string
+          description: The process the version was collected from
+      - mph:
+          type: string
+          description: The tool name
+      - "(mph 2>&1 || true) | sed -n 's/^[*] Version \\([0-9][0-9.]*\\).*/\\1/p'":
+          type: eval
+          description: The command used to retrieve the MPH version from its banner, which it prints at exit 1.
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"

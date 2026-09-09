@@ -6,7 +6,7 @@ nextflow_pipeline {
     tag "summary_statistics"
     tag "external_summary"
 
-    test("raw and canonical external sources converge on the canonical contract") {
+    test("every external source crosses the GWASLab ingress contract") {
         when {
             def resources = RELATIONAL.ldscResources(outputDir, 'pipeline_external_ingress')
             params {
@@ -15,19 +15,18 @@ nextflow_pipeline {
                 analysis_manifest = null
                 summary_statistics_manifest = RELATIONAL.summaryStatistics(projectDir, outputDir, 'pipeline_external_ingress', { rows ->
                     rows[0].source = resources.quantitative
-                    def raw = new LinkedHashMap(rows[0])
-                    raw.summary_statistics_id = 'external_raw'
-                    raw.trait_id = 'QT_external_raw'
-                    raw.source = resources.binary
-                    raw.source_mode = 'raw'
-                    raw.source_format = 'gwaslab'
-                    rows << raw
+                    def second = new LinkedHashMap(rows[0])
+                    second.summary_statistics_id = 'external_second'
+                    second.trait_id = 'QT_external_second'
+                    second.source = resources.binary
+                    second.source_format = 'gwaslab'
+                    rows << second
                 })
                 reference_catalog = resources.catalog
                 method_options = RELATIONAL.methodOptions(outputDir, 'pipeline_external_ingress', [
                     unary_requests: [
                         'ldsc_h2--external_qt': [reference_bundle_id: 'ldsc_eur', native_args: ['--n-blocks', '20']],
-                        'ldsc_h2--external_raw': [reference_bundle_id: 'ldsc_eur', native_args: ['--n-blocks', '20']],
+                        'ldsc_h2--external_second': [reference_bundle_id: 'ldsc_eur', native_args: ['--n-blocks', '20']],
                     ],
                 ])
             }
@@ -35,25 +34,70 @@ nextflow_pipeline {
 
         then {
             def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
-            def canonical = new File("${params.outdir}/summary_statistics/external_qt/external_qt.canonical.tsv.gz")
-            def raw = new File("${params.outdir}/summary_statistics/external_raw/external_raw.canonical.tsv.gz")
-            def canonicalProvenance = new groovy.json.JsonSlurper().parse(new File("${params.outdir}/summary_statistics/external_qt/external_qt.provenance.json"))
-            def rawProvenance = new groovy.json.JsonSlurper().parse(new File("${params.outdir}/summary_statistics/external_raw/external_raw.provenance.json"))
+            def first = new File("${params.outdir}/summary_statistics/external_qt/external_qt.gwaslab.tsv.gz")
+            def second = new File("${params.outdir}/summary_statistics/external_second/external_second.gwaslab.tsv.gz")
+            def firstLog = new File("${params.outdir}/summary_statistics/external_qt/external_qt.gwaslab.log")
+            def secondLog = new File("${params.outdir}/summary_statistics/external_second/external_second.gwaslab.log")
             assertAll(
                 { assert workflow.success },
-                { assert TRACE.count(workflow, 'GWASLAB_HARMONIZE') == 1 },
-                { assert TRACE.count(workflow, 'CANONICALISE_SUMMARY_STATISTICS') == 2 },
-                { assert canonical.isFile() },
-                { assert raw.isFile() },
-                { assert canonicalProvenance.source_mode == 'canonical' },
-                { assert canonicalProvenance.transformation == 'validated_without_harmonisation' },
-                { assert canonicalProvenance.harmonization == null },
-                { assert rawProvenance.source_mode == 'raw' },
-                { assert rawProvenance.transformation == 'gwaslab_harmonised' },
-                { assert rawProvenance.harmonization.tool == 'GWASLab' },
-                { assert canonicalProvenance.canonical_columns == ['SNPID', 'CHR', 'POS', 'EA', 'NEA', 'STATUS', 'EAF', 'BETA', 'SE', 'P', 'N'] },
-                { assert rawProvenance.canonical_columns == ['SNPID', 'CHR', 'POS', 'EA', 'NEA', 'STATUS', 'EAF', 'BETA', 'SE', 'P', 'N'] },
+                { assert TRACE.count(workflow, 'GWASLAB_HARMONIZE') == 2 },
+                { assert first.isFile() },
+                { assert second.isFile() },
+                { assert firstLog.isFile() },
+                { assert secondLog.isFile() },
                 { assert snapshot(removeNextflowVersion(versions.toString())).match('versions') },
+            )
+        }
+    }
+
+    test("summary identity controls GWASLab resume while preserving one direct result") {
+        options "-stub"
+
+        when {
+            def resources = RELATIONAL.ldscResources(outputDir, 'summary_resume')
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = null
+                analysis_manifest = null
+                summary_statistics_manifest = RELATIONAL.summaryStatistics(projectDir, outputDir, 'summary_resume_base')
+                reference_catalog = resources.catalog
+                method_options = RELATIONAL.methodOptions(outputDir, 'summary_resume_base', [
+                    unary_requests: [
+                        'ldsc_h2--external_qt': [reference_bundle_id: 'ldsc_eur'],
+                    ],
+                ])
+            }
+        }
+
+        then {
+            def unchangedTrace = RESUME.rerun(outputDir, [:])
+            def originalManifest = new File(params.summary_statistics_manifest.toString())
+            def changedManifest = new File(
+                new File(outputDir.toString()).parentFile,
+                'manifests/summary_resume_changed/summary_statistics.csv',
+            )
+            changedManifest.parentFile.mkdirs()
+            def changedFields = originalManifest.readLines()[1].split(',', -1)
+            changedFields[0] = 'external_changed'
+            changedFields[1] = 'QT_external_changed'
+            changedManifest.text = originalManifest.readLines()[0] + '\n' + changedFields.join(',') + '\n'
+            def changedOptions = RELATIONAL.methodOptions(outputDir, 'summary_resume_changed', [
+                unary_requests: [
+                    'ldsc_h2--external_changed': [reference_bundle_id: 'ldsc_eur'],
+                ],
+            ])
+            def changedTrace = RESUME.rerun(outputDir, [
+                summary_statistics_manifest: changedManifest,
+                method_options: changedOptions,
+            ])
+            def unchangedFiles = new File(outputDir.toString(), 'summary_statistics/external_qt').listFiles()*.name.sort()
+            def changedFiles = new File(outputDir.toString(), 'summary_statistics/external_changed').listFiles()*.name.sort()
+            assertAll(
+                { assert workflow.success },
+                { assert RESUME.statuses(unchangedTrace, 'GWASLAB_HARMONIZE') == ['CACHED'] },
+                { assert RESUME.statuses(changedTrace, 'GWASLAB_HARMONIZE') == ['COMPLETED'] },
+                { assert unchangedFiles == ['external_qt.gwaslab.log', 'external_qt.gwaslab.tsv.gz'] },
+                { assert changedFiles == ['external_changed.gwaslab.log', 'external_changed.gwaslab.tsv.gz'] },
             )
         }
     }

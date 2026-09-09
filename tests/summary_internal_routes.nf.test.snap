@@ -2,9 +2,6 @@
     "versions": {
         "content": [
             {
-                "CANONICALISE_SUMMARY_STATISTICS": {
-                    "python": "3.14.5"
-                },
                 "CUSTOM_GCTAMERGEGRMPARTS": {
                     "coreutils": 9.5
                 },
@@ -27,43 +24,25 @@
                 "LDAK_SUMHER": {
                     "ldak": 6.3
                 },
-                "LDSC_H2_OBSERVED": {
-                    "ldsc": "3.0.2",
-                    "ldsc_native": "3.0.1",
-                    "ldsc_source_revision": "6c673952cee74bd5c57aef1555a03b1c015399a0",
+                "LDSC_H2": {
+                    "ldsc": "6c673952cee74bd5c57aef1555a03b1c015399a0",
                     "python": "3.9.13"
                 },
                 "LDSC_MUNGESUMSTATS": {
-                    "ldsc": "3.0.2",
-                    "ldsc_native": "3.0.1",
-                    "ldsc_source_revision": "6c673952cee74bd5c57aef1555a03b1c015399a0",
+                    "ldsc": "6c673952cee74bd5c57aef1555a03b1c015399a0",
                     "python": "3.9.13"
                 },
-                "LDSC_RG_LIABILITY": {
-                    "ldsc": "3.0.2",
-                    "ldsc_native": "3.0.1",
-                    "ldsc_source_revision": "6c673952cee74bd5c57aef1555a03b1c015399a0",
+                "LDSC_RG": {
+                    "ldsc": "6c673952cee74bd5c57aef1555a03b1c015399a0",
                     "python": "3.9.13"
                 },
-                "LDSC_RG_OBSERVED": {
-                    "ldsc": "3.0.2",
-                    "ldsc_native": "3.0.1",
-                    "ldsc_source_revision": "6c673952cee74bd5c57aef1555a03b1c015399a0",
-                    "python": "3.9.13"
-                },
-                "NORMALISE_LDAK_SUMCORS": {
-                    "python": "3.14.5"
-                },
-                "NORMALISE_LDAK_SUMHER": {
-                    "python": "3.14.5"
-                },
-                "NORMALISE_LDSC": {
-                    "python": "3.14.5"
-                },
-                "NORMALISE_PHENOTYPES": {
+                "PREPARE_GENOTYPE_SOURCE": {
                     "python": "3.14.5"
                 },
                 "PREPARE_LDAK_SUMMARY_STATISTICS": {
+                    "python": "3.14.5"
+                },
+                "PREPARE_PHENOTYPE_INPUTS": {
                     "python": "3.14.5"
                 },
                 "Workflow": {
@@ -71,27 +50,27 @@
                 }
             }
         ],
+        "timestamp": "2026-09-10T06:25:29.08687221",
         "meta": {
-            "nf-test": "0.9.3",
-            "nextflow": "25.10.4"
-        },
-        "timestamp": "2026-08-24T07:12:19.057787623"
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
     },
     "stub association summaries join all unary and pair summary estimators": {
         "content": [
             [
-                "example_pgen_bt--gcta_fastgwa/example_pgen_bt--gcta_fastgwa.canonical.tsv.gz:md5,732ad2c66fce5b1a72bc87862cae65bc",
-                "example_pgen_qt--gcta_fastgwa/example_pgen_qt--gcta_fastgwa.canonical.tsv.gz:md5,732ad2c66fce5b1a72bc87862cae65bc"
+                "example_pgen_bt--gcta_fastgwa/example_pgen_bt--gcta_fastgwa.gwaslab.tsv.gz:md5,d41d8cd98f00b204e9800998ecf8427e",
+                "example_pgen_qt--gcta_fastgwa/example_pgen_qt--gcta_fastgwa.gwaslab.tsv.gz:md5,d41d8cd98f00b204e9800998ecf8427e"
             ],
-            "{\"schema_version\":\"1.0\",\"request_id\":\"ldak_sumher--example_pgen_qt--gcta_fastgwa\",\"method\":\"ldak_sumher\",\"classification\":\"completed_nonestimable\",\"stub\":true}\n",
-            "{\"schema_version\":\"1.0\",\"relationship_id\":\"internal_pair\",\"request_id\":\"ldak_sumcors--internal_pair\",\"method\":\"ldak_sumcors\",\"classification\":\"completed_nonestimable\",\"stub\":true}\n",
-            "{\"schema_version\":\"1.0\",\"request_id\":\"ldsc_h2--example_pgen_qt--gcta_fastgwa\",\"method\":\"ldsc_h2\",\"classification\":\"completed_nonestimable\",\"stub\":true}\n",
-            "{\"schema_version\":\"1.0\",\"request_id\":\"ldsc_rg--internal_pair\",\"method\":\"ldsc_rg\",\"classification\":\"completed_nonestimable\",\"stub\":true}\n"
+            "",
+            "",
+            "LDSC heritability stub\n",
+            "LDSC genetic correlation stub\n"
         ],
+        "timestamp": "2026-08-30T22:22:11.456234043",
         "meta": {
-            "nf-test": "0.9.3",
-            "nextflow": "25.10.4"
-        },
-        "timestamp": "2026-08-24T07:01:29.658614726"
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
     }
 }

@@ -1,6 +1,6 @@
 {
     "unary_requests": {
-        "ldsc_h2--heterogeneous_qt--plink2": {
+        "ldsc_h2--heterogeneous_qt--regenie": {
             "reference_bundle_id": "ldsc_eur"
         },
         "ldak_sumher--published_qt_raw": {

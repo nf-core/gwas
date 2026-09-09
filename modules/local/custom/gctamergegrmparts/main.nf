@@ -8,7 +8,7 @@ process CUSTOM_GCTAMERGEGRMPARTS {
         : 'community.wave.seqera.io/library/coreutils_grep_gzip_lbzip2_pruned:838ba80435a629f8'}"
 
     input:
-    tuple val(meta), path(grm_files)
+    tuple val(meta), path(grm_files), val(ordered_parts)
 
     output:
     tuple val(meta), path("${prefix}.grm.*"), emit: grm_files
@@ -19,7 +19,19 @@ process CUSTOM_GCTAMERGEGRMPARTS {
 
     script:
     prefix = task.ext.prefix ?: "${meta.id}"
-    template('gctamergegrmparts.sh')
+    def grm_bin_parts = ordered_parts.collect { part -> "\"${part.bin}\"" }.join(' ')
+    def grm_n_bin_parts = ordered_parts.collect { part -> "\"${part.n_bin}\"" }.join(' ')
+    def grm_id_parts = ordered_parts.collect { part -> "\"${part.id}\"" }.join(' ')
+    """
+    cat ${grm_bin_parts} > "${prefix}.grm.bin"
+    cat ${grm_n_bin_parts} > "${prefix}.grm.N.bin"
+    cat ${grm_id_parts} > "${prefix}.grm.id"
+
+    cat <<-END_VERSIONS > versions.yml
+    "${task.process}":
+        coreutils: \$(sort --version | sed -n '1{s/sort (GNU coreutils) //;p}')
+    END_VERSIONS
+    """
 
     stub:
     prefix = task.ext.prefix ?: "${meta.id}"

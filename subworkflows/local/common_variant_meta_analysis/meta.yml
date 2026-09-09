@@ -1,0 +1,65 @@
+name: "common_variant_meta_analysis"
+description: Run explicitly selected common-variant meta-analysis models and expose each native result separately
+keywords:
+  - gwas
+  - genome-wide association study
+  - meta-analysis
+  - fixed effects
+  - random effects
+  - RE2
+  - MR-MEGA
+components:
+  - gwaslab/meta/analyze
+  - metasoft/re2
+  - prepare/mrmega/input
+  - mrmega
+input:
+  - ch_request:
+      type: channel
+      description: |
+        One genome-wide request as
+        `[ val(meta), path(parents), val(study_names), val(input_format), val(genome_build), val(trait_type), val(models), val(axes) ]`.
+        Fixed is required. Random, RE2, and MR-MEGA are optional explicit selections. Axes is required only for MR-MEGA.
+      structure:
+        - type: map
+          description: Request metadata
+        - type: list
+          description: Ordered parent GWAS summary-statistics files
+        - type: list
+          description: Study labels in the same declared order
+        - type: string
+          description: Explicit GWASLab input format
+        - type: string
+          description: Shared genome build
+        - type: string
+          description: Quantitative or binary trait type
+        - type: list
+          description: Selected fixed, random, re2, and mrmega models
+        - type: integer
+          description: MR-MEGA ancestry-axis count, otherwise null
+output:
+  - fixed:
+      type: channel
+      description: "`[ val(meta), path('*.fixed.tsv.gz') ]` native GWASLab fixed-effects result"
+  - gwaslab_log:
+      type: channel
+      description: "`[ val(meta), path('*.gwaslab.log') ]` native GWASLab alignment and meta-analysis log"
+  - random_effects:
+      type: channel
+      description: "`[ val(meta), path('*.random.tsv.gz') ]` native GWASLab random-effects result when selected"
+  - metasoft_result:
+      type: channel
+      description: "`[ val(meta), path('*.metasoft.txt') ]` native METASOFT result when selected"
+  - metasoft_log:
+      type: channel
+      description: "`[ val(meta), path('*.metasoft.log') ]` native METASOFT log when selected"
+  - mrmega_result:
+      type: channel
+      description: "`[ val(meta), path('*.result') ]` native MR-MEGA result when selected"
+  - mrmega_log:
+      type: channel
+      description: "`[ val(meta), path('*.log') ]` native MR-MEGA log when selected"
+authors:
+  - "@andongni"
+maintainers:
+  - "@andongni"

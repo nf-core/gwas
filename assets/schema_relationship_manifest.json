@@ -6,6 +6,7 @@
     "type": "array",
     "items": {
         "type": "object",
+        "additionalProperties": false,
         "properties": {
             "relationship_id": {
                 "type": "string",

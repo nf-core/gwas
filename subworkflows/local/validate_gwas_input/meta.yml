@@ -18,7 +18,7 @@ input:
       structure: "path analysis_manifest|[]"
       pattern: "*.csv"
   - summary_statistics_manifest:
-      description: Optional manifest declaring mutually exclusive external sources or pipeline-generated summary results and their unary methods
+      description: Optional manifest declaring mutually exclusive external sources, pipeline-generated or meta-analysis-derived summary results and their unary methods
       structure: "path summary_statistics_manifest|[]"
       pattern: "*.csv"
   - relationship_manifest:
@@ -30,14 +30,14 @@ input:
       structure: "path reference_catalog|[]"
       pattern: "*.json"
   - method_options:
-      description: Optional JSON document containing validated analysis, unary summary and pair-request scientific options
+      description: Optional JSON document containing validated analysis, unary summary, pair-request and meta-request scientific options
       structure: "path method_options|[]"
       pattern: "*.json"
 output:
   - analyses:
       description: Canonical analysis tuples with joined cohort metadata, resolved method options and stageable scientific resources
       structure: "[map meta, list genotype_files, path phenotype, path quant_covariates|[], path cat_covariates|[], path predictor_extract|[], path ldak_weights|[]]"
-      pattern: "*.{pgen,psam,pvar,bed,bim,fam,vcf,vcf.gz,txt,tsv,json}"
+      pattern: "*.{pgen,psam,pvar,bed,bim,fam,txt,tsv,json}"
       ontologies:
         - edam: "http://edamontology.org/format_2330"
   - summary_statistics:
@@ -48,7 +48,7 @@ output:
   - relationships:
       description: Canonical pair-request tuples with endpoint identity, deterministic request ID, dense or relationship-owned LDMS matrix settings and relationship-owned covariate resources
       structure: "[map meta, list genotype_files, path pair_quant_covariates|[], path pair_cat_covariates|[]]"
-      pattern: "*.{pgen,psam,pvar,bed,bim,fam,vcf,vcf.gz,txt,tsv}"
+      pattern: "*.{pgen,psam,pvar,bed,bim,fam,txt,tsv}"
       ontologies:
         - edam: "http://edamontology.org/format_2330"
   - unary_requests:
@@ -59,6 +59,11 @@ output:
   - pair_requests:
       description: Resolved pair summary-statistics requests with explicit family-specific reference resources
       structure: "[map meta, path hapmap3_snplist|[], path reference_ld_scores|[], path regression_weights|[], path tagging_file|[]]"
+      pattern: "*"
+      ontologies: []
+  - meta_requests:
+      description: Ordered base summary identifiers with resolved model selection and derived result metadata
+      structure: "[map meta, list source_summary_statistics_ids]"
       pattern: "*"
       ontologies: []
 authors:

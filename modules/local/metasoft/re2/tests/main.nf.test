@@ -1,0 +1,88 @@
+nextflow_process {
+
+    name "Test Process METASOFT_RE2"
+    script "../main.nf"
+    process "METASOFT_RE2"
+    config "./nextflow.config"
+
+    tag "modules"
+    tag "modules_local"
+    tag "metasoft"
+    tag "metasoft_re2"
+
+    def matrix = { directory, name, rows ->
+        def target = new File(directory.toString(), "${name}.txt")
+        target.text = rows.collect { row -> row.join(' ') }.join('\n') + '\n'
+        target
+    }
+
+    test("METASOFT emits its native result and log without a normalized duplicate") {
+        when {
+            def input = matrix(outputDir, 'native', [
+                ['1:100:A:G', '0.5', '0.05', '-0.1', '0.05', '0.2', '0.05'],
+                ['1:200:C:T', '0.1', '0.02', '0.14', '0.03', 'NA', 'NA'],
+            ])
+            process {
+                """
+                input[0] = [[id: 'native'], file('${input}', checkIfExists: true)]
+                """
+            }
+        }
+
+        then {
+            def result = new File(process.out.result.get(0)[1].toString()).readLines()
+            assertAll(
+                { assert process.success },
+                { assert result[0].startsWith('RSID\t#STUDY\tPVALUE_FE') },
+                { assert result.size() == 3 },
+                { assert result[1].startsWith('1:100:A:G\t3\t') },
+                { assert new File(process.out.log.get(0)[1].toString()).text.contains('/opt/metasoft/HanEskinPvalueTable.txt') },
+                { assert new File(process.out.versions.get(0).toString()).text.contains('metasoft: 2.0.1') },
+            )
+        }
+    }
+
+    test("native underflowed P values are preserved") {
+        when {
+            def input = matrix(outputDir, 'underflow', [
+                ['1:100:A:G', '5.0', '0.01', '-5.0', '0.01', '0.0', '0.01'],
+                ['1:200:C:T', '0.1', '0.02', '0.14', '0.03', '0.08', '0.04'],
+            ])
+            process {
+                """
+                input[0] = [[id: 'underflow'], file('${input}', checkIfExists: true)]
+                """
+            }
+        }
+
+        then {
+            def row = new File(process.out.result.get(0)[1].toString()).readLines().find { line -> line.startsWith('1:100:A:G\t') }
+            assertAll(
+                { assert process.success },
+                { assert row.split('\t')[8] == '0.00000' },
+            )
+        }
+    }
+
+    test("stub emits only the native contract") {
+        options "-stub"
+
+        when {
+            def input = matrix(outputDir, 'stub', [['1:100:A:G', '0.5', '0.05', '0.1', '0.02']])
+            process {
+                """
+                input[0] = [[id: 'stub'], file('${input}', checkIfExists: true)]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.result.size() == 1 },
+                { assert process.out.log.size() == 1 },
+                { assert new File(process.out.result.get(0)[1].toString()).text.startsWith('RSID\t#STUDY') },
+            )
+        }
+    }
+}

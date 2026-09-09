@@ -1,0 +1,182 @@
+nextflow_workflow {
+
+    name "Test the LD-by-MAF-stratified native MPH matrix builder"
+    script "../main.nf"
+    workflow "PLINK_PREPARE_GRM_LDMS_MPH"
+    tag "subworkflow"
+    tag "mph"
+    tag "ldms"
+
+    // The shipped popgen trio is 200 samples by 220 variants on chromosome 1, FAM-ordered `per0..per199`, with
+    // no monomorphic variant, so MPH's one default filter — dropping MAF == 0 variants — removes nothing and
+    // each component's declared predictor count must equal what MPH itself weighted. The component plan and
+    // its group files are written beside `outputDir` here rather than shipped, because they are derived from the
+    // trio's own contents and a shipped copy would go stale beside it silently.
+    def POPGEN = { member -> "file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.${member}', checkIfExists: true)" }
+    def genotypes = { meta -> "[${meta}, ${POPGEN('bed')}, ${POPGEN('bim')}, ${POPGEN('fam')}]" }
+
+    // A completed plan in exactly the shape `PLINK_PREPARE_LDMS_PLAN_GCTA` emits it: the manifest's
+    // `group_filename` column names the staged basename of the file it describes, and the row order is the
+    // component order this composition turns into ordinals.
+    def writePlan = { output_dir, prefix, strata ->
+        def root = new File(new File(output_dir.toString()).parentFile, "inputs/${prefix}")
+        root.mkdirs()
+        def groups = strata.collect { stratum ->
+            def target = new File(root, "${prefix}_snp_group_${stratum[0]}.txt")
+            target.text = stratum[1].join('\n') + '\n'
+            target
+        }
+        def header = ['model_key', 'stratum_key', 'ld_lower', 'ld_upper', 'maf_lower', 'maf_upper', 'predictor_count', 'group_filename']
+        def rows = [strata, groups].transpose().withIndex().collect { pair, index ->
+            ['ldms', pair[0][0], index, index + 1, 0, 0.5, pair[0][1].size(), pair[1].name].join('\t')
+        }
+        def manifest = new File(root, "${prefix}.strata.tsv")
+        manifest.text = ([header.join('\t')] + rows).join('\n') + '\n'
+        return [manifest: manifest, groups: groups]
+    }
+
+    def planInput = { meta, plan ->
+        """[
+                    ${meta},
+                    file('${plan.manifest}', checkIfExists: true),
+                    [${plan.groups.collect { group -> "file('${group}', checkIfExists: true)" }.join(', ')}],
+                ]"""
+    }
+
+    def countRows = { counts ->
+        def lines = new File(counts.toString()).readLines().findAll { line -> line.trim() }
+        return lines.drop(1).collectEntries { row -> [row.split('\t')[0], row.split('\t')[1] as int] }
+    }
+
+    // The emitted family is one flat path list in component order, so the per-component grouping is recovered
+    // by prefix rather than by slicing a fixed stride.
+    def filesByPrefix = { grm_files, grm_prefixes ->
+        def names = grm_files.collect { entry -> new File(entry.toString()).name }
+        return grm_prefixes.collect { prefix -> names.findAll { name -> name.startsWith("${prefix}.grm.") }.sort() }
+    }
+
+    // `int32 n`, then a `float32` sum of the SNP weights over the post-quality-control variants.
+    def binaryHeader = { grm_files, prefix ->
+        def binary = new File(grm_files.find { entry -> entry.toString().endsWith("${prefix}.grm.bin") }.toString())
+        def buffer = java.nio.ByteBuffer.wrap(binary.bytes[0..7] as byte[]).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+        return [length: binary.length(), samples: buffer.getInt(), weight_sum: buffer.getFloat()]
+    }
+
+    test("a real two-component family weights one shared SNP table twice") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+                save_relatedness_matrices = true
+            }
+            workflow {
+                """
+                // The plan is derived from the fixture's own BIM inside an operator rather than shipped, so the
+                // two group files are guaranteed to name variants this bundle actually carries and to be
+                // disjoint, which `CUSTOM_MPHSNPINFO` enforces natively. The split is a plain halving of the
+                // BIM: what is under test is the fan-out and the ordered gather, not the stratifier's quantile
+                // rule, which `plink_prepare_ldms_plan_gcta` covers.
+                input[0] = channel.of([[id: 'popgen_family', key: 'popgen_key'], ${POPGEN('bim')}])
+                    .map { record_meta, bim ->
+                        def root = new File('${new File(outputDir.toString()).parentFile}/inputs/popgen_family')
+                        root.mkdirs()
+                        def variants = bim.readLines().findAll { line -> line.trim() }.collect { line -> line.split('\\t')[1] }
+                        def keys = ['ld01_maf01', 'ld02_maf01']
+                        def halves = [variants[0..<110], variants[110..<variants.size()]]
+                        def groups = [0, 1].collect { index ->
+                            def target = new File(root, 'popgen_family_snp_group_' + keys[index] + '.txt')
+                            target.text = halves[index].join('\\n') + '\\n'
+                            target
+                        }
+                        def header = ['model_key', 'stratum_key', 'ld_lower', 'ld_upper', 'maf_lower', 'maf_upper', 'predictor_count', 'group_filename']
+                        def rows = [0, 1].collect { index ->
+                            ['ldms', keys[index], index, index + 1, 0, 0.5, halves[index].size(), groups[index].name].join('\\t')
+                        }
+                        def manifest = new File(root, 'popgen_family.strata.tsv')
+                        manifest.text = ([header.join('\\t')] + rows).join('\\n') + '\\n'
+                        tuple(record_meta, file(manifest.absolutePath, checkIfExists: true), groups.collect { group -> file(group.absolutePath, checkIfExists: true) })
+                    }
+                input[1] = channel.of(${genotypes("[id: 'popgen_family', key: 'popgen_key']")})
+                input[2] = 22
+                """
+            }
+        }
+
+        then {
+            def family = workflow.out.grm_family.first()
+            def counts = countRows(workflow.out.counts.first()[1])
+            def first = binaryHeader(family[1], 'popgen_family__000001_ld01_maf01')
+            def second = binaryHeader(family[1], 'popgen_family__000002_ld02_maf01')
+            def binaries = family[2].collect { prefix -> path(family[1].find { entry -> entry.toString().endsWith("${prefix}.grm.bin") }).md5 }
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'CUSTOM_MPHSNPINFO') == 1 },
+                { assert TRACE.count(workflow, 'MPH_MAKEGRM') == 2 },
+                { assert family[2] == ['popgen_family__000001_ld01_maf01', 'popgen_family__000002_ld02_maf01'] },
+                { assert filesByPrefix(family[1], family[2]) == [
+                    ['popgen_family__000001_ld01_maf01.grm.bin', 'popgen_family__000001_ld01_maf01.grm.iid'],
+                    ['popgen_family__000002_ld02_maf01.grm.bin', 'popgen_family__000002_ld02_maf01.grm.iid'],
+                ] },
+                { assert family[0] == [id: 'popgen_family', key: 'popgen_key'] },
+                { assert workflow.out.counts.first()[0] == [id: 'popgen_family', key: 'popgen_key'] },
+                // The counts table reconciles the declared components against the BIM: the two component rows
+                // and `__unassigned__` sum to `__bim_rows__`, which is the number MPH itself will report.
+                { assert counts.keySet().toList() == ['ld01_maf01', 'ld02_maf01', '__unassigned__', '__bim_rows__'] },
+                { assert counts.ld01_maf01 + counts.ld02_maf01 + counts.__unassigned__ == counts.__bim_rows__ },
+                { assert counts.__bim_rows__ == 220 },
+                { assert counts.ld01_maf01 == 110 },
+                { assert counts.ld02_maf01 == 110 },
+                { assert counts.__unassigned__ == 0 },
+                // Every component matrix spans the whole sample set — the weight column, not a genotype
+                // subset, is what makes a component — so both are full 200-sample matrices and only their
+                // header weight sums differ from the one-component case.
+                { assert first.length == 8 + 4 * 200 * 201 / 2 },
+                { assert second.length == first.length },
+                { assert first.samples == 200 },
+                { assert second.samples == 200 },
+                // The header float is the weight sum over the post-quality-control variants. Every declared
+                // weight is 1 and the fixture has no monomorphic variant for MPH to drop, so each component's
+                // header must equal that component's declared predictor count.
+                { assert first.weight_sum == counts.ld01_maf01 as float },
+                { assert second.weight_sum == counts.ld02_maf01 as float },
+                // The two components weight disjoint halves of the same table, so their matrices are genuinely
+                // different rather than two names for one construction.
+                { assert binaries.first() != binaries.last() },
+                { assert ((new File("${params.outdir}").list() ?: []) as List).findAll { entry -> entry != 'pipeline_info' } == [] },
+                // `.grm.bin` was measured to be byte-identical across `--num_threads` 1, 2 and 4, so the whole
+                // family's content is snapshot-stable despite the thread count being a resource decision.
+                { assert snapshot(workflow.out).match() },
+            )
+        }
+    }
+
+    test("a plan with no matching genotype bundle fails rather than being dropped") {
+
+        options "-stub"
+
+        when {
+            def plan = writePlan(outputDir, 'orphan_family', [['ld01_maf01', ['rs1']]])
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                input[0] = channel.of(${planInput("[id: 'orphan_family']", plan)})
+                input[1] = channel.of(${genotypes("[id: 'other_family']")})
+                input[2] = 22
+                """
+            }
+        }
+
+        then {
+            // The joins are guarded in both directions. A plan with no bundle, or a bundle with no plan, means
+            // the caller and this composition disagree about which families exist, and building fewer matrices
+            // than were requested would leave a stratified estimator short a component with nothing in the
+            // output to say so.
+            assertAll(
+                { assert !workflow.success },
+                { assert TRACE.count(workflow, 'MPH_MAKEGRM') == 0 },
+            )
+        }
+    }
+}

@@ -1,0 +1,170 @@
+nextflow_pipeline {
+    name "Test manifest-native common-variant meta-analysis"
+    script "../main.nf"
+    tag "pipeline"
+    tag "summary_statistics"
+    tag "meta_analysis"
+
+    def metaRow = { id, parents, models, unary = '' ->
+        [summary_statistics_id: id, source_summary_statistics_ids: parents.join(','),
+            meta_analysis_models: models.join(','), min_studies: 2, heritability_methods: unary]
+    }
+    def external = { outputDir, id, effect, ancestry = 'EUR' ->
+        def row = RELATIONAL.summary(outputDir, 'external_qt')
+        row.summary_statistics_id = id
+        row.trait_id = 'meta_trait'
+        row.ancestry = ancestry
+        row.heritability_methods = ''
+        def source = new File(outputDir.toString(), "${id}.tsv")
+        source.text = 'SNPID\tCHR\tPOS\tEA\tNEA\tSTATUS\tEAF\tBETA\tSE\tP\tN\n' +
+            "rs1\t1\t1000000\tA\tG\t9999999\t0.25\t${effect}\t0.02\t0.01\t4000\n"
+        row.source = source.toString()
+        row
+    }
+    def readSummary = { outdir, id ->
+        def file = new File(outdir.toString(), "summary_statistics/${id}/${id}.gwaslab.tsv.gz")
+        def lines = new java.util.zip.GZIPInputStream(new FileInputStream(file))
+            .withReader('UTF-8') { reader -> reader.readLines() }
+        def columns = lines.first().split('\t').toList()
+        lines.tail().collect { line -> [columns, line.split('\t', -1).toList()].transpose().collectEntries() }
+    }
+
+    test("external-only fixed and random requests publish a derived scientific summary") {
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = null
+                analysis_manifest = null
+                summary_statistics_manifest = RELATIONAL.summaryStatistics(projectDir, outputDir, 'meta_external') { rows ->
+                    rows.clear()
+                    rows << metaRow('meta_external', ['second', 'first'], ['fixed', 'random'])
+                    rows << external(outputDir, 'first', 0.01)
+                    rows << external(outputDir, 'second', 0.03)
+                }
+            }
+        }
+        then {
+            def rows = readSummary(params.outdir, 'meta_external')
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'GWASLAB_HARMONIZE') == 2 },
+                { assert TRACE.count(workflow, 'GWASLAB_META_ANALYZE') == 1 },
+                { assert TRACE.count(workflow, 'FINALISE_META_ANALYSIS') == 1 },
+                { assert rows.size() == 1 },
+                { assert Math.abs(rows[0].BETA.toDouble() - 0.02d) < 1e-10 },
+                { assert rows[0].N_STUDIES.toInteger() == 2 },
+                { assert rows[0].containsKey('P_RANDOM') },
+                { assert new File("${params.outdir}/requests/fixed/meta_external/meta_external.fixed.tsv.gz").isFile() },
+                { assert new File("${params.outdir}/requests/random/meta_external/meta_external.random.tsv.gz").isFile() },
+                { assert !new File("${params.outdir}/requests/re2/meta_external").exists() },
+            )
+        }
+    }
+
+    test("two association summaries feed a derived result and existing unary and pair consumers") {
+        tag "meta_stub_integration"
+        options "-stub"
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, 'meta_internal')
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, 'meta_internal') { rows ->
+                    rows.clear()
+                    ['first_analysis', 'second_analysis'].each { id ->
+                        def row = RELATIONAL.analysis(projectDir, 'example_pgen_qt')
+                        row.analysis_id = id
+                        row.trait_id = 'meta_trait'
+                        row.association_methods = 'gcta_fastgwa'
+                        row.heritability_methods = ''
+                        rows << row
+                    }
+                }
+                summary_statistics_manifest = RELATIONAL.summaryStatistics(projectDir, outputDir, 'meta_internal') { rows ->
+                    rows.clear()
+                    rows << RELATIONAL.internalSummary('first_analysis', 'gcta_fastgwa')
+                    rows << RELATIONAL.internalSummary('second_analysis', 'gcta_fastgwa')
+                    rows << metaRow('meta_internal', ['second_analysis--gcta_fastgwa', 'first_analysis--gcta_fastgwa'], ['fixed', 're2'], 'ldak_sumher,ldsc_h2')
+                    def comparator = external(outputDir, 'comparator', 0.04)
+                    comparator.trait_id = 'other_trait'
+                    rows << comparator
+                }
+                relationship_manifest = RELATIONAL.summaryRelationships(projectDir, outputDir, 'meta_internal') { rows ->
+                    rows[0].relationship_id = 'derived_pair'
+                    rows[0].left_summary_statistics_id = 'meta_internal'
+                    rows[0].right_summary_statistics_id = 'comparator'
+                    rows[0].relationship_methods = 'ldak_sumcors,ldsc_rg'
+                }
+                reference_catalog = RELATIONAL.referenceCatalog(outputDir, 'meta_internal')
+                method_options = RELATIONAL.methodOptions(outputDir, 'meta_internal', [
+                    unary_requests: [
+                        'ldak_sumher--meta_internal': [reference_bundle_id: 'ldak_thin_eur'],
+                        'ldsc_h2--meta_internal': [reference_bundle_id: 'ldsc_eur'],
+                    ],
+                    pair_requests: [
+                        'ldak_sumcors--derived_pair': [reference_bundle_id: 'ldak_thin_eur'],
+                        'ldsc_rg--derived_pair': [reference_bundle_id: 'ldsc_eur'],
+                    ],
+                ])
+            }
+        }
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'GCTA_FASTGWA') == 2 },
+                { assert TRACE.count(workflow, 'GWASLAB_HARMONIZE') == 3 },
+                { assert TRACE.count(workflow, 'GWASLAB_META_ANALYZE') == 1 },
+                { assert TRACE.count(workflow, 'METASOFT_RE2') == 1 },
+                { assert TRACE.count(workflow, 'LDAK_SUMHER') == 1 },
+                { assert TRACE.count(workflow, 'LDAK_SUMCORS') == 1 },
+                { assert TRACE.count(workflow, 'LDSC_H2') == 1 },
+                { assert TRACE.count(workflow, 'LDSC_RG') == 1 },
+                { assert new File("${params.outdir}/summary_statistics/meta_internal/meta_internal.gwaslab.tsv.gz").isFile() },
+                { assert new File("${params.outdir}/requests/re2/meta_internal/meta_internal.metasoft.txt").isFile() },
+            )
+        }
+    }
+
+    test("mixed origins and multi-ancestry models preserve request identity across resume") {
+        tag "meta_stub_integration"
+        options "-stub"
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, 'meta_mixed')
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, 'meta_mixed') { rows ->
+                    rows.clear()
+                    def row = RELATIONAL.analysis(projectDir, 'example_pgen_qt')
+                    row.trait_id = 'meta_trait'
+                    row.association_methods = 'gcta_fastgwa'
+                    row.heritability_methods = ''
+                    rows << row
+                }
+                summary_statistics_manifest = RELATIONAL.summaryStatistics(projectDir, outputDir, 'meta_mixed') { rows ->
+                    rows.clear()
+                    rows << RELATIONAL.internalSummary('example_pgen_qt', 'gcta_fastgwa')
+                    rows << external(outputDir, 'external_afr', 0.02, 'AFR')
+                    rows << external(outputDir, 'external_eas', 0.03, 'EAS')
+                    rows << external(outputDir, 'external_eur', 0.04)
+                    rows << metaRow('meta_mixed', ['external_eas', 'example_pgen_qt--gcta_fastgwa', 'external_afr', 'external_eur'], ['fixed', 'random', 're2', 'mrmega'])
+                }
+                method_options = RELATIONAL.methodOptions(outputDir, 'meta_mixed', [meta_requests: [meta_mixed: [mrmega: [axes: 1]]]])
+            }
+        }
+        then {
+            def unchanged = RESUME.rerun(outputDir, [:])
+            def changedOptions = RELATIONAL.methodOptions(outputDir, 'meta_mixed_changed', [meta_requests: [meta_mixed: [mrmega: [axes: 2]]]])
+            def changed = RESUME.rerun(outputDir, [method_options: changedOptions])
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'GWASLAB_HARMONIZE') == 4 },
+                { assert TRACE.count(workflow, 'MRMEGA') == 1 },
+                { assert RESUME.statuses(unchanged, 'GWASLAB_META_ANALYZE') == ['CACHED'] },
+                { assert RESUME.statuses(unchanged, 'FINALISE_META_ANALYSIS') == ['CACHED'] },
+                { assert RESUME.statuses(changed, 'GWASLAB_HARMONIZE') == ['CACHED', 'CACHED', 'CACHED', 'CACHED'] },
+                { assert RESUME.statuses(changed, 'MRMEGA') == ['COMPLETED'] },
+                { assert new File("${params.outdir}/requests/mrmega/meta_mixed/meta_mixed.result").isFile() },
+                { assert new File("${params.outdir}/requests/random/meta_mixed/meta_mixed.random.tsv.gz").isFile() },
+            )
+        }
+    }
+}

@@ -1,43 +1,70 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
 name: "prepare_cohort_genotypes"
-description: Prepare each distinct cohort's genotypes once into the canonical PLINK 2 bundle and fan it out to every unary or pair request on that cohort
+description: Prepare each distinct cohort once in the representation it was supplied in, derive one shared PLINK 1 hard-call projection only for a cohort with a PLINK 1-reading consumer, and publish one view identity per cohort
 keywords:
+  - plink1
   - plink2
   - genotype
   - cohort
+  - representation
+  - view identity
   - deduplication
 components:
+  - prepare_genotype_source
   - plink2/makebed
-  - plink2/makepgen
-  - plink2/vcf
+  - buildscientificartifactkey
+  - getplink1genotypemethodtokens
 input:
-  - ch_analyses:
-      description: One unary or pair request per element, carrying its cohort identity and the genotype files of the single populated encoding. Requests sharing a cohort must name the same files.
+  - ch_requests:
+      description: One unary or pair request per element, carrying its cohort identity, the manifest's declared genotype format, any declared genotype view identity and the genotype files of the single populated encoding. Requests sharing a cohort must name the same files.
       structure: "[map meta, list genotype_files]"
-      pattern: "*.{pgen,psam,pvar,bed,bim,fam,vcf,vcf.gz}"
+      pattern: "*.{pgen,psam,pvar,bed,bim,fam}"
       ontologies:
         - edam: "http://edamontology.org/format_2330"
 output:
-  - genotypes:
-      description: The prepared cohort bundle of each request unit, carrying the focal unary or pair metadata.
-      structure: [map meta, path pgen, path psam, path pvar]
-      pattern: "*.{pgen,psam,pvar}"
+  - native_genotypes:
+      description: |
+        The cohort's native bundle for each request, carrying the focal unary or pair metadata. The member
+        order is format-polymorphic — primary genotype, variant file, sample file — so a PLINK 1 cohort
+        arrives as bed/bim/fam and a PLINK 2 cohort as pgen/pvar/psam. Every consumer of this stream selects
+        its native flag from the primary member's extension.
+      structure: [map meta, path primary_genotype, path variant_file, path sample_file]
+      pattern: "*.{bed,bim,fam,pgen,pvar,psam}"
       ontologies:
         - edam: "http://edamontology.org/format_2330"
-  - cohort_genotypes:
-      description: One prepared bundle per distinct cohort, carrying cohort metadata with meta.id set to the cohort identifier.
-      structure: [map cohort_meta, path pgen, path psam, path pvar]
-      pattern: "*.{pgen,psam,pvar}"
+  - cohort_native_genotypes:
+      description: |
+        One native bundle per distinct cohort in the same polymorphic member order, carrying cohort metadata
+        with meta.id set to the cohort identifier. `genotype_format` keeps the manifest's meaning and
+        `native_format` states the representation actually on disk, matching the supplied format.
+      structure: [map cohort_meta, path primary_genotype, path variant_file, path sample_file]
+      pattern: "*.{bed,bim,fam,pgen,pvar,psam}"
       ontologies:
         - edam: "http://edamontology.org/format_2330"
   - plink1_genotypes:
-      description: One lazy PLINK 1 derivative per unary or pair request whose selected route requires it, carrying unchanged focal request metadata. Requests on one cohort share one conversion.
+      description: |
+        One PLINK 1 view per unary or pair request whose selected method reads PLINK 1, carrying unchanged
+        focal request metadata. A native PLINK 1 cohort supplies its own files untouched; a PLINK 2 cohort is projected once and every consumer on that cohort shares the projection.
       structure: [map meta, path bed, path bim, path fam]
       pattern: "*.{bed,bim,fam}"
       ontologies:
         - edam: "http://edamontology.org/format_3003"
         - edam: "http://edamontology.org/format_3285"
         - edam: "http://edamontology.org/format_3286"
+  - cohort_native_view_keys:
+      description: One native view key per cohort, emitted with the native bundle so that no consumer of it waits on an unrelated cohort's projection.
+      structure: [val cohort_id, val native_view_key]
+  - cohort_plink1_view_keys:
+      description: |
+        One PLINK 1 view key per cohort that has a PLINK 1 view. Partial by design and null-free by
+        construction: an element exists for exactly the cohorts whose consumers ask about one.
+      structure: [val cohort_id, val plink1_view_key]
+  - cohort_views:
+      description: |
+        One provenance record per cohort: the source format and identity, the per-member table where the
+        pipeline computed it, the native view key under `native_view`, and the PLINK 1 view with the
+        projection policy and the information that policy discards. Provenance only; no consumer keys on it.
+      structure: [map cohort_meta, val view_record]
 authors:
   - "@andongni"
 maintainers:

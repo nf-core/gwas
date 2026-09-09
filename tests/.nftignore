@@ -8,3 +8,10 @@ multiqc/multiqc_data/llms-full.txt
 multiqc/multiqc_plots/{svg,pdf,png}/*.{svg,pdf,png}
 multiqc/multiqc_report.html
 pipeline_info/*.{html,json,txt,yml}
+**/*.ldak_fast_he.log
+**/*.ldak_fast_pcgc.log
+**/*.mph_reml.log
+**/*.mph_reml_ldms.log
+**/*.mph_reml*.mq.*.csv
+requests/mph_bivariate_reml*/*/native.log
+requests/mph_bivariate_reml*/*/native.mq.*.csv

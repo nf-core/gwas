@@ -1,0 +1,60 @@
+name: "prepare_mrmega_input"
+description: Convert aligned GWASLab study columns into ordered native MR-MEGA study inputs
+keywords:
+  - gwas
+  - genome-wide association study
+  - meta-analysis
+  - MR-MEGA
+  - adapter
+input:
+  - - meta:
+        type: map
+        description: Groovy Map containing the meta-analysis request information
+    - aligned_studies:
+        type: file
+        description: GWASLab-aligned study columns
+        pattern: "*.tsv.gz"
+        ontologies:
+          - edam: "http://edamontology.org/format_3475"
+    - study_names:
+        type: list
+        description: Study labels in deterministic declared order
+    - trait_type:
+        type: string
+        description: Quantitative or binary trait selector
+output:
+  study_files:
+    - - meta:
+          type: map
+          description: Groovy Map containing the meta-analysis request information
+      - "*.mrmega_inputs/*.txt.gz":
+          type: file
+          description: Native MR-MEGA study inputs in declared order
+          pattern: "*.txt.gz"
+          ontologies: []
+  filelist:
+    - - meta:
+          type: map
+          description: Groovy Map containing the meta-analysis request information
+      - "*.filelist.txt":
+          type: file
+          description: Ordered list of the generated native study inputs
+          pattern: "*.filelist.txt"
+          ontologies: []
+  versions:
+    - "versions.yml":
+        type: file
+        description: File containing software versions
+        pattern: "versions.yml"
+        ontologies: []
+topics:
+  versions:
+    - "versions.yml":
+        type: file
+        description: File containing software versions
+        pattern: "versions.yml"
+        ontologies: []
+authors:
+  - "@andongni"
+maintainers:
+  - "@andongni"

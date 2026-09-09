@@ -1,0 +1,420 @@
+nextflow_workflow {
+
+    name "Test GCTA bivariate relationship route"
+    script "../main.nf"
+    workflow "ROUTE_GCTA_BIVARIATE_RELATIONSHIPS"
+    tag "subworkflow"
+    tag "gcta"
+    tag "bivariate"
+    tag "relationship"
+
+    // Every case is stubbed, so the staged phenotypes and matrix families only have to exist. What is under
+    // test is the routing: that the one prepared pair a relationship owns is fanned back out to every GCTA
+    // estimator that selected it, that each relationship is executed against its own attributed matrix, that
+    // the dense and LDMS branches never claim each other's matrices, that declared orientation survives into
+    // presentation, that an absent optional pair covariate stays absent, and that the native and reuse
+    // identities the invocation needed are stripped from the emitted record. Preparing that pair once per
+    // relationship and resolving its endpoints now happens on the spine in `PREPARE_RELATIONSHIP_TRAITS` and is
+    // covered by that subworkflow's own tests. The scientific content of the two-trait table is covered end to
+    // end by `tests/relational_gcta_bivariate_reml*.nf.test`.
+    def TESTS = { project_dir -> "${project_dir}/subworkflows/local/route_gcta_bivariate_relationships/tests" }
+    def RESOURCE = { project_dir, name -> "file('${TESTS(project_dir)}/${name}', checkIfExists: true)" }
+
+    // The validated relationship meta as `VALIDATE_GWAS_INPUT` hands it over: one row per selected method,
+    // sharing one relationship identity, in the orientation the manifest declared. A reversed duplicate is a
+    // validation error and never reaches this controller, so no case constructs one.
+    def relationshipMeta = { relationship_id, method, left_analysis_id, right_analysis_id ->
+        """[
+            id: '${method}--${relationship_id}',
+            request_id: '${method}--${relationship_id}',
+            relationship_id: '${relationship_id}',
+            method: '${method}',
+            relationship_methods: ['${method}'],
+            cohort: 'cohort_a',
+            matrix_kind: '${method.endsWith('_ldms') ? 'gcta_ldms' : 'gcta_dense'}',
+            left_analysis_id: '${left_analysis_id}',
+            right_analysis_id: '${right_analysis_id}',
+            left_summary_statistics_id: null,
+            right_summary_statistics_id: null,
+            left_trait_id: 'TRAIT_${left_analysis_id}',
+            right_trait_id: 'TRAIT_${right_analysis_id}',
+            left_trait_type: 'quantitative',
+            right_trait_type: 'quantitative',
+            left_is_binary: false,
+            right_is_binary: false,
+            left_population_prevalence: null,
+            right_population_prevalence: null,
+            left_sample_prevalence: null,
+            right_sample_prevalence: null,
+            reml_bivar_prevalence: null,
+            native_args: [],
+        ]"""
+    }
+
+    def relationship = { project_dir, relationship_id, method, left_analysis_id, right_analysis_id, quant_covariates = null, cat_covariates = null ->
+        """[
+            ${relationshipMeta(relationship_id, method, left_analysis_id, right_analysis_id)},
+            [${RESOURCE(project_dir, 'matrix_alpha.grm.bin')}],
+            ${quant_covariates ? RESOURCE(project_dir, quant_covariates) : '[]'},
+            ${cat_covariates ? RESOURCE(project_dir, cat_covariates) : '[]'},
+        ]"""
+    }
+
+    // The prepared pair as `PREPARE_RELATIONSHIP_TRAITS` emits it: exactly one record per relationship,
+    // whichever estimators selected it. Its meta is the relationship definition and carries none of the
+    // requesting estimator's state, so `id` and `request_id` are the relationship identifier and
+    // `relationship_id` is the only key this controller joins on. The covariate tables are the headerless
+    // serialisation the GCTA estimators read, and a relationship that declared none carries `[]`.
+    def preparedPair = { project_dir, relationship_id, left_analysis_id, right_analysis_id, source, quant_covariates = null, cat_covariates = null ->
+        """[
+            [
+                relationship_id: '${relationship_id}',
+                id: '${relationship_id}',
+                request_id: '${relationship_id}',
+                cohort: 'cohort_a',
+                left_analysis_id: '${left_analysis_id}',
+                right_analysis_id: '${right_analysis_id}',
+                left_trait_id: 'TRAIT_${left_analysis_id}',
+                right_trait_id: 'TRAIT_${right_analysis_id}',
+                left_trait_type: 'quantitative',
+                right_trait_type: 'quantitative',
+                left_is_binary: false,
+                right_is_binary: false,
+            ],
+            ${RESOURCE(project_dir, source)},
+            ${quant_covariates ? RESOURCE(project_dir, quant_covariates) : '[]'},
+            ${cat_covariates ? RESOURCE(project_dir, cat_covariates) : '[]'},
+        ]"""
+    }
+
+    // The matrix stream as `PREPARE_RELATEDNESS_MATRICES` emits it for a relationship request: the request's
+    // own meta plus the content-derived reuse key, already fanned out one element per request.
+    def denseMatrix = { project_dir, relationship_id, left_analysis_id, right_analysis_id, basename, method = 'gcta_bivariate_reml' ->
+        """[
+            ${relationshipMeta(relationship_id, method, left_analysis_id, right_analysis_id)} + [matrix_key: 'key_${basename}'],
+            [
+                ${RESOURCE(project_dir, "${basename}.grm.bin")},
+                ${RESOURCE(project_dir, "${basename}.grm.N.bin")},
+                ${RESOURCE(project_dir, "${basename}.grm.id")},
+            ],
+        ]"""
+    }
+
+    def ldmsMatrix = { project_dir, relationship_id, left_analysis_id, right_analysis_id, method = 'gcta_bivariate_reml_ldms' ->
+        """[
+            ${relationshipMeta(relationship_id, method, left_analysis_id, right_analysis_id)} + [matrix_key: 'key_ldms_family'],
+            [
+                ${RESOURCE(project_dir, 'ldms_family_stratum1.grm.bin')},
+                ${RESOURCE(project_dir, 'ldms_family_stratum1.grm.N.bin')},
+                ${RESOURCE(project_dir, 'ldms_family_stratum1.grm.id')},
+                ${RESOURCE(project_dir, 'ldms_family_stratum2.grm.bin')},
+                ${RESOURCE(project_dir, 'ldms_family_stratum2.grm.N.bin')},
+                ${RESOURCE(project_dir, 'ldms_family_stratum2.grm.id')},
+            ],
+            ['ldms_family_stratum1', 'ldms_family_stratum2'],
+        ]"""
+    }
+
+    test("a relationship selecting both methods executes each of them from its one prepared pair") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                input[0] = channel.of(
+                    ${relationship(projectDir, 'rel_ab', 'gcta_bivariate_reml', 'alpha', 'beta')},
+                    ${relationship(projectDir, 'rel_ab', 'gcta_bivariate_reml_ldms', 'alpha', 'beta')},
+                )
+                input[1] = channel.of(${preparedPair(projectDir, 'rel_ab', 'alpha', 'beta', 'analysis_alpha.pheno')})
+                input[2] = channel.of(${denseMatrix(projectDir, 'rel_ab', 'alpha', 'beta', 'matrix_alpha')})
+                input[3] = channel.of(${ldmsMatrix(projectDir, 'rel_ab', 'alpha', 'beta')})
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                // The single prepared record is fanned back out by request, one execution per selected method,
+                // so a relationship selecting several bivariate methods still consumes one prepared pair.
+                // Neither branch claims the other's matrix.
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEREML') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEREMLLDMS') == 1 },
+                // The dense atom retains the request identity while deriving its input basename from the
+                // staged GRM. The LDMS consumer uses the shared matrix key as its execution identity.
+                { assert TRACE.tags(workflow, 'GCTA_BIVARIATEREML') == ['gcta_bivariate_reml--rel_ab_gcta_bivariate_reml--rel_ab'] },
+                { assert TRACE.tags(workflow, 'GCTA_BIVARIATEREMLLDMS') == ['key_ldms_family_key_ldms_family'] },
+                // Publication is request-addressed and method-keyed, and is unchanged by the controller scope.
+                { assert new File("${params.outdir}/requests/gcta_bivariate_reml/gcta_bivariate_reml--rel_ab/native.hsq").isFile() },
+                { assert new File("${params.outdir}/requests/gcta_bivariate_reml/gcta_bivariate_reml--rel_ab/native.log").isFile() },
+                { assert new File("${params.outdir}/requests/gcta_bivariate_reml_ldms/gcta_bivariate_reml_ldms--rel_ab/native.hsq").isFile() },
+                { assert new File("${params.outdir}/requests/gcta_bivariate_reml_ldms/gcta_bivariate_reml_ldms--rel_ab").list().sort() == ['native.hsq', 'native.log'] },
+                { assert workflow.out.reml_results.size() == 1 },
+                { assert workflow.out.reml_log.size() == 1 },
+                { assert workflow.out.reml_ldms_results.size() == 1 },
+                { assert workflow.out.reml_ldms_log.size() == 1 },
+                // The emitted record is the request, not the prepared pair whose meta carries the relationship
+                // identity. The dense request identity crossed execution unchanged; the matrix reuse key
+                // existed only for invocation attribution and is stripped.
+                { assert workflow.out.reml_results[0][0].id == 'gcta_bivariate_reml--rel_ab' },
+                { assert workflow.out.reml_ldms_results[0][0].id == 'gcta_bivariate_reml_ldms--rel_ab' },
+                { assert [workflow.out.reml_results[0][0], workflow.out.reml_ldms_results[0][0]].every { meta -> !meta.containsKey('matrix_key') } },
+                // The focal scientific identity crosses the boundary intact, in the declared orientation.
+                { assert [workflow.out.reml_results[0][0], workflow.out.reml_ldms_results[0][0]].every { meta -> meta.relationship_id == 'rel_ab' } },
+                { assert [workflow.out.reml_results[0][0], workflow.out.reml_ldms_results[0][0]].every { meta -> meta.left_analysis_id == 'alpha' && meta.right_analysis_id == 'beta' } },
+            )
+        }
+    }
+
+    test("one relationship selecting all four estimators shares one prepared pair and one matrix identity per backend") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                input[0] = channel.of(
+                    ${relationship(projectDir, 'rel_ab', 'gcta_bivariate_reml', 'alpha', 'beta')},
+                    ${relationship(projectDir, 'rel_ab', 'gcta_bivariate_he', 'alpha', 'beta')},
+                    ${relationship(projectDir, 'rel_ab', 'gcta_bivariate_reml_ldms', 'alpha', 'beta')},
+                    ${relationship(projectDir, 'rel_ab', 'gcta_bivariate_he_ldms', 'alpha', 'beta')},
+                )
+                input[1] = channel.of(${preparedPair(projectDir, 'rel_ab', 'alpha', 'beta', 'analysis_alpha.pheno')})
+                input[2] = channel.of(
+                    ${denseMatrix(projectDir, 'rel_ab', 'alpha', 'beta', 'matrix_alpha')},
+                    ${denseMatrix(projectDir, 'rel_ab', 'alpha', 'beta', 'matrix_alpha', 'gcta_bivariate_he')},
+                )
+                input[3] = channel.of(
+                    ${ldmsMatrix(projectDir, 'rel_ab', 'alpha', 'beta')},
+                    ${ldmsMatrix(projectDir, 'rel_ab', 'alpha', 'beta', 'gcta_bivariate_he_ldms')},
+                )
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                // Four selected estimators, one relationship, one prepared pair addressed by all of them.
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEREML') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEHEREG') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEREMLLDMS') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEHEREGLDMS') == 1 },
+                // Both dense estimators retain their request identity while addressing the same staged GRM;
+                // both LDMS estimators carry the same matrix key for the shared matrix construction.
+                { assert TRACE.tags(workflow, 'GCTA_BIVARIATEHEREG') == ['gcta_bivariate_he--rel_ab_gcta_bivariate_he--rel_ab'] },
+                { assert TRACE.tags(workflow, 'GCTA_BIVARIATEHEREGLDMS') == ['key_ldms_family_key_ldms_family'] },
+                { assert workflow.out.reml_results[0][0].request_id == 'gcta_bivariate_reml--rel_ab' },
+                { assert workflow.out.hereg_results[0][0].request_id == 'gcta_bivariate_he--rel_ab' },
+                { assert workflow.out.reml_ldms_results[0][0].request_id == 'gcta_bivariate_reml_ldms--rel_ab' },
+                { assert workflow.out.hereg_ldms_results[0][0].request_id == 'gcta_bivariate_he_ldms--rel_ab' },
+                { assert new File("${params.outdir}/requests/gcta_bivariate_he/gcta_bivariate_he--rel_ab/native.HEreg").isFile() },
+                { assert new File("${params.outdir}/requests/gcta_bivariate_he_ldms/gcta_bivariate_he_ldms--rel_ab/native.HEreg").isFile() },
+                { assert new File("${params.outdir}/requests/gcta_bivariate_reml/gcta_bivariate_reml--rel_ab/native.hsq").isFile() },
+                { assert workflow.out.reml_log.size() == 1 && workflow.out.hereg_log.size() == 1 },
+                { assert workflow.out.reml_ldms_log.size() == 1 && workflow.out.hereg_ldms_log.size() == 1 },
+            )
+        }
+    }
+
+    test("a HEreg-only relationship never reaches the REML branch and drops the unusable pair covariates") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                input[0] = channel.of(${relationship(projectDir, 'rel_he', 'gcta_bivariate_he', 'alpha', 'beta', 'pair.qcovar', 'pair.covar')})
+                input[1] = channel.of(${preparedPair(projectDir, 'rel_he', 'alpha', 'beta', 'analysis_alpha.pheno', 'pair.qcovar', 'pair.covar')})
+                input[2] = channel.of(${denseMatrix(projectDir, 'rel_he', 'alpha', 'beta', 'matrix_alpha', 'gcta_bivariate_he')})
+                input[3] = channel.empty()
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                // The prepared pair carries both covariate tables, but `gcta --HEreg-bivar` reads neither, so
+                // the controller drops them rather than forwarding an argument the estimator ignores.
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEREML') == 0 },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEREMLLDMS') == 0 },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEHEREGLDMS') == 0 },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEHEREG') == 1 },
+                { assert workflow.out.hereg_results.size() == 1 },
+                { assert workflow.out.hereg_results[0][0].method == 'gcta_bivariate_he' },
+                { assert workflow.out.hereg_results[0][0].left_analysis_id == 'alpha' && workflow.out.hereg_results[0][0].right_analysis_id == 'beta' },
+            )
+        }
+    }
+
+    test("each relationship executes from its own prepared pair against its own attributed matrix") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                input[0] = channel.of(
+                    ${relationship(projectDir, 'rel_ab', 'gcta_bivariate_reml', 'alpha', 'beta')},
+                    ${relationship(projectDir, 'rel_ag', 'gcta_bivariate_reml', 'alpha', 'gamma')},
+                    ${relationship(projectDir, 'rel_ga', 'gcta_bivariate_reml', 'gamma', 'alpha')},
+                )
+                input[1] = channel.of(
+                    ${preparedPair(projectDir, 'rel_ab', 'alpha', 'beta', 'analysis_alpha.pheno')},
+                    ${preparedPair(projectDir, 'rel_ag', 'alpha', 'gamma', 'analysis_beta.pheno')},
+                    ${preparedPair(projectDir, 'rel_ga', 'gamma', 'alpha', 'analysis_gamma.pheno')},
+                )
+                input[2] = channel.of(
+                    ${denseMatrix(projectDir, 'rel_ab', 'alpha', 'beta', 'matrix_alpha')},
+                    ${denseMatrix(projectDir, 'rel_ag', 'alpha', 'gamma', 'matrix_alpha')},
+                    ${denseMatrix(projectDir, 'rel_ga', 'gamma', 'alpha', 'matrix_beta')},
+                )
+                input[3] = channel.empty()
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                // Three relationships arrive as three prepared records and each is executed exactly once. The
+                // fan-out from prepared pair to request is keyed on the relationship, so no request picks up a
+                // sibling relationship's table.
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEREML') == 3 },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEREMLLDMS') == 0 },
+                { assert workflow.out.reml_results.size() == 3 },
+                // `rel_ag` and `rel_ga` are the same two analyses in opposite declared orientations. They are
+                // distinct relationships, and each keeps its own declared left and right.
+                { assert workflow.out.reml_results.find { meta, _result -> meta.relationship_id == 'rel_ag' }[0].left_analysis_id == 'alpha' },
+                { assert workflow.out.reml_results.find { meta, _result -> meta.relationship_id == 'rel_ag' }[0].right_analysis_id == 'gamma' },
+                { assert workflow.out.reml_results.find { meta, _result -> meta.relationship_id == 'rel_ga' }[0].left_analysis_id == 'gamma' },
+                { assert workflow.out.reml_results.find { meta, _result -> meta.relationship_id == 'rel_ga' }[0].right_analysis_id == 'alpha' },
+                // Each request is executed against its own attributed matrix; a shared matrix does not merge
+                // two requests, and a distinct one does not detach a request from its prepared pair.
+                { assert TRACE.tags(workflow, 'GCTA_BIVARIATEREML').sort() == ['gcta_bivariate_reml--rel_ab_gcta_bivariate_reml--rel_ab', 'gcta_bivariate_reml--rel_ag_gcta_bivariate_reml--rel_ag', 'gcta_bivariate_reml--rel_ga_gcta_bivariate_reml--rel_ga'] },
+            )
+        }
+    }
+
+    test("an LDMS-only relationship never reaches the dense branch") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                input[0] = channel.of(${relationship(projectDir, 'rel_ab', 'gcta_bivariate_reml_ldms', 'alpha', 'beta')})
+                input[1] = channel.of(${preparedPair(projectDir, 'rel_ab', 'alpha', 'beta', 'analysis_alpha.pheno')})
+                input[2] = channel.empty()
+                input[3] = channel.of(${ldmsMatrix(projectDir, 'rel_ab', 'alpha', 'beta')})
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEREML') == 0 },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEREMLLDMS') == 1 },
+                { assert workflow.out.reml_ldms_results.size() == 1 },
+                { assert workflow.out.reml_ldms_results[0][0].method == 'gcta_bivariate_reml_ldms' },
+            )
+        }
+    }
+
+    test("an absent optional pair covariate stays absent through execution") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                input[0] = channel.of(
+                    ${relationship(projectDir, 'rel_bare', 'gcta_bivariate_reml', 'alpha', 'beta')},
+                    ${relationship(projectDir, 'rel_covar', 'gcta_bivariate_reml', 'alpha', 'gamma', 'pair.qcovar', 'pair.covar')},
+                )
+                input[1] = channel.of(
+                    ${preparedPair(projectDir, 'rel_bare', 'alpha', 'beta', 'analysis_alpha.pheno')},
+                    ${preparedPair(projectDir, 'rel_covar', 'alpha', 'gamma', 'analysis_beta.pheno', 'pair.qcovar', 'pair.covar')},
+                )
+                input[2] = channel.of(
+                    ${denseMatrix(projectDir, 'rel_bare', 'alpha', 'beta', 'matrix_alpha')},
+                    ${denseMatrix(projectDir, 'rel_covar', 'alpha', 'gamma', 'matrix_beta')},
+                )
+                input[3] = channel.empty()
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                // A relationship that declared no covariates arrives with `[]` in both covariate positions,
+                // and `[]` — never a placeholder file and never a null path — must reach the GCTA invocation.
+                // A covariate-bearing sibling in the same run must not lend it a table either.
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEREML') == 2 },
+                { assert workflow.out.reml_results.collect { meta, _result -> meta.relationship_id }.sort() == ['rel_bare', 'rel_covar'] },
+                { assert workflow.out.reml_log.size() == 2 },
+            )
+        }
+    }
+
+    test("a run declaring no relationship request executes nothing and emits nothing") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                input[0] = channel.empty()
+                input[1] = channel.of(${preparedPair(projectDir, 'rel_ab', 'alpha', 'beta', 'analysis_alpha.pheno')})
+                input[2] = channel.empty()
+                input[3] = channel.empty()
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                // The request stream, not the prepared-pair stream, decides what executes: a prepared pair no
+                // GCTA request selected must start no estimator.
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEREML') == 0 },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEHEREG') == 0 },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEREMLLDMS') == 0 },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEHEREGLDMS') == 0 },
+                { assert workflow.out.reml_results.size() == 0 },
+                { assert workflow.out.reml_log.size() == 0 },
+                { assert workflow.out.hereg_results.size() == 0 },
+                { assert workflow.out.hereg_log.size() == 0 },
+                { assert workflow.out.reml_ldms_results.size() == 0 },
+                { assert workflow.out.reml_ldms_log.size() == 0 },
+                { assert workflow.out.hereg_ldms_results.size() == 0 },
+                { assert workflow.out.hereg_ldms_log.size() == 0 },
+            )
+        }
+    }
+}

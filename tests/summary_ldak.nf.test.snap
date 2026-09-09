@@ -2,20 +2,15 @@
     "versions": {
         "content": [
             {
-                "CANONICALISE_SUMMARY_STATISTICS": {
-                    "python": "3.14.5"
+                "GWASLAB_HARMONIZE": {
+                    "gwaslab": "4.1.9",
+                    "python": "3.12.13"
                 },
                 "LDAK_SUMCORS": {
                     "ldak": 6.3
                 },
                 "LDAK_SUMHER": {
                     "ldak": 6.3
-                },
-                "NORMALISE_LDAK_SUMCORS": {
-                    "python": "3.14.5"
-                },
-                "NORMALISE_LDAK_SUMHER": {
-                    "python": "3.14.5"
                 },
                 "PREPARE_LDAK_SUMMARY_STATISTICS": {
                     "python": "3.14.5"
@@ -25,10 +20,10 @@
                 }
             }
         ],
+        "timestamp": "2026-08-30T22:22:40.159398773",
         "meta": {
-            "nf-test": "0.9.3",
-            "nextflow": "25.10.4"
-        },
-        "timestamp": "2026-08-24T06:02:12.676873621"
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
     }
 }

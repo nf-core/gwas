@@ -1,0 +1,274 @@
+nextflow_pipeline {
+
+    name "Test GCTA bivariate Haseman-Elston relationship routes"
+    script "../main.nf"
+    tag "pipeline"
+    tag "relational"
+    tag "heritability"
+    tag "genetic_correlation"
+    tag "gcta"
+    tag "gcta_bivariate_he"
+
+    // Both HEreg selectors are quantitative-only, and GCTA 1.94.1 `--HEreg-bivar` reads no covariate file,
+    // so every valid case here declares two quantitative endpoints and no pair covariates. The shipped
+    // fixture carries one quantitative and one binary trait, so the second quantitative endpoint reads the
+    // binary column as a quantitative variable rather than inventing a phenotype file.
+    def quantitativePair = { projectDir, outputDir, name, methods, pairOptions = [:], mutateRelationships = null ->
+        def analyses = RELATIONAL.analyses(projectDir, outputDir, name, { rows ->
+            def second = RELATIONAL.analysis(projectDir, 'example_pgen_bt')
+            second.analysis_id = 'example_pgen_qt2'
+            second.trait_id = 'QT2'
+            second.trait_type = 'quantitative'
+            second.control_value = ''
+            second.case_value = ''
+            rows << second
+            rows.each { row ->
+                row.association_methods = ''
+                row.heritability_methods = ''
+            }
+        })
+        def relationships = RELATIONAL.relationships(projectDir, outputDir, name, { rows ->
+            rows[0].relationship_id = 'qt_qt2'
+            rows[0].right_analysis_id = 'example_pgen_qt2'
+            rows[0].relationship_methods = methods
+            rows[0].pair_quant_covariates = ''
+            rows[0].pair_cat_covariates = ''
+            if (mutateRelationships) {
+                mutateRelationships(rows)
+            }
+        })
+        return [
+            cohort: RELATIONAL.cohorts(projectDir, outputDir, name),
+            analyses: analyses,
+            relationships: relationships,
+            options: RELATIONAL.methodOptions(outputDir, name, [analyses: [:], pair_requests: pairOptions]),
+        ]
+    }
+
+    def workFiles = { outputDir ->
+        def files = []
+        new File(new File(outputDir.toString()).parentFile, 'work').eachFileRecurse { entry ->
+            if (entry.isFile()) {
+                files << entry
+            }
+        }
+        return files
+    }
+
+    // Selecting HEreg beside REML for one relationship must construct each required matrix once. That is a
+    // scheduling and identity property of the reuse key, so it is asserted under `-stub`: the matrix
+    // construction and both estimators still run, while the numerical behaviour of a 200-sample bivariate
+    // likelihood stays out of a test about task counts. The real HEreg output is asserted separately below.
+    test("selecting dense HEreg beside dense REML constructs the shared GRM exactly once") {
+        options "-stub"
+
+        when {
+            def inputs = quantitativePair(
+                projectDir,
+                outputDir,
+                'gcta_bivariate_he_shared_dense',
+                'gcta_bivariate_reml,gcta_bivariate_he',
+            )
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = inputs.cohort
+                analysis_manifest = inputs.analyses
+                relationship_manifest = inputs.relationships
+                method_options = inputs.options
+                gcta_grm_parts = 1
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                // The reuse key is derived from the cohort, the genotype bundle and the declared matrix
+                // settings only, never from the method token, so two estimators cost one construction.
+                { assert TRACE.count(workflow, 'GCTA_MAKEGRMPART') == 1 },
+                { assert TRACE.count(workflow, 'CUSTOM_GCTAMERGEGRMPARTS') == 1 },
+                // Both estimators retain their own request identity while deriving the shared staged GRM
+                // basename independently of that identity.
+                { assert TRACE.tags(workflow, 'GCTA_BIVARIATEREML') == ['gcta_bivariate_reml--qt_qt2_gcta_bivariate_reml--qt_qt2'] },
+                { assert TRACE.tags(workflow, 'GCTA_BIVARIATEHEREG') == ['gcta_bivariate_he--qt_qt2_gcta_bivariate_he--qt_qt2'] },
+                // The shared two-trait table is built once for the relationship, then fanned out per method.
+                { assert TRACE.count(workflow, 'PREPARE_BIVARIATE_TRAITS') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEREML') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEHEREG') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEHEREGLDMS') == 0 },
+                // Each estimator keeps its own request identity and published request directory.
+                { assert new File("${params.outdir}/requests/gcta_bivariate_he/gcta_bivariate_he--qt_qt2/native.HEreg").isFile() },
+                { assert new File("${params.outdir}/requests/gcta_bivariate_reml/gcta_bivariate_reml--qt_qt2/native.hsq").isFile() },
+            )
+        }
+    }
+
+    test("selecting LDMS HEreg beside LDMS REML constructs the shared matrix family exactly once") {
+        options "-stub"
+
+        when {
+            def ldmsOptions = [
+                ld_score_region_kb: 50,
+                ld_bins: 2,
+                ldms_maf_edges: [0, 0.5],
+            ]
+            def inputs = quantitativePair(
+                projectDir,
+                outputDir,
+                'gcta_bivariate_he_shared_ldms',
+                'gcta_bivariate_reml_ldms,gcta_bivariate_he_ldms',
+                [
+                    'gcta_bivariate_reml_ldms--qt_qt2': ldmsOptions,
+                    'gcta_bivariate_he_ldms--qt_qt2': ldmsOptions,
+                ],
+            )
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = inputs.cohort
+                analysis_manifest = inputs.analyses
+                relationship_manifest = inputs.relationships
+                method_options = inputs.options
+                gcta_grm_parts = 1
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                // Two estimators declaring the same component plan share one ordered GRM family.
+                { assert TRACE.tags(workflow, 'GCTA_BIVARIATEREMLLDMS') == TRACE.tags(workflow, 'GCTA_BIVARIATEHEREGLDMS') },
+                { assert TRACE.count(workflow, 'PREPARE_BIVARIATE_TRAITS') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEREMLLDMS') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEHEREGLDMS') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEHEREG') == 0 },
+                { assert new File("${params.outdir}/requests/gcta_bivariate_he_ldms/gcta_bivariate_he_ldms--qt_qt2/native.HEreg").isFile() },
+                { assert new File("${params.outdir}/requests/gcta_bivariate_reml_ldms/gcta_bivariate_reml_ldms--qt_qt2/native.hsq").isFile() },
+            )
+        }
+    }
+
+    test("dense HEreg publishes its native result and log") {
+        when {
+            def inputs = quantitativePair(projectDir, outputDir, 'gcta_bivariate_he_dense', 'gcta_bivariate_he')
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = inputs.cohort
+                analysis_manifest = inputs.analyses
+                relationship_manifest = inputs.relationships
+                method_options = inputs.options
+                gcta_grm_parts = 1
+            }
+        }
+
+        then {
+            def heRequest = new File("${params.outdir}/requests/gcta_bivariate_he/gcta_bivariate_he--qt_qt2")
+            def nativeCommand = workFiles(outputDir).find { entry ->
+                entry.name == '.command.sh' && entry.text.contains('--HEreg-bivar 1 2')
+            }
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'GCTA_MAKEGRMPART') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEHEREG') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEREML') == 0 },
+                { assert new File(heRequest, 'native.HEreg').isFile() },
+                { assert new File(heRequest, 'native.log').isFile() },
+                { assert heRequest.list().sort() == ['native.HEreg', 'native.log'] },
+                // The wrapper owns the invocation: no covariate flag and no prevalence flag is emitted.
+                { assert nativeCommand != null },
+                { assert !nativeCommand.text.contains('--qcovar') },
+                { assert !nativeCommand.text.contains('--covar') },
+                { assert !nativeCommand.text.contains('--prevalence') },
+                { assert snapshot(removeNextflowVersion("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")).match('versions') },
+                { assert snapshot(new File(heRequest, 'native.HEreg').text).match('results') },
+            )
+        }
+    }
+
+    test("a one-stratum LDMS component plan publishes GCTA's native one-component layout") {
+        when {
+            // One LD stratum and one MAF stratum: GCTA has nothing to sum, so it writes the one-component
+            // layout with no `Sum of ...` rows and no `Total rG`, and that single component is the
+            // genome-wide total.
+            def inputs = quantitativePair(
+                projectDir,
+                outputDir,
+                'gcta_bivariate_he_ldms_single',
+                'gcta_bivariate_he_ldms',
+                [
+                    'gcta_bivariate_he_ldms--qt_qt2': [
+                        ld_score_region_kb: 50,
+                        ld_bins: 1,
+                        ldms_maf_edges: [0, 0.5],
+                    ],
+                ],
+            )
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = inputs.cohort
+                analysis_manifest = inputs.analyses
+                relationship_manifest = inputs.relationships
+                method_options = inputs.options
+                gcta_grm_parts = 1
+            }
+        }
+
+        then {
+            def heRequest = new File("${params.outdir}/requests/gcta_bivariate_he_ldms/gcta_bivariate_he_ldms--qt_qt2")
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEHEREGLDMS') == 1 },
+                { assert new File(heRequest, 'native.HEreg').isFile() },
+                { assert new File(heRequest, 'native.log').isFile() },
+                { assert !new File(heRequest, 'native.HEreg').text.contains('Total rG') },
+            )
+        }
+    }
+
+
+    test("multi-component LDMS HEreg publishes GCTA's native component layout") {
+        when {
+            // Two LD-score strata: the bins are quantile defined, so both are non-empty by construction and
+            // GCTA writes the multi-component layout with its own `Sum of ...` totals and `Total rG`.
+            def inputs = quantitativePair(
+                projectDir,
+                outputDir,
+                'gcta_bivariate_he_ldms_components',
+                'gcta_bivariate_he_ldms',
+                [
+                    'gcta_bivariate_he_ldms--qt_qt2': [
+                        ld_score_region_kb: 50,
+                        ld_bins: 2,
+                        ldms_maf_edges: [0, 0.5],
+                    ],
+                ],
+            )
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = inputs.cohort
+                analysis_manifest = inputs.analyses
+                relationship_manifest = inputs.relationships
+                method_options = inputs.options
+                gcta_grm_parts = 1
+            }
+        }
+
+        then {
+            def heRequest = new File("${params.outdir}/requests/gcta_bivariate_he_ldms/gcta_bivariate_he_ldms--qt_qt2")
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEHEREGLDMS') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEREMLLDMS') == 0 },
+                { assert new File(heRequest, 'native.HEreg').isFile() },
+                { assert new File(heRequest, 'native.log').isFile() },
+                { assert new File(heRequest, 'native.HEreg').text.contains('Total rG') },
+            )
+        }
+    }
+
+    // The two HEreg ingress refusals this file used to run -- a binary endpoint under a quantitative-only
+    // selector, and declared pair covariates on a selector with no native covariate parameter -- are rules of
+    // `resolveRelationships` and are asserted with their full row and field attribution in
+    // `subworkflows/local/validate_gwas_input/tests/resolve_relationships.function.nf.test`. The wrapper-owned
+    // `--HEreg-bivar` refusal is the reserved-token rule of the GCTA pair firewall, already asserted in that
+    // directory's `native_option_policy.function.nf.test`. The relationship family's pipeline sentinel is
+    // `tests/relational_gcta_bivariate_reml.nf.test`.
+}

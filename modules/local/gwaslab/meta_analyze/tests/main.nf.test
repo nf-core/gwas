@@ -1,0 +1,135 @@
+nextflow_process {
+
+    name "Test Process GWASLAB_META_ANALYZE"
+    script "../main.nf"
+    process "GWASLAB_META_ANALYZE"
+    config "./nextflow.config"
+
+    tag "modules"
+    tag "modules_local"
+    tag "gwaslab"
+    tag "gwaslab_meta_analyze"
+
+    def parent = { directory, name, beta ->
+        def target = new File(directory.toString(), "${name}.tsv")
+        target.text = 'SNPID\tCHR\tPOS\tEA\tNEA\tSTATUS\tEAF\tBETA\tSE\tP\tN\n' +
+            "rs1\t1\t1000\tA\tG\t9999999\t0.25\t${beta}\t0.02\t1e-6\t4000\n" +
+            "rs2\t1\t2000\tC\tT\t9999999\t0.40\t0.2\t0.04\t1e-4\t4000\n"
+        target
+    }
+
+    def gunzip = { path ->
+        new java.util.zip.GZIPInputStream(new FileInputStream(path.toString())).getText('UTF-8')
+    }
+
+    test("GWASLab emits fixed effects and deterministic native adapter products") {
+        when {
+            def one = parent(outputDir, 'one', '0.10')
+            def two = parent(outputDir, 'two', '0.14')
+            def three = parent(outputDir, 'three', '0.08')
+            process {
+                """
+                input[0] = [
+                    [id: 'fixed'],
+                    [file('${one}', checkIfExists: true), file('${two}', checkIfExists: true), file('${three}', checkIfExists: true)],
+                    ['one', 'two', 'three'],
+                    'gwaslab',
+                    'GRCh37',
+                    false,
+                ]
+                """
+            }
+        }
+
+        then {
+            def fixed = gunzip(process.out.fixed.get(0)[1]).readLines()
+            def matrix = new File(process.out.metasoft_input.get(0)[1].toString()).readLines()
+            def mrmega = gunzip(process.out.mrmega_input.get(0)[1]).readLines()
+            def fixedHeader = fixed[0].split('\t')
+            def fixedRs1 = fixed[1].split('\t')
+            def versions = new File(process.out.versions.get(0).toString()).text
+            assertAll(
+                { assert process.success },
+                { assert process.out.fixed.size() == 1 },
+                { assert process.out.random_effects.empty },
+                { assert fixed.size() == 3 },
+                { assert fixed[0].split('\t').contains('BETA') },
+                { assert matrix.size() == 2 },
+                { assert matrix[0] == '1:1000:A:G 0.1 0.02 0.14 0.02 0.08 0.02' },
+                { assert mrmega[0].startsWith('META_VARIANT_KEY\tSNPID\tCHR\tPOS\tEA\tNEA\tEAF_1\tBETA_1\tSE_1\tN_1') },
+                { assert mrmega[1].startsWith('1:1000:A:G\trs1\t1\t1000\tA\tG\t0.25\t0.1\t0.02\t4000.0') },
+                { assert fixedRs1[fixedHeader.findIndexOf { column -> column == 'BETA' }] == '0.10666666666666667' },
+                { assert fixedRs1[fixedHeader.findIndexOf { column -> column == 'SE' }] == '0.011547005383792516' },
+                { assert fixedRs1[fixedHeader.findIndexOf { column -> column == 'P' }] == '2.5207777672308624e-20' },
+                { assert versions.contains('gwaslab: 4.1.9') },
+                { assert versions.contains('python:') },
+            )
+        }
+    }
+
+    test("random effects are an explicit optional output") {
+        when {
+            def one = parent(outputDir, 'random_one', '0.50')
+            def two = parent(outputDir, 'random_two', '-0.10')
+            def three = parent(outputDir, 'random_three', '0.20')
+            process {
+                """
+                input[0] = [
+                    [id: 'random'],
+                    [file('${one}', checkIfExists: true), file('${two}', checkIfExists: true), file('${three}', checkIfExists: true)],
+                    ['one', 'two', 'three'],
+                    'gwaslab',
+                    'GRCh37',
+                    true,
+                ]
+                """
+            }
+        }
+
+        then {
+            def random = gunzip(process.out.random_effects.get(0)[1]).readLines()
+            def randomHeader = random[0].split('\t')
+            def randomRs1 = random[1].split('\t')
+            assertAll(
+                { assert process.success },
+                { assert process.out.fixed.size() == 1 },
+                { assert process.out.random_effects.size() == 1 },
+                { assert randomHeader.contains('BETA_RANDOM') },
+                { assert randomRs1[randomHeader.findIndexOf { column -> column == 'BETA_RANDOM' }] == '0.20000000000000004' },
+                { assert randomRs1[randomHeader.findIndexOf { column -> column == 'SE_RANDOM' }] == '0.17320508075688776' },
+                { assert randomRs1[randomHeader.findIndexOf { column -> column == 'P_RANDOM' }] == '0.24821307898992373' },
+            )
+        }
+    }
+
+    test("stub preserves random-effect absence") {
+        options "-stub"
+
+        when {
+            def one = parent(outputDir, 'stub_one', '0.1')
+            def two = parent(outputDir, 'stub_two', '0.2')
+            process {
+                """
+                input[0] = [
+                    [id: 'stub'],
+                    [file('${one}', checkIfExists: true), file('${two}', checkIfExists: true)],
+                    ['one', 'two'],
+                    'gwaslab',
+                    'GRCh37',
+                    false,
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.fixed.size() == 1 },
+                { assert process.out.random_effects.empty },
+                { assert process.out.metasoft_input.size() == 1 },
+                { assert process.out.mrmega_input.size() == 1 },
+            )
+        }
+    }
+}

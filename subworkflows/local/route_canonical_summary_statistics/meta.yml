@@ -1,0 +1,42 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
+name: route_canonical_summary_statistics
+description: Route every internal and external summary-statistics source through GWASLab and expose its standardised output directly
+keywords:
+  - summary statistics
+  - harmonisation
+  - gwaslab
+  - standardisation
+components:
+  - gwaslab/harmonize
+  - getassociationcolumnmappingjson
+  - getinternalsummarymetadata
+input:
+  - ch_association_results:
+      description: Every internal association result, one per analysis unit per association method actually exercised; the producing route names its method on `meta.method`, and the analysis identity, trait, binariness, prevalences, genome build and ancestry are read from the same meta to derive the producer summary metadata and the registered GWASLab column mapping
+      structure: "[map meta, path sumstats]"
+      pattern: "*.{tsv,tsv.gz,txt,regenie.gz,assoc,fastGWA,linear,hybrid}"
+      ontologies: []
+  - ch_external_summary_statistics:
+      description: Every validated external summary-statistics row; each declares its explicit GWASLab input format in `meta.source_format`, including `gwaslab` for a pre-harmonised table
+      structure: "[map meta, path source]"
+      pattern: "*.{tsv,tsv.gz,txt,gz}"
+      ontologies: []
+  - gwaslab_references:
+      description: The optional build-keyed GWASLab reference resources, already resolved from pipeline parameters by the caller; a map from genome build to `[fasta, fasta_index, rsid_vcf, rsid_vcf_index, strand_vcf, strand_vcf_index]`, each entry `[]` when that resource is unconfigured for the build
+      structure: "map gwaslab_references"
+      ontologies: []
+output:
+  - summary_statistics:
+      description: The GWASLab-standard summary-statistics table, exactly one per `summary_statistics_id`, whatever origin produced it
+      structure: "[map meta, path gwaslab_summary_statistics]"
+      pattern: "*.gwaslab.tsv.gz"
+      ontologies: []
+  - harmonization_log:
+      description: The GWASLab processing and export log, one-to-one with `summary_statistics`
+      structure: "[map meta, path gwaslab_log]"
+      pattern: "*.gwaslab.log"
+      ontologies: []
+authors:
+  - "@andongni"
+maintainers:
+  - "@andongni"

@@ -2,10 +2,11 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://raw.githubusercontent.com/nf-core/gwas/master/assets/schema_cohort_manifest.json",
     "title": "nf-core/gwas pipeline - cohort manifest schema",
-    "description": "Schema for the cohort manifest provided with params.cohort_manifest. One row declares one cohort-owned PLINK 2, PLINK 1 or VCF genotype representation.",
+    "description": "Schema for the cohort manifest provided with params.cohort_manifest. One row declares one cohort-owned PLINK 2 or PLINK 1 genotype representation.",
     "type": "array",
     "items": {
         "type": "object",
+        "additionalProperties": false,
         "properties": {
             "cohort_id": {
                 "type": "string",
@@ -48,9 +49,9 @@
                 "type": "string",
                 "format": "file-path",
                 "exists": true,
-                "pattern": "^\\S+\\.pvar(\\.zst)?$",
+                "pattern": "^\\S+\\.pvar$",
                 "description": "PLINK 2 variant file accompanying pgen.",
-                "errorMessage": "PLINK 2 variant file cannot contain spaces, must exist and must have extension '.pvar' or '.pvar.zst'"
+                "errorMessage": "PLINK 2 variant file cannot contain spaces, must exist and must have extension '.pvar'; a Zstandard-compressed '.pvar.zst' is not supported because the pipeline's PLINK 2, GCTA and REGENIE consumers derive a bare --pfile prefix and do not pass the 'vzs' modifier"
             },
             "bed": {
                 "type": "string",
@@ -76,13 +77,11 @@
                 "description": "PLINK 1 sample file accompanying bed.",
                 "errorMessage": "PLINK 1 sample file cannot contain spaces, must exist and must have extension '.fam'"
             },
-            "vcf": {
+            "genotype_view_id": {
                 "type": "string",
-                "format": "file-path",
-                "exists": true,
-                "pattern": "^\\S+\\.vcf(\\.gz|\\.bgz)?$",
-                "description": "VCF genotype file for the cohort, converted once to canonical PLINK 2.",
-                "errorMessage": "VCF file cannot contain spaces, must exist and must have extension '.vcf', '.vcf.gz' or '.vcf.bgz'"
+                "pattern": "^([a-z][a-z0-9_]*:)?[0-9a-f]{16,64}$",
+                "description": "Optional immutable identity of the supplied genotype view: a lowercase hexadecimal digest you computed over the supplied files, or the content-addressed view identity written by a genotype backend launcher, optionally prefixed by that backend's namespace (for example 'biofuse:'). When absent, the pipeline digests the supplied file bytes once per cohort.",
+                "errorMessage": "genotype_view_id must be 16 to 64 lowercase hexadecimal characters, optionally prefixed by a backend namespace such as 'biofuse:'"
             }
         },
         "required": ["cohort_id", "genome_build", "ancestry"]

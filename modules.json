@@ -23,12 +23,14 @@
                     "gcta/bivariatereml": {
                         "branch": "master",
                         "git_sha": "08668fe26c00529d6e17d4419479f6bb99a80236",
-                        "installed_by": ["modules"]
+                        "installed_by": ["modules"],
+                        "patch": "modules/nf-core/gcta/bivariatereml/gcta-bivariatereml.diff"
                     },
                     "gcta/bivariateremlldms": {
                         "branch": "master",
                         "git_sha": "12b957f0599c720ed004d792db68330d32d43b9e",
-                        "installed_by": ["modules"]
+                        "installed_by": ["modules"],
+                        "patch": "modules/nf-core/gcta/bivariateremlldms/gcta-bivariateremlldms.diff"
                     },
                     "gcta/fastgwa": {
                         "branch": "master",

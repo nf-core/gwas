@@ -13,9 +13,9 @@ components:
   - gcta/remlldms
 input:
   - ch_grm:
-      description: Pre-built GCTA relatedness matrix for the focal analysis; the MGRM manifest is [] on the greml route and required on the greml_ldms route. Public outputs retain meta.
-      structure: "[map meta, path mgrm_manifest|[], path grm_files]"
-      pattern: "*.mgrm, *.grm.{bin,N.bin,id}"
+      description: Pre-built GCTA relatedness matrix for the focal analysis; ordered GRM prefixes are [] on the greml route and define task-local MGRM order on the greml_ldms route. Public outputs retain meta.
+      structure: "[map meta, path grm_files, [ string grm_prefix, ... ]|[]]"
+      pattern: "*.grm.{bin,N.bin,id}"
       ontologies:
         - edam: "http://edamontology.org/format_2330"
   - ch_pheno:

@@ -20,7 +20,7 @@
                     "mimetype": "text/csv",
                     "pattern": "^\\S+\\.csv$",
                     "description": "Path to the cohort manifest declaring cohort-owned genotype facts.",
-                    "help_text": "Supply together with `analysis_manifest`. Each unique `cohort_id` declares one complete PLINK 2, PLINK 1 or VCF genotype representation.",
+                    "help_text": "Supply together with `analysis_manifest`. Each unique `cohort_id` declares one complete PLINK 2 or PLINK 1 genotype representation.",
                     "fa_icon": "fas fa-users"
                 },
                 "analysis_manifest": {
@@ -41,8 +41,8 @@
                     "schema": "assets/schema_summary_statistics_manifest.json",
                     "mimetype": "text/csv",
                     "pattern": "^\\S+\\.csv$",
-                    "description": "Optional summary-statistics manifest declaring external or pipeline-generated results.",
-                    "help_text": "Each unique `summary_statistics_id` declares exactly one external source or one producing analysis/method pair and owns any unary summary-statistics methods. Supply this manifest alone for external summary-only work or alongside the linked cohort and analysis manifests.",
+                    "description": "Optional summary-statistics manifest declaring external, pipeline-generated or meta-analysis-derived results.",
+                    "help_text": "Each unique `summary_statistics_id` declares exactly one external source, one producing analysis/method pair or an ordered set of base summaries for meta-analysis and owns any unary summary-statistics methods. Supply this manifest alone for external summary-only work or alongside the linked cohort and analysis manifests.",
                     "fa_icon": "fas fa-table"
                 },
                 "relationship_manifest": {
@@ -104,28 +104,16 @@
             "description": "Publish intermediates that are otherwise kept out of the results directory.",
             "help_text": "Intermediates are unpublished by default so that a large run does not fill your storage with files you did not ask for. Each save control turns one family of intermediates back on.",
             "properties": {
-                "save_prepared_genotypes": {
-                    "type": "boolean",
-                    "description": "Save the canonical PLINK 2 genotype bundle prepared for each cohort.",
-                    "help_text": "Prepared bundles are published to `<outdir>/genotypes/<cohort_id>/` so that you can inspect them or reuse them outside the pipeline. Only bundles the pipeline built are saved: a cohort supplied as PLINK 2 `pgen`/`psam`/`pvar` is already canonical and is used exactly as given, so there is nothing to save for it.",
-                    "fa_icon": "fas fa-download"
-                },
                 "save_normalised_phenotypes": {
                     "type": "boolean",
-                    "description": "Save the normalised phenotype and covariate files prepared for each analysis unit.",
-                    "help_text": "Normalised files are published to `<outdir>/phenotypes/<analysis_id>/` so that you can check how your trait was recoded before an association or heritability run consumed it. The set is the headered phenotype file, the separate quantitative and categorical covariate files, and the merged covariate file; the headerless serialisations and the normalisation log are never published.",
+                    "description": "Save the phenotype and covariate inputs prepared for each analysis unit.",
+                    "help_text": "Prepared files are published to `<outdir>/phenotypes/<analysis_id>/` so that you can check the exact representation consumed by association and heritability programmes. The set is the headered phenotype file, the separate quantitative and categorical covariate files, and the merged covariate file; headerless programme-specific serialisations are never published. The parameter name is retained as `save_normalised_phenotypes`.",
                     "fa_icon": "fas fa-download"
                 },
                 "save_relatedness_matrices": {
                     "type": "boolean",
-                    "description": "Save reusable GCTA and LDAK relatedness-matrix bundles built for heritability and mixed-model routes.",
-                    "help_text": "Matrices are published to `<outdir>/quality_control/relatedness_matrices/<key>/`, where `<key>` is the content-derived reuse key of the matrix: a digest over the cohort identity and every construction setting that changes the matrix. The path is key-addressed rather than cohort-addressed because one cohort can carry several distinct matrices, and because a matrix that several analyses share belongs to none of them. Only the merged bundle is saved; the per-partition files it was built from are not.",
-                    "fa_icon": "fas fa-download"
-                },
-                "save_association_predictions": {
-                    "type": "boolean",
-                    "description": "Save reusable REGENIE and LDAK-KVIK Step 1 prediction bundles.",
-                    "help_text": "Prediction bundles are absent from published output by default. Enable this control to publish analysis-attributed bundles under `<outdir>/intermediates/association_predictions/<method>/<analysis_id>/`.",
+                    "description": "Save reusable GCTA, LDAK and MPH relatedness-matrix artifacts and the LD-by-MAF component plans built for heritability and mixed-model routes.",
+                    "help_text": "Each artifact is published once to `<outdir>/quality_control/relatedness_matrices/<key>/`, where `<key>` digests immutable input or parent identity and the effective scientific settings of that artifact. Each LD-by-MAF component plan is published once to `<outdir>/quality_control/ldms_component_plans/<plan_key>/`, keyed by the cohort genotype view and the plan settings alone, so the GCTA and MPH stratified families that share one plan do not publish it twice. Sparse cutoff, LDAK subsetting and covariate adjustment belong to child identities and never fragment their compatible base. Focal analysis, method and publication state are excluded. Per-partition construction files and logs are not published.",
                     "fa_icon": "fas fa-download"
                 }
             }
@@ -168,7 +156,35 @@
                     "type": "boolean",
                     "description": "Use REGENIE's low-memory Step 1 implementation, keeping temporary predictions in the task work directory."
                 }
-            }
+            },
+            "allOf": [
+                {
+                    "if": {
+                        "properties": {
+                            "regenie_step1_mode": {
+                                "const": "chunked"
+                            }
+                        },
+                        "required": ["regenie_step1_mode"]
+                    },
+                    "then": {
+                        "properties": {
+                            "regenie_step1_jobs": {
+                                "type": "integer",
+                                "minimum": 1
+                            }
+                        },
+                        "required": ["regenie_step1_jobs"]
+                    },
+                    "else": {
+                        "properties": {
+                            "regenie_step1_jobs": {
+                                "type": "null"
+                            }
+                        }
+                    }
+                }
+            ]
         },
         "harmonisation_options": {
             "title": "Harmonisation options",

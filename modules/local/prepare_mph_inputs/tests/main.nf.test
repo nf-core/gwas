@@ -1,0 +1,395 @@
+nextflow_process {
+
+    name "Test Process PREPARE_MPH_INPUTS"
+    config "./nextflow.config"
+    script "../main.nf"
+    process "PREPARE_MPH_INPUTS"
+
+    tag "modules"
+    tag "modules_local"
+    tag "prepare_mph_inputs"
+
+    // Twelve samples is enough for every rule this module owns, and a hand-written cohort is the only way to
+    // spell the inputs the rules exist for: an IID absent from the matrix, a family identifier that disagrees
+    // with the FAM, a matrix sample list in the wrong order. Nothing here is shipped, because every file is
+    // derived from the same twelve identities and a shipped copy would go stale beside them in silence.
+    def pad = { index -> String.format('%02d', index) }
+    def trait = { index -> String.format('%.4f', Math.sin(index * 0.7d) * 2.0d) }
+
+    // The one order that matters. MPH indexes the relationship matrix by the *position* of an entry in
+    // `.grm.iid`, so the FAM's IID column, the matrix sample list and the rows this module writes are all the
+    // same sequence, and every fixture below keeps them that way unless the case under test is that they differ.
+    def famText = (1..12).collect { index -> "f${pad(index)} s${pad(index)} 0 0 0 -9" }.join('\n') + '\n'
+    def grmText = (1..12).collect { index -> "s${pad(index)}" }.join('\n') + '\n'
+    def completePhenoText = (1..12).collect { index -> "f${pad(index)} s${pad(index)} ${trait(index)}" }.join('\n') + '\n'
+    def completeQcovarText = "FID\tIID\tage\tpc1\n" + (1..12).collect { index -> "f${pad(index)}\ts${pad(index)}\t${30 + index}\t${String.format('%.4f', index * 0.011d)}" }.join('\n') + '\n'
+
+    // The serializer needs the declared trait names; matrix and result bookkeeping belong to the route.
+    def declared = { knobs ->
+        def traits = (knobs ?: [:]).get('traits', "['PHENO']")
+        "[id: 'analysis', trait: 'QT', mph_trait_names: ${traits}]"
+    }
+
+    // Every file this module reads, written into the test's own output directory. `null` for a covariate table
+    // means the analysis supplied none, which is a different model to an empty one and has to stage nothing.
+    def fixtures = { directory, name, overrides ->
+        def spec = [fam: famText, grm: grmText, pheno: completePhenoText, qcovar: completeQcovarText, catcovar: null] + (overrides ?: [:])
+        def root = new File(directory.toString(), "mph_inputs_${name}")
+        root.mkdirs()
+        def write = { fileName, text ->
+            def target = new File(root, fileName)
+            target.text = text
+            target
+        }
+        [
+            root: root,
+            write: write,
+            fam: write('cohort.fam', spec.fam),
+            grm: write('cohort.grm.iid', spec.grm),
+            pheno: write('analysis.noheader.pheno', spec.pheno),
+            qcovar: spec.qcovar == null ? null : write('analysis.qcovar', spec.qcovar),
+            catcovar: spec.catcovar == null ? null : write('analysis.catcovar', spec.catcovar),
+        ]
+    }
+
+    def staged = { produced -> produced == null ? '[]' : "file('${produced}', checkIfExists: true)" }
+
+    // A `setup { run(...) }` process publishes its outputs to no channel a `then` block can read, so the one
+    // file the parity case needs from it is found by name under the run's own work tree. It is produced once
+    // and staged nowhere, so the match is unique and the assertion below fails loudly if it ever is not.
+    def producedBeside = { anchor, fileName ->
+        def work = new File(anchor.toString()).parentFile.parentFile.parentFile
+        def found = []
+        work.eachFileRecurse(groovy.io.FileType.FILES) { candidate ->
+            if (candidate.name == fileName) {
+                found << candidate
+            }
+        }
+        assert found.size() == 1
+        found.first()
+    }
+
+    def inputs = { fixture, meta ->
+        """
+                input[0] = [
+                    ${meta},
+                    file('${fixture.pheno}', checkIfExists: true),
+                    ${staged(fixture.qcovar)},
+                    ${staged(fixture.catcovar)}
+                ]
+                input[1] = [[ id: 'analysis' ], file('${fixture.grm}', checkIfExists: true), file('${fixture.fam}', checkIfExists: true)]
+        """
+    }
+
+    test("the CSVs are written in matrix order and every missing spelling becomes an empty field") {
+
+        when {
+            // The source table is in the reverse of the matrix order, names one individual the cohort does not
+            // contain, omits one the cohort does, and spells a missing trait in each of the three ways the
+            // pipeline accepts.
+            def fixture = fixtures(outputDir, 'aligned', [
+                pheno: ((1..11).collect { index ->
+                    def value = index == 2 ? 'NA' : index == 3 ? '-9' : index == 4 ? 'nan' : trait(index)
+                    "f${pad(index)} s${pad(index)} ${value}"
+                }.reverse() + ['f99 ghost 1.2500']).join('\n') + '\n',
+            ])
+            process {
+                inputs(fixture, declared(null))
+            }
+        }
+
+        then {
+            def phenotype = path(process.out.phenotype.get(0).get(1))
+            def covariates = path(process.out.covariates.get(0).get(1))
+
+            assertAll(
+                { assert process.success },
+                // MPH keys these files by IID and the matrix by position, so the header is the IID column plus
+                // the declared trait names and the row order is the matrix sample list's, never the source's.
+                { assert phenotype.readLines().first() == 'IID,PHENO' },
+                { assert phenotype.readLines().size() == 12 },
+                { assert phenotype.readLines()[1] == "s01,${trait(1)}" },
+                { assert phenotype.readLines()[11] == "s11,${trait(11)}" },
+                { assert phenotype.readLines().drop(1).collect { line -> line.split(',', -1).first() } == (1..11).collect { index -> "s${pad(index)}" } },
+                // An empty field is MPH's only missing representation: a literal `NA` aborts it at exit 139 and
+                // `-9` is read as the number minus nine.
+                { assert phenotype.readLines()[2] == 's02,' },
+                { assert phenotype.readLines()[3] == 's03,' },
+                { assert phenotype.readLines()[4] == 's04,' },
+                // The individual with no phenotype row is not written at all, rather than written empty.
+                { assert !phenotype.text.contains('s12') },
+                { assert !phenotype.text.contains('ghost') },
+                // MPH synthesises an intercept only when no covariate is named, so the explicit column of ones
+                // is written first and named first.
+                { assert covariates.readLines().first() == 'IID,intercept,age,pc1' },
+                { assert covariates.readLines().size() == 12 },
+                { assert covariates.readLines().drop(1).every { line -> line.split(',', -1)[1] == '1' } },
+                { assert covariates.readLines()[1] == 's01,1,31,0.0110' },
+                { assert snapshot(sanitizeOutput(process.out)).match() }
+            )
+        }
+    }
+
+    test("a categorical covariate is dummy-encoded against its lexically first observed level") {
+
+        when {
+            // Two factors, so a missing value in one has to stay inside that factor's own dummies. `batch` is
+            // observed at a, b and c; `site` at x and y.
+            def fixture = fixtures(outputDir, 'factors', [
+                qcovar: null,
+                catcovar: "FID\tIID\tbatch\tsite\n" + (1..12).collect { index ->
+                    def batch = index == 5 ? 'NA' : ['a', 'b', 'c'][index % 3]
+                    "f${pad(index)}\ts${pad(index)}\t${batch}\t${index % 2 == 0 ? 'x' : 'y'}"
+                }.join('\n') + '\n',
+            ])
+            process {
+                inputs(fixture, declared(null))
+            }
+        }
+
+        then {
+            def covariates = path(process.out.covariates.get(0).get(1))
+
+            def rowOf = { iid -> covariates.readLines().find { line -> line.startsWith("${iid},") }.split(',', -1) }
+            assertAll(
+                { assert process.success },
+                // MPH never expands a factor: a level column passed through verbatim is read as a magnitude and
+                // the resulting rank deficiency is only a warning at exit 0. The reference level is the lexically
+                // first observed one and gets no column, exactly as `prepare_phenotype_inputs` encodes it.
+                { assert covariates.readLines().first() == 'IID,intercept,batch_b,batch_c,site_y' },
+                { assert rowOf('s03') == ['s03', '1', '0', '0', '1'] },
+                { assert rowOf('s04') == ['s04', '1', '1', '0', '0'] },
+                { assert rowOf('s02') == ['s02', '1', '0', '1', '0'] },
+                // A missing factor value is missing across every dummy of that factor and across no others.
+                { assert rowOf('s05') == ['s05', '1', '', '', '1'] },
+            )
+        }
+    }
+
+    test("an analysis with no covariates emits no covariate file at all") {
+
+        when {
+            def fixture = fixtures(outputDir, 'nocovar', [qcovar: null])
+            process {
+                inputs(fixture, declared(null))
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                // Absence is a missing file, never an empty column list: MPH synthesises its own intercept only
+                // when no covariate is named, so the two spell different models.
+                { assert process.out.covariates.size() == 0 },
+            )
+        }
+    }
+
+    test("an oriented pair is written under both declared trait names in matrix order") {
+
+        when {
+            def fixture = fixtures(outputDir, 'bivariate', [
+                qcovar: null,
+                pheno: (1..12).collect { index -> "f${pad(index)} s${pad(index)} ${trait(index)} ${trait(index + 20)}" }.join('\n') + '\n',
+            ])
+            process {
+                inputs(fixture, declared([traits: "['L', 'R']"]))
+            }
+        }
+
+        then {
+            def phenotype = path(process.out.phenotype.get(0).get(1))
+
+            assertAll(
+                { assert process.success },
+                // The declared order becomes `--trait_names` in this order and is what fixes which endpoint is
+                // the left one in every native output, so the header is the route's order and not a sorted one.
+                { assert phenotype.readLines().first() == 'IID,L,R' },
+                { assert phenotype.readLines()[1] == "s01,${trait(1)},${trait(21)}" },
+                // MPH indexes the matrix by the position of an entry in `.grm.iid`, so a pair's rows follow the
+                // same sequence a single trait's do.
+                { assert phenotype.readLines().drop(1).collect { line -> line.split(',', -1).first() } == (1..12).collect { index -> "s${pad(index)}" } },
+            )
+        }
+    }
+
+    test("the declared trait order is the route's own and is never sorted") {
+
+        when {
+            // Names that sort the other way round, so an implementation that ordered the columns itself would
+            // write the endpoints the wrong way about and every native label would be reversed with it. The two
+            // endpoints are deliberately observed on different numbers of individuals, so the left and right
+            // counts distinguish which column is which as well as the header does.
+            def fixture = fixtures(outputDir, 'bivariate_declared_order', [
+                qcovar: null,
+                pheno: (1..12).collect { index ->
+                    def first = index == 1 ? 'NA' : trait(index)
+                    def second = index in [2, 3] ? 'NA' : trait(index + 20)
+                    "f${pad(index)} s${pad(index)} ${first} ${second}"
+                }.join('\n') + '\n',
+            ])
+            process {
+                inputs(fixture, declared([traits: "['ZTRAIT', 'ATRAIT']"]))
+            }
+        }
+
+        then {
+            def phenotype = path(process.out.phenotype.get(0).get(1))
+
+            assertAll(
+                { assert process.success },
+                { assert phenotype.readLines().first() == 'IID,ZTRAIT,ATRAIT' },
+                // The declared first column is the one whose cell is empty for `s01`, which is what proves the
+                // values travel under the names they were declared with.
+                { assert phenotype.readLines()[1] == "s01,,${trait(21)}" },
+            )
+        }
+    }
+
+    test("the covariate encoding is the one prepare_phenotype_inputs applies") {
+
+        // The two modules encode covariates in two places for two consumers, so the rule is duplicated and this
+        // is the test that pins the copies together. The wiring is the pipeline's own: the headered `.qcovar`
+        // and `.catcovar` this module reads are the same files `PREPARE_PHENOTYPE_INPUTS` derived its LDAK
+        // matrix-adjustment design from, so the numeric columns of both designs must agree cell for cell.
+        setup {
+            def parity = fixtures(outputDir, 'parity', [
+                qcovar: "FID\tIID\tage\tpc1\n" + (1..12).collect { index ->
+                    "f${pad(index)}\ts${pad(index)}\t${index == 7 ? 'NA' : (30 + index).toString()}\t${String.format('%.4f', index * 0.011d)}"
+                }.join('\n') + '\n',
+                catcovar: "FID\tIID\tbatch\n" + (1..12).collect { index ->
+                    "f${pad(index)}\ts${pad(index)}\t${index == 4 ? '-9' : ['a', 'b', 'c'][index % 3]}"
+                }.join('\n') + '\n',
+            ])
+            def source = parity.write('analysis.source.pheno', "FID\tIID\tQT\n" + (1..12).collect { index -> "f${pad(index)}\ts${pad(index)}\t${trait(index)}" }.join('\n') + '\n')
+            run("PREPARE_PHENOTYPE_INPUTS") {
+                script "../../prepare_phenotype_inputs/main.nf"
+                process {
+                    """
+                    input[0] = [
+                        [ id: 'analysis', phenotype_column: 'QT', is_binary: false, case_value: null, control_value: null, requires_complete_covariates: false ],
+                        file('${source}', checkIfExists: true),
+                        file('${parity.qcovar}', checkIfExists: true),
+                        file('${parity.catcovar}', checkIfExists: true)
+                    ]
+                    """
+                }
+            }
+        }
+
+        when {
+            // The cohort identity only; the tables under test are the ones the setup module wrote.
+            def parity = fixtures(outputDir, 'parity_identity', [qcovar: null])
+            process {
+                """
+                input[0] = PREPARE_PHENOTYPE_INPUTS.out.phenotype_headerless
+                    .join(PREPARE_PHENOTYPE_INPUTS.out.quant_covariates)
+                    .join(PREPARE_PHENOTYPE_INPUTS.out.cat_covariates)
+                    .map { _preparation_meta, headerless_phenotype, quant_covariates, cat_covariates ->
+                        [ ${declared(null)}, headerless_phenotype, quant_covariates, cat_covariates ]
+                    }
+                input[1] = [[ id: 'analysis' ], file('${parity.grm}', checkIfExists: true), file('${parity.fam}', checkIfExists: true)]
+                """
+            }
+        }
+
+        then {
+            def covariates = path(process.out.covariates.get(0).get(1)).readLines()
+            def adjustment = producedBeside(process.out.covariates.get(0).get(1), 'analysis.adjustcovar').readLines()
+
+            // `.adjustcovar` is headerless `FID IID <design>`; this module's file is `IID intercept <design>`.
+            // Both are in cohort order here, so the designs compare row for row after their own identifier
+            // columns and the intercept are removed. The only permitted difference is the missing token: LDAK
+            // reads `NA` and MPH reads an empty field, and nothing else may differ.
+            def expected = adjustment.collect { line -> line.split('\t', -1).drop(2).collect { value -> value == 'NA' ? '' : value } }
+            def observed = covariates.drop(1).collect { line -> line.split(',', -1).drop(2) }
+            assertAll(
+                { assert process.success },
+                { assert adjustment.size() == 12 },
+                { assert observed.size() == 12 },
+                { assert covariates.first() == 'IID,intercept,age,pc1,batch_b,batch_c' },
+                // The rule under test, stated once outright so that two copies agreeing on a wrong encoding
+                // would still fail here: quantitative columns verbatim, factors treatment-coded against the
+                // lexically first observed level, a missing factor value missing across that factor's dummies
+                // and across no others.
+                { assert observed[6] == ['', '0.0770', '1', '0'] },
+                { assert observed[3] == ['34', '0.0440', '', ''] },
+                { assert observed == expected },
+            )
+        }
+    }
+
+    test("stub") {
+
+        options "-stub"
+
+        when {
+            def fixture = fixtures(outputDir, 'stub', null)
+            process {
+                inputs(fixture, declared(null))
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                { assert path(process.out.phenotype.get(0).get(1)).readLines().first() == 'IID,PHENO' },
+                { assert snapshot(sanitizeOutput(process.out)).match() }
+            )
+        }
+    }
+
+    test("an empty tab-delimited covariate cell is a missing value and not a row shift") {
+
+        when {
+            // The ordinary way a tab-delimited file spells a missing value. Splitting such a line on arbitrary
+            // whitespace would collapse the run of tabs, so `pc1` would be emitted under the name `age` and
+            // every row would go one column short. The reader therefore splits a tab-carrying line on tabs,
+            // which is the rule `prepare_phenotype_inputs` already applies to the same researcher-supplied
+            // tables.
+            def fixture = fixtures(outputDir, 'empty_cell', [
+                qcovar: "FID\tIID\tage\tpc1\n" + (1..12).collect { index -> "f${pad(index)}\ts${pad(index)}\t${index == 6 ? '' : (30 + index).toString()}\t${String.format('%.4f', index * 0.011d)}" }.join('\n') + '\n',
+            ])
+            process {
+                inputs(fixture, declared(null))
+            }
+        }
+
+        then {
+            def covariates = path(process.out.covariates.get(0).get(1)).readLines()
+
+            def emptied = covariates.find { line -> line.startsWith('s06,') }
+            assertAll(
+                { assert process.success },
+                { assert covariates.first() == 'IID,intercept,age,pc1' },
+                // The cell is empty and the value to its right is still under its own name.
+                { assert emptied == 's06,1,,0.0660' },
+                { assert covariates.every { line -> line.split(',', -1).size() == 4 } },
+            )
+        }
+    }
+
+    test("preparation refuses a covariate row carrying fewer fields than its header") {
+
+        when {
+            def fixture = fixtures(outputDir, 'ragged_covariates', [
+                qcovar: "FID\tIID\tage\tpc1\n" + (1..12).collect { index -> index == 4 ? "f${pad(index)}\ts${pad(index)}\t${30 + index}" : "f${pad(index)}\ts${pad(index)}\t${30 + index}\t${String.format('%.4f', index * 0.011d)}" }.join('\n') + '\n',
+            ])
+            process {
+                inputs(fixture, declared(null))
+            }
+        }
+
+        then {
+            // A ragged researcher-supplied table cannot be serialised without deciding which column each
+            // field belongs to, so it is named and refused here rather than emitted as a short CSV row under
+            // a full-width header. This is the check `prepare_phenotype_inputs` applies to the same tables.
+            assertAll(
+                { assert !process.success },
+                { assert process.exitStatus != 0 },
+                { assert process.stdout.join('\n').contains("analysis 'analysis'") },
+                { assert process.stdout.join('\n').contains('declares 4 columns but line 5 carries 3 fields') },
+            )
+        }
+    }
+}

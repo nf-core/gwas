@@ -204,13 +204,37 @@ done
 cp "$project_dir/assets/examples/relational/method_options_heterogeneous_bivariate.json" "$published_root/$bivariate_options"
 
 # The documents remain the static nf-core/test-datasets examples. During tests against an unmerged fixture
-# source, relocate only their canonical root so every embedded input and resource resolves from the same verified
-# cache entry; rows, method selections, option values and resource contents are unchanged.
+# source, relocate their canonical root so every embedded input and resource resolves from the same verified
+# cache entry. Cohort rows use the PGEN derivatives built below; analysis and method selections are unchanged.
 canonical_url=https://raw.githubusercontent.com/nf-core/test-datasets/gwas/results/fixtures
 local_url="$final_root/results/fixtures"
 for document in "$published_root"/results/fixtures/relational/*.csv "$published_root"/results/fixtures/relational/*.json; do
     sed -i "s|$canonical_url|$local_url|g" "$document"
 done
+
+# Canonical fixture storage is VCF; pipeline cohort ingress consumes the materialized PLINK 2 bundle.
+python3 - "$published_root/results/fixtures/relational/cohort_manifest.csv" <<'PYTHON'
+import csv
+import re
+import sys
+from pathlib import Path
+
+manifest = Path(sys.argv[1])
+with manifest.open(newline="") as handle:
+    reader = csv.DictReader(handle)
+    columns = [column for column in reader.fieldnames if column != "vcf"]
+    rows = list(reader)
+for row in rows:
+    vcf = row.pop("vcf")
+    if vcf:
+        stem = re.sub(r"\.vcf(?:\.gz|\.bgz)?$", "", vcf)
+        for extension in ("pgen", "psam", "pvar"):
+            row[extension] = f"{stem}.{extension}"
+with manifest.open("w", newline="") as handle:
+    writer = csv.DictWriter(handle, fieldnames=columns, lineterminator="\n")
+    writer.writeheader()
+    writer.writerows(rows)
+PYTHON
 
 (
     cd "$project_dir"

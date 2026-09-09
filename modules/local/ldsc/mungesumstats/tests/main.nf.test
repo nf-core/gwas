@@ -54,9 +54,7 @@ nextflow_process {
                 { assert lines.first().split('\\s+') as List == ['SNP', 'A1', 'A2', 'N', 'Z'] },
                 { assert lines.size() == 201 },
                 { assert log.text.contains('200 SNPs remain') },
-                { assert process.out.versions_ldsc.get(0) == ['LDSC_MUNGESUMSTATS', 'ldsc', '3.0.2'] },
-                { assert process.out.versions_ldsc_native.get(0) == ['LDSC_MUNGESUMSTATS', 'ldsc_native', '3.0.1'] },
-                { assert process.out.versions_ldsc_source.get(0) == ['LDSC_MUNGESUMSTATS', 'ldsc_source_revision', '6c673952cee74bd5c57aef1555a03b1c015399a0'] },
+                { assert process.out.versions_ldsc.get(0) == ['LDSC_MUNGESUMSTATS', 'ldsc', '6c673952cee74bd5c57aef1555a03b1c015399a0'] },
                 { assert process.out.versions_python.get(0) == ['LDSC_MUNGESUMSTATS', 'python', '3.9.13'] },
                 { assert snapshot([munged.name, lines.first(), lines.size(), process.out.findAll { name, value -> name.startsWith('versions_') }]).match() },
             )

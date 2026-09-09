@@ -1,0 +1,109 @@
+nextflow_function {
+
+    name "Test MPH LDMS component expansion and ordering"
+    script "../main.nf"
+    tag "function"
+    tag "mph"
+    tag "ldms"
+
+    // Both helpers are deliberately duplicated per composition rather than shared, so this file covers this
+    // copy against the one manifest contract, exactly as the plan builder's and the GCTA builder's own
+    // function tests cover theirs. The resource names are distinct from those files' so that two suites
+    // running against the same `outputDir` never write the same fixture.
+
+    test("restore compact non-empty component order after shuffled matrix completion") {
+        function "orderLdmsStrata"
+
+        when {
+            function {
+                """
+                input[0] = [2, 1]
+                input[1] = [
+                    [file('mph_ld01_maf03.grm.iid'), file('mph_ld01_maf03.grm.bin')],
+                    [file('mph_ld01_maf01.grm.iid'), file('mph_ld01_maf01.grm.bin')],
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result*.first() == [1, 2] },
+                { assert function.result.collect { _ordinal, files -> files.collect { value -> value.tokenize('/').last() } } == [
+                    ['mph_ld01_maf01.grm.iid', 'mph_ld01_maf01.grm.bin'],
+                    ['mph_ld01_maf03.grm.iid', 'mph_ld01_maf03.grm.bin'],
+                ] },
+            )
+        }
+    }
+
+    test("expand a two-row component plan into ordered component records") {
+        function "readLdmsComponents"
+
+        when {
+            function {
+                """
+                input[0] = file('${RELATIONAL.resource(outputDir, 'mph_builder.strata.tsv', 'model_key\tstratum_key\tld_lower\tld_upper\tmaf_lower\tmaf_upper\tpredictor_count\tgroup_filename\nldms\tld01_maf01\t0\t1\t0\t0.5\t2\tmph_builder_snp_group_ld01_maf01.txt\nldms\tld02_maf01\t1\t2\t0\t0.5\t3\tmph_builder_snp_group_ld02_maf01.txt\n')}', checkIfExists: true)
+                input[1] = [
+                    file('${RELATIONAL.resource(outputDir, 'mph_builder_snp_group_ld02_maf01.txt', 'rs3\nrs4\nrs5\n')}', checkIfExists: true),
+                    file('${RELATIONAL.resource(outputDir, 'mph_builder_snp_group_ld01_maf01.txt', 'rs1\nrs2\n')}', checkIfExists: true),
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                // The ordinal is the manifest row, never the order the group files happened to arrive in: the
+                // two are deliberately reversed above.
+                { assert function.result*.ordinal == [1, 2] },
+                { assert function.result*.count == [2, 2] },
+                { assert function.result*.stratum_key == ['ld01_maf01', 'ld02_maf01'] },
+                { assert function.result*.predictor_count == [2, 3] },
+                { assert function.result*.predictor_count.every { count -> count instanceof Integer } },
+                { assert function.result.collect { component -> component.group_file.toString().tokenize('/').last() } == [
+                    'mph_builder_snp_group_ld01_maf01.txt',
+                    'mph_builder_snp_group_ld02_maf01.txt',
+                ] },
+                // Parsed by header name rather than by column position, which is what lets the manifest gain a
+                // column without silently shifting the stratum key. That key is load-bearing here beyond the
+                // GCTA copy: it also lands in the matrix prefix and therefore in MPH's own `vc_name`.
+                { assert function.result*.provenance.collect { provenance -> provenance.keySet().toList() }.unique() == [[
+                    'model_key',
+                    'stratum_key',
+                    'ld_lower',
+                    'ld_upper',
+                    'maf_lower',
+                    'maf_upper',
+                    'predictor_count',
+                    'group_filename',
+                ]] },
+                { assert function.result*.provenance.collect { provenance -> provenance.model_key }.unique() == ['ldms'] },
+            )
+        }
+    }
+
+    test("expand a single-row component plan whose group files arrive as one path") {
+        function "readLdmsComponents"
+
+        when {
+            function {
+                """
+                input[0] = file('${RELATIONAL.resource(outputDir, 'mph_builder_single.strata.tsv', 'model_key\tstratum_key\tld_lower\tld_upper\tmaf_lower\tmaf_upper\tpredictor_count\tgroup_filename\nldms\tld01_maf01\t0\t1\t0\t0.5\t7\tmph_builder_single_snp_group_ld01_maf01.txt\n')}', checkIfExists: true)
+                input[1] = file('${RELATIONAL.resource(outputDir, 'mph_builder_single_snp_group_ld01_maf01.txt', 'rs1\n')}', checkIfExists: true)
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result*.ordinal == [1] },
+                { assert function.result*.count == [1] },
+                { assert function.result.first().group_file.toString().tokenize('/').last() == 'mph_builder_single_snp_group_ld01_maf01.txt' },
+            )
+        }
+    }
+}

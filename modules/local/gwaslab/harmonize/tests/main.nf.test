@@ -1,0 +1,107 @@
+nextflow_process {
+
+    name "Test Process GWASLAB_HARMONIZE"
+    script "../main.nf"
+    process "GWASLAB_HARMONIZE"
+    config "./nextflow.config"
+
+    tag "modules"
+    tag "modules_local"
+    tag "gwaslab"
+    tag "gwaslab_harmonize"
+
+    def TESTS = { project_dir -> "${project_dir}/modules/local/gwaslab/harmonize/tests" }
+    def SOURCE = { project_dir, name -> "file('${TESTS(project_dir)}/${name}', checkIfExists: true)" }
+    def gunzip = { path ->
+        new java.util.zip.GZIPInputStream(new FileInputStream(path.toString())).getText('UTF-8')
+    }
+    def emptyReferences = {
+        """
+        input[1] = [[id: 'GRCh38'], [], []]
+        input[2] = [[id: 'GRCh38'], [], []]
+        input[3] = [[id: 'GRCh38'], [], []]
+        """
+    }
+
+    test("load a representative GWAS-SSF source into the GWASLab-standard representation") {
+        when {
+            params {
+                outdir = "$outputDir"
+                publish_dir_mode = 'copy'
+            }
+            process {
+                """
+                input[0] = [[id: 'external_ssf', summary_statistics_id: 'external_ssf', method: 'external'], ${SOURCE(projectDir, 'ssf.tsv')}, 'ssf', 'GRCh38']
+                ${emptyReferences()}
+                """
+            }
+        }
+
+        then {
+            def rows = gunzip(process.out.sumstats.get(0)[1]).readLines()
+            def versions = new File(process.out.versions.get(0).toString()).text
+            assertAll(
+                { assert process.success },
+                { assert rows[0] == 'SNPID\trsID\tCHR\tPOS\tEA\tNEA\tSTATUS\tEAF\tBETA\tSE\tP\tN' },
+                { assert rows[1] == '1:1000:A:G\trs1\t1\t1000\tG\tA\t3800099\t0.25\t1.000000e-01\t2.000000e-02\t1.0000e-06\t500' },
+                { assert rows[2].split('\t')[8..9] == ['3.000000e-05', '1.000000e-05'] },
+                { assert new File(process.out.log.get(0)[1].toString()).text.contains('Start to load format from formatbook') },
+                { assert versions.contains('gwaslab: 4.1.9') },
+                { assert versions.contains('python:') },
+            )
+        }
+    }
+
+    test("a pre-harmonised GWASLab source crosses the same process boundary") {
+        when {
+            params {
+                outdir = "$outputDir"
+                publish_dir_mode = 'copy'
+            }
+            process {
+                """
+                input[0] = [[id: 'external_gwaslab', summary_statistics_id: 'external_gwaslab', method: 'external'], ${SOURCE(projectDir, 'gwaslab.tsv')}, 'gwaslab', 'GRCh38']
+                ${emptyReferences()}
+                """
+            }
+        }
+
+        then {
+            def rows = gunzip(process.out.sumstats.get(0)[1]).readLines()
+            assertAll(
+                { assert process.success },
+                { assert rows.size() == 2 },
+                { assert rows[0] == 'SNPID\trsID\tCHR\tPOS\tEA\tNEA\tSTATUS\tEAF\tBETA\tSE\tP\tN' },
+                { assert rows[1].startsWith('1:1000:A:G\trs1\t1\t1000\tG\tA\t') },
+                { assert process.out.log.size() == 1 },
+                { assert process.out.versions.size() == 1 },
+            )
+        }
+    }
+
+    test("stub preserves the direct result, log and version contract") {
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+                publish_dir_mode = 'copy'
+            }
+            process {
+                """
+                input[0] = [[id: 'stub', summary_statistics_id: 'stub', method: 'external'], ${SOURCE(projectDir, 'gwaslab.tsv')}, 'gwaslab', 'GRCh38']
+                ${emptyReferences()}
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.sumstats.size() == 1 },
+                { assert process.out.log.size() == 1 },
+                { assert new File(process.out.versions.get(0).toString()).text.contains('gwaslab: 4.1.9') },
+            )
+        }
+    }
+}

@@ -1,6 +1,20 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/modules/meta-schema.json
 name: "plink2_makebed"
-description: Convert a PLINK 2 PGEN/PVAR/PSAM fileset to PLINK BED/BIM/FAM
+description: |
+  Convert a PLINK 2 PGEN/PVAR/PSAM fileset to PLINK BED/BIM/FAM.
+
+  This is a lossy projection and the caller owns its policy. plink2 takes hard calls from dosages at
+  `--hard-call-threshold`, which changes the written bytes whenever dosages are present, and it refuses a
+  multiallelic source outright with `Error: <prefix>.bim cannot contain multiallelic variants.` The module
+  decides neither: the projection policy arrives only through `ext.args`.
+
+  ## Configuration contract
+
+  The module reads no pipeline metadata beyond `meta.id` for its tag and prefix. In nf-core/gwas,
+  `conf/modules/genotypes.config` renders `ext.args` from `meta.settings.hard_call_threshold`, which
+  `prepare_cohort_genotypes`' `getPlink1ProjectionPolicy()` supplies and which also enters the derivative's
+  reuse identity, so the policy in the identity and the policy in the command are one map. Any other caller
+  supplies `ext.args` itself.
 keywords:
   - plink2
   - pgen
@@ -32,7 +46,10 @@ input:
         ontologies: []
     - pvar:
         type: file
-        description: PLINK 2 variant information file; must share its basename with the PGEN and PSAM files
+        description: |
+          PLINK 2 variant information file; must share its basename with the PGEN and PSAM files. A
+          Zstandard-compressed `.pvar.zst` is not accepted: reading one needs plink2's `vzs` modifier, which
+          this module does not add, so `--pfile` fails with `Failed to open <prefix>.pvar`.
         pattern: "*.pvar"
         ontologies: []
 output:

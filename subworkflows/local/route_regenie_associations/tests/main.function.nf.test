@@ -13,10 +13,11 @@ nextflow_function {
             function {
                 """
                 def fixtures = '${FIXTURES.base(projectDir)}results/fixtures/pheno_cov/'
-                input[0] = [cohort: 'example_pgen', trait: 'QT', is_binary: false]
-                input[1] = file(fixtures + 'example.pheno', checkIfExists: true)
-                input[2] = file(fixtures + 'example.qcovar', checkIfExists: true)
-                input[3] = 1000
+                input[0] = 'prepared_view_a'
+                input[1] = false
+                input[2] = file(fixtures + 'example.pheno', checkIfExists: true)
+                input[3] = file(fixtures + 'example.qcovar', checkIfExists: true)
+                input[4] = 1000
                 """
             }
         }
@@ -24,7 +25,7 @@ nextflow_function {
         then {
             assertAll(
                 { assert function.success },
-                { assert function.result == '8a7da5fd936b' },
+                { assert function.result == 'df2499de7f9c' },
             )
         }
     }

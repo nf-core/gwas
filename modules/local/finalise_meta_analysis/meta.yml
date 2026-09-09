@@ -1,0 +1,53 @@
+name: finalise_meta_analysis
+description: Select a derived fixed-effect summary and attach native optional meta-analysis fields
+author: "@lyh970817"
+keywords:
+  - gwas
+  - meta-analysis
+  - summary-statistics
+tools:
+  - pandas:
+      description: Tabular selection and allele-aware joins using the existing GWASLab runtime
+      homepage: https://pandas.pydata.org/
+      documentation: https://pandas.pydata.org/docs/
+      licence: [BSD-3-Clause]
+input:
+  - - meta:
+        type: map
+        description: Derived summary identity and validated min_studies selection
+    - fixed:
+        type: file
+        description: Native GWASLab fixed-effect table with contributing-study DOF
+        pattern: "*.fixed.tsv.gz"
+    - random:
+        type: file
+        description: Native GWASLab random-effect table, or an empty list when unselected
+        pattern: "*.random.tsv.gz"
+    - metasoft:
+        type: file
+        description: Native METASOFT result keyed by RSID, or an empty list when unselected
+    - mrmega:
+        type: file
+        description: Native MR-MEGA result keyed by MarkerName, or an empty list when unselected
+output:
+  summary_statistics:
+    - - meta:
+          type: map
+          description: Derived summary metadata propagated unchanged
+      - "${prefix}.gwaslab.tsv.gz":
+          type: file
+          description: Fixed BETA/SE/P, N_STUDIES selected by min_studies, and native model-labelled optional columns
+          pattern: "*.gwaslab.tsv.gz"
+  versions:
+    - versions.yml:
+        type: file
+        description: Python and pandas runtime versions
+topics:
+  versions:
+    - versions.yml:
+        type: file
+        description: Python and pandas runtime versions
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"

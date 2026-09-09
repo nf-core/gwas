@@ -1,0 +1,173 @@
+nextflow_function {
+
+    name "Test linked GWAS input contract functions"
+    script "../resolve_relationships.nf"
+    tag "function"
+    tag "input"
+
+    // One resolved analysis as `resolveRelationships` reads it: the meta the resolver inspects, followed by
+    // the staged genotype bundle it only ever copies into a pair payload.
+    def analysis = { String id, String trait, String cohort, boolean isBinary = false ->
+        return [
+            [
+                id: id,
+                trait: trait,
+                trait_type: isBinary ? 'binary' : 'quantitative',
+                is_binary: isBinary,
+                cohort: cohort,
+                build: 'GRCh37',
+                ancestry: 'EUR',
+                genotype_format: 'pgen',
+                genotype_view_id: null,
+                population_prevalence: isBinary ? 0.1 : null,
+                sample_prevalence: null,
+            ],
+            [],
+        ]
+    }
+
+    def analysesById = [
+        example_pgen_qt: analysis('example_pgen_qt', 'QT', 'example_pgen'),
+        example_pgen_qt2: analysis('example_pgen_qt2', 'QT2', 'example_pgen'),
+        example_pgen_qt_same_trait: analysis('example_pgen_qt_same_trait', 'QT', 'example_pgen'),
+        example_pgen_bt: analysis('example_pgen_bt', 'BT', 'example_pgen', true),
+        example_bfile_bt: analysis('example_bfile_bt', 'BT', 'example_bfile', true),
+    ]
+
+    // One relationship row as nf-schema hands it over: the meta carrying every declared identifier, then the
+    // two positional covariate cells named by `getSamplesheetPositionalColumns(relationship_schema)`.
+    def relationship = { Map overrides = [:] ->
+        return [
+            [
+                id: 'qt_qt2',
+                left_analysis_id: 'example_pgen_qt',
+                right_analysis_id: 'example_pgen_qt2',
+                left_summary_statistics_id: null,
+                right_summary_statistics_id: null,
+                relationship_methods: 'gcta_bivariate_reml',
+            ] + overrides,
+            '',
+            '',
+        ]
+    }
+
+    def rejections = [
+        [
+            name: 'a binary endpoint under quantitative-only pair methods',
+            rows: [relationship([id: 'qt_bt', right_analysis_id: 'example_pgen_bt', relationship_methods: 'gcta_bivariate_he,mph_bivariate_reml'])],
+            expected: [
+                "row 2 (relationship_id 'qt_bt'), field 'relationship_methods'",
+                'methods gcta_bivariate_he, mph_bivariate_reml support two quantitative endpoints only',
+                "select 'gcta_bivariate_reml' or 'gcta_bivariate_reml_ldms' for a binary or mixed pair",
+            ],
+        ],
+        [
+            name: 'declared pair covariates on a covariate-incapable method',
+            rows: [[
+                relationship([relationship_methods: 'gcta_bivariate_he'])[0],
+                'example.qcovar',
+                '',
+            ]],
+            expected: [
+                "row 2 (relationship_id 'qt_qt2'), fields 'pair_quant_covariates', 'pair_cat_covariates'",
+                'method gcta_bivariate_he have no native covariate parameter and would ignore the declared pair covariates',
+            ],
+        ],
+        [
+            name: 'the same analysis endpoint on both sides',
+            rows: [relationship([right_analysis_id: 'example_pgen_qt'])],
+            expected: [
+                "row 2 (relationship_id 'qt_qt2'), fields 'left_analysis_id', 'right_analysis_id'",
+                "the exact same analysis endpoint 'example_pgen_qt' cannot occupy both sides",
+            ],
+        ],
+        [
+            name: 'two distinct analyses declaring one trait_id',
+            rows: [relationship([right_analysis_id: 'example_pgen_qt_same_trait'])],
+            expected: [
+                "row 2 (relationship_id 'qt_qt2')",
+                "declared trait_id 'QT' is equal on both sides; self-pairs are invalid",
+            ],
+        ],
+        [
+            name: 'a reversed duplicate binding',
+            rows: [
+                relationship(),
+                relationship([id: 'qt2_qt', left_analysis_id: 'example_pgen_qt2', right_analysis_id: 'example_pgen_qt']),
+            ],
+            expected: [
+                "row 3 (relationship_id 'qt2_qt')",
+                "unordered endpoint binding duplicates relationship_id 'qt_qt2' on row 2",
+            ],
+        ],
+        [
+            // Orientation is the execution and presentation order, and for a stochastic MPH fit it also
+            // perturbs the trace estimator, so the reversed row is a duplicate there for the same reason.
+            name: 'a reversed duplicate of a binding an MPH pair method already holds',
+            rows: [
+                relationship([relationship_methods: 'mph_bivariate_reml']),
+                relationship([
+                    id: 'qt2_qt',
+                    left_analysis_id: 'example_pgen_qt2',
+                    right_analysis_id: 'example_pgen_qt',
+                    relationship_methods: 'mph_bivariate_reml',
+                ]),
+            ],
+            expected: [
+                "row 3 (relationship_id 'qt2_qt')",
+                "unordered endpoint binding duplicates relationship_id 'qt_qt2' on row 2",
+            ],
+        ],
+        [
+            name: 'a half-populated summary endpoint pair',
+            rows: [relationship([left_summary_statistics_id: 'external_qt'])],
+            expected: [
+                "row 2 (relationship_id 'qt_qt2'), fields 'left_summary_statistics_id', 'right_summary_statistics_id'",
+                'summary-statistics endpoint slots must be populated together',
+            ],
+        ],
+        [
+            name: 'endpoints from different cohorts',
+            rows: [relationship([id: 'qt_bt', right_analysis_id: 'example_bfile_bt'])],
+            expected: [
+                "row 2 (relationship_id 'qt_bt'), fields 'left_analysis_id', 'right_analysis_id'",
+                'individual-level relationship methods require one cohort',
+                "'example_pgen_qt' uses 'example_pgen'",
+                "'example_bfile_bt' uses 'example_bfile'",
+            ],
+        ],
+    ]
+
+    rejections.each { scenario ->
+        test("relationship resolution rejects ${scenario.name}") {
+            function "resolveRelationships"
+
+            when {
+                function {
+                    // `resolveRelationships` renders every refusal with its manifest, row and field
+                    // attribution and appends the sentence to the caller's error list, which
+                    // `validateRelationalInput` then raises on. The sink here raises on the first appended
+                    // message, so the function fails exactly where the pipeline does and on the sentence a
+                    // reader is shown.
+                    """
+                    input[0] = new groovy.json.JsonSlurper().parseText('${groovy.json.JsonOutput.toJson(scenario.rows)}')
+                    input[1] = ['pair_quant_covariates', 'pair_cat_covariates']
+                    input[2] = 'relationships.csv'
+                    input[3] = new groovy.json.JsonSlurper().parseText('${groovy.json.JsonOutput.toJson(analysesById)}')
+                    input[4] = [:]
+                    input[5] = new Expando(leftShift: { message -> error("[nf-core/gwas] ERROR: Validation of linked manifests failed!\\n\\n\${message}\\n") })
+                    """
+                }
+            }
+
+            then {
+                def report = function.stdout.join('\n')
+                assertAll(
+                    { assert function.failed },
+                    { assert report.contains('relationships.csv') },
+                    { assert scenario.expected.every { fragment -> report.contains(fragment) } },
+                )
+            }
+        }
+    }
+}

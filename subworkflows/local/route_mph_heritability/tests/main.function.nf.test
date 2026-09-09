@@ -1,0 +1,233 @@
+nextflow_function {
+
+    name "Test MPH heritability route functions"
+    script "../main.nf"
+    tag "function"
+    tag "mph"
+
+    // Every combination that changes what reaches the configured command line.
+    def effectiveSettings = [
+        [
+            name: 'every option left native',
+            options: [iterations: null, tolerance: null, random_vectors: null, seed: null, save_memory: false],
+            arguments: [],
+        ],
+        [
+            name: 'a curated seed only',
+            options: [iterations: null, tolerance: null, random_vectors: null, seed: 7, save_memory: false],
+            arguments: ['--seed 7'],
+        ],
+        [
+            // Zero is a real seed, not an absent one: MPH's own unset default is the fixed integer 0, so the
+            // flag must still be rendered when the researcher asked for it explicitly.
+            name: 'the seed set to MPH own default',
+            options: [iterations: null, tolerance: null, random_vectors: null, seed: 0, save_memory: false],
+            arguments: ['--seed 0'],
+        ],
+        [
+            name: 'every option curated',
+            options: [iterations: 50, tolerance: 0.001, random_vectors: 200, seed: 7, save_memory: true],
+            arguments: ['--num_iterations 50', '--tolerance 0.001', '--num_random_vectors 200', '--seed 7', '--save_memory'],
+        ],
+        [
+            // A false boolean renders nothing at all rather than a negated flag, and is not a native default
+            // either: the researcher declared it.
+            name: 'the memory mode explicitly disabled',
+            options: [iterations: null, tolerance: null, random_vectors: 50, seed: null, save_memory: false],
+            arguments: ['--num_random_vectors 50'],
+        ],
+    ]
+
+    effectiveSettings.each { scenario ->
+        test("effective settings render ${scenario.name}") {
+            function "buildMphEffectiveSettings"
+
+            when {
+                function {
+                    """
+                    input[0] = ${scenario.options.inspect()}
+                    """
+                }
+            }
+
+            then {
+                assertAll(
+                    { assert function.success },
+                    { assert function.result.native_arguments == scenario.arguments },
+                    // The flag order is fixed so equal options render the same command.
+                    { assert function.result.native_arguments.join(' ').trim() == scenario.arguments.join(' ') },
+                )
+            }
+        }
+    }
+
+    def estimators = [
+        [name: 'the one-component MPH matrix kind', kind: 'mph_dense', expected: 'mph_reml'],
+        [name: 'the stratified MPH matrix kind', kind: 'mph_ldms', expected: 'mph_reml_ldms'],
+    ]
+
+    estimators.each { scenario ->
+        test("estimator resolution answers ${scenario.name} from the registry") {
+            function "resolveMphEstimator"
+
+            when {
+                function {
+                    """
+                    input[0] = '${scenario.kind}'
+                    """
+                }
+            }
+
+            then {
+                assertAll(
+                    { assert function.success },
+                    { assert function.result == scenario.expected },
+                )
+            }
+        }
+    }
+
+    test("estimator resolution refuses a matrix kind no MPH selector claims") {
+        function "resolveMphEstimator"
+
+        when {
+            function {
+                """
+                input[0] = 'gcta_dense'
+                """
+            }
+        }
+
+        then {
+            // A silent empty answer here would mean a matrix stream with no estimator token, and every result
+            // published under it would be unattributable.
+            assertAll(
+                { assert !function.success },
+                { assert function.stdout.join('\n').contains('expected exactly one') || function.errorReport.contains('expected exactly one') },
+            )
+        }
+    }
+
+    def selections = [
+        [name: 'both MPH tokens', methods: ['gcta_greml', 'mph_reml', 'mph_reml_ldms'], expected: ['mph_reml', 'mph_reml_ldms']],
+        [name: 'one MPH token beside another family', methods: ['ldak_he', 'mph_reml_ldms'], expected: ['mph_reml_ldms']],
+        [name: 'no MPH token at all', methods: ['gcta_greml', 'ldak_reml'], expected: []],
+    ]
+
+    selections.each { scenario ->
+        test("the selected MPH estimators of a row are ${scenario.name}") {
+            function "selectedMphEstimators"
+
+            when {
+                function {
+                    """
+                    input[0] = [id: 'analysis', heritability_methods: ${scenario.methods.inspect()}]
+                    """
+                }
+            }
+
+            then {
+                assertAll(
+                    { assert function.success },
+                    { assert function.result == scenario.expected },
+                )
+            }
+        }
+    }
+
+    test("the route key is the analysis and its selected estimator, which is the fan-out axis") {
+        function "routeKey"
+
+        when {
+            function {
+                """
+                input[0] = [id: 'analysis', mph_estimator: 'mph_reml_ldms']
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == ['analysis', 'mph_reml_ldms'] },
+            )
+        }
+    }
+
+    test("the matrix prefix comes from the member whose name defines it, not from the collection order") {
+        function "grmPrefix"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    file('${RELATIONAL.resource(outputDir, 'mph_dense.abc123.grm.bin', 'binary\n')}', checkIfExists: true),
+                    file('${RELATIONAL.resource(outputDir, 'mph_dense.abc123.grm.iid', 'S001\n')}', checkIfExists: true),
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == 'mph_dense.abc123' },
+            )
+        }
+    }
+
+    test("the covariate column names are read back from the serialised header the encoder produced") {
+        function "readCsvHeader"
+
+        when {
+            function {
+                """
+                input[0] = file('${RELATIONAL.resource(outputDir, 'route-covariates.mph.covar.csv', 'IID,intercept,AGE,batch_B\nS001,1,30,0\n')}', checkIfExists: true)
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == ['IID', 'intercept', 'AGE', 'batch_B'] },
+                // The identifier column is dropped by the caller, leaving exactly what `--covariate_names`
+                // has to name, in the order the encoder wrote it.
+                { assert function.result.drop(1) == ['intercept', 'AGE', 'batch_B'] },
+            )
+        }
+    }
+
+    test("route bookkeeping is stripped before emission while the selected token stays") {
+        function "stripMphRouteState"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    id: 'analysis',
+                    trait: 'QT',
+                    heritability_methods: ['mph_reml'],
+                    mph_estimator: 'mph_reml',
+                    mph_trait_names: ['QT'],
+                    mph_effective: [native_arguments: ['--seed 7']],
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                // `mph_estimator` survives because a consumer has to know which estimator produced the file it
+                // received; everything else is this route's own bookkeeping and must not reach a published key.
+                { assert function.result == [
+                    id: 'analysis',
+                    trait: 'QT',
+                    heritability_methods: ['mph_reml'],
+                    mph_estimator: 'mph_reml',
+                ] },
+            )
+        }
+    }
+}

@@ -28,21 +28,12 @@ def is_missing(value):
     return value.strip().lower() in MISSING_TOKENS
 
 
-def read_phenotype(path, side):
+def read_phenotype(path):
     values = {}
     with open(path) as handle:
-        for line_number, line in enumerate(handle, start=1):
+        for line in handle:
             row = split_row(line)
-            if not row or not any(field.strip() for field in row):
-                continue
-            if len(row) != 3:
-                fail("the {} phenotype '{}' line {} must contain exactly FID, IID and one trait value".format(side, path, line_number))
-            identity = (row[0], row[1])
-            if identity in values:
-                fail("the {} phenotype '{}' declares sample '{} {}' more than once".format(side, path, *identity))
-            values[identity] = MISSING if is_missing(row[2]) else row[2]
-    if not values:
-        fail("the {} phenotype '{}' contains no samples".format(side, path))
+            values[(row[0], row[1])] = row[2]
     return values
 
 
@@ -80,8 +71,8 @@ def write_rows(path, rows):
             handle.write("\\t".join(row) + "\\n")
 
 
-left = read_phenotype(LEFT_PHENOTYPE, "left")
-right = read_phenotype(RIGHT_PHENOTYPE, "right")
+left = read_phenotype(LEFT_PHENOTYPE)
+right = read_phenotype(RIGHT_PHENOTYPE)
 union = sorted(set(left) | set(right))
 phenotype_rows = [
     [fid, iid, left.get((fid, iid), MISSING), right.get((fid, iid), MISSING)]
@@ -91,23 +82,15 @@ write_rows(PREFIX + ".pheno", phenotype_rows)
 
 quant_header, quant_rows = read_covariates(PAIR_QUANT_COVARIATES, "relationship quantitative covariate")
 cat_header, cat_rows = read_covariates(PAIR_CAT_COVARIATES, "relationship categorical covariate")
+# The headered files carry the header this module has already validated, so the two serialisations are the same
+# rows and differ only in whether the column names survive. GCTA rejects a header; MPH addresses its covariates
+# by name.
 if quant_header:
-    write_rows(PREFIX + ".qcovar", quant_rows)
+    write_rows(PREFIX + ".qcovar", [quant_header] + quant_rows)
+    write_rows(PREFIX + ".noheader.qcovar", quant_rows)
 if cat_header:
-    write_rows(PREFIX + ".covar", cat_rows)
-
-diagnostics = [
-    ("left_samples", len(left)),
-    ("right_samples", len(right)),
-    ("endpoint_overlap_samples", len(set(left) & set(right))),
-    ("union_samples", len(union)),
-    ("left_nonmissing", sum(value != MISSING for value in left.values())),
-    ("right_nonmissing", sum(value != MISSING for value in right.values())),
-    ("both_nonmissing", sum(left.get(identity, MISSING) != MISSING and right.get(identity, MISSING) != MISSING for identity in union)),
-    ("quantitative_covariate_samples", len(quant_rows)),
-    ("categorical_covariate_samples", len(cat_rows)),
-]
-write_rows(PREFIX + ".pair.log", [[name, str(value)] for name, value in diagnostics])
+    write_rows(PREFIX + ".catcovar", [cat_header] + cat_rows)
+    write_rows(PREFIX + ".noheader.catcovar", cat_rows)
 
 with open("versions.yml", "w", newline="") as handle:
     handle.write('"{}":\\n'.format(PROCESS_NAME))

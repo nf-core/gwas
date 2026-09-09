@@ -2,9 +2,6 @@
     "versions": {
         "content": [
             {
-                "CUSTOM_GCTACREATEMGRMMANIFEST": {
-                    "coreutils": 9.5
-                },
                 "CUSTOM_GCTAMERGEGRMPARTS": {
                     "coreutils": 9.5
                 },
@@ -20,25 +17,22 @@
                 "GCTA_REMLLDMS": {
                     "gcta": "1.94.1"
                 },
-                "NORMALISE_PHENOTYPES": {
+                "PREPARE_GENOTYPE_SOURCE": {
                     "python": "3.14.5"
                 },
-                "PLINK2_MAKEBED": {
-                    "plink2": "2.0.0-a.6.9LM"
-                },
-                "PLINK2_MAKEPGEN": {
-                    "plink2": "2.0.0-a.6.9LM"
+                "PREPARE_PHENOTYPE_INPUTS": {
+                    "python": "3.14.5"
                 },
                 "Workflow": {
                     "nf-core/gwas": "v1.0.0dev"
                 }
             }
         ],
+        "timestamp": "2026-09-06T12:18:58.024648318",
         "meta": {
-            "nf-test": "0.9.3",
-            "nextflow": "25.10.4"
-        },
-        "timestamp": "2026-07-30T00:55:21.551159823"
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
     },
     "heritability": {
         "content": [
@@ -61,10 +55,10 @@
                 "ldms_same_2.gcta_greml_ldms.hsq:md5,3475afa4e0119452ee59e94502a1ccd7"
             ]
         ],
+        "timestamp": "2026-08-12T21:29:07.764090069",
         "meta": {
             "nf-test": "0.9.3",
             "nextflow": "25.10.4"
-        },
-        "timestamp": "2026-08-12T21:29:07.764090069"
+        }
     }
 }

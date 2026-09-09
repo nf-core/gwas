@@ -1,0 +1,214 @@
+nextflow_function {
+
+    name "Test linked GWAS input contract functions"
+    script "../method_options.nf"
+    tag "function"
+    tag "input"
+
+    // The GCTA half of the method-options contract, asserted where the rules live. Each scenario pins the
+    // whole diagnostic sentence -- the document that carried the option, the analysis it was attributed to,
+    // the option name and the reason -- because the attribution prefix is rendered by `validateMethodOptions`
+    // one layer above the rule functions, and it is the prefix a researcher reads first. The pipeline-level
+    // twins these replace are kept only as the family's two sentinels in `tests/relational_gcta_greml.nf.test`,
+    // which prove the manifest's own method selection reaches this resolver and that a refusal precedes task
+    // submission; neither claim is one a function test can make.
+
+    def invalidOptions = [
+        [
+            name: 'an invalid sparse-cutoff scalar type',
+            options: [example_pgen_qt: [gcta: [sparse_cutoff: 'close']]],
+            association: 'gcta_fastgwa',
+            heritability: '',
+            analysis: 'example_pgen_qt',
+            option: 'gcta.sparse_cutoff',
+            reason: 'expected a number between 0 and 1 inclusive',
+        ],
+        [
+            name: 'an out of range sparse cutoff',
+            options: [example_pgen_qt: [gcta: [sparse_cutoff: 1.01]]],
+            association: 'gcta_fastgwa',
+            heritability: '',
+            analysis: 'example_pgen_qt',
+            option: 'gcta.sparse_cutoff',
+            reason: 'expected a number between 0 and 1 inclusive',
+        ],
+        [
+            name: 'a sparse cutoff on a row selecting no fastGWA method',
+            options: [example_pgen_qt: [gcta: [sparse_cutoff: 0.025]]],
+            association: '',
+            heritability: 'gcta_greml',
+            analysis: 'example_pgen_qt',
+            option: 'gcta.sparse_cutoff',
+            reason: "option is consumed by 'gcta_fastgwa' only, which this analysis does not select",
+        ],
+        [
+            name: 'a non-positive LD-score region size',
+            options: [example_pgen_qt: [gcta: [ld_score_region_kb: 0]]],
+            association: '',
+            heritability: 'gcta_greml_ldms',
+            analysis: 'example_pgen_qt',
+            option: 'gcta.ld_score_region_kb',
+            reason: 'expected one positive integer',
+        ],
+        [
+            name: 'a non-positive LD bin count',
+            options: [example_pgen_qt: [gcta: [ld_bins: 0]]],
+            association: '',
+            heritability: 'gcta_greml_ldms',
+            analysis: 'example_pgen_qt',
+            option: 'gcta.ld_bins',
+            reason: 'expected one positive integer',
+        ],
+        [
+            name: 'non-increasing MAF boundaries',
+            options: [example_pgen_qt: [gcta: [ldms_maf_edges: [0, 0.05, 0.01, 0.5]]]],
+            association: '',
+            heritability: 'gcta_greml_ldms',
+            analysis: 'example_pgen_qt',
+            option: 'gcta.ldms_maf_edges',
+            reason: 'boundaries must be strictly increasing',
+        ],
+        [
+            name: 'an LD-score region size on a non-LDMS row',
+            options: [example_pgen_qt: [gcta: [ld_score_region_kb: 100]]],
+            association: '',
+            heritability: 'gcta_greml',
+            analysis: 'example_pgen_qt',
+            option: 'gcta.ld_score_region_kb',
+            reason: 'option is consumed by the LD- and MAF-stratified estimators gcta_greml_ldms, mph_reml_ldms only, none of which this analysis selects',
+        ],
+        [
+            name: 'an LD bin count on a non-LDMS row',
+            options: [example_pgen_qt: [gcta: [ld_bins: 2]]],
+            association: '',
+            heritability: 'gcta_greml',
+            analysis: 'example_pgen_qt',
+            option: 'gcta.ld_bins',
+            reason: 'option is consumed by the LD- and MAF-stratified estimators gcta_greml_ldms, mph_reml_ldms only, none of which this analysis selects',
+        ],
+        [
+            name: 'MAF boundaries on a non-LDMS row',
+            options: [example_pgen_qt: [gcta: [ldms_maf_edges: [0, 0.05, 0.5]]]],
+            association: '',
+            heritability: 'gcta_greml',
+            analysis: 'example_pgen_qt',
+            option: 'gcta.ldms_maf_edges',
+            reason: 'option is consumed by the LD- and MAF-stratified estimators gcta_greml_ldms, mph_reml_ldms only, none of which this analysis selects',
+        ],
+        [
+            // The document is read before any analysis row is consulted, so its two failures are attributed to
+            // the document itself rather than to an analysis that may not exist.
+            name: 'a malformed document',
+            options: '{"example_pgen_qt":',
+            association: '',
+            heritability: 'gcta_greml',
+            analysis: '<document>',
+            option: '<root>',
+            reason: 'malformed JSON',
+        ],
+        [
+            name: 'an analysis the manifest does not declare',
+            options: [missing_analysis: [gcta: [reml_no_constrain: true]]],
+            association: '',
+            heritability: 'gcta_greml',
+            analysis: 'missing_analysis',
+            option: '<analysis>',
+            reason: 'analysis identifier is not declared in the analysis manifest',
+        ],
+        [
+            name: 'an invalid dense MAF filter scalar type',
+            options: [example_pgen_qt: [gcta: [grm_maf: 'small']]],
+            association: '',
+            heritability: 'gcta_greml',
+            analysis: 'example_pgen_qt',
+            option: 'gcta.grm_maf',
+            reason: 'expected a number between 0 and 0.5 inclusive',
+        ],
+        [
+            name: 'a dense MAF filter on a fastGWA-only row',
+            options: [example_pgen_qt: [gcta: [grm_maf: 0.01]]],
+            association: 'gcta_fastgwa',
+            heritability: '',
+            analysis: 'example_pgen_qt',
+            option: 'gcta.grm_maf',
+            reason: "option is consumed by 'gcta_greml' only, which this analysis does not select",
+        ],
+        [
+            // The resource exists, so the refusal is about which estimator consumes it rather than about the
+            // path: the consumption gate is reached before the resource is resolved.
+            name: 'a dense extract resource on a fastGWA-only row',
+            resourceOption: true,
+            association: 'gcta_fastgwa',
+            heritability: '',
+            analysis: 'example_pgen_qt',
+            option: 'gcta.grm_extract',
+            reason: "option is consumed by 'gcta_greml' only, which this analysis does not select",
+        ],
+        [
+            name: 'an operational partition count in the scientific document',
+            options: [example_pgen_qt: [gcta: [gcta_grm_parts: 2]]],
+            association: '',
+            heritability: 'gcta_greml',
+            analysis: 'example_pgen_qt',
+            option: 'gcta.gcta_grm_parts',
+            reason: 'partition count is operational and must be supplied through run/profile configuration',
+        ],
+        [
+            // The function twin of the resource-resolution sentinel: a declared path that does not exist is
+            // refused with the option that declared it, not with a bare file-not-found.
+            name: 'a declared resource that does not exist',
+            options: [example_pgen_qt: [gcta: [grm_extract: '/definitely/missing/extract.txt']]],
+            association: '',
+            heritability: 'gcta_greml',
+            analysis: 'example_pgen_qt',
+            option: 'gcta.grm_extract',
+            reason: "resource path '/definitely/missing/extract.txt' does not exist",
+        ],
+        [
+            // The function twin of the family sentinel: the namespace is gated by the row's own selection.
+            name: 'a GCTA option on a row selecting no GCTA method',
+            options: [example_pgen_qt: [gcta: [reml_no_constrain: true]]],
+            association: 'regenie',
+            heritability: '',
+            analysis: 'example_pgen_qt',
+            option: 'gcta.reml_no_constrain',
+            reason: 'analysis does not select a GCTA method',
+        ],
+    ]
+
+    invalidOptions.each { scenario ->
+        test("the GCTA family rejects ${scenario.name}") {
+            function "validateMethodOptions"
+
+            when {
+                function {
+                    """
+                    input[0] = file('${RELATIONAL.methodOptions(
+                        outputDir,
+                        "gcta_${scenario.name.replace(' ', '_')}",
+                        scenario.resourceOption
+                            ? [example_pgen_qt: [gcta: [grm_extract: RELATIONAL.resource(outputDir, 'gcta-unused-extract.txt', 'rs1')]]]
+                            : scenario.options,
+                    )}', checkIfExists: true)
+                    input[1] = [[[id: 'example_pgen_qt', association_methods: '${scenario.association}', heritability_methods: '${scenario.heritability}', trait_type: 'quantitative']]]
+                    """
+                }
+            }
+
+            then {
+                // `error` reaches the console, and the document path is part of the same sentence, so the
+                // whole attribution is asserted as one contiguous fragment rather than as four independent
+                // `contains` checks that a reordering of the sentence would still satisfy.
+                def report = VALIDATION.report(outputDir, function.stdout)
+                assertAll(
+                    { assert function.failed },
+                    { assert report.contains('[nf-core/gwas] ERROR: Method-options document ') },
+                    { assert report.contains(
+                        "manifests/gcta_${scenario.name.replace(' ', '_')}/method_options.json', " +
+                            "analysis_id '${scenario.analysis}', option '${scenario.option}': ${scenario.reason}"
+                    ) },
+                )
+            }
+        }
+    }
+}

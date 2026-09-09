@@ -1,0 +1,78 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
+name: route_grm_heritability
+description: Route nf-core/gwas unary analysis units through the individual-level GRM heritability estimators, adapting prepared relatedness matrices and headerless phenotypes into GCTA GREML/GREML-LDMS and LDAK REML/Haseman-Elston/PCGC native results
+keywords:
+  - heritability
+  - greml
+  - reml
+  - haseman-elston
+  - pcgc
+  - relatedness matrix
+components:
+  - grm_heritability_gcta
+  - grm_heritability_ldak
+  - ldak/adjustgrm
+  - buildscientificartifactkey
+  - digestfilebytes
+  - digestidentitytext
+input:
+  - ch_dense_matrices:
+      description: The dense GCTA relatedness matrices built for unary analysis units, already fanned out one element per requesting analysis and carrying that analysis's meta. Present only for an analysis that selected `gcta_greml`, because the matrix kind is derived from the selected methods. Relationship-scoped rows are excluded by the caller
+      structure: "[map meta, [ path grm_file, ... ]]"
+      pattern: "*.grm.{bin,N.bin,id}"
+      ontologies: []
+  - ch_ldms_matrices:
+      description: The LD- and MAF-stratified GCTA matrix families built for unary analysis units, with explicit non-empty stratum prefix order, already fanned out one element per requesting analysis. Present only for an analysis that selected `gcta_greml_ldms`. Relationship-scoped rows are excluded by the caller
+      structure: "[map meta, [ path grm_file, ... ], [ string grm_prefix, ... ]]"
+      pattern: "*.grm.{bin,N.bin,id}"
+      ontologies: []
+  - ch_ldak_kinship_matrices:
+      description: The selected base or unrelated-sample child LDAK kinship artifacts, already fanned out one element per requesting analysis. The immutable artifact key remains beside focal metadata, and the keep list is `[]` for a base artifact. Present only for an analysis that selected at least one LDAK heritability method
+      structure: "[map meta, string artifact_key, [ path grm_file, ... ], path keep|[]]"
+      pattern: "*.{grm.bin,grm.id,grm.details,grm.adjust,keep}"
+      ontologies: []
+  - ch_headerless_phenotypes:
+      description: The headerless prepared phenotype and covariate serialisations of every analysis unit, keyed one-to-one on the analysis meta. GCTA and LDAK reject a header row, and preparation writes the trait at a fixed third column, which is what makes `--mpheno` a constant. An absent optional covariate file is `[]`, never a placeholder file and never a null path
+      structure: "[map meta, path phenotype, path quant_covariates|[], path cat_covariates|[]]"
+      pattern: "*.{pheno,qcovar,covar}"
+      ontologies: []
+  - ch_adjustment_covariates:
+      description: The numerical covariate design built specifically for LDAK kinship-matrix adjustment, present only for an analysis unit that has one. HE and PCGC with the same selected parent artifact, effective sample subset, covariate content and native options share one adjusted child artifact; REML fits covariates and kinship jointly and never triggers matrix adjustment
+      structure: "[map meta, path adjustment_covariates]"
+      pattern: "*.qcovar"
+      ontologies: []
+output:
+  - gcta_heritability:
+      description: Native GCTA variance-component results, one record per analysis unit per selected GCTA estimator. `meta.gcta_estimator` is `greml` or `greml_ldms` and is what distinguishes two records of the same analysis; it is the estimator identity the composition routes on, not a private scatter key. This is a GCTA `.hsq` contract and is deliberately not merged with the LDAK results below or with any summary-scale heritability
+      structure: "[map meta, path hsq]"
+      pattern: "*.hsq"
+      ontologies: []
+  - ldak_reml_results:
+      description: Native LDAK REML results on the observed scale, one record per analysis unit that selected `ldak_reml`
+      structure: "[map meta, path reml]"
+      pattern: "*.reml"
+      ontologies: []
+  - ldak_reml_liability:
+      description: Native LDAK REML results converted to the liability scale, emitted only for an analysis unit that declared a population prevalence
+      structure: "[map meta, path reml_liab]"
+      pattern: "*.reml.liab"
+      ontologies: []
+  - ldak_he_results:
+      description: Native LDAK Haseman-Elston results, one record per analysis unit that selected `ldak_he`. Where an adjustment design exists the kinship matrix was regressed on it before estimation, over exactly the samples the estimator used
+      structure: "[map meta, path he]"
+      pattern: "*.he"
+      ontologies: []
+  - ldak_pcgc_results:
+      description: Native LDAK PCGC results, one record per analysis unit that selected `ldak_pcgc`. PCGC is a binary-trait estimator and consumes the declared population prevalence natively
+      structure: "[map meta, path pcgc]"
+      pattern: "*.pcgc"
+      ontologies: []
+  - ldak_pcgc_marginal:
+      description: Native LDAK PCGC marginal estimates, emitted only where LDAK produced them
+      structure: "[map meta, path pcgc_marginal]"
+      pattern: "*.pcgc.marginal"
+      ontologies: []
+authors:
+  - "@andongni"
+maintainers:
+  - "@andongni"

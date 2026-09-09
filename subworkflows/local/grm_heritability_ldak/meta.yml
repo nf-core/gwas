@@ -9,7 +9,6 @@ keywords:
   - pcgc
   - grm
 components:
-  - ldak/adjustgrm
   - ldak/reml
   - ldak/he
   - ldak/pcgc
@@ -37,20 +36,14 @@ input:
       optional: true
       ontologies: []
   - ch_keep:
-      description: Optional sample list restricting the analysis in the fifth metadata-bearing tuple; use [] when absent. It is applied to the covariate adjustment of the kinship matrix as well as to the estimator, so a subset analysis adjusts on the kept samples only.
+      description: Optional sample list restricting the analysis in the fifth metadata-bearing tuple; use [] when absent.
       structure: "[map meta5, path keep_file|[]]"
       pattern: "*.{txt,tsv,keep}"
       optional: true
       ontologies: []
   - ch_estimator:
-      description: "Per-analysis heritability estimator selector in the sixth metadata-bearing tuple: reml, he or pcgc. Haseman-Elston and PCGC read a covariate-adjusted matrix whenever a covariate file is present."
+      description: "Per-analysis heritability estimator selector in the sixth metadata-bearing tuple: reml, he or pcgc. Any required matrix derivation belongs to the caller."
       structure: [map meta6, string estimator]
-  - ch_adjust_covar:
-      description: Optional numerical covariate design for LDAK matrix adjustment; use [] when absent. Categorical factors are treatment-coded because LDAK adjust-grm accepts covar but rejects factors.
-      structure: "[map meta7, path adjustment_covariates_file|[]]"
-      pattern: "*.{txt,tsv,covar,cov,adjustcovar}"
-      optional: true
-      ontologies: []
 output:
   - meta:
       type: map
@@ -80,11 +73,6 @@ output:
       description: Optional LDAK PCGC marginal estimates
       pattern: "*.pcgc.marginal"
       ontologies: []
-  - adjusted_grm:
-      type: file
-      description: Covariate-adjusted GRM bundle for Haseman-Elston and PCGC analyses that declared covariates
-      pattern: "*.grm.{bin,id,details,adjust,root}"
-      ontologies: []
   - coeff:
       type: file
       description: Fixed-effect coefficient estimates from the executed estimators
@@ -107,7 +95,7 @@ output:
       ontologies: []
   - logs:
       type: file
-      description: LDAK estimator and GRM covariate-adjustment log files
+      description: LDAK estimator log files
       pattern: "*.log"
       ontologies: []
 authors:

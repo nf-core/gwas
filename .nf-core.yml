@@ -11,6 +11,9 @@ lint:
     - .github/workflows/branch.yml
     - .github/workflows/linting.yml
   modules_config: false
+  # Containers are selected by module directives and per-method configs; the generated
+  # conf/containers_*.config files are not included by this pipeline.
+  container_configs: false
   # The retired `--input` parameter is exercised only by a migration-diagnostic test. It is intentionally
   # absent from `nextflow_schema.json`; listing it here keeps the diagnostic without restoring the contract.
   nextflow_config:

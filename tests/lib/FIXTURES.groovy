@@ -1,11 +1,15 @@
 // Canonical nf-core/test-datasets fixture bundle used by executable pipeline tests.
 //
-// The public bundle stores one VCF plus phenotype/covariate sidecars. Tests which exercise literal
-// PLINK 1 or PLINK 2 inputs run tests/fixtures/materialize.sh before nf-test and point
-// GWAS_TEST_FIXTURES at the resulting cache entry. Keeping the override here also lets a developer
-// select an unmerged canonical source with GWAS_FIXTURE_SOURCE without committing a machine-specific path.
+// Every fixture-backed test runs against a materialized, checksum-verified bundle rooted at
+// GWAS_TEST_FIXTURES. tests/fixtures/materialize.sh builds that bundle and prints its root;
+// tests/fixtures/nf-test.sh does it for a focused run. GWAS_FIXTURE_SOURCE selects the canonical
+// source materialize.sh reads from, without committing a machine-specific path.
 class FIXTURES {
 
+    // The canonical bundle's published address. This is a substitution token, not a fallback:
+    // RELATIONAL rewrites this prefix to the materialized root, so a declared fixture path stays
+    // portable in the test sources. Nothing resolves it over the network -- the published bundle
+    // returns 404 today, which is exactly why an unset GWAS_TEST_FIXTURES is a hard error below.
     static final String UPSTREAM = 'https://raw.githubusercontent.com/nf-core/test-datasets/gwas/'
     private static final List<String> REQUIRED = [
         'results/fixtures/genotypes/example_all.vcf.gz',
@@ -36,7 +40,17 @@ class FIXTURES {
 
     static String base(Object projectDir = null) {
         def declared = System.getenv('GWAS_TEST_FIXTURES')
-        if (!declared) return UPSTREAM
+        if (!declared) {
+            // Falling back to UPSTREAM used to look like a working default and was not one: the
+            // published bundle 404s, so every test resolved dead URLs and failed minutes later on
+            // schema validation, with nothing naming the real cause. Fail here instead, in seconds.
+            throw new IllegalStateException(
+                'GWAS_TEST_FIXTURES is not set, and the fixture-backed tests have no working remote ' +
+                'fallback. Materialize the bundle and export the root it prints:\n' +
+                '  export GWAS_TEST_FIXTURES=$(tests/fixtures/materialize.sh --profile docker)\n' +
+                'or launch a focused run through tests/fixtures/nf-test.sh, which does that for you. ' +
+                'Set GWAS_FIXTURE_SOURCE to the canonical fixture source before materializing the bundle.')
+        }
 
         def directory = new File(declared).absoluteFile
         validateMaterializedRoot(directory, declared)

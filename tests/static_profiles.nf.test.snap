@@ -2,39 +2,36 @@
     "binary-versions": {
         "content": [
             {
-                "CANONICALISE_SUMMARY_STATISTICS": {
-                    "python": "3.14.5"
-                },
                 "GWASLAB_HARMONIZE": {
                     "gwaslab": "4.1.9",
                     "python": "3.12.13"
                 },
-                "NORMALISE_PHENOTYPES": {
+                "PREPARE_GENOTYPE_SOURCE": {
                     "python": "3.14.5"
                 },
-                "PLINK2_GLM": {
-                    "plink2": "2.0.0-a.6.9LM"
+                "PREPARE_PHENOTYPE_INPUTS": {
+                    "python": "3.14.5"
                 },
-                "PLINK2_VCF": {
-                    "plink2": "2.0.0-a.6.9LM"
+                "REGENIE_STEP1": {
+                    "regenie": "4.1.2"
+                },
+                "REGENIE_STEP2": {
+                    "regenie": "4.1.2"
                 },
                 "Workflow": {
                     "nf-core/gwas": "v1.0.0dev"
                 }
             }
         ],
+        "timestamp": "2026-09-10T06:24:39.663134586",
         "meta": {
-            "nf-test": "0.9.3",
-            "nextflow": "25.10.4"
-        },
-        "timestamp": "2026-08-25T09:00:01.540438903"
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
     },
     "association-versions": {
         "content": [
             {
-                "CANONICALISE_SUMMARY_STATISTICS": {
-                    "python": "3.14.5"
-                },
                 "CUSTOM_GCTAMERGEGRMPARTS": {
                     "coreutils": 9.5
                 },
@@ -57,17 +54,14 @@
                 "LDAK_KVIKSTEP2": {
                     "ldak6": 6
                 },
-                "NORMALISE_PHENOTYPES": {
-                    "python": "3.14.5"
-                },
-                "PLINK2_GLM": {
-                    "plink2": "2.0.0-a.6.9LM"
-                },
                 "PLINK2_MAKEBED": {
                     "plink2": "2.0.0-a.6.9LM"
                 },
-                "PLINK2_VCF": {
-                    "plink2": "2.0.0-a.6.9LM"
+                "PREPARE_GENOTYPE_SOURCE": {
+                    "python": "3.14.5"
+                },
+                "PREPARE_PHENOTYPE_INPUTS": {
+                    "python": "3.14.5"
                 },
                 "REGENIE_STEP1": {
                     "regenie": "4.1.2"
@@ -80,18 +74,15 @@
                 }
             }
         ],
+        "timestamp": "2026-09-10T06:24:55.497700873",
         "meta": {
-            "nf-test": "0.9.3",
-            "nextflow": "25.10.4"
-        },
-        "timestamp": "2026-08-25T09:00:21.289533142"
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
     },
     "heritability-versions": {
         "content": [
             {
-                "CUSTOM_GCTACREATEMGRMMANIFEST": {
-                    "coreutils": 9.5
-                },
                 "CUSTOM_GCTAMERGEGRMPARTS": {
                     "coreutils": 9.5
                 },
@@ -125,24 +116,24 @@
                 "LDAK_REML": {
                     "ldak6": 6
                 },
-                "NORMALISE_PHENOTYPES": {
-                    "python": "3.14.5"
-                },
                 "PLINK2_MAKEBED": {
                     "plink2": "2.0.0-a.6.9LM"
                 },
-                "PLINK2_VCF": {
-                    "plink2": "2.0.0-a.6.9LM"
+                "PREPARE_GENOTYPE_SOURCE": {
+                    "python": "3.14.5"
+                },
+                "PREPARE_PHENOTYPE_INPUTS": {
+                    "python": "3.14.5"
                 },
                 "Workflow": {
                     "nf-core/gwas": "v1.0.0dev"
                 }
             }
         ],
+        "timestamp": "2026-09-10T06:25:12.194565821",
         "meta": {
-            "nf-test": "0.9.3",
-            "nextflow": "25.10.4"
-        },
-        "timestamp": "2026-08-13T14:23:18.962636656"
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
     }
 }

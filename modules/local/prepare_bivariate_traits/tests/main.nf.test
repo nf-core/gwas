@@ -25,7 +25,7 @@ nextflow_process {
         [left: left, right: right, qcovar: qcovar, covar: covar]
     }
 
-    test("build a sorted full-union pair and strip relationship covariate headers") {
+    test("build a sorted full-union pair and serialise the covariates for both interfaces") {
         when {
             def inputs = pairInputs(outputDir, 'union')
             process {
@@ -39,15 +39,21 @@ nextflow_process {
             def phenotype = new File(process.out.phenotype.get(0).get(1).toString())
             def qcovar = new File(process.out.quant_covariates.get(0).get(1).toString())
             def covar = new File(process.out.cat_covariates.get(0).get(1).toString())
-            def log = new File(process.out.log.get(0).get(1).toString()).text
+            def named_qcovar = new File(process.out.named_quant_covariates.get(0).get(1).toString())
+            def named_covar = new File(process.out.named_cat_covariates.get(0).get(1).toString())
             assertAll(
                 { assert process.success },
                 { assert phenotype.text == 'F1\tI1\t1\tNA\nF1\tI2\tNA\t2\nF2\tI3\t3\t4\nF3\tI4\tNA\t5\n' },
                 { assert qcovar.text == 'F1\tI1\t10\nF1\tI2\t20\nF2\tI3\t30\nF3\tI4\t40\n' },
                 { assert covar.text == 'F1\tI1\tA\nF1\tI2\tA\nF2\tI3\tB\nF3\tI4\tB\n' },
-                { assert log.contains('endpoint_overlap_samples\t2') },
-                { assert log.contains('union_samples\t4') },
-                { assert log.contains('both_nonmissing\t1') },
+                // The headered files are the validated header line plus exactly the headerless body, so the
+                // two estimator interfaces read one normalisation rather than two.
+                { assert qcovar.name.endsWith('.noheader.qcovar') },
+                { assert covar.name.endsWith('.noheader.catcovar') },
+                { assert named_qcovar.name.endsWith('.qcovar') && !named_qcovar.name.contains('.noheader.') },
+                { assert named_covar.name.endsWith('.catcovar') && !named_covar.name.contains('.noheader.') },
+                { assert named_qcovar.text == 'FID\tIID\tage\n' + qcovar.text },
+                { assert named_covar.text == 'FID\tIID\tbatch\n' + covar.text },
             )
         }
     }
@@ -67,8 +73,60 @@ nextflow_process {
                 { assert process.success },
                 { assert process.out.quant_covariates.empty },
                 { assert process.out.cat_covariates.empty },
+                { assert process.out.named_quant_covariates.empty },
+                { assert process.out.named_cat_covariates.empty },
                 { assert new File(process.out.phenotype.get(0).get(1).toString()).isFile() },
             )
+        }
+    }
+
+    test("the stub emits both serialisations under the same optionality") {
+        options "-stub"
+
+        when {
+            def inputs = pairInputs(outputDir, 'stub')
+            process {
+                """
+                input[0] = [[request_id: 'gcta_bivariate_reml--pair'], file('${inputs.left}', checkIfExists: true), file('${inputs.right}', checkIfExists: true), file('${inputs.qcovar}', checkIfExists: true), []]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.named_quant_covariates.get(0).get(1).toString().endsWith('.qcovar') },
+                { assert process.out.quant_covariates.get(0).get(1).toString().endsWith('.noheader.qcovar') },
+                { assert process.out.named_cat_covariates.empty },
+                { assert process.out.cat_covariates.empty },
+            )
+        }
+    }
+
+    def invalidCovariates = [
+        [name: 'missing FID and IID header', content: 'age\n10\n', message: 'must begin with FID, IID'],
+        [name: 'duplicate sample identity', content: 'FID\tIID\tage\nF1\tI1\t10\nF1\tI1\t20\n', message: "declares sample 'F1 I1' more than once"],
+    ]
+
+    invalidCovariates.each { scenario ->
+        test("relationship quantitative covariates reject ${scenario.name}") {
+            when {
+                def inputs = pairInputs(outputDir, "invalid_${scenario.name.replace(' ', '_')}")
+                inputs.qcovar.text = scenario.content
+                process {
+                    """
+                    input[0] = [[request_id: 'gcta_bivariate_reml--pair'], file('${inputs.left}', checkIfExists: true), file('${inputs.right}', checkIfExists: true), file('${inputs.qcovar}', checkIfExists: true), []]
+                    """
+                }
+            }
+
+            then {
+                assertAll(
+                    { assert process.failed },
+                    { assert process.stdout.join('\n').contains('relationship quantitative covariate') },
+                    { assert process.stdout.join('\n').contains(scenario.message) },
+                )
+            }
         }
     }
 }

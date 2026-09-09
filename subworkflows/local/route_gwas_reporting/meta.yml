@@ -1,0 +1,68 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
+name: route_gwas_reporting
+description: Assemble the nf-core/gwas analysis plan, workflow summary, methods description and collated versions into a single MultiQC report
+keywords:
+  - multiqc
+  - reporting
+  - gwas
+  - analysis plan
+  - methods description
+components:
+  - multiqc
+  - analysisplanjson
+  - methodsdescriptiontext
+  - paramssummarymultiqc
+input:
+  - ch_collated_versions:
+      description: Run-wide collated software versions rendered by the pipeline spine
+      structure: path(collated_versions)
+      pattern: "*.yml"
+      ontologies: []
+  - ch_analysis_metadata:
+      description: Every validated analysis unit's metadata map, already collected into one list element
+      structure: list
+  - ch_method_metadata:
+      description: Every method-selecting record as `[domain, meta]`, already collected into one list element; domain is analysis, summary_unary, pairwise or summary_set
+      structure: list
+  - summary_params:
+      description: Run parameter summary grouped by schema section, evaluated by the spine from the workflow context
+      structure: map
+  - multiqc_config:
+      description: User-supplied MultiQC configuration override; null selects the pipeline default
+      structure: string|null
+  - multiqc_logo:
+      description: User-supplied MultiQC report logo override; null selects the pipeline default
+      structure: string|null
+  - multiqc_methods_description:
+      description: User-supplied methods-description template override; null selects the pipeline default
+      structure: string|null
+  - multiqc_analysis_plan:
+      description: Resolved analysis-plan section template asset
+      structure: path(multiqc_analysis_plan)
+      pattern: "*.yml"
+      ontologies: []
+  - default_multiqc_config:
+      description: Resolved pipeline default MultiQC configuration asset
+      structure: path(default_multiqc_config)
+      pattern: "*.yml"
+      ontologies: []
+  - default_multiqc_logo:
+      description: Resolved pipeline default MultiQC report logo asset
+      structure: path(default_multiqc_logo)
+      pattern: "*.png"
+      ontologies: []
+  - default_methods_description:
+      description: Resolved pipeline default methods-description template asset
+      structure: path(default_methods_description)
+      pattern: "*.yml"
+      ontologies: []
+output:
+  - report:
+      description: The single rendered MultiQC report
+      structure: [path report]
+      pattern: "*.html"
+      ontologies: []
+authors:
+  - "@andongni"
+maintainers:
+  - "@andongni"

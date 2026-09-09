@@ -1,0 +1,164 @@
+nextflow_function {
+
+    name "Test genotype view identity and conversion policy functions"
+    script "../main.nf"
+    tag "function"
+    tag "genotypes"
+
+    test("the PLINK 1 projection policy states every field that enters the derivative identity") {
+        function "getPlink1ProjectionPolicy"
+
+        then {
+            assertAll(
+                { assert function.success },
+                // The policy is the derivative's identity input, its published provenance and the rendered
+                // `ext.args` all at once, so every field is pinned here rather than left to a comment.
+                { assert function.result == [
+                    tool_contract: 'plink2_2.0.0a.6.9_make_bed_v1',
+                    hard_call_threshold: 0.1,
+                    missing_call_policy: 'dosage_distance_above_threshold_is_missing',
+                    dosage: 'dropped',
+                    phase: 'dropped',
+                    selection: [samples: 'all', variants: 'all', chromosomes: 'all', regions: 'all'],
+                ] },
+                // The version inside the tool contract must be the version the atom is pinned to; otherwise a
+                // container bump would silently keep an identity that claims the old semantics.
+                { assert function.result.tool_contract.contains(
+                    new File("${projectDir}/modules/local/plink2/makebed/environment.yml")
+                        .readLines()
+                        .find { line -> line.contains('plink2=') }
+                        .split('plink2=')
+                        .last()
+                        .trim()
+                ) },
+                // The literal that `conf/modules/genotypes.config` renders cannot drift from the policy.
+                { assert new File("${projectDir}/conf/modules/genotypes.config").text.contains(
+                    '"--hard-call-threshold \${meta.settings.hard_call_threshold}"'
+                ) },
+            )
+        }
+    }
+
+    test("a supplied PLINK 2 view key is stable and names its source identity") {
+        function "buildGenotypeViewKey"
+
+        when {
+            function {
+                """
+                input[0] = 'plink2'
+                input[1] = 'supplied'
+                input[2] = [mode: 'sha256', value: '${'0' * 64}']
+                input[3] = [:]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == '61f8d14d59ab' },
+            )
+        }
+    }
+
+    test("a declared identity and a content digest of equal value are different views") {
+        function "buildGenotypeViewKey"
+
+        when {
+            function {
+                """
+                input[0] = 'plink2'
+                input[1] = 'supplied'
+                input[2] = [mode: 'declared', value: '${'0' * 64}']
+                input[3] = [:]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                // The mode is part of the identity string, so a declared token that happens to equal a
+                // computed digest is not silently treated as the same view.
+                { assert function.result != '61f8d14d59ab' },
+            )
+        }
+    }
+
+    test("the projection key names its parent and the policy that produced it") {
+        function "buildPlink1ProjectionKey"
+
+        when {
+            function {
+                """
+                input[0] = '61f8d14d59ab'
+                input[1] = [
+                    tool_contract: 'plink2_2.0.0a.6.9_make_bed_v1',
+                    hard_call_threshold: 0.1,
+                    missing_call_policy: 'dosage_distance_above_threshold_is_missing',
+                    dosage: 'dropped',
+                    phase: 'dropped',
+                    selection: [samples: 'all', variants: 'all', chromosomes: 'all', regions: 'all'],
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == 'eddfd0dafc07' },
+                // The derivative is a distinct artifact from the bundle it was projected from, so a consumer
+                // of one can never be handed the other under the same key.
+                { assert function.result != '61f8d14d59ab' },
+            )
+        }
+    }
+
+    test("a source digest that is not 64 hexadecimal characters is refused by name") {
+        function "readSourceIdentity"
+
+        when {
+            function {
+                """
+                input[0] = 'cohort_bad_digest'
+                input[1] = file('${RELATIONAL.resource(outputDir, 'not_a_digest.sha256', "not-a-digest\n")}', checkIfExists: true)
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert !function.success },
+                { assert function.stdout.join('\n').contains("cohort 'cohort_bad_digest'") },
+            )
+        }
+    }
+
+    def selectedMethods = [
+        [name: 'a unary row', meta: "[association_methods: ['regenie'], heritability_methods: ['ldak_reml']]", expected: ['regenie', 'ldak_reml']],
+        [name: 'a pair row', meta: "[relationship_id: 'rel_a', method: 'gcta_bivariate_reml_ldms']", expected: ['gcta_bivariate_reml_ldms']],
+        [name: 'a row with neither selector column populated', meta: '[:]', expected: []],
+    ]
+
+    selectedMethods.each { scenario ->
+        test("the selected methods of ${scenario.name} are read without a method literal") {
+            function "getSelectedMethods"
+
+            when {
+                function {
+                    """
+                    input[0] = ${scenario.meta}
+                    """
+                }
+            }
+
+            then {
+                assertAll(
+                    { assert function.success },
+                    { assert function.result == scenario.expected },
+                )
+            }
+        }
+    }
+}

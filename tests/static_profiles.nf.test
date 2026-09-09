@@ -20,9 +20,9 @@ nextflow_pipeline {
             def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
             assertAll(
                 { assert workflow.success },
-                { assert TRACE.count(workflow, 'PLINK2_GLM') == 1 },
+                { assert TRACE.count(workflow, 'REGENIE_STEP2') == 1 },
                 { assert TRACE.count(workflow, 'GWASLAB_HARMONIZE') >= 1 },
-                { assert new File("${params.outdir}/association/plink2/example_binary").isDirectory() },
+                { assert new File("${params.outdir}/association/regenie/example_binary").isDirectory() },
                 { assert snapshot(removeNextflowVersion(versions.toString())).match('binary-versions') },
             )
         }
@@ -43,11 +43,10 @@ nextflow_pipeline {
             def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
             assertAll(
                 { assert workflow.success },
-                { assert TRACE.count(workflow, 'PLINK2_GLM') == 1 },
                 { assert TRACE.count(workflow, 'REGENIE_STEP2') == 1 },
                 { assert TRACE.count(workflow, 'GCTA_FASTGWA') == 1 },
                 { assert TRACE.count(workflow, 'LDAK_KVIKSTEP2') == 1 },
-                { assert TRACE.count(workflow, 'GWASLAB_HARMONIZE') >= 4 },
+                { assert TRACE.count(workflow, 'GWASLAB_HARMONIZE') >= 3 },
                 { assert snapshot(removeNextflowVersion(versions.toString())).match('association-versions') },
             )
         }

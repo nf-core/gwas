@@ -1,0 +1,129 @@
+{
+    "homo_sapiens popgen - stub": {
+        "content": [
+            {
+                "correlations": [
+                    
+                ],
+                "fixed_effects": [
+                    [
+                        {
+                            "id": "stubbed"
+                        },
+                        "stubbed.mq.blue.csv:md5,a431b1004f1fead3ec81508f51f1fa1a"
+                    ]
+                ],
+                "iterations": [
+                    [
+                        {
+                            "id": "stubbed"
+                        },
+                        "stubbed.mq.iter.csv:md5,ddf40046579bc9d5ca1a343bd4e740fb"
+                    ]
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "stubbed"
+                        },
+                        "stubbed.log"
+                    ]
+                ],
+                "projected_phenotypes": [
+                    [
+                        {
+                            "id": "stubbed"
+                        },
+                        "stubbed.mq.py.csv:md5,bc57b093d296d4d89e15dc5e92a20404"
+                    ]
+                ],
+                "variance_components": [
+                    [
+                        {
+                            "id": "stubbed"
+                        },
+                        "stubbed.mq.vc.csv:md5,344b9beb2928ad82ddc5824b1d8dec6d"
+                    ]
+                ],
+                "versions_mph": [
+                    [
+                        "MPH_REML",
+                        "mph",
+                        "0.55.1"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-03T10:42:16.443931954",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "stub - a two-trait fit emits the correlation table": {
+        "content": [
+            {
+                "correlations": [
+                    [
+                        {
+                            "id": "stubbed_two_trait"
+                        },
+                        "stubbed_two_trait.mq.cor.csv:md5,d68016e516e47825b708b62c5f44c9fb"
+                    ]
+                ],
+                "fixed_effects": [
+                    [
+                        {
+                            "id": "stubbed_two_trait"
+                        },
+                        "stubbed_two_trait.mq.blue.csv:md5,a431b1004f1fead3ec81508f51f1fa1a"
+                    ]
+                ],
+                "iterations": [
+                    [
+                        {
+                            "id": "stubbed_two_trait"
+                        },
+                        "stubbed_two_trait.mq.iter.csv:md5,ddf40046579bc9d5ca1a343bd4e740fb"
+                    ]
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "stubbed_two_trait"
+                        },
+                        "stubbed_two_trait.log"
+                    ]
+                ],
+                "projected_phenotypes": [
+                    [
+                        {
+                            "id": "stubbed_two_trait"
+                        },
+                        "stubbed_two_trait.mq.py.csv:md5,bc57b093d296d4d89e15dc5e92a20404"
+                    ]
+                ],
+                "variance_components": [
+                    [
+                        {
+                            "id": "stubbed_two_trait"
+                        },
+                        "stubbed_two_trait.mq.vc.csv:md5,344b9beb2928ad82ddc5824b1d8dec6d"
+                    ]
+                ],
+                "versions_mph": [
+                    [
+                        "MPH_REML",
+                        "mph",
+                        "0.55.1"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-03T10:42:54.063696434",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

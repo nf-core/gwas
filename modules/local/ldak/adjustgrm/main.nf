@@ -25,6 +25,8 @@ process LDAK_ADJUSTGRM {
     def grm_prefix = grm_files.find { grm_file -> grm_file.name.endsWith('.grm.bin') }.name.replaceFirst(/\.grm\.bin$/, '')
     prefix = task.ext.prefix ?: "${meta.id}"
     def keep_arg = keep_file ? "--keep \"${keep_file}\"" : ''
+    // --adjust-grm rejects --factors, so the caller supplies a treatment-coded design through
+    // --covar; see prepare_phenotype_inputs.
     def covar_arg = adjustment_covariates_file ? "--covar \"${adjustment_covariates_file}\"" : ''
     """
     ldak6 --adjust-grm "${prefix}" \\

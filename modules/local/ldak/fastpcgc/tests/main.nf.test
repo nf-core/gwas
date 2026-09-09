@@ -1,0 +1,235 @@
+nextflow_process {
+
+    name "Test Process LDAK_FASTPCGC"
+    config "./nextflow.config"
+    script "../main.nf"
+    process "LDAK_FASTPCGC"
+
+    tag "modules"
+    tag "modules_local"
+    tag "modules_nfcore"
+    tag "ldak"
+    tag "ldak/fastpcgc"
+    tag "gawk"
+
+    setup {
+        run("GAWK", alias: "GAWK_BINARY_PHENO") {
+            script "../../../../nf-core/gawk/main.nf"
+            process {
+                """
+                input[0] = [
+                    [ id: 'binary' ],
+                    file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated_quantitative_phenoname.phe', checkIfExists: true)
+                ]
+                input[1] = Channel.of('FNR == 1 { next } { print \$1, \$2, (\$3 > 0 ? 1 : 0) }').collectFile(name: 'binary_phenotype.awk')
+                input[2] = false
+                """
+            }
+        }
+
+        run("GAWK", alias: "GAWK_QUANT_PHENO") {
+            script "../../../../nf-core/gawk/main.nf"
+            process {
+                """
+                input[0] = [
+                    [ id: 'quantitative' ],
+                    file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated_quantitative_phenoname.phe', checkIfExists: true)
+                ]
+                input[1] = Channel.of('FNR == 1 { next } { print \$1, \$2, \$3 }').collectFile(name: 'quantitative_phenotype.awk')
+                input[2] = false
+                """
+            }
+        }
+
+        run("GAWK", alias: "GAWK_QUANT_COVAR") {
+            script "../../../../nf-core/gawk/main.nf"
+            process {
+                """
+                input[0] = [
+                    [ id: 'covariates' ],
+                    file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated_covariates.txt', checkIfExists: true)
+                ]
+                input[1] = Channel.of('FNR == 1 { next } { print }').collectFile(name: 'quantitative_covariates.awk')
+                input[2] = false
+                """
+            }
+        }
+
+        run("GAWK", alias: "GAWK_FACTORS") {
+            script "../../../../nf-core/gawk/main.nf"
+            process {
+                """
+                input[0] = [
+                    [ id: 'factors' ],
+                    file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.fam', checkIfExists: true)
+                ]
+                input[1] = Channel.of('{ print \$1, \$2, (FNR % 2 ? 1 : 2) }').collectFile(name: 'categorical_covariates.awk')
+                input[2] = false
+                """
+            }
+        }
+
+        run("GAWK", alias: "GAWK_WEIGHTS_ALL") {
+            script "../../../../nf-core/gawk/main.nf"
+            process {
+                """
+                input[0] = [
+                    [ id: 'weights_all' ],
+                    file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bim', checkIfExists: true)
+                ]
+                input[1] = Channel.of('{ print \$2, 1 }').collectFile(name: 'weights_all.awk')
+                input[2] = false
+                """
+            }
+        }
+    }
+
+    def genotypes = """
+                [
+                    [ id: 'plink_simulated' ],
+                    file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bed', checkIfExists: true),
+                    file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bim', checkIfExists: true),
+                    file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.fam', checkIfExists: true),
+                    -0.25
+                ]
+    """
+
+    test("homo_sapiens popgen - binary trait with quantitative and categorical covariates") {
+
+        when {
+            params {
+                module_args = "--mpheno 1 --ignore-weights YES --random-seed 7"
+            }
+            process {
+                """
+                input[0] = GAWK_BINARY_PHENO.out.output.map { _meta, phenotype -> [[ id: 'fast_pcgc_covariates' ], phenotype, 0.3] }
+                input[1] = ${genotypes}
+                input[2] = [[ id: 'weights' ], []]
+                input[3] = GAWK_QUANT_COVAR.out.output.map { _meta, covariates -> [[ id: 'fast_pcgc_covariates' ], covariates] }
+                input[4] = GAWK_FACTORS.out.output.map { _meta, covariates -> [[ id: 'fast_pcgc_covariates' ], covariates] }
+                """
+            }
+        }
+
+        then {
+            def resultFile = path(process.out.fastpcgc_results.get(0).get(1))
+            def command = resultFile.parent.resolve(".command.sh").text.replaceAll(/\s+/, " ")
+            def headerValue = { name -> resultFile.readLines().find { line -> line.startsWith("${name} ") }.split(/\s+/)[1] }
+            def heritability = { results -> path(results).readLines().find { line -> line.startsWith('Her_All') }.split(/\s+/)[1] }
+            assertAll(
+                { assert process.success },
+                // The direct-genotype contract: raw PLINK 1 in, no kinship of any kind. The prevalence is a
+                // mandatory tuple scalar rather than an extension argument because LDAK errors without it.
+                { assert command.contains('--fast-pcgc "fast_pcgc_covariates"') },
+                { assert command.contains('--bfile "plink_simulated"') },
+                { assert command.contains('--power "-0.25"') },
+                { assert command.contains('--prevalence "0.3"') },
+                { assert command.contains('--covar "covariates.txt"') },
+                { assert command.contains('--factors "factors.catcovar"') },
+                { assert !command.contains("--grm") },
+                { assert !command.contains("--weights") },
+                { assert headerValue('Num_Covariates') == "6" },
+                { assert headerValue('Total_Samples') == "200" },
+                { assert headerValue('With_Phenotypes') == "200" },
+                // PCGC reports covariate effects as log-odds, not as linear effects.
+                { assert path(process.out.coeff.get(0).get(1)).readLines().first() == "Component Log_Odds SE P" },
+                // The marginal estimate is the unconditional one, so it differs whenever covariates are fitted.
+                { assert process.out.fastpcgc_marginal.size() == 1 },
+                { assert heritability(process.out.fastpcgc_marginal.get(0).get(1)) != heritability(process.out.fastpcgc_results.get(0).get(1)) },
+                { assert process.out.combined.size() == 1 },
+                { assert process.out.versions_ldak6.get(0).get(1) == "ldak6" },
+                { assert process.out.versions_ldak6.get(0).get(2) == "6" },
+                { assert snapshot(sanitizeOutput(process.out, unstableKeys: ["log"])).match() }
+            )
+        }
+    }
+
+    test("homo_sapiens popgen - full-coverage weights with reduced repetitions and jackknife blocks") {
+
+        when {
+            params {
+                module_args = "--mpheno 1 --repetitions 10 --num-blocks 20 --random-seed 7"
+            }
+            process {
+                """
+                input[0] = GAWK_BINARY_PHENO.out.output.map { _meta, phenotype -> [[ id: 'fast_pcgc_weights' ], phenotype, 0.1] }
+                input[1] = ${genotypes}
+                input[2] = GAWK_WEIGHTS_ALL.out.output.map { _meta, weights -> [[ id: 'weights_all' ], weights] }
+                input[3] = [[ id: 'quantitative_covariates' ], []]
+                input[4] = [[ id: 'categorical_covariates' ], []]
+                """
+            }
+        }
+
+        then {
+            def resultFile = path(process.out.fastpcgc_results.get(0).get(1))
+            def command = resultFile.parent.resolve(".command.sh").text.replaceAll(/\s+/, " ")
+            assertAll(
+                { assert process.success },
+                { assert command.contains('--weights "weights_all.weights"') },
+                { assert command.contains('--prevalence "0.1"') },
+                { assert !command.contains("--ignore-weights") },
+                { assert path(process.out.repetitions.get(0).get(1)).readLines().size() == 10 },
+                { assert path(process.out.jackests.get(0).get(1)).readLines().size() == 20 },
+                // No `--factors`, so no combined covariate echo.
+                { assert process.out.combined.size() == 0 },
+                { assert !path(process.out.log.get(0).get(1)).text.contains("contains weights for only") },
+                { assert snapshot(sanitizeOutput(process.out, unstableKeys: ["log"])).match() }
+            )
+        }
+    }
+
+    test("homo_sapiens popgen - a quantitative trait fails") {
+
+        when {
+            params {
+                module_args = "--mpheno 1"
+            }
+            process {
+                """
+                input[0] = GAWK_QUANT_PHENO.out.output.map { _meta, phenotype -> [[ id: 'fast_pcgc_not_binary' ], phenotype, 0.3] }
+                input[1] = ${genotypes}
+                input[2] = [[ id: 'weights' ], []]
+                input[3] = [[ id: 'quantitative_covariates' ], []]
+                input[4] = [[ id: 'categorical_covariates' ], []]
+                """
+            }
+        }
+
+        then {
+            // PCGC is a liability-scale estimator with no quantitative mode at all: the prevalence is always
+            // supplied, so a non-binary trait is the module's only native failure mode.
+            assertAll(
+                { assert !process.success },
+                { assert process.exitStatus != 0 }
+            )
+        }
+    }
+
+    test("homo_sapiens popgen - binary trait with quantitative and categorical covariates - stub") {
+
+        options "-stub"
+
+        when {
+            process {
+                """
+                input[0] = GAWK_BINARY_PHENO.out.output.map { _meta, phenotype -> [[ id: 'fast_pcgc_stub' ], phenotype, 0.3] }
+                input[1] = ${genotypes}
+                input[2] = [[ id: 'weights' ], []]
+                input[3] = GAWK_QUANT_COVAR.out.output.map { _meta, covariates -> [[ id: 'fast_pcgc_stub' ], covariates] }
+                input[4] = GAWK_FACTORS.out.output.map { _meta, covariates -> [[ id: 'fast_pcgc_stub' ], covariates] }
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                { assert file(process.out.fastpcgc_results.get(0).get(1)).name == "fast_pcgc_stub.fastpcgc" },
+                { assert file(process.out.fastpcgc_marginal.get(0).get(1)).name == "fast_pcgc_stub.fastpcgc.marginal" },
+                { assert file(process.out.log.get(0).get(1)).name == "fast_pcgc_stub.log" },
+                { assert snapshot(sanitizeOutput(process.out, unstableKeys: ["log"])).match() }
+            )
+        }
+    }
+}

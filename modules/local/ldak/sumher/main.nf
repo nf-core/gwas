@@ -3,8 +3,8 @@ process LDAK_SUMHER {
     label 'process_medium'
 
     container "${workflow.containerEngine in ['singularity', 'apptainer'] && !task.ext.singularity_pull_docker_container
-        ? 'docker://ghcr.io/lyh970817/gwas/ldak@sha256:f2b2157559e4346cab5e9f478ab70fc76359743ef06522fed9ad23769d735a6e'
-        : 'ghcr.io/lyh970817/gwas/ldak:6.3-b755ab7@sha256:f2b2157559e4346cab5e9f478ab70fc76359743ef06522fed9ad23769d735a6e'}"
+        ? 'docker://ghcr.io/lyh970817/gwas/ldak@sha256:a0699bb7637ef2ba20c37fc6ef46b9533c78e68a022d770478a2fbb938e10a00'
+        : 'ghcr.io/lyh970817/gwas/ldak:6.3-b755ab7-bookworm@sha256:a0699bb7637ef2ba20c37fc6ef46b9533c78e68a022d770478a2fbb938e10a00'}"
 
     input:
     tuple val(meta), path(summary_statistics, stageAs: 'summary/*')
@@ -32,8 +32,6 @@ process LDAK_SUMHER {
     prefix = task.ext.prefix ?: meta.id
 
     """
-    set -o pipefail
-
     ldak --sum-hers "${prefix}" \
         --summary "${summary_statistics}" \
         --tagfile "${tagging_file}" \

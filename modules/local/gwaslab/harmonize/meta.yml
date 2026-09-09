@@ -85,7 +85,7 @@ output:
           description: Groovy Map containing summary-statistics information
       - "*.gwaslab.tsv.gz":
           type: file
-          description: Canonical compressed GWASLab summary statistics retaining status fields
+          description: Compressed GWASLab-standard summary statistics retaining status fields
           pattern: "*.gwaslab.tsv.gz"
           ontologies: []
   log:

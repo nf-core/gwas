@@ -2,15 +2,16 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://raw.githubusercontent.com/nf-core/gwas/master/assets/schema_summary_statistics_manifest.json",
     "title": "nf-core/gwas pipeline - summary-statistics manifest schema",
-    "description": "Schema for the summary-statistics manifest provided with params.summary_statistics_manifest. One row declares one external or pipeline-generated scientific summary result.",
+    "description": "One row declares one external, pipeline-generated or meta-analysis-derived scientific summary result.",
     "type": "array",
     "items": {
         "type": "object",
+        "additionalProperties": false,
         "properties": {
             "summary_statistics_id": {
                 "type": "string",
                 "pattern": "^\\S+$",
-                "description": "Unique stable identifier for the canonical summary-statistics result.",
+                "description": "Unique stable identifier for the GWASLab-standard summary-statistics result.",
                 "errorMessage": "Summary-statistics ID must be provided, must be unique and cannot contain spaces",
                 "meta": ["id"]
             },
@@ -33,21 +34,14 @@
                 "format": "file-path",
                 "exists": true,
                 "pattern": "^\\S+\\.(tsv|txt|csv)(\\.gz|\\.bgz)?$",
-                "description": "External raw or canonical source summary-statistics table; blank for a pipeline-generated result.",
+                "description": "External summary-statistics table to load through GWASLab; blank for a pipeline-generated result.",
                 "errorMessage": "Source must be a readable .tsv, .txt or .csv table, optionally gzip-compressed, and cannot contain spaces"
-            },
-            "source_mode": {
-                "type": "string",
-                "enum": ["raw", "canonical"],
-                "description": "Whether an external source requires GWASLab harmonisation or already asserts the canonical contract; blank for a pipeline-generated result.",
-                "errorMessage": "Source mode must be one of 'raw' or 'canonical'",
-                "meta": ["source_mode"]
             },
             "source_format": {
                 "type": "string",
                 "pattern": "^[A-Za-z0-9_.+-]+$",
-                "description": "GWASLab input-format name for external raw input or nfcore_gwas_canonical_v1 for external canonical input; blank for a pipeline-generated result.",
-                "errorMessage": "Source format must be a single GWASLab format token or 'nfcore_gwas_canonical_v1'",
+                "description": "GWASLab input-format name; use gwaslab for a pre-harmonised GWASLab table and leave blank for a pipeline-generated result.",
+                "errorMessage": "Source format must be a GWASLab input-format name",
                 "meta": ["source_format"]
             },
             "producer_analysis_id": {
@@ -118,9 +112,27 @@
             "access_constraints": {
                 "type": "string",
                 "pattern": "^[^\\r\\n]*$",
-                "description": "Optional non-secret access or redistribution constraint recorded in provenance.",
+                "description": "Optional non-secret access or redistribution constraint associated with the declared summary result.",
                 "errorMessage": "Access constraints must be one line and must not contain credentials",
                 "meta": ["access_constraints"]
+            },
+            "source_summary_statistics_ids": {
+                "type": "string",
+                "pattern": "^\\S+(,\\S+)*$",
+                "description": "Ordered comma-delimited identifiers of at least two declared base summaries; defines a meta-analysis-derived origin.",
+                "meta": ["source_summary_statistics_ids"]
+            },
+            "meta_analysis_models": {
+                "type": "string",
+                "pattern": "^[a-z0-9_]+(,[a-z0-9_]+)*$",
+                "description": "Comma-delimited fixed, random, re2 and mrmega model selection; defaults to fixed, which is always required.",
+                "meta": ["meta_analysis_models"]
+            },
+            "min_studies": {
+                "type": "integer",
+                "minimum": 2,
+                "description": "Minimum native fixed-effect contributing study count retained in the derived result; defaults to 2 and cannot exceed the declared parent count.",
+                "meta": ["min_studies"]
             }
         },
         "required": ["summary_statistics_id"],
@@ -131,14 +143,29 @@
                     "trait_id",
                     "trait_type",
                     "source",
-                    "source_mode",
                     "source_format",
                     "genome_build",
                     "ancestry",
                     "source_method"
                 ],
                 "not": {
-                    "anyOf": [{ "required": ["producer_analysis_id"] }, { "required": ["producer_association_method"] }]
+                    "anyOf": [
+                        {
+                            "required": ["producer_analysis_id"]
+                        },
+                        {
+                            "required": ["producer_association_method"]
+                        },
+                        {
+                            "required": ["source_summary_statistics_ids"]
+                        },
+                        {
+                            "required": ["meta_analysis_models"]
+                        },
+                        {
+                            "required": ["min_studies"]
+                        }
+                    ]
                 }
             },
             {
@@ -146,9 +173,41 @@
                 "required": ["producer_analysis_id", "producer_association_method"],
                 "not": {
                     "anyOf": [
-                        { "required": ["source"] },
-                        { "required": ["source_mode"] },
-                        { "required": ["source_format"] }
+                        {
+                            "required": ["source"]
+                        },
+                        {
+                            "required": ["source_format"]
+                        },
+                        {
+                            "required": ["source_summary_statistics_ids"]
+                        },
+                        {
+                            "required": ["meta_analysis_models"]
+                        },
+                        {
+                            "required": ["min_studies"]
+                        }
+                    ]
+                }
+            },
+            {
+                "title": "Meta-analysis-derived summary-statistics origin",
+                "required": ["source_summary_statistics_ids"],
+                "not": {
+                    "anyOf": [
+                        {
+                            "required": ["source"]
+                        },
+                        {
+                            "required": ["source_format"]
+                        },
+                        {
+                            "required": ["producer_analysis_id"]
+                        },
+                        {
+                            "required": ["producer_association_method"]
+                        }
                     ]
                 }
             }

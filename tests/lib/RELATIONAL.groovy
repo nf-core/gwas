@@ -1,7 +1,7 @@
 // Linked-manifest builders for pipeline-level tests.
 //
 // Fixture paths name the portable nf-core/test-datasets GWAS bundle and are resolved through FIXTURES.base,
-// so executable tests consistently use the public nf-core/test-datasets fixture bundle.
+// which reads the materialized, checksum-verified bundle rooted at GWAS_TEST_FIXTURES.
 class RELATIONAL {
 
     // Gzip member metadata is not scientific content. Snapshot decompressed text with
@@ -23,12 +23,12 @@ class RELATIONAL {
     }
 
     static String cohorts(Object projectDir, Object outputDir, String name, Closure mutate = null) {
-        def header = ['cohort_id', 'genome_build', 'ancestry', 'pgen', 'psam', 'pvar', 'bed', 'bim', 'fam', 'vcf']
+        def header = ['cohort_id', 'genome_build', 'ancestry', 'pgen', 'psam', 'pvar', 'bed', 'bim', 'fam', 'genotype_view_id']
         def rows = [cohort('example_pgen')]
         if (mutate) {
             mutate(rows)
         }
-        return materialise(projectDir, outputDir, name, 'cohorts', header, rows, ['pgen', 'psam', 'pvar', 'bed', 'bim', 'fam', 'vcf'])
+        return materialise(projectDir, outputDir, name, 'cohorts', header, rows, ['pgen', 'psam', 'pvar', 'bed', 'bim', 'fam'])
     }
 
     static Map cohort(String cohortId) {
@@ -44,7 +44,7 @@ class RELATIONAL {
                 bed: '',
                 bim: '',
                 fam: '',
-                vcf: '',
+                genotype_view_id: '',
             ],
             example_bfile: [
                 cohort_id: 'example_bfile',
@@ -56,19 +56,7 @@ class RELATIONAL {
                 bed: fixture('genotypes/example_all.bed'),
                 bim: fixture('genotypes/example_all.bim'),
                 fam: fixture('genotypes/example_all.fam'),
-                vcf: '',
-            ],
-            example_vcf: [
-                cohort_id: 'example_vcf',
-                genome_build: 'GRCh37',
-                ancestry: 'EUR',
-                pgen: '',
-                psam: '',
-                pvar: '',
-                bed: '',
-                bim: '',
-                fam: '',
-                vcf: fixture('genotypes/example_all.vcf.gz'),
+                genotype_view_id: '',
             ],
         ]
         if (!cohorts.containsKey(cohortId)) {
@@ -81,6 +69,21 @@ class RELATIONAL {
         def manifest = new File(manifestPath)
         def lines = manifest.readLines()
         manifest.text = (["${lines.first()},${column}"] + lines.tail().collect { line -> "${line},${quote(value)}" }).join('\n') + '\n'
+        return manifestPath
+    }
+
+    static String retainColumns(String manifestPath, List<String> columns) {
+        def manifest = new File(manifestPath)
+        def rows = manifest.readLines().collect { line -> line.split(',', -1).toList() }
+        def indices = columns.collect { column -> rows.first().indexOf(column) }
+        manifest.text = rows.collect { row -> indices.collect { index -> row[index] }.join(',') }.join('\n') + '\n'
+        return manifestPath
+    }
+
+    static String quoteHeaders(String manifestPath) {
+        def manifest = new File(manifestPath)
+        def lines = manifest.readLines()
+        manifest.text = ([lines.first().split(',', -1).collect { column -> quote(column) }.join(',')] + lines.tail()).join('\n') + '\n'
         return manifestPath
     }
 
@@ -148,7 +151,6 @@ class RELATIONAL {
             'trait_id',
             'trait_type',
             'source',
-            'source_mode',
             'source_format',
             'producer_analysis_id',
             'producer_association_method',
@@ -160,6 +162,9 @@ class RELATIONAL {
             'population_prevalence',
             'sample_prevalence',
             'access_constraints',
+            'source_summary_statistics_ids',
+            'meta_analysis_models',
+            'min_studies',
         ]
         def rows = [summary(outputDir, 'external_qt')]
         if (mutate) {
@@ -174,9 +179,8 @@ class RELATIONAL {
                 summary_statistics_id: 'external_qt',
                 trait_id: 'QT_external',
                 trait_type: 'quantitative',
-                source: canonicalSummary(outputDir, 'external_qt'),
-                source_mode: 'canonical',
-                source_format: 'nfcore_gwas_canonical_v1',
+                source: gwaslabSummary(outputDir, 'external_qt'),
+                source_format: 'gwaslab',
                 producer_analysis_id: '',
                 producer_association_method: '',
                 genome_build: 'GRCh37',
@@ -192,9 +196,8 @@ class RELATIONAL {
                 summary_statistics_id: 'external_bt',
                 trait_id: 'BT_external',
                 trait_type: 'binary',
-                source: canonicalSummary(outputDir, 'external_bt'),
-                source_mode: 'canonical',
-                source_format: 'nfcore_gwas_canonical_v1',
+                source: gwaslabSummary(outputDir, 'external_bt'),
+                source_format: 'gwaslab',
                 producer_analysis_id: '',
                 producer_association_method: '',
                 genome_build: 'GRCh37',
@@ -219,7 +222,6 @@ class RELATIONAL {
             trait_id: '',
             trait_type: '',
             source: '',
-            source_mode: '',
             source_format: '',
             producer_analysis_id: analysisId,
             producer_association_method: associationMethod,
@@ -393,16 +395,16 @@ class RELATIONAL {
         ])
     }
 
-    static String canonicalSummary(Object outputDir, String name) {
+    static String gwaslabSummary(Object outputDir, String name) {
         return resource(
             outputDir,
-            "${name}.canonical.tsv",
+            "${name}.gwaslab.tsv",
             'SNPID\tCHR\tPOS\tEA\tNEA\tSTATUS\tEAF\tBETA\tSE\tP\tN\n' +
                 'rs1\t1\t1\tA\tG\t1900000\t0.25\t0.1\t0.01\t1e-4\t1000\n',
         )
     }
 
-    static String ldakCanonicalSummary(Object projectDir, Object outputDir, String name, String fixtureName) {
+    static String ldakGwaslabSummary(Object projectDir, Object outputDir, String name, String fixtureName) {
         def source = new File(projectDir.toString(), "modules/local/ldak/sumcors/tests/fixtures/${fixtureName}.summaries")
         def rows = []
         source.readLines().tail().eachWithIndex { line, index ->
@@ -424,7 +426,7 @@ class RELATIONAL {
         }
         return resource(
             outputDir,
-            "${name}.canonical.tsv",
+            "${name}.gwaslab.tsv",
             'SNPID\tCHR\tPOS\tEA\tNEA\tSTATUS\tEAF\tBETA\tSE\tP\tN\n' + rows.join('\n') + '\n',
         )
     }
@@ -476,7 +478,7 @@ class RELATIONAL {
             phenotype: fixture('pheno_cov/example.pheno'),
             quant_covariates: fixture('pheno_cov/example.qcovar'),
             cat_covariates: fixture('pheno_cov/example.catcovar'),
-            association_methods: 'plink2',
+            association_methods: 'regenie',
             heritability_methods: '',
             population_prevalence: '',
             sample_prevalence: '',
@@ -501,15 +503,6 @@ class RELATIONAL {
             example_bfile_qt: common + [
                 analysis_id: 'example_bfile_qt',
                 cohort_id: 'example_bfile',
-                trait_id: 'QT',
-                trait_type: 'quantitative',
-                phenotype_column: 'QT',
-                control_value: '',
-                case_value: '',
-            ],
-            example_vcf_qt: common + [
-                analysis_id: 'example_vcf_qt',
-                cohort_id: 'example_vcf',
                 trait_id: 'QT',
                 trait_type: 'quantitative',
                 phenotype_column: 'QT',
@@ -564,15 +557,94 @@ class RELATIONAL {
         return resource(outputDir, name, predictors.join('\n') + '\n')
     }
 
-    static String weights(Object projectDir, Object outputDir, String name, int value) {
+    // `stride` names every `stride`-th predictor, so `2` produces a weights file covering half the cohort's
+    // predictors. LDAK gives weight zero to every predictor a weights file omits and only warns about it, so
+    // a partial file is a legitimate — and testable — input rather than an error.
+    static String weights(Object projectDir, Object outputDir, String name, int value, int stride = 1) {
         def source = cohort('example_pgen').pvar
         def fixture = source.toString().replace(FIXTURES.UPSTREAM, FIXTURES.base(projectDir))
         def lines = fixture.startsWith('http') ? new URL(fixture).readLines() : new File(fixture).readLines()
         def content = lines
             .findAll { line -> line && !line.startsWith('#') }
-            .collect { line -> "${line.tokenize()[2]} ${value}" }
+            .withIndex()
+            .findAll { _line, index -> index % stride == 0 }
+            .collect { line, _index -> "${line.tokenize()[2]} ${value}" }
             .join('\n') + '\n'
         return resource(outputDir, name, content)
+    }
+
+    static String threeLevelCategoricalCovariates(Object projectDir, Object outputDir) {
+        def source = new File("${FIXTURES.base(projectDir)}results/fixtures/pheno_cov/example.catcovar")
+        def rows = source.readLines().drop(1).findAll { line -> line.trim() }.withIndex().collect { line, index ->
+            def ids = line.tokenize().take(2)
+            return (ids + ['A', 'B', 'C'][index % 3]).join('\t')
+        }
+        return resource(outputDir, 'batch3.catcovar', (['FID\tIID\tBATCH'] + rows).join('\n') + '\n')
+    }
+
+    // A copy of a shipped covariate fixture with one cell of `column` blanked out on the first sample, for the
+    // ingress rule that refuses an incomplete covariate file to a method which would read the gap as a value.
+    // Returns the resource path and the identity of the sample whose cell was removed.
+    static Map covariatesWithMissingCell(Object projectDir, Object outputDir, String name, String fixtureName, String column) {
+        def fixture = "${FIXTURES.base(projectDir)}results/fixtures/pheno_cov/${fixtureName}"
+        def lines = fixture.startsWith('http') ? new URL(fixture).readLines() : new File(fixture).readLines()
+        def header = lines.first().split('\t', -1).toList()
+        def index = header.indexOf(column)
+        if (index < 2) {
+            throw new IllegalArgumentException("Covariate fixture '${fixtureName}' declares no covariate column '${column}'")
+        }
+        def body = lines.tail().findAll { line -> line.trim() }.collect { line -> line.split('\t', -1).toList() }
+        body[0][index] = ''
+        return [
+            path: resource(outputDir, name, ([header.join('\t')] + body.collect { row -> row.join('\t') }).join('\n') + '\n'),
+            fid: body[0][0],
+            iid: body[0][1],
+            column: column,
+        ]
+    }
+
+    // A copy of a shipped phenotype fixture with one named sample's trait blanked out, for the rule that
+    // exempts an unphenotyped sample from covariate completeness: its covariates are never read by any
+    // estimator, so a gap in them is not a defect. Returns the resource path.
+    static String phenotypeWithoutSample(Object projectDir, Object outputDir, String name, String fixtureName, String column, String fid, String iid) {
+        def fixture = "${FIXTURES.base(projectDir)}results/fixtures/pheno_cov/${fixtureName}"
+        def lines = fixture.startsWith('http') ? new URL(fixture).readLines() : new File(fixture).readLines()
+        def header = lines.first().split('\t', -1).toList()
+        def index = header.indexOf(column)
+        if (index < 2) {
+            throw new IllegalArgumentException("Phenotype fixture '${fixtureName}' declares no trait column '${column}'")
+        }
+        def body = lines.tail().findAll { line -> line.trim() }.collect { line -> line.split('\t', -1).toList() }
+        def target = body.find { row -> row[0] == fid && row[1] == iid }
+        if (!target) {
+            throw new IllegalArgumentException("Phenotype fixture '${fixtureName}' declares no sample '${fid} ${iid}'")
+        }
+        target[index] = 'NA'
+        return resource(outputDir, name, ([header.join('\t')] + body.collect { row -> row.join('\t') }).join('\n') + '\n')
+    }
+
+    // A two-variant synthetic VCF for the native PLINK 2 --make-bed multiallelic contract test.
+    static String multiallelicVcf(Object outputDir, String name) {
+        def lines = [
+            '##fileformat=VCFv4.2',
+            '##contig=<ID=1>',
+            '##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">',
+            ['#CHROM', 'POS', 'ID', 'REF', 'ALT', 'QUAL', 'FILTER', 'INFO', 'FORMAT', 'S1', 'S2', 'S3', 'S4'].join('\t'),
+            ['1', '100', 'm1', 'A', 'C,G', '.', 'PASS', '.', 'GT', '0/1', '1/2', '0/0', '2/2'].join('\t'),
+            ['1', '200', 'b1', 'A', 'T', '.', 'PASS', '.', 'GT', '0/1', '0/0', '1/1', './.'].join('\t'),
+        ]
+        return resource(outputDir, name, lines.join('\n') + '\n')
+    }
+
+    // A byte-for-byte copy of a fixture file under a new name. `resource` writes text, which corrupts a
+    // binary member such as a `.pgen`, so a test that needs a renamed-but-identical bundle uses this.
+    static String copyResource(Object outputDir, String name, Object source) {
+        def directory = new File(new File(outputDir.toString()).parentFile, 'resources')
+        directory.mkdirs()
+        def target = new File(directory, name)
+        target.parentFile.mkdirs()
+        target.bytes = new File(source.toString()).bytes
+        return target.absolutePath
     }
 
     static String resource(Object outputDir, String name, String content) {
@@ -597,7 +669,7 @@ class RELATIONAL {
     static String legacy35Header(Object outputDir, String name) {
         def header = [
             'analysis_id', 'cohort_id', 'trait_id', 'trait_type', 'genome_build', 'ancestry',
-            'pgen', 'psam', 'pvar', 'bed', 'bim', 'fam', 'vcf', 'vcf_index',
+            'pgen', 'psam', 'pvar', 'bed', 'bim', 'fam', 'vcf_index',
             'phenotype', 'phenotype_column', 'control_value', 'case_value', 'quant_covariates',
             'cat_covariates', 'association_methods', 'heritability_methods', 'population_prevalence',
             'sample_prevalence', 'ldak_model', 'ldak_power', 'ldak_weights',

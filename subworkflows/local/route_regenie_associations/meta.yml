@@ -9,19 +9,15 @@ keywords:
   - prediction reuse
 components:
   - plink_fit_regenie
-  - attribute/regenie/predictions
   - regenie/step2
   - digestfilebytes
   - buildcanonicalpredictionkey
 input:
   - ch_analyses:
-      description: Canonical nf-core/gwas analysis records; public outputs retain each consuming analysis map
-      structure: "[map meta, path pgen, path psam, path pvar, path phenotype, path covariates|[]]"
-      pattern: "*.{pgen,psam,pvar,pvar.zst,phe,pheno,covar,cov,txt,tsv}"
+      description: Canonical nf-core/gwas analysis records, each carrying its cohort's native genotype bundle in format-polymorphic member order and its cohort's native view key. REGENIE selects `--bed` or `--pgen` from the primary member's extension, so a PLINK 1 cohort is fitted without conversion. The view key is the Step 1 reuse identity and stays a tuple member; public outputs retain each consuming analysis map
+      structure: "[map meta, path primary_genotype, path variant_file, path sample_file, path phenotype, path covariates|[], val view_key]"
+      pattern: "*.{bed,bim,fam,pgen,pvar,psam,phe,pheno,covar,cov,txt,tsv}"
       ontologies: []
-  - step1_bsize:
-      description: REGENIE Step 1 block size
-      structure: integer
   - step2_bsize:
       description: REGENIE Step 2 block size
       structure: integer
@@ -36,21 +32,6 @@ output:
       description: REGENIE Step 2 association results
       structure: [map meta, path results]
       pattern: "*.regenie.gz"
-      ontologies: []
-  - logs:
-      description: REGENIE Step 1 and Step 2 logs
-      structure: [map meta, path log]
-      pattern: "*.log"
-      ontologies: []
-  - predictions:
-      description: REGENIE Step 1 prediction list attributed to each consuming analysis
-      structure: [map meta, path predictions]
-      pattern: "*_pred.list"
-      ontologies: []
-  - loco:
-      description: REGENIE Step 1 leave-one-chromosome-out predictions attributed to each consuming analysis
-      structure: [map meta, path loco]
-      pattern: "*.loco.gz"
       ontologies: []
 authors:
   - "@andongni"

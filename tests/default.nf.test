@@ -21,11 +21,10 @@ nextflow_pipeline {
             def multiqc_report = new File("${params.outdir}/multiqc/multiqc_report.html")
             def analysis_plan = new File("${params.outdir}/multiqc/multiqc_data/multiqc_nf-core-gwas-analysis-plan-table.txt")
             def stable_name_association = getAllFilesFromDir("${params.outdir}/association", relative: true, includeDir: true).findAll { path -> path.toString() }
-            def stable_path_association = getAllFilesFromDir("${params.outdir}/association", ignoreFile: 'tests/.nftignore')
+            def stable_path_association = RELATIONAL.gzipTextHashes("${params.outdir}/association")
             def stable_name_summary_statistics = getAllFilesFromDir("${params.outdir}/summary_statistics", relative: true, includeDir: true).findAll { path -> path.toString() }
-            // Canonical table content is stable after decompression. Provenance retains the exact
-            // source-byte checksum, which can legitimately change when an upstream tool rewrites an
-            // equivalent gzip stream; its schema and semantics are covered by the component tests.
+            // GWASLab-standard table content is stable after decompression; the processing log is retained
+            // separately and does not enter this content snapshot.
             def stable_path_summary_statistics = RELATIONAL.gzipTextHashes("${params.outdir}/summary_statistics")
             def stable_name_multiqc = getAllFilesFromDir("${params.outdir}/multiqc", relative: true, includeDir: true).findAll { path -> path.toString() }
             def stable_path_multiqc = getAllFilesFromDir(
@@ -48,11 +47,12 @@ nextflow_pipeline {
                 { assert workflow.success },
                 // The routine profile executes the public minimal quantitative example. Broader static
                 // association, heritability and heterogeneous examples have their own named profiles.
-                { assert new File("${params.outdir}").list().toList().sort() == ['association', 'multiqc', 'pipeline_info', 'summary_statistics'] },
-                { assert TRACE.count(workflow, 'PLINK2_GLM') == 1 },
+                // Every cohort publishes its view record under `genotypes/` to explain the run's other keys.
+                { assert new File("${params.outdir}").list().toList().sort() == ['association', 'genotypes', 'multiqc', 'pipeline_info', 'summary_statistics'] },
+                { assert TRACE.count(workflow, 'REGENIE_STEP1') == 1 },
+                { assert TRACE.count(workflow, 'REGENIE_STEP2') == 1 },
                 { assert TRACE.count(workflow, 'GWASLAB_HARMONIZE') == 1 },
                 { assert TRACE.count(workflow, 'GCTA_REML') == 0 },
-                { assert TRACE.count(workflow, 'REGENIE_STEP1') == 0 },
                 { assert TRACE.count(workflow, 'GCTA_FASTGWA') == 0 },
                 { assert TRACE.count(workflow, 'GCTA_REMLLDMS') == 0 },
                 { assert TRACE.count(workflow, 'LDAK_KVIKSTEP1') == 0 },
@@ -61,11 +61,11 @@ nextflow_pipeline {
                 { assert TRACE.count(workflow, 'LDAK_PCGC') == 0 },
                 { assert analysis_plan.text.readLines() == [
                     'Sample\tcohort\ttrait\ttrait_type\tgenome_build\tancestry\tassociation_methods\theritability_methods',
-                    'example_quantitative\texample_cohort\tQT\tquantitative\tGRCh37\tEUR\tplink2\t-',
+                    'example_quantitative\texample_cohort\tQT\tquantitative\tGRCh37\tEUR\tregenie\t-',
                 ] },
                 { assert multiqc_report.text.contains('This table describes the run plan, not per-method completion or scientific results.') },
                 { assert multiqc_report.text.contains('Analysis ID') },
-                { assert multiqc_report.text.contains('Association testing was performed with PLINK 2') },
+                { assert multiqc_report.text.contains('Association testing was performed with REGENIE') },
                 { assert !multiqc_report.text.contains('SNP-based heritability was estimated') },
                 { assert multiqc_report.text.contains('title="nf-core/gwas"') },
                 { assert multiqc_report.text.contains('class="custom_logo') },

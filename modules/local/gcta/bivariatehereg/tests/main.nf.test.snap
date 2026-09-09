@@ -1,0 +1,104 @@
+{
+    "homo_sapiens popgen - partially overlapping traits report their own sample counts": {
+        "content": [
+            {
+                "hereg_results": [
+                    [
+                        {
+                            "id": "plink_simulated_dense"
+                        },
+                        "plink_simulated_dense.HEreg:md5,a6282905959fc3d544b8a78142fd0cc1"
+                    ]
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "plink_simulated_dense"
+                        },
+                        "plink_simulated_dense.log"
+                    ]
+                ],
+                "versions_gcta": [
+                    [
+                        "GCTA_BIVARIATEHEREG",
+                        "gcta",
+                        "1.94.1"
+                    ]
+                ]
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-26T06:36:07.389645233"
+    },
+    "homo_sapiens popgen - bivariate quantitative phenotype with dense GRM - stub": {
+        "content": [
+            {
+                "hereg_results": [
+                    [
+                        {
+                            "id": "plink_simulated_dense"
+                        },
+                        "plink_simulated_dense.HEreg:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "plink_simulated_dense"
+                        },
+                        "plink_simulated_dense.log"
+                    ]
+                ],
+                "versions_gcta": [
+                    [
+                        "GCTA_BIVARIATEHEREG",
+                        "gcta",
+                        "1.94.1"
+                    ]
+                ]
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-26T06:37:42.028756919"
+    },
+    "homo_sapiens popgen - bivariate quantitative phenotype with dense GRM": {
+        "content": [
+            {
+                "hereg_results": [
+                    [
+                        {
+                            "id": "plink_simulated_dense"
+                        },
+                        "plink_simulated_dense.HEreg:md5,ef670776dba6290982ad4cb42c934b33"
+                    ]
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "plink_simulated_dense"
+                        },
+                        "plink_simulated_dense.log"
+                    ]
+                ],
+                "versions_gcta": [
+                    [
+                        "GCTA_BIVARIATEHEREG",
+                        "gcta",
+                        "1.94.1"
+                    ]
+                ]
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-26T06:35:21.8357823"
+    }
+}

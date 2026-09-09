@@ -1,0 +1,76 @@
+{
+    "homo_sapiens popgen - stub": {
+        "content": [
+            {
+                "grm_files": [
+                    [
+                        {
+                            "id": "plink_simulated"
+                        },
+                        [
+                            "plink_simulated.grm.bin:md5,b34194ef3dd581acc21d8061282c3800",
+                            "plink_simulated.grm.iid:md5,c9f3c179cf033d8b365c1294243922a7"
+                        ]
+                    ]
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "plink_simulated"
+                        },
+                        "plink_simulated.log"
+                    ]
+                ],
+                "versions_mph": [
+                    [
+                        "MPH_MAKEGRM",
+                        "mph",
+                        "0.55.1"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-03T10:33:13.401550545",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "homo_sapiens popgen - the one-component matrix is the declared size, header and identifier order": {
+        "content": [
+            {
+                "grm_files": [
+                    [
+                        {
+                            "id": "plink_simulated"
+                        },
+                        [
+                            "plink_simulated.grm.bin:md5,01f3a2f6d089b06505ce14309144ad2f",
+                            "plink_simulated.grm.iid:md5,4aaa3586dd143906e5db22334a257566"
+                        ]
+                    ]
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "plink_simulated"
+                        },
+                        "plink_simulated.log"
+                    ]
+                ],
+                "versions_mph": [
+                    [
+                        "MPH_MAKEGRM",
+                        "mph",
+                        "0.55.1"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-03T10:32:11.081285517",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

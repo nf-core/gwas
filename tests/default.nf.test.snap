@@ -2,66 +2,66 @@
     "versions": {
         "content": [
             {
-                "CANONICALISE_SUMMARY_STATISTICS": {
-                    "python": "3.14.5"
-                },
                 "GWASLAB_HARMONIZE": {
                     "gwaslab": "4.1.9",
                     "python": "3.12.13"
                 },
-                "NORMALISE_PHENOTYPES": {
+                "PREPARE_GENOTYPE_SOURCE": {
                     "python": "3.14.5"
                 },
-                "PLINK2_GLM": {
-                    "plink2": "2.0.0-a.6.9LM"
+                "PREPARE_PHENOTYPE_INPUTS": {
+                    "python": "3.14.5"
                 },
-                "PLINK2_VCF": {
-                    "plink2": "2.0.0-a.6.9LM"
+                "REGENIE_STEP1": {
+                    "regenie": "4.1.2"
+                },
+                "REGENIE_STEP2": {
+                    "regenie": "4.1.2"
                 },
                 "Workflow": {
                     "nf-core/gwas": "v1.0.0dev"
                 }
             }
         ],
+        "timestamp": "2026-09-10T03:55:10.799126065",
         "meta": {
-            "nf-test": "0.9.3",
-            "nextflow": "25.10.4"
-        },
-        "timestamp": "2026-08-24T02:50:16.617583182"
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
     },
     "association": {
         "content": [
             [
-                "plink2",
-                "plink2/example_quantitative",
-                "plink2/example_quantitative/example_quantitative.plink2.glm.linear"
+                "regenie",
+                "regenie/example_quantitative",
+                "regenie/example_quantitative/example_quantitative.regenie.gz"
             ],
             [
-                "example_quantitative.plink2.glm.linear:md5,d90113562b608a71d4f69f961b6ddfcb"
+                "regenie/example_quantitative/example_quantitative.regenie.gz:md5,5003ea8f90ec45a749d4727ac3262a83"
             ]
         ],
+        "timestamp": "2026-09-02T11:33:17.509159931",
         "meta": {
-            "nf-test": "0.9.3",
-            "nextflow": "25.10.4"
-        },
-        "timestamp": "2026-08-24T02:59:35.765728314"
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
     },
     "summary_statistics": {
         "content": [
             [
-                "example_quantitative--plink2",
-                "example_quantitative--plink2/example_quantitative--plink2.canonical.tsv.gz",
-                "example_quantitative--plink2/example_quantitative--plink2.provenance.json"
+                "example_quantitative--regenie",
+                "example_quantitative--regenie/example_quantitative--regenie.gwaslab.log",
+                "example_quantitative--regenie/example_quantitative--regenie.gwaslab.tsv.gz"
             ],
             [
-                "example_quantitative--plink2/example_quantitative--plink2.canonical.tsv.gz:md5,d713f6552c48f21c495c454f3686ed45"
+                "example_quantitative--regenie/example_quantitative--regenie.gwaslab.tsv.gz:md5,e15cfb82b7787b620dd656b17ba3f369"
             ]
         ],
+        "timestamp": "2026-09-02T11:33:17.520258546",
         "meta": {
-            "nf-test": "0.9.3",
-            "nextflow": "25.10.4"
-        },
-        "timestamp": "2026-08-24T03:36:42.90723335"
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
     },
     "multiqc": {
         "content": [
@@ -86,26 +86,28 @@
             ],
             [
                 "multiqc_citations.txt:md5,4c806e63a283ec1b7e78cdae3a923d4f",
-                "multiqc_nf-core-gwas-analysis-plan-table.txt:md5,8e693726660f64ba09e7e037818b986b"
+                "multiqc_nf-core-gwas-analysis-plan-table.txt:md5,8a4c3a43c08e2388084e0c8dcb60ac9b"
             ]
         ],
+        "timestamp": "2026-09-02T11:33:17.528966062",
         "meta": {
-            "nf-test": "0.9.3",
-            "nextflow": "25.10.4"
-        },
-        "timestamp": "2026-08-13T13:52:30.611629782"
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
     },
     "pipeline_info": {
         "content": [
             [
                 "nf_core_gwas_software_mqc_versions.yml"
             ],
-            []
+            [
+                
+            ]
         ],
+        "timestamp": "2026-07-30T05:11:18.631927776",
         "meta": {
             "nf-test": "0.9.3",
             "nextflow": "25.10.4"
-        },
-        "timestamp": "2026-07-30T05:11:18.631927776"
+        }
     }
 }

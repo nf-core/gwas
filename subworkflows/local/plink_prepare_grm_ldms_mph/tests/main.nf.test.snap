@@ -1,0 +1,67 @@
+{
+    "a real two-component family weights one shared SNP table twice": {
+        "content": [
+            {
+                "0": [
+                    [
+                        {
+                            "id": "popgen_family",
+                            "key": "popgen_key"
+                        },
+                        [
+                            "popgen_family__000001_ld01_maf01.grm.bin:md5,fee20b162857371f1bc03c9409cc4cc5",
+                            "popgen_family__000001_ld01_maf01.grm.iid:md5,4aaa3586dd143906e5db22334a257566",
+                            "popgen_family__000002_ld02_maf01.grm.bin:md5,533f44dec983e8283df60ae006718c15",
+                            "popgen_family__000002_ld02_maf01.grm.iid:md5,4aaa3586dd143906e5db22334a257566"
+                        ],
+                        [
+                            "popgen_family__000001_ld01_maf01",
+                            "popgen_family__000002_ld02_maf01"
+                        ]
+                    ]
+                ],
+                "1": [
+                    [
+                        {
+                            "id": "popgen_family",
+                            "key": "popgen_key"
+                        },
+                        "popgen_family.snp_info.counts.tsv:md5,ba22fe004e39024956d539be559a5313"
+                    ]
+                ],
+                "counts": [
+                    [
+                        {
+                            "id": "popgen_family",
+                            "key": "popgen_key"
+                        },
+                        "popgen_family.snp_info.counts.tsv:md5,ba22fe004e39024956d539be559a5313"
+                    ]
+                ],
+                "grm_family": [
+                    [
+                        {
+                            "id": "popgen_family",
+                            "key": "popgen_key"
+                        },
+                        [
+                            "popgen_family__000001_ld01_maf01.grm.bin:md5,fee20b162857371f1bc03c9409cc4cc5",
+                            "popgen_family__000001_ld01_maf01.grm.iid:md5,4aaa3586dd143906e5db22334a257566",
+                            "popgen_family__000002_ld02_maf01.grm.bin:md5,533f44dec983e8283df60ae006718c15",
+                            "popgen_family__000002_ld02_maf01.grm.iid:md5,4aaa3586dd143906e5db22334a257566"
+                        ],
+                        [
+                            "popgen_family__000001_ld01_maf01",
+                            "popgen_family__000002_ld02_maf01"
+                        ]
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-03T10:39:31.045936446",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

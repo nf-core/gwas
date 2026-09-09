@@ -7,7 +7,7 @@ include { GCTA_REMLLDMS } from '../../../modules/local/gcta/remlldms/main'
 
 workflow GRM_HERITABILITY_GCTA {
     take:
-    ch_grm // channel: [ val(meta), path(mgrm_manifest), path(grm_files) ], pre-built matrix, manifest is [] for greml
+    ch_grm // channel: [ val(meta), path(grm_files), val(grm_prefixes) ], prefixes are [] for greml
     ch_pheno // channel: [ val(meta2), path(phenotypes_file) ], once per analysis
     ch_qcovar // channel: [ val(meta3), path(quant_covariates_file) ], use [] for the optional file
     ch_covar // channel: [ val(meta4), path(cat_covariates_file) ], use [] for the optional file
@@ -22,7 +22,7 @@ workflow GRM_HERITABILITY_GCTA {
     }
 
     ch_routes = ch_grm
-        .map { meta, mgrm_manifest, grm_files -> tuple([meta.id, meta.gcta_estimator], tuple(meta, mgrm_manifest, grm_files)) }
+        .map { meta, grm_files, grm_prefixes -> tuple([meta.id, meta.gcta_estimator], tuple(meta, grm_files, grm_prefixes)) }
         .join(
             ch_pheno.map { meta2, phenotypes_file -> tuple([meta2.id, meta2.gcta_estimator], tuple(meta2, phenotypes_file)) },
             by: 0,
@@ -42,19 +42,10 @@ workflow GRM_HERITABILITY_GCTA {
             failOnMismatch: true,
         )
         .join(ch_estimators, by: 0, failOnDuplicate: true, failOnMismatch: true)
-        .map { route_key, grm, pheno, qcovar, covar, estimator ->
-            def analysis_id = route_key[0]
-            if (estimator == 'greml_ldms' && !grm[1]) {
-                error("[nf-core/gwas] ERROR: GRM_HERITABILITY_GCTA estimator 'greml_ldms' requires an MGRM manifest, none given for '${analysis_id}'")
-            }
-            if (estimator == 'greml' && grm[1]) {
-                error("[nf-core/gwas] ERROR: GRM_HERITABILITY_GCTA estimator 'greml' takes a single GRM bundle, an MGRM manifest was given for '${analysis_id}'")
-            }
-            tuple(route_key, grm, pheno, qcovar, covar, estimator)
-        }
+        .map { route_key, grm, pheno, qcovar, covar, estimator -> tuple(route_key, grm, pheno, qcovar, covar, estimator) }
         .branch { _route_key, grm, pheno, qcovar, covar, estimator ->
             greml: estimator == 'greml'
-            return tuple(tuple(grm[0], grm[2]), pheno, qcovar, covar)
+            return tuple(tuple(grm[0], grm[1]), pheno, qcovar, covar)
             greml_ldms: estimator == 'greml_ldms'
             return tuple(grm, pheno, qcovar, covar)
         }

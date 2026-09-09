@@ -6,6 +6,7 @@
     "type": "array",
     "items": {
         "type": "object",
+        "additionalProperties": false,
         "properties": {
             "analysis_id": {
                 "type": "string",

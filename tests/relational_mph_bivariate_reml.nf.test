@@ -1,0 +1,429 @@
+nextflow_pipeline {
+
+    name "Test MPH bivariate REML relationship routes"
+    script "../main.nf"
+    tag "pipeline"
+    tag "relational"
+    tag "genetic_correlation"
+    tag "mph"
+    tag "mph_bivariate_reml"
+
+    // Both MPH pair selectors are quantitative-only, so every valid case declares two quantitative endpoints.
+    // The shipped fixture carries one quantitative and one binary trait, so the second quantitative endpoint
+    // reads the binary column as a quantitative variable rather than inventing a phenotype file. Unlike the
+    // HEreg helper this one keeps the shipped pair covariates, because MPH does fit them and reports a BLUE per
+    // trait for each.
+    def quantitativePair = { projectDir, outputDir, name, methods, pairOptions = [:], mutateAnalyses = null ->
+        def analyses = RELATIONAL.analyses(projectDir, outputDir, name, { rows ->
+            def second = RELATIONAL.analysis(projectDir, 'example_pgen_bt')
+            second.analysis_id = 'example_pgen_qt2'
+            second.trait_id = 'QT2'
+            second.trait_type = 'quantitative'
+            second.control_value = ''
+            second.case_value = ''
+            rows << second
+            rows.each { row ->
+                row.association_methods = ''
+                row.heritability_methods = ''
+            }
+            if (mutateAnalyses) {
+                mutateAnalyses(rows)
+            }
+        })
+        def relationships = RELATIONAL.relationships(projectDir, outputDir, name, { rows ->
+            rows[0].relationship_id = 'qt_qt2'
+            rows[0].right_analysis_id = 'example_pgen_qt2'
+            rows[0].relationship_methods = methods
+        })
+        return [
+            cohort: RELATIONAL.cohorts(projectDir, outputDir, name),
+            analyses: analyses,
+            relationships: relationships,
+            options: RELATIONAL.methodOptions(outputDir, name, [analyses: [:], pair_requests: pairOptions]),
+        ]
+    }
+
+    def commands = { outputDir ->
+        def scripts = []
+        new File(new File(outputDir.toString()).parentFile, 'work').eachFileRecurse { entry ->
+            if (entry.isFile() && entry.name == '.command.sh') {
+                scripts << entry.text.replaceAll(/\\\s+/, ' ').replaceAll(/\s+/, ' ')
+            }
+        }
+        return scripts
+    }
+
+    // The five native files published for each pair request. Projected individual phenotypes stay in work.
+    def PUBLISHED = [
+        'native.log',
+        'native.mq.blue.csv',
+        'native.mq.cor.csv',
+        'native.mq.iter.csv',
+        'native.mq.vc.csv',
+    ]
+
+    test("one relationship selecting both MPH tokens publishes two native families") {
+
+        // `seed: 7` is load-bearing rather than cosmetic. MPH's trace estimator is randomised and its default
+        // seed is the fixed integer 0; on this fixture that seed leaves the dense pair's aggregate correlation
+        // non-finite, so a future reader deleting the seed would get a `completed_nonestimable` result and
+        // conclude the route had broken.
+        when {
+            def inputs = quantitativePair(
+                projectDir,
+                outputDir,
+                'mph_bivariate_both',
+                'mph_bivariate_reml,mph_bivariate_reml_ldms',
+                [
+                    'mph_bivariate_reml--qt_qt2': [seed: 7],
+                    'mph_bivariate_reml_ldms--qt_qt2': [ld_score_region_kb: 50, ld_bins: 2, ldms_maf_edges: [0.0, 0.5], seed: 7],
+                ],
+            )
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = inputs.cohort
+                analysis_manifest = inputs.analyses
+                relationship_manifest = inputs.relationships
+                method_options = inputs.options
+                gcta_grm_parts = 1
+            }
+        }
+
+        then {
+            def requests = new File("${params.outdir}/requests")
+            def dense = new File(requests, 'mph_bivariate_reml/mph_bivariate_reml--qt_qt2')
+            def stratified = new File(requests, 'mph_bivariate_reml_ldms/mph_bivariate_reml_ldms--qt_qt2')
+            def remlCommands = commands(params.outdir).findAll { command -> command.contains('mph --reml') }
+
+            assertAll(
+                { assert workflow.success },
+                // The cohort is converted once, the component plan is built once, and two matrix families come
+                // out of it. The prepared pair is built once however many pair methods select the relationship.
+                { assert TRACE.count(workflow, 'PLINK2_MAKEBED') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 1 },
+                { assert TRACE.count(workflow, 'CUSTOM_GCTASTRATIFYLDSCORES') == 1 },
+                { assert TRACE.count(workflow, 'CUSTOM_MPHSNPINFO') == 2 },
+                { assert TRACE.count(workflow, 'MPH_MAKEGRM') == 3 },
+                { assert TRACE.count(workflow, 'PREPARE_BIVARIATE_TRAITS') == 1 },
+                { assert TRACE.count(workflow, 'PREPARE_MPH_INPUTS') == 2 },
+                { assert TRACE.count(workflow, 'MPH_REML') == 2 },
+                { assert TRACE.count(workflow, 'GCTA_MAKEGRMPART') == 0 },
+                { assert TRACE.count(workflow, 'LDAK_CALCKINS') == 0 },
+                // Each request publishes under its own deterministic identity, so neither can overwrite the
+                // other, and both publish the same five names.
+                { assert requests.list().toList().sort() == ['mph_bivariate_reml', 'mph_bivariate_reml_ldms'] },
+                { assert dense.list().toList().sort() == PUBLISHED },
+                { assert stratified.list().toList().sort() == PUBLISHED },
+                { assert PUBLISHED.every { name -> new File(dense, name).isFile() } },
+                // The declared left/right order reaches the fit verbatim, and the covariate list is the encoded
+                // design rather than the researcher's raw columns: `SEX` became the treatment-coded `SEX_2`
+                // and `intercept` is explicit because MPH synthesises one only when no covariate is named.
+                { assert remlCommands.size() == 2 },
+                { assert remlCommands.every { command -> command.contains('--trait_names "QT,QT2"') } },
+                { assert remlCommands.every { command -> command.contains('--seed 7') } },
+                { assert remlCommands.every { command -> command.contains('--covariate_names "intercept,AGE,Q1,Q2,Q3,SEX_2"') } },
+                { assert remlCommands.every { command -> command.contains('--grm_list') } },
+                { assert remlCommands.every { command -> !command.contains('--num_random_vectors') } },
+                // The native log reports the fitted sample size.
+                { assert new File(stratified, 'native.log').text.contains('Non-missing analysis set contains 200 individuals') },
+                // The ignore globs exist because the log carries a container-local timestamp and every
+                // `mq.*.csv` moves in the sixth to seventh significant figure with the thread count. They are
+                // proved here rather than assumed.
+                { assert getAllFilesFromDir("${params.outdir}", relative: true, ignoreFile: 'tests/.nftignore')
+                    .collect { path -> path.toString() }
+                    .findAll { path -> path.startsWith('requests/mph_bivariate_reml') }
+                    .every { path -> !path.endsWith('native.log') && !path.contains('native.mq.') } },
+                { assert snapshot(removeNextflowVersion("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")).match('versions') },
+            )
+        }
+    }
+
+    test("an MPH pair and a GCTA pair over one relationship share the component plan and the prepared pair") {
+
+        // The two estimators consume the same scientific LDMS component plan and the same ordered
+        // SNP membership, and that is what this case asserts: one plan, one LD-score pass, one stratification,
+        // one prepared pair, and the same per-component predictor count on both sides.
+        //
+        // It deliberately makes no numeric comparison of the two estimates, for two measured reasons. MPH's
+        // REML is unconstrained and has no option to constrain, while the pipeline's GCTA bivariate routes run
+        // constrained by default, so the pipeline's own default GCTA result is not a matched model to an MPH
+        // fit. And the matched configuration is not reachable on this fixture: adding `--reml-no-constrain
+        // --reml-maxit 500` to this GCTA pair request makes GCTA 1.94.1 diverge on this near-zero-signal pair
+        // and terminate with exit status 139 partway through its iteration trace. Building a fixture with
+        // enough signal for a meaningful numeric comparison is a fixture change rather than a routing one.
+        //
+        // The plan is one stratum rather than two for the same reason the shipped GCTA REML-LDMS route test
+        // uses one: the two-stratum constrained fit of this covariate-adjusted pair cycles between five
+        // parameter states and exits 1 at the iteration cap. One stratum is enough to prove the plan is built
+        // once and read by both builders, which is the claim.
+        when {
+            def inputs = quantitativePair(
+                projectDir,
+                outputDir,
+                'mph_bivariate_parity',
+                'gcta_bivariate_reml_ldms,mph_bivariate_reml_ldms',
+                [
+                    'gcta_bivariate_reml_ldms--qt_qt2': [ld_score_region_kb: 50, ld_bins: 1, ldms_maf_edges: [0.0, 0.5], native_args: ['--reml-maxit', '500']],
+                    'mph_bivariate_reml_ldms--qt_qt2': [ld_score_region_kb: 50, ld_bins: 1, ldms_maf_edges: [0.0, 0.5], seed: 7],
+                ],
+            )
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = inputs.cohort
+                analysis_manifest = inputs.analyses
+                relationship_manifest = inputs.relationships
+                method_options = inputs.options
+                gcta_grm_parts = 1
+                save_relatedness_matrices = true
+            }
+        }
+
+        then {
+            def mphRequest = new File("${params.outdir}/requests/mph_bivariate_reml_ldms/mph_bivariate_reml_ldms--qt_qt2")
+            def gctaRequest = new File("${params.outdir}/requests/gcta_bivariate_reml_ldms/gcta_bivariate_reml_ldms--qt_qt2")
+            def plans = new File("${params.outdir}/quality_control/ldms_component_plans")
+            def gctaCommand = commands(params.outdir).find { command -> command.contains('--reml-bivar') }
+
+            def gctaResult = new File(gctaRequest, 'native.hsq').readLines()
+            def mphResult = new File(mphRequest, 'native.mq.vc.csv').readLines()
+            def mphHeader = mphResult.first().split(',').toList()
+            def mphRows = mphResult.tail().collect { row -> [mphHeader, row.split(',').toList()].transpose().collectEntries() }
+            def manifest = plans.listFiles().first().listFiles().find { entry -> entry.name.endsWith('.strata.tsv') }.readLines()
+            def manifestHeader = manifest.first().split('\t').toList()
+            def manifestRows = manifest.tail().collect { row -> [manifestHeader, row.split('\t').toList()].transpose().collectEntries() }
+
+            assertAll(
+                { assert workflow.success },
+                // One plan, one LD-score pass, one stratification: both matrix families are built from the same
+                // published component plan, which is the acceptance criterion this case exists for.
+                { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 1 },
+                { assert TRACE.count(workflow, 'CUSTOM_GCTASTRATIFYLDSCORES') == 1 },
+                { assert plans.list().toList().size() == 1 },
+                // One component family per tool: they are different on-disk formats and are never
+                // interchanged, so both are built rather than one being reused as the other.
+                { assert TRACE.count(workflow, 'MPH_MAKEGRM') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_MAKEGRMPART') == 1 },
+                // One prepared pair for both estimators: the two adapters serialise one scientific pair rather
+                // than each resolving the endpoints again.
+                { assert TRACE.count(workflow, 'PREPARE_BIVARIATE_TRAITS') == 1 },
+                // Both estimators fitted the same stratum of the same plan. The MPH side is matched by label
+                // -- `vc_name` against the staged matrix prefix -- and never by row position, and its achieved
+                // predictor count equals the count the plan declared for that stratum.
+                { assert gctaCommand != null },
+                { assert manifestRows.size() == 1 },
+                { assert mphRows.findAll { row -> row.vc_name != 'err' }.collect { row -> row.m as int }.unique()
+                    == manifestRows.collect { row -> row.predictor_count as int } },
+                // A one-component `--mgrm` fit is GCTA's one-component layout: `V(G)_tr1` rather than a
+                // numbered `V(G1)_tr1`, and no second component row at all.
+                { assert gctaResult.any { line -> line.startsWith('V(G)_tr1\t') } },
+                { assert !gctaResult.any { line -> line.startsWith('V(G2)_tr1\t') } },
+                // Both native families are published under their own request identities, so a reader can
+                // compare them without the pipeline joining them into one table.
+                { assert new File(mphRequest, 'native.mq.vc.csv').isFile() },
+                { assert new File(gctaRequest, 'native.hsq').isFile() },
+            )
+        }
+    }
+
+    test("a unary and a pairwise MPH request at equal settings share one plan and one matrix family") {
+
+        // Matrix reuse is independent of the requested trait pair. The reuse key is derived from the cohort, the
+        // genotype bundle and the declared plan settings only, never from the request domain, so an analysis
+        // row and a relationship row cost one construction between them.
+        when {
+            def inputs = quantitativePair(
+                projectDir,
+                outputDir,
+                'mph_bivariate_dedup',
+                'mph_bivariate_reml_ldms',
+                ['mph_bivariate_reml_ldms--qt_qt2': [ld_score_region_kb: 50, ld_bins: 2, ldms_maf_edges: [0.0, 0.5], seed: 7]],
+                { rows -> rows[0].heritability_methods = 'mph_reml_ldms' },
+            )
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = inputs.cohort
+                analysis_manifest = inputs.analyses
+                relationship_manifest = inputs.relationships
+                method_options = RELATIONAL.methodOptions(outputDir, 'mph_bivariate_dedup', [
+                    analyses: [example_pgen_qt: [gcta: [ld_score_region_kb: 50, ld_bins: 2, ldms_maf_edges: [0.0, 0.5]], mph: [seed: 7]]],
+                    pair_requests: ['mph_bivariate_reml_ldms--qt_qt2': [ld_score_region_kb: 50, ld_bins: 2, ldms_maf_edges: [0.0, 0.5], seed: 7]],
+                ])
+                gcta_grm_parts = 1
+                save_relatedness_matrices = true
+            }
+        }
+
+        then {
+            def plans = new File("${params.outdir}/quality_control/ldms_component_plans")
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 1 },
+                { assert TRACE.count(workflow, 'CUSTOM_GCTASTRATIFYLDSCORES') == 1 },
+                { assert plans.list().toList().size() == 1 },
+                // One family of two strata, not two families of two: the unary and the pair request resolved
+                // the same settings and therefore the same key.
+                { assert TRACE.count(workflow, 'CUSTOM_MPHSNPINFO') == 1 },
+                { assert TRACE.count(workflow, 'MPH_MAKEGRM') == 2 },
+                // Both results are published, each under its own identity.
+                { assert TRACE.count(workflow, 'MPH_REML') == 2 },
+                { assert new File("${params.outdir}/heritability/individual/mph_reml_ldms/example_pgen_qt").isDirectory() },
+                { assert new File("${params.outdir}/requests/mph_bivariate_reml_ldms/mph_bivariate_reml_ldms--qt_qt2").isDirectory() },
+                // One published matrix family under one key, which is what "one construction between them"
+                // means on disk.
+                { assert new File("${params.outdir}/quality_control/relatedness_matrices").list().toList().size() == 1 },
+            )
+        }
+    }
+
+    test("a partially overlapping relationship is fitted on the complete-case intersection and says so") {
+
+        // The scientific difference between the two pair families, asserted rather than asserted about. MPH
+        // restricts the fit to individuals observed for both traits and every named covariate; GCTA bivariate
+        // REML keeps every individual and fits an unbalanced design, so over a partially overlapping
+        // relationship the two are not matched models. The native log reports the fitted sample size.
+        when {
+            def source = new File("${FIXTURES.base(projectDir)}results/fixtures/pheno_cov/example.pheno")
+            def lines = source.readLines()
+            def header = lines.first().split('\t').toList()
+            def column = header.indexOf('BT')
+            def thinned = RELATIONAL.resource(
+                outputDir,
+                'mph_bivariate_overlap.pheno',
+                ([lines.first()] + lines.tail().withIndex().collect { line, index ->
+                    def fields = line.split('\t').toList()
+                    if (index >= 120) {
+                        fields[column] = 'NA'
+                    }
+                    return fields.join('\t')
+                }).join('\n') + '\n',
+            )
+            def inputs = quantitativePair(
+                projectDir,
+                outputDir,
+                'mph_bivariate_overlap',
+                'mph_bivariate_reml',
+                ['mph_bivariate_reml--qt_qt2': [seed: 7]],
+                { rows -> rows[1].phenotype = thinned },
+            )
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = inputs.cohort
+                analysis_manifest = inputs.analyses
+                relationship_manifest = inputs.relationships
+                method_options = inputs.options
+                gcta_grm_parts = 1
+            }
+        }
+
+        then {
+            def request = new File("${params.outdir}/requests/mph_bivariate_reml/mph_bivariate_reml--qt_qt2")
+
+            assertAll(
+                { assert workflow.success },
+                // MPH's own report names the complete-case sample used by the fit.
+                { assert new File(request, 'native.log').text.contains('Non-missing analysis set contains 120 individuals') },
+            )
+        }
+    }
+
+    test("changing the seed reruns the fit while the plan, the matrices and the pair stay cached") {
+
+        tag "mph_bivariate_resume"
+
+        when {
+            def inputs = quantitativePair(
+                projectDir,
+                outputDir,
+                'mph_bivariate_resume',
+                'mph_bivariate_reml_ldms',
+                ['mph_bivariate_reml_ldms--qt_qt2': [ld_score_region_kb: 50, ld_bins: 2, ldms_maf_edges: [0.0, 0.5], seed: 7]],
+            )
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = inputs.cohort
+                analysis_manifest = inputs.analyses
+                relationship_manifest = inputs.relationships
+                method_options = inputs.options
+                gcta_grm_parts = 1
+            }
+        }
+
+        then {
+            def rerun = RESUME.rerun(outputDir, [
+                method_options: RELATIONAL.methodOptions(outputDir, 'mph_bivariate_resume_reseeded', [
+                    analyses: [:],
+                    pair_requests: ['mph_bivariate_reml_ldms--qt_qt2': [ld_score_region_kb: 50, ld_bins: 2, ldms_maf_edges: [0.0, 0.5], seed: 8]],
+                ]),
+            ])
+            assertAll(
+                { assert workflow.success },
+                // The seed reaches the fit and nothing above it. The prepared pair stays cached because its
+                // identity is the relationship's, not the request's: this is the property that makes sharing
+                // the preparation between a GCTA and an MPH request safe.
+                { assert RESUME.statuses(rerun, 'GCTA_CALCULATELDSCORES') == ['CACHED'] },
+                { assert RESUME.statuses(rerun, 'CUSTOM_GCTASTRATIFYLDSCORES') == ['CACHED'] },
+                { assert RESUME.statuses(rerun, 'CUSTOM_MPHSNPINFO') == ['CACHED'] },
+                { assert RESUME.statuses(rerun, 'MPH_MAKEGRM').unique() == ['CACHED'] },
+                { assert RESUME.statuses(rerun, 'PREPARE_BIVARIATE_TRAITS') == ['CACHED'] },
+                { assert RESUME.statuses(rerun, 'MPH_REML') == ['COMPLETED'] },
+                // The serializer reruns too, because the route metadata carries the effective settings in its task
+                // identity; the CSVs it writes are byte-identical either way.
+                { assert RESUME.statuses(rerun, 'PREPARE_MPH_INPUTS') == ['COMPLETED'] },
+            )
+        }
+    }
+
+    test("MPH pair routes preserve topology under stub execution beside the GCTA pair routes") {
+        options "-stub"
+
+        when {
+            def inputs = quantitativePair(
+                projectDir,
+                outputDir,
+                'mph_bivariate_stub',
+                'mph_bivariate_reml,mph_bivariate_reml_ldms,gcta_bivariate_reml,gcta_bivariate_reml_ldms',
+                [
+                    'mph_bivariate_reml_ldms--qt_qt2': [ld_score_region_kb: 50, ld_bins: 2, ldms_maf_edges: [0.0, 0.5]],
+                    'gcta_bivariate_reml_ldms--qt_qt2': [ld_score_region_kb: 50, ld_bins: 2, ldms_maf_edges: [0.0, 0.5]],
+                ],
+            )
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = inputs.cohort
+                analysis_manifest = inputs.analyses
+                relationship_manifest = inputs.relationships
+                method_options = inputs.options
+                gcta_grm_parts = 1
+            }
+        }
+
+        then {
+            def requests = new File("${params.outdir}/requests")
+            assertAll(
+                { assert workflow.success },
+                // Four estimator tasks over one prepared pair, and both tools build their own matrices: the
+                // two formats are never interchanged.
+                { assert TRACE.count(workflow, 'PREPARE_BIVARIATE_TRAITS') == 1 },
+                { assert TRACE.count(workflow, 'MPH_REML') == 2 },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEREML') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEREMLLDMS') == 1 },
+                { assert TRACE.count(workflow, 'MPH_MAKEGRM') > 0 },
+                { assert TRACE.count(workflow, 'GCTA_MAKEGRMPART') > 0 },
+                { assert requests.list().toList().sort() == [
+                    'gcta_bivariate_reml',
+                    'gcta_bivariate_reml_ldms',
+                    'mph_bivariate_reml',
+                    'mph_bivariate_reml_ldms',
+                ] },
+            )
+        }
+    }
+
+    // Every refusal this file used to run is knowable from the manifests alone and is now asserted at
+    // function level, where the same sentence is rendered without a pipeline launch: the quantitative-only
+    // endpoint rule and the reversed-duplicate binding in
+    // `subworkflows/local/validate_gwas_input/tests/resolve_relationships.function.nf.test`, the curated MPH
+    // option on a GCTA pair request and the fractional seed through the pair namespace in that directory's
+    // `request_contracts.function.nf.test`, and the two native_args refusals in its
+    // `native_option_policy.function.nf.test`.
+}

@@ -1,4 +1,5 @@
-FROM docker.io/library/bash:5.2.37-alpine3.22@sha256:534a5f1d11652aadaa9f08838f6637ac11a46a8b4b736a4cbf09c5945e38516f
+# Debian supplies /bin/bash directly; procps supports Nextflow task tracing.
+FROM docker.io/library/debian:bookworm-slim@sha256:88200866dfff7ea7f5cbcb6ec7c8a701889efe6fe859fe64d6990e4b07ea4171
 
 ARG LDAK_VERSION="6.3"
 ARG LDAK_REVISION="b755ab71b6dcf8f36f40bb64c799ec858d2ca492"
@@ -16,12 +17,12 @@ ADD --chmod=0755 --checksum=sha256:8f8f5102acf1c001641322b17cd3dd624c1710c645e8a
     https://raw.githubusercontent.com/dougspeed/LDAK/b755ab71b6dcf8f36f40bb64c799ec858d2ca492/ldak6.3.linux \
     /usr/local/bin/ldak
 
-RUN ln -s /usr/local/bin/bash /bin/bash \
-    && echo "${LDAK_SHA256}  /usr/local/bin/ldak" | sha256sum -c - \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends procps \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN echo "${LDAK_SHA256}  /usr/local/bin/ldak" | sha256sum -c - \
     && mkdir -p /opt/ldak \
     && printf '%s\n' "${LDAK_VERSION}" > /opt/ldak/version \
     && printf '%s\n' "${LDAK_REVISION}" > /opt/ldak/revision \
     && printf '%s\n' "${LDAK_SHA256}" > /opt/ldak/sha256
-
-ENTRYPOINT []
-CMD ["/usr/local/bin/bash"]

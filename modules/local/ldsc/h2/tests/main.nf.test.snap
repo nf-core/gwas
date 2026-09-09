@@ -21,20 +21,6 @@
                         [
                             "LDSC_H2",
                             "ldsc",
-                            "3.0.2"
-                        ]
-                    ],
-                    "versions_ldsc_native": [
-                        [
-                            "LDSC_H2",
-                            "ldsc_native",
-                            "3.0.1"
-                        ]
-                    ],
-                    "versions_ldsc_source": [
-                        [
-                            "LDSC_H2",
-                            "ldsc_source_revision",
                             "6c673952cee74bd5c57aef1555a03b1c015399a0"
                         ]
                     ],

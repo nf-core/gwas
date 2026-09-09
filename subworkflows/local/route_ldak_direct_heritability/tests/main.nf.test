@@ -1,0 +1,272 @@
+nextflow_workflow {
+
+    name "Test LDAK direct-genotype heritability route"
+    script "../main.nf"
+    workflow "ROUTE_LDAK_DIRECT_HERITABILITY"
+    tag "subworkflow"
+    tag "heritability"
+    tag "ldak"
+    tag "ldak_fast"
+
+    // Every case is stubbed, so the staged genotypes, phenotypes, covariates and weights only have to exist.
+    // What is under test is the routing: that each estimator runs exactly for the analyses that selected it,
+    // that an analysis selecting a kinship estimator alongside a fast one still reaches the fast estimator
+    // once, that an analysis selecting neither reaches nothing, that the cohort-scoped genotype bundle carries
+    // a tag-only identity that never reaches an emission, and that an absent optional file stays `[]`. The
+    // native content is covered end to end by `tests/heritability_ldak_fast_estimators.nf.test`.
+    def TESTS = { project_dir -> "${project_dir}/subworkflows/local/route_ldak_direct_heritability/tests" }
+    def RESOURCE = { project_dir, name -> "file('${TESTS(project_dir)}/${name}', checkIfExists: true)" }
+
+    // A validated unary analysis unit as `VALIDATE_GWAS_INPUT` hands it over. No `relationship_id`: the spine
+    // narrows the PLINK 1 stream to the unary rows before this controller sees them.
+    def analysisMeta = { analysis_id, heritability_methods, population_prevalence = null, weights_policy = 'equal' ->
+        """[
+            id: '${analysis_id}',
+            cohort: 'cohort_a',
+            trait: 'TRAIT_${analysis_id}',
+            is_binary: ${population_prevalence != null},
+            population_prevalence: ${population_prevalence == null ? 'null' : population_prevalence},
+            sample_prevalence: null,
+            association_methods: [],
+            heritability_methods: [${heritability_methods.collect { method -> "'${method}'" }.join(', ')}],
+            method_options: [ldak: [
+                model: 'human_default',
+                power: -0.25,
+                weights_policy: '${weights_policy}',
+                fast_repetitions: null,
+                fast_num_blocks: null,
+                fast_seed: null,
+            ]],
+        ]"""
+    }
+
+    // One PLINK 1 bundle per requesting analysis, already fanned out by `PREPARE_COHORT_GENOTYPES` under the
+    // focal analysis meta rather than the cohort meta.
+    def genotypes = { project_dir, meta ->
+        """[
+            ${meta},
+            ${RESOURCE(project_dir, 'cohort.bed')},
+            ${RESOURCE(project_dir, 'cohort.bim')},
+            ${RESOURCE(project_dir, 'cohort.fam')},
+        ]"""
+    }
+
+    // The headerless serialisation stream. An absent optional covariate is `[]`, never a placeholder file.
+    def phenotype = { project_dir, meta, source, quant_covariates = null, cat_covariates = null ->
+        """[
+            ${meta},
+            ${RESOURCE(project_dir, source)},
+            ${quant_covariates ? RESOURCE(project_dir, quant_covariates) : '[]'},
+            ${cat_covariates ? RESOURCE(project_dir, cat_covariates) : '[]'},
+        ]"""
+    }
+
+    def weights = { project_dir, meta, source = null ->
+        """[
+            ${meta},
+            ${source ? RESOURCE(project_dir, source) : '[]'},
+        ]"""
+    }
+
+    test("each fast estimator runs exactly for the analyses that selected it") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                def alpha = ${analysisMeta('alpha', ['ldak_fast_he'])}
+                def beta  = ${analysisMeta('beta', ['ldak_fast_pcgc'], 0.1)}
+                def gamma = ${analysisMeta('gamma', ['ldak_he', 'ldak_fast_he'])}
+
+                input[0] = channel.of(
+                    ${genotypes(projectDir, "alpha")},
+                    ${genotypes(projectDir, "beta")},
+                    ${genotypes(projectDir, "gamma")},
+                )
+                input[1] = channel.of(
+                    ${phenotype(projectDir, "alpha", 'analysis_alpha.pheno', 'analysis.qcovar', 'analysis.covar')},
+                    ${phenotype(projectDir, "beta", 'analysis_beta.pheno')},
+                    ${phenotype(projectDir, "gamma", 'analysis_gamma.pheno', 'analysis.qcovar')},
+                )
+                input[2] = channel.of(
+                    ${weights(projectDir, "alpha")},
+                    ${weights(projectDir, "beta")},
+                    ${weights(projectDir, "gamma")},
+                )
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                // The genotype bundle is cohort-scoped, so the two-identity tag names the analysis and the
+                // cohort rather than repeating the analysis. `gamma` also selects a kinship estimator, which
+                // this controller does not serve; it still reaches the fast estimator exactly once.
+                { assert TRACE.count(workflow, 'LDAK_FASTHE') == 2 },
+                { assert TRACE.tags(workflow, 'LDAK_FASTHE') == ['alpha_cohort_a', 'gamma_cohort_a'] },
+                { assert TRACE.count(workflow, 'LDAK_FASTPCGC') == 1 },
+                { assert TRACE.tags(workflow, 'LDAK_FASTPCGC') == ['beta_cohort_a'] },
+                // No kinship of any kind is constructed or consumed on this route.
+                { assert TRACE.count(workflow, 'LDAK_CALCKINS') == 0 },
+                { assert TRACE.count(workflow, 'LDAK_HE') == 0 },
+                { assert TRACE.count(workflow, 'LDAK_PCGC') == 0 },
+                // The bare `withName` selectors apply at this scope, so the rendered prefix and the
+                // publication path are exercised here rather than only at pipeline scope.
+                { assert new File("${params.outdir}/heritability/individual/ldak_fast_he/alpha/alpha.ldak_fast_he.fasthe").isFile() },
+                { assert new File("${params.outdir}/heritability/individual/ldak_fast_he/gamma/gamma.ldak_fast_he.fasthe").isFile() },
+                { assert new File("${params.outdir}/heritability/individual/ldak_fast_pcgc/beta/beta.ldak_fast_pcgc.fastpcgc").isFile() },
+                { assert new File("${params.outdir}/heritability/individual/ldak_fast_pcgc/beta/beta.ldak_fast_pcgc.fastpcgc.marginal").isFile() },
+                // The work-directory-only members of the native family stay unpublished.
+                { assert new File("${params.outdir}/heritability/individual/ldak_fast_he/alpha").list().sort() == [
+                    'alpha.ldak_fast_he.cats',
+                    'alpha.ldak_fast_he.coeff',
+                    'alpha.ldak_fast_he.cross',
+                    'alpha.ldak_fast_he.enrich',
+                    'alpha.ldak_fast_he.factor',
+                    'alpha.ldak_fast_he.fasthe',
+                    'alpha.ldak_fast_he.fasthe.liab',
+                    'alpha.ldak_fast_he.log',
+                    'alpha.ldak_fast_he.share',
+                ] },
+                // The emitted record is the untouched focal analysis: no route-local key, and above all no
+                // trace of the tag-only cohort identity the genotype role carried.
+                { assert workflow.out.ldak_fast_he_results.collect { meta, _results -> meta.id }.sort() == ['alpha', 'gamma'] },
+                { assert workflow.out.ldak_fast_pcgc_results.collect { meta, _results -> meta.id } == ['beta'] },
+                { assert workflow.out.ldak_fast_pcgc_marginal.collect { meta, _results -> meta.id } == ['beta'] },
+                { assert (workflow.out.ldak_fast_he_results + workflow.out.ldak_fast_pcgc_results).every { meta, _results ->
+                    meta.cohort == 'cohort_a' && meta.trait == "TRAIT_${meta.id}" && meta.keySet().toList().sort() == [
+                        'association_methods',
+                        'cohort',
+                        'heritability_methods',
+                        'id',
+                        'is_binary',
+                        'method_options',
+                        'population_prevalence',
+                        'sample_prevalence',
+                        'trait',
+                    ]
+                } },
+            )
+        }
+    }
+
+    test("an analysis selecting no direct-genotype estimator reaches neither process") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                def kinship = ${analysisMeta('kinship_only', ['ldak_he'])}
+                def greml   = ${analysisMeta('greml_only', ['gcta_greml_ldms'])}
+
+                input[0] = channel.of(
+                    ${genotypes(projectDir, "kinship")},
+                    ${genotypes(projectDir, "greml")},
+                )
+                input[1] = channel.of(
+                    ${phenotype(projectDir, "kinship", 'analysis_alpha.pheno')},
+                    ${phenotype(projectDir, "greml", 'analysis_gamma.pheno')},
+                )
+                input[2] = channel.of(
+                    ${weights(projectDir, "kinship")},
+                    ${weights(projectDir, "greml")},
+                )
+                """
+            }
+        }
+
+        then {
+            // Both rows legitimately appear in the PLINK 1 stream, because their own selectors need the
+            // derivative. Selection is by capability, so neither reaches this route.
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'LDAK_FASTHE') == 0 },
+                { assert TRACE.count(workflow, 'LDAK_FASTPCGC') == 0 },
+                { assert workflow.out.ldak_fast_he_results.size() == 0 },
+                { assert workflow.out.ldak_fast_pcgc_results.size() == 0 },
+                { assert workflow.out.ldak_fast_pcgc_marginal.size() == 0 },
+                { assert !new File("${params.outdir}/heritability").exists() },
+            )
+        }
+    }
+
+    test("a provided weights resource is staged and an absent covariate stays an empty list") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                def weighted = ${analysisMeta('weighted', ['ldak_fast_he'], null, 'provided')}
+
+                input[0] = channel.of(${genotypes(projectDir, "weighted")})
+                input[1] = channel.of(${phenotype(projectDir, "weighted", 'analysis_alpha.pheno')})
+                input[2] = channel.of(${weights(projectDir, "weighted", 'weights.txt')})
+                """
+            }
+        }
+
+        then {
+            // A stubbed task still stages its real inputs, so the weights role is observable in the task's
+            // own directory. Without that the case would pass identically with the weights role wired to
+            // `[]`, which is the thing it is supposed to rule out.
+            def stagedInputs = []
+            new File(new File(outputDir.toString()).parentFile, 'work').eachFileRecurse { entry ->
+                if (entry.isFile() && entry.name == '.command.run') {
+                    stagedInputs.addAll(entry.parentFile.list().toList())
+                }
+            }
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'LDAK_FASTHE') == 1 },
+                { assert TRACE.tags(workflow, 'LDAK_FASTHE') == ['weighted_cohort_a'] },
+                { assert workflow.out.ldak_fast_he_results.collect { meta, _results -> meta.id } == ['weighted'] },
+                { assert new File("${params.outdir}/heritability/individual/ldak_fast_he/weighted/weighted.ldak_fast_he.fasthe").isFile() },
+                { assert 'weights.txt' in stagedInputs },
+                // The two absent covariate roles are `[]`, so nothing is staged for them and no placeholder
+                // file is invented.
+                { assert !stagedInputs.any { name -> name.endsWith('.qcovar') || name.endsWith('.covar') } },
+            )
+        }
+    }
+
+    test("empty request streams run nothing") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                input[0] = channel.empty()
+                input[1] = channel.empty()
+                input[2] = channel.empty()
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'LDAK_FASTHE') == 0 },
+                { assert TRACE.count(workflow, 'LDAK_FASTPCGC') == 0 },
+                { assert workflow.out.ldak_fast_he_results.size() == 0 },
+                { assert workflow.out.ldak_fast_pcgc_results.size() == 0 },
+            )
+        }
+    }
+}

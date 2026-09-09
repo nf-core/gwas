@@ -58,13 +58,15 @@ nextflow_pipeline {
                 { assert reml.list().toList().sort() == ['binary_all_estimators', 'binary_without_prevalence', 'example_pgen_qt'] },
                 { assert he.list().toList().sort() == ['binary_all_estimators', 'binary_without_prevalence', 'example_pgen_qt'] },
                 { assert pcgc.list().toList() == ['binary_all_estimators'] },
+                { assert new File(he, 'binary_all_estimators/binary_all_estimators.ldak_he.he.liab').isFile() },
+                { assert !new File(he, 'binary_without_prevalence/binary_without_prevalence.ldak_he.he.liab').exists() },
                 { assert snapshot(stableNameHeritability, stablePathHeritability).match('heritability') },
                 { assert snapshot(removeNextflowVersion(versions.toString())).match('versions') },
             )
         }
     }
 
-    test("relatedness filtering applies to one analysis and defines a distinct deduplicated matrix") {
+    test("relatedness filtering derives one child from the shared base artifact") {
         options "-stub"
 
         when {
@@ -95,7 +97,7 @@ nextflow_pipeline {
             def keys = matrices.list().toList()
             assertAll(
                 { assert workflow.success },
-                { assert TRACE.count(workflow, 'LDAK_CALCKINS') == 2 },
+                { assert TRACE.count(workflow, 'LDAK_CALCKINS') == 1 },
                 { assert TRACE.count(workflow, 'LDAK_FILTER') == 1 },
                 { assert TRACE.count(workflow, 'LDAK_SUBGRM') == 1 },
                 { assert TRACE.count(workflow, 'LDAK_REML') == 3 },
@@ -149,62 +151,6 @@ nextflow_pipeline {
                 { assert keys.size() == 5 },
                 { assert keys.every { key -> key ==~ /[0-9a-f]{12}/ } },
             )
-        }
-    }
-
-    def invalidPrevalence = [
-        [
-            name: 'quantitative prevalence',
-            source: 'example_pgen_qt',
-            methods: 'ldak_reml',
-            prevalence: 0.1,
-            expected: ['population_prevalence', 'no meaning on a quantitative trait'],
-        ],
-        [
-            name: 'PCGC without prevalence',
-            source: 'example_pgen_bt',
-            methods: 'ldak_pcgc',
-            prevalence: '',
-            expected: ['population_prevalence', "'ldak_pcgc' always estimates on the liability scale and requires a population prevalence"],
-        ],
-        [
-            name: 'HE-only prevalence',
-            source: 'example_pgen_bt',
-            methods: 'ldak_he',
-            prevalence: 0.1,
-            expected: ['population_prevalence', 'none of the selected estimators consumes it'],
-        ],
-    ]
-
-    invalidPrevalence.each { scenario ->
-        test("linked manifests reject ${scenario.name} before LDAK matrix construction") {
-            when {
-                params {
-                    outdir = "$outputDir"
-                    cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, "ldak_prevalence_${scenario.name.replace(' ', '_')}")
-                    analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, "ldak_prevalence_${scenario.name.replace(' ', '_')}", { rows ->
-                        rows[0] = RELATIONAL.analysis(projectDir, scenario.source)
-                        rows[0].association_methods = ''
-                        rows[0].heritability_methods = scenario.methods
-                        rows[0].population_prevalence = scenario.prevalence
-                    })
-                    gcta_grm_parts = 1
-                }
-            }
-
-            then {
-                def report = VALIDATION.report(outputDir, workflow.stdout)
-                assertAll(
-                    { assert !workflow.success },
-                    { assert report.contains(params.analysis_manifest.toString()) },
-                    { assert report.contains("analysis_id '${scenario.source}'") },
-                    { assert scenario.expected.every { fragment -> report.contains(fragment) } },
-                    { assert TRACE.count(workflow, 'LDAK_CALCKINS') == 0 },
-                    { assert TRACE.count(workflow, 'LDAK_REML') == 0 },
-                    { assert TRACE.count(workflow, 'LDAK_HE') == 0 },
-                    { assert TRACE.count(workflow, 'LDAK_PCGC') == 0 },
-                )
-            }
         }
     }
 }

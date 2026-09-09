@@ -1,0 +1,129 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/modules/meta-schema.json
+name: "custom_mphsnpinfo"
+description: Write the MPH SNP-information CSV that assigns each BIM variant a 0/1 membership weight per component
+keywords:
+  - mph
+  - minque for partitioning heritability
+  - genome relationship matrix
+  - grm
+  - variant partition
+  - snp weight
+tools:
+  - "custom":
+      description: |
+        A Python 3 representation adapter. It converts a BIM and an optional LD-by-MAF component plan into the
+        comma-separated SNP-information file MPH reads through `--snp_info_file`, whose column named by
+        `--snp_weight_name` gives each variant its weight in one component.
+      homepage: "https://github.com/nf-core/modules"
+      documentation: "https://jiang18.github.io/mph/"
+      # This adapter is pipeline-authored code and carries the pipeline's own licence. MPH, whose file format
+      # it writes, is GPL-3.0-only and is declared by the two `mph/*` modules that actually invoke it.
+      licence: ["MIT"]
+      identifier: ""
+input:
+  - - meta:
+        type: map
+        description: |
+          Groovy Map containing sample information, e.g. `[ id:'sample1' ]`
+    - bim:
+        type: file
+        description: |
+          PLINK 1 variant file of the bundle the matrices will be built from. Every row is written to the
+          output CSV in BIM order, so the CSV stays auditable against the BIM line for line.
+        pattern: "*.bim"
+        ontologies:
+          - edam: "http://edamontology.org/format_3475"
+  - - meta2:
+        type: map
+        description: |
+          Groovy Map containing plan information, e.g. `[ id:'plan1' ]`
+    - strata_manifest:
+        type: file
+        description: |
+          Ordered stratum manifest following the `custom/gctastratifyldscores` contract: a tab-separated table
+          whose `stratum_key` column, in row order, is the component order and whose `group_filename` column
+          names one of the staged group files. Use `[]` for the single-component case.
+        pattern: "*.strata.tsv"
+        ontologies:
+          - edam: "http://edamontology.org/format_3475"
+    - snp_group_files:
+        type: file
+        description: |
+          The SNP group files the manifest names, one per component, each a newline-separated variant-name
+          list. The groups must be pairwise disjoint and every named variant must be in the BIM and inside the
+          autosomal universe; all three are fatal here rather than silent in MPH. Use `[]` when no manifest is
+          supplied.
+        pattern: "*_snp_group*.txt"
+        ontologies:
+          - edam: "http://edamontology.org/format_2330"
+    - weight_names:
+        type: list
+        description: |
+          The ordered weight column names to write, `weight_names[k - 1]` naming component k. With a manifest
+          they must equal the manifest's `stratum_key` column in row order; without one the single accepted
+          value is `['all']`. Never derived here, and echoed back on the output tuple.
+  - - autosome_count:
+        type: integer
+        description: |
+          Highest integer chromosome code counted as autosomal, matching GCTA's `--autosome-num` default of 22.
+          A BIM row whose chromosome code is non-numeric or outside 1..autosome_count is outside the declared
+          variant universe and is written with weight 0 in every column, because MPH itself applies no
+          chromosome rule and would otherwise silently build its matrix over a different predictor set than
+          GCTA does from the same bundle.
+output:
+  snp_info:
+    - - meta:
+          type: map
+          description: |
+            Groovy Map containing sample information, e.g. `[ id:'sample1' ]`
+      - "${prefix}.snp_info.csv":
+          type: file
+          description: |
+            MPH SNP-information file: header `SNP` followed by the weight column names, then one row per BIM
+            variant in BIM order. A variant in no component, or outside the autosomal universe, carries 0 in
+            every column, which MPH treats exactly as it treats an omitted row.
+          pattern: "*.snp_info.csv"
+          ontologies:
+            - edam: "http://edamontology.org/format_3752"
+      - weight_names:
+          type: list
+          description: The weight column names, echoed from the input in the same order.
+  counts:
+    - - meta:
+          type: map
+          description: |
+            Groovy Map containing sample information, e.g. `[ id:'sample1' ]`
+      - "${prefix}.snp_info.counts.tsv":
+          type: file
+          description: |
+            Declared predictor counts: one `stratum_key`/`predictor_count` row per weight column in column
+            order, then `__unassigned__` (BIM rows carrying 0 everywhere) and `__bim_rows__` (total BIM rows).
+            Pipeline accounting rather than a native input; no MPH command reads it.
+          pattern: "*.snp_info.counts.tsv"
+          ontologies:
+            - edam: "http://edamontology.org/format_3475"
+  versions_python:
+    - - "${task.process}":
+          type: string
+          description: The process the version was collected from
+      - python:
+          type: string
+          description: The tool name
+      - "python3 --version | sed 's/^Python //'":
+          type: eval
+          description: The command used to retrieve the Python version
+topics:
+  versions:
+    - - "${task.process}":
+          type: string
+          description: The process the version was collected from
+      - python:
+          type: string
+          description: The tool name
+      - "python3 --version | sed 's/^Python //'":
+          type: eval
+          description: The command used to retrieve the Python version
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"

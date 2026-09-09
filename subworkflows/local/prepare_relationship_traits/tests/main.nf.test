@@ -1,0 +1,213 @@
+nextflow_workflow {
+
+    name "Test relationship trait preparation"
+    script "../main.nf"
+    workflow "PREPARE_RELATIONSHIP_TRAITS"
+    tag "subworkflow"
+    tag "relationship"
+
+    // Every case is stubbed, so the staged phenotypes and covariate tables only have to exist; the scientific
+    // content of the ordered two-trait table belongs to the preparation module's own tests. What is under test
+    // here is the relational policy this subworkflow owns: that the per-method request fan-out collapses to one
+    // preparation per relationship, that an analysis unit reused by several relationships resolves as an
+    // endpoint of each of them, and that a covariate-free relationship still emits a complete record on both
+    // public channels so the consumers' guarded joins stay one-to-one.
+    def TESTS = { project_dir -> "${project_dir}/subworkflows/local/prepare_relationship_traits/tests" }
+    def RESOURCE = { project_dir, name -> "file('${TESTS(project_dir)}/${name}', checkIfExists: true)" }
+
+    // One validated relationship request as `VALIDATE_GWAS_INPUT` hands it over: the relationship definition
+    // plus the state of the one estimator that asked for it. Several rows of one relationship differ only in
+    // that estimator state. The genotype bundle is `[]` because this subworkflow reads no genotypes: it
+    // carries the position through so the take shape matches the spine's relationship stream.
+    def relationshipRow = { project_dir, relationship_id, method, matrix_kind, left_analysis_id, right_analysis_id, quant_covariates = null, cat_covariates = null ->
+        """[
+            [
+                id: '${method}--${relationship_id}',
+                request_id: '${method}--${relationship_id}',
+                relationship_id: '${relationship_id}',
+                method: '${method}',
+                matrix_kind: '${matrix_kind}',
+                native_args: ['--seed', '${method}'],
+                request_options: [seed: '${method}'],
+                cohort: 'cohort_a',
+                build: 'GRCh38',
+                ancestry: 'EUR',
+                genotype_format: 'pgen',
+                left_analysis_id: '${left_analysis_id}',
+                right_analysis_id: '${right_analysis_id}',
+                left_trait_id: 'TRAIT_${left_analysis_id}',
+                right_trait_id: 'TRAIT_${right_analysis_id}',
+                left_trait_type: 'quantitative',
+                right_trait_type: 'quantitative',
+                left_is_binary: false,
+                right_is_binary: false,
+                left_genome_build: 'GRCh38',
+                right_genome_build: 'GRCh38',
+                left_ancestry: 'EUR',
+                right_ancestry: 'EUR',
+            ],
+            [],
+            ${quant_covariates ? RESOURCE(project_dir, quant_covariates) : '[]'},
+            ${cat_covariates ? RESOURCE(project_dir, cat_covariates) : '[]'},
+        ]"""
+    }
+
+    // The canonical unary phenotype stream, keyed one-to-one on the analysis meta.
+    def preparedPhenotype = { project_dir, analysis_id, source ->
+        "[[id: '${analysis_id}', cohort: 'cohort_a', trait: 'TRAIT_${analysis_id}'], ${RESOURCE(project_dir, source)}]"
+    }
+
+    test("a relationship selected by four estimators is prepared exactly once") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                input[0] = channel.of(
+                    ${relationshipRow(projectDir, 'rel_ab', 'gcta_bivariate_reml', 'gcta_dense', 'alpha', 'beta', 'pair.qcovar', 'pair.catcovar')},
+                    ${relationshipRow(projectDir, 'rel_ab', 'gcta_bivariate_he', 'gcta_dense', 'alpha', 'beta', 'pair.qcovar', 'pair.catcovar')},
+                    ${relationshipRow(projectDir, 'rel_ab', 'gcta_bivariate_reml_ldms', 'gcta_ldms', 'alpha', 'beta', 'pair.qcovar', 'pair.catcovar')},
+                    ${relationshipRow(projectDir, 'rel_ab', 'mph_bivariate_reml', 'mph_dense', 'alpha', 'beta', 'pair.qcovar', 'pair.catcovar')},
+                )
+                input[1] = channel.of(
+                    ${preparedPhenotype(projectDir, 'alpha', 'analysis_alpha.pheno')},
+                    ${preparedPhenotype(projectDir, 'beta', 'analysis_beta.pheno')},
+                    ${preparedPhenotype(projectDir, 'gamma', 'analysis_gamma.pheno')},
+                )
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                // Four selected estimators across two matrix backends, one relationship, one expensive
+                // two-trait construction, tagged by the relationship rather than by any one request.
+                { assert TRACE.count(workflow, 'PREPARE_BIVARIATE_TRAITS') == 1 },
+                { assert TRACE.tags(workflow, 'PREPARE_BIVARIATE_TRAITS') == ['rel_ab'] },
+                // Both public channels carry exactly one record per relationship, so a consumer may join them
+                // on the relationship without first de-duplicating them.
+                { assert workflow.out.pairs.size() == 1 },
+                { assert workflow.out.named_covariates.size() == 1 },
+                // The record is keyed by the relationship, and the shared artifact's own identity is the
+                // relationship identifier rather than the identifier of whichever request survived `unique`.
+                { assert workflow.out.pairs[0][0].relationship_id == 'rel_ab' },
+                { assert workflow.out.pairs[0][0].id == 'rel_ab' },
+                { assert workflow.out.pairs[0][0].request_id == 'rel_ab' },
+                { assert workflow.out.named_covariates[0][0] == workflow.out.pairs[0][0] },
+                // The endpoints the preparation resolved are retained in the declared orientation.
+                { assert workflow.out.pairs[0][0].left_analysis_id == 'alpha' },
+                { assert workflow.out.pairs[0][0].right_analysis_id == 'beta' },
+                // The two serialisations of the one validated covariate set reach their two interfaces: the
+                // headerless tables travel with the pair, the headered ones on the named channel.
+                { assert workflow.out.pairs[0][2].endsWith('/rel_ab.noheader.qcovar') },
+                { assert workflow.out.pairs[0][3].endsWith('/rel_ab.noheader.catcovar') },
+                { assert workflow.out.named_covariates[0][1].endsWith('/rel_ab.qcovar') },
+                { assert workflow.out.named_covariates[0][2].endsWith('/rel_ab.catcovar') },
+            )
+        }
+    }
+
+    test("a covariate-free relationship still emits a complete record on both channels") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                input[0] = channel.of(
+                    ${relationshipRow(projectDir, 'rel_bare', 'gcta_bivariate_reml', 'gcta_dense', 'alpha', 'beta')},
+                    ${relationshipRow(projectDir, 'rel_covar', 'gcta_bivariate_reml', 'gcta_dense', 'alpha', 'gamma', 'pair.qcovar', 'pair.catcovar')},
+                )
+                input[1] = channel.of(
+                    ${preparedPhenotype(projectDir, 'alpha', 'analysis_alpha.pheno')},
+                    ${preparedPhenotype(projectDir, 'beta', 'analysis_beta.pheno')},
+                    ${preparedPhenotype(projectDir, 'gamma', 'analysis_gamma.pheno')},
+                )
+                """
+            }
+        }
+
+        then {
+            def bare_pair = workflow.out.pairs.find { record -> record[0].relationship_id == 'rel_bare' }
+            def bare_covariates = workflow.out.named_covariates.find { record -> record[0].relationship_id == 'rel_bare' }
+            def covar_pair = workflow.out.pairs.find { record -> record[0].relationship_id == 'rel_covar' }
+
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'PREPARE_BIVARIATE_TRAITS') == 2 },
+                // The preparation emits its covariate files optionally, so the relationship that declared none
+                // produces neither table. Both channels must nevertheless be total over the relationships:
+                // every consumer joins them with `failOnMismatch`, and a dropped record would fail the run
+                // rather than quietly omit an estimate.
+                { assert workflow.out.pairs.size() == 2 },
+                { assert workflow.out.named_covariates.size() == 2 },
+                // `[]` is the documented empty-file convention, so the absence must arrive as an empty list
+                // rather than as a null or a placeholder path.
+                { assert bare_pair[2] == [] },
+                { assert bare_pair[3] == [] },
+                { assert bare_covariates[1] == [] },
+                { assert bare_covariates[2] == [] },
+                // The ordered two-trait table is not optional and is produced for the bare relationship too.
+                { assert bare_pair[1].endsWith('/rel_bare.pheno') },
+                // A covariate-bearing sibling in the same run keeps its own tables and lends none to the
+                // bare relationship.
+                { assert covar_pair[2].endsWith('/rel_covar.noheader.qcovar') },
+                { assert covar_pair[3].endsWith('/rel_covar.noheader.catcovar') },
+            )
+        }
+    }
+
+    test("one analysis reused as an endpoint of two relationships is resolved for each of them") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                input[0] = channel.of(
+                    ${relationshipRow(projectDir, 'rel_ab', 'gcta_bivariate_reml', 'gcta_dense', 'alpha', 'beta')},
+                    ${relationshipRow(projectDir, 'rel_ga', 'gcta_bivariate_reml', 'gcta_dense', 'gamma', 'alpha')},
+                )
+                input[1] = channel.of(
+                    ${preparedPhenotype(projectDir, 'alpha', 'analysis_alpha.pheno')},
+                    ${preparedPhenotype(projectDir, 'beta', 'analysis_beta.pheno')},
+                    ${preparedPhenotype(projectDir, 'gamma', 'analysis_gamma.pheno')},
+                )
+                """
+            }
+        }
+
+        then {
+            def ab = workflow.out.pairs.find { record -> record[0].relationship_id == 'rel_ab' }
+            def ga = workflow.out.pairs.find { record -> record[0].relationship_id == 'rel_ga' }
+
+            assertAll(
+                { assert workflow.success },
+                // Endpoint resolution is a one-to-many seam: `alpha` is an endpoint of both relationships, on
+                // opposite sides. The two `combine` calls fan it out and the join on the relationship pulls
+                // the pair back to exactly one preparation each.
+                { assert TRACE.count(workflow, 'PREPARE_BIVARIATE_TRAITS') == 2 },
+                { assert TRACE.tags(workflow, 'PREPARE_BIVARIATE_TRAITS') == ['rel_ab', 'rel_ga'] },
+                { assert workflow.out.pairs.size() == 2 },
+                { assert workflow.out.named_covariates.size() == 2 },
+                // Each relationship kept its own declared left and right, so the shared endpoint did not
+                // reorient either of them.
+                { assert ab[0].left_analysis_id == 'alpha' && ab[0].right_analysis_id == 'beta' },
+                { assert ga[0].left_analysis_id == 'gamma' && ga[0].right_analysis_id == 'alpha' },
+                { assert ab[1].endsWith('/rel_ab.pheno') },
+                { assert ga[1].endsWith('/rel_ga.pheno') },
+            )
+        }
+    }
+}

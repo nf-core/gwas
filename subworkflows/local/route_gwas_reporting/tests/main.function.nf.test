@@ -1,0 +1,61 @@
+nextflow_function {
+
+    name "Test methods description selection"
+    script "../main.nf"
+    tag "function"
+    tag "reporting"
+    tag "multiqc"
+
+    test("the collected metadata reduces to distinct sorted method tokens per cited domain") {
+        function "getSelectedMethods"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    [domain: 'analysis', meta: [association_methods: ['regenie'], heritability_methods: ['gcta_greml']]],
+                    [domain: 'analysis', meta: [association_methods: ['regenie'], heritability_methods: ['ldak_reml', 'gcta_greml']]],
+                    [domain: 'summary_unary', meta: [method: 'ldsc_h2']],
+                    [domain: 'summary_unary', meta: [method: 'ldak_sumher']],
+                    [domain: 'summary_set', meta: [meta_analysis_models: ['fixed', 're2', 'mrmega']]],
+                    [domain: 'summary_set', meta: [meta_analysis_models: ['fixed', 'random']]],
+                    [domain: 'pairwise', meta: [relationship_methods: ['ldsc_rg']]],
+                    [domain: 'pairwise', meta: [relationship_methods: ['ldsc_rg', 'gcta_bivariate_reml']]],
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                // Summary-scale unary requests are cited alongside individual-level heritability.
+                { assert function.result == [
+                    association: ['regenie'],
+                    heritability: ['gcta_greml', 'ldak_reml', 'ldak_sumher', 'ldsc_h2'],
+                    pairwise: ['gcta_bivariate_reml', 'ldsc_rg'],
+                    summary_set: ['fixed', 'mrmega', 'random', 're2'],
+                ] },
+            )
+        }
+    }
+
+    test("a run selecting nothing yields an empty selection per domain") {
+        function "getSelectedMethods"
+
+        when {
+            function {
+                """
+                input[0] = []
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == [association: [], heritability: [], pairwise: [], summary_set: []] },
+            )
+        }
+    }
+}

@@ -1,0 +1,184 @@
+nextflow_workflow {
+
+    name "Test the LD-by-MAF-stratified GCTA matrix builder"
+    script "../main.nf"
+    workflow "PLINK_PREPARE_GRM_LDMS_GCTA"
+    tag "subworkflow"
+    tag "gcta"
+    tag "ldms"
+
+    // The shipped popgen trio is 200 samples by 220 variants on chromosome 1, with no monomorphic variant.
+    // Everything keyed to those dimensions — the component plan, its group files and the multi-file manifest —
+    // is written beside `outputDir` here rather than shipped, because each is derived from the trio's own
+    // contents and a shipped copy would go stale beside it silently.
+    def POPGEN = { member -> "file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.${member}', checkIfExists: true)" }
+
+    // A completed plan in exactly the shape `PLINK_PREPARE_LDMS_PLAN_GCTA` emits it: the manifest's
+    // `group_filename` column names the staged basename of the file it describes, and the columns are the
+    // stratifier's, in the stratifier's order, because this composition parses them by name.
+    def writePlan = { output_dir, prefix, strata ->
+        def root = new File(new File(output_dir.toString()).parentFile, "inputs/${prefix}")
+        root.mkdirs()
+        def groups = strata.collect { stratum ->
+            def target = new File(root, "${prefix}_snp_group_${stratum[0]}.txt")
+            target.text = stratum[1].join('\n') + '\n'
+            target
+        }
+        def header = ['model_key', 'stratum_key', 'ld_lower', 'ld_upper', 'maf_lower', 'maf_upper', 'predictor_count', 'group_filename']
+        def rows = [strata, groups].transpose().withIndex().collect { pair, index ->
+            ['ldms', pair[0][0], index, index + 1, 0, 0.5, pair[0][1].size(), pair[1].name].join('\t')
+        }
+        def manifest = new File(root, "${prefix}.strata.tsv")
+        manifest.text = ([header.join('\t')] + rows).join('\n') + '\n'
+        return [manifest: manifest, groups: groups]
+    }
+
+    // GCTA takes a multi-file list, not three paths, so the bundle's own basename is what the manifest names.
+    def writeMultiFile = { output_dir, prefix ->
+        def root = new File(new File(output_dir.toString()).parentFile, "inputs/${prefix}")
+        root.mkdirs()
+        def manifest = new File(root, "${prefix}.mbfile")
+        manifest.text = 'plink_simulated\n'
+        return manifest
+    }
+
+    def planInput = { meta, plan ->
+        """[
+                    ${meta},
+                    file('${plan.manifest}', checkIfExists: true),
+                    [${plan.groups.collect { group -> "file('${group}', checkIfExists: true)" }.join(', ')}],
+                ]"""
+    }
+
+    def genotypeInput = { meta, multi_file ->
+        """[
+                    ${meta},
+                    file('${multi_file}', checkIfExists: true),
+                    ${POPGEN('bed')},
+                    ${POPGEN('bim')},
+                    ${POPGEN('fam')},
+                ]"""
+    }
+
+    // The emitted family is one flat path list in component order, so the per-component grouping is recovered
+    // by prefix rather than by slicing a fixed stride: `.grm.*` is whatever the merge step wrote.
+    def filesByPrefix = { grm_files, grm_prefixes ->
+        def names = grm_files.collect { entry -> new File(entry.toString()).name }
+        return grm_prefixes.collect { prefix -> names.findAll { name -> name.startsWith("${prefix}.grm.") }.sort() }
+    }
+
+    test("a real two-stratum family is built from the plan's own disjoint group files") {
+
+        when {
+            def multi_file = writeMultiFile(outputDir, 'popgen_family')
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                // The plan is derived from the fixture's own BIM inside an operator rather than shipped, so the
+                // two group files are guaranteed to name variants this bundle actually carries. The split is a
+                // plain halving of the BIM: what is under test is the fan-out and the ordered gather, not the
+                // stratifier's quantile rule, which `plink_prepare_ldms_plan_gcta` covers.
+                input[0] = channel.of([[id: 'popgen_family', key: 'popgen_key'], ${POPGEN('bim')}])
+                    .map { record_meta, bim ->
+                        def root = new File('${new File(outputDir.toString()).parentFile}/inputs/popgen_family')
+                        root.mkdirs()
+                        def variants = bim.readLines().findAll { line -> line.trim() }.collect { line -> line.split('\\t')[1] }
+                        def keys = ['ld01_maf01', 'ld02_maf01']
+                        def halves = [variants[0..<110], variants[110..<variants.size()]]
+                        def groups = [0, 1].collect { index ->
+                            def target = new File(root, 'popgen_family_snp_group_' + keys[index] + '.txt')
+                            target.text = halves[index].join('\\n') + '\\n'
+                            target
+                        }
+                        def header = ['model_key', 'stratum_key', 'ld_lower', 'ld_upper', 'maf_lower', 'maf_upper', 'predictor_count', 'group_filename']
+                        def rows = [0, 1].collect { index ->
+                            ['ldms', keys[index], index, index + 1, 0, 0.5, halves[index].size(), groups[index].name].join('\\t')
+                        }
+                        def manifest = new File(root, 'popgen_family.strata.tsv')
+                        manifest.text = ([header.join('\\t')] + rows).join('\\n') + '\\n'
+                        tuple(record_meta, file(manifest.absolutePath, checkIfExists: true), groups.collect { group -> file(group.absolutePath, checkIfExists: true) })
+                    }
+                input[1] = channel.of(${genotypeInput("[id: 'popgen_family', key: 'popgen_key']", multi_file)})
+                input[2] = channel.of([[id: 'popgen_family', key: 'popgen_key'], 1])
+                """
+            }
+        }
+
+        then {
+            def family = workflow.out.grm_family.first()
+            def grouped = filesByPrefix(family[1], family[2])
+            def sizes = family[1].collectEntries { entry -> [new File(entry.toString()).name, new File(entry.toString()).length()] }
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'GCTA_MAKEGRMPART') == 2 },
+                { assert TRACE.count(workflow, 'CUSTOM_GCTAMERGEGRMPARTS') == 2 },
+                { assert family[2] == ['popgen_family__000001', 'popgen_family__000002'] },
+                { assert grouped == [
+                    ['popgen_family__000001.grm.N.bin', 'popgen_family__000001.grm.bin', 'popgen_family__000001.grm.id'],
+                    ['popgen_family__000002.grm.N.bin', 'popgen_family__000002.grm.bin', 'popgen_family__000002.grm.id'],
+                ] },
+                // GCTA's dense GRM is a headerless row-major lower triangle of `float32`, so a complete matrix
+                // over the 200 fixture samples is exactly `4*200*201/2` bytes. A stratum built from only half
+                // the variants is still a full 200-by-200 matrix, which is what makes the family stackable.
+                { assert sizes['popgen_family__000001.grm.bin'] == 4 * 200 * 201 / 2 },
+                { assert sizes['popgen_family__000002.grm.bin'] == 4 * 200 * 201 / 2 },
+                { assert sizes['popgen_family__000001.grm.N.bin'] == 4 * 200 * 201 / 2 },
+                // The two strata cover disjoint halves of the BIM, so their matrices are genuinely different
+                // rather than two names for the same construction.
+                { assert path(family[1].find { entry -> entry.toString().endsWith('popgen_family__000001.grm.bin') }).md5
+                    != path(family[1].find { entry -> entry.toString().endsWith('popgen_family__000002.grm.bin') }).md5 },
+                { assert family[0] == [id: 'popgen_family', key: 'popgen_key'] },
+                { assert workflow.out.strata.collect { record -> record[2] } == ['ld01_maf01', 'ld02_maf01'] },
+                { assert workflow.out.strata.collect { record -> record[3].predictor_count } == ['110', '110'] },
+                // The manifest is read by header name, so the whole row survives as provenance rather than the
+                // handful of columns this composition happens to branch on.
+                { assert workflow.out.strata.collect { record -> record[3].keySet().toList() }.unique() == [[
+                    'model_key',
+                    'stratum_key',
+                    'ld_lower',
+                    'ld_upper',
+                    'maf_lower',
+                    'maf_upper',
+                    'predictor_count',
+                    'group_filename',
+                ]] },
+                // GCTA's `--make-grm-part` accumulation was measured to be thread-invariant on this fixture
+                // (`--thread-num` 1 and 4 gave one md5), so the family's byte content is snapshot-stable.
+                { assert snapshot(workflow.out).match() },
+            )
+        }
+    }
+
+    test("a plan with no matching genotype bundle fails rather than being dropped") {
+
+        options "-stub"
+
+        when {
+            def plan = writePlan(outputDir, 'orphan_family', [['ld01_maf01', ['rs1']]])
+            def multi_file = writeMultiFile(outputDir, 'orphan_family')
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                input[0] = channel.of(${planInput("[id: 'orphan_family']", plan)})
+                input[1] = channel.of(${genotypeInput("[id: 'other_family']", multi_file)})
+                input[2] = channel.of([[id: 'orphan_family'], 1])
+                """
+            }
+        }
+
+        then {
+            // Both joins are guarded in both directions. A plan with no bundle, or a bundle with no plan, means
+            // the caller and this composition disagree about which families exist, and building fewer matrices
+            // than were requested would leave a stratified estimator short a component with nothing in the
+            // output to say so.
+            assertAll(
+                { assert !workflow.success },
+                { assert TRACE.count(workflow, 'GCTA_MAKEGRMPART') == 0 },
+            )
+        }
+    }
+}

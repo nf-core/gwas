@@ -1,0 +1,176 @@
+nextflow_function {
+    name "Test meta-analysis manifest resolution"
+    script "../resolve_input.nf"
+    tag "function"
+    tag "input"
+    tag "meta_analysis"
+
+    def base = { id, changes = [:] ->
+        [[id: id, trait: 'trait', trait_type: 'quantitative', source_format: 'gwaslab',
+            build: 'GRCh37', ancestry: 'EUR', source_method: 'published', heritability_methods: '',
+            population_prevalence: [], sample_prevalence: [], access_constraints: []] + changes, "/summaries/${id}.tsv"]
+    }
+    def derived = { changes = [:] ->
+        [[id: 'combined', source_summary_statistics_ids: 'second,first', meta_analysis_models: '',
+            min_studies: [], heritability_methods: ''] + changes, []]
+    }
+    def invoke = { projectDir, rows, options = null, catalog = null ->
+        """
+        input[0] = []
+        input[1] = []
+        input[2] = ${rows.inspect()}
+        input[3] = []
+        input[4] = null
+        input[5] = null
+        input[6] = 'summaries.csv'
+        input[7] = null
+        input[8] = '${projectDir}/assets/schema_cohort_manifest.json'
+        input[9] = '${projectDir}/assets/schema_analysis_manifest.json'
+        input[10] = '${projectDir}/assets/schema_summary_statistics_manifest.json'
+        input[11] = '${projectDir}/assets/schema_relationship_manifest.json'
+        input[12] = ${catalog ? "'${catalog}'" : 'null'}
+        input[13] = ${options ? "'${options}'" : 'null'}
+        """
+    }
+
+    test("derived rows resolve after base rows regardless of manifest position") {
+        function "validateRelationalInput"
+        when {
+            function {
+                invoke(projectDir, [derived(), base('first'), base('second')])
+            }
+        }
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result.meta_requests.size() == 1 },
+                { assert function.result.meta_requests[0][1] == ['second', 'first'] },
+                { assert function.result.meta_requests[0][0].meta_analysis_models == ['fixed'] },
+                { assert function.result.meta_requests[0][0].min_studies == 2 },
+                { assert function.result.meta_requests[0][0].ancestry == 'EUR' },
+                { assert function.result.summary_statistics.size() == 2 },
+                { assert function.result.unary_requests.empty },
+            )
+        }
+    }
+
+    test("explicit model options preserve ordered ancestry and the selected axis count") {
+        function "validateRelationalInput"
+        when {
+            def options = RELATIONAL.methodOptions(outputDir, 'meta_axes', [meta_requests: [combined: [mrmega: [axes: 1]]]])
+            def rows = [derived([source_summary_statistics_ids: 'fifth,fourth,third,second,first', meta_analysis_models: 'fixed,random,re2,mrmega'])]
+            rows.addAll([base('first'), base('second', [ancestry: 'AFR']), base('third', [ancestry: 'EAS']), base('fourth'), base('fifth')])
+            function {
+                invoke(projectDir, rows, options)
+            }
+        }
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result.meta_requests[0][0].axes == 1 },
+                { assert function.result.meta_requests[0][0].ancestry == 'MULTI' },
+                { assert function.result.meta_requests[0][0].ancestry_components == ['AFR', 'EAS', 'EUR'] },
+                { assert function.result.meta_requests[0][0].source_ancestries == ['EUR', 'EUR', 'EAS', 'AFR', 'EUR'] },
+                { assert function.result.meta_requests[0][0].meta_analysis_models == ['fixed', 'random', 're2', 'mrmega'] },
+            )
+        }
+    }
+
+    test("binary result prevalence and inherited access declarations feed derived unary requests") {
+        function "validateRelationalInput"
+        when {
+            def options = RELATIONAL.methodOptions(outputDir, 'meta_unary', [unary_requests: ['ldsc_h2--combined': [reference_bundle_id: 'ldsc_eur']]])
+            def catalog = RELATIONAL.referenceCatalog(outputDir, 'meta_unary')
+            def rows = [
+                base('first', [trait_type: 'binary', population_prevalence: 0.1, access_constraints: 'first restriction']),
+                base('second', [trait_type: 'binary', population_prevalence: 0.1, access_constraints: 'second restriction']),
+                derived([heritability_methods: 'ldsc_h2', sample_prevalence: 0.3]),
+            ]
+            function {
+                invoke(projectDir, rows, options, catalog)
+            }
+        }
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result.meta_requests[0][0].population_prevalence == 0.1 },
+                { assert function.result.meta_requests[0][0].sample_prevalence == 0.3 },
+                { assert function.result.meta_requests[0][0].access_constraints == 'second restriction; first restriction' },
+                { assert function.result.unary_requests[0][0].summary_statistics_id == 'combined' },
+            )
+        }
+    }
+
+    def rejected = [
+        [name: 'unknown parent', meta: [source_summary_statistics_ids: 'first,missing'], expected: 'undefined declared base summary'],
+        [name: 'repeated parent', meta: [source_summary_statistics_ids: 'first,first'], expected: 'listed more than once'],
+        [name: 'self parent', meta: [source_summary_statistics_ids: 'first,combined'], expected: 'cannot be its own parent'],
+        [name: 'one parent', meta: [source_summary_statistics_ids: 'first'], expected: 'at least two base summary'],
+        [name: 'unknown model', meta: [meta_analysis_models: 'fixed,unknown'], expected: 'unknown model token'],
+        [name: 'repeated model', meta: [meta_analysis_models: 'fixed,fixed'], expected: 'a model is listed more than once'],
+        [name: 'optional model without fixed', meta: [meta_analysis_models: 'random'], expected: 'fixed is required'],
+        [name: 'non-integer contribution threshold', meta: [min_studies: 2.5], expected: 'expected an integer from 2'],
+        [name: 'threshold exceeds membership', meta: [min_studies: 3], expected: 'expected an integer from 2'],
+        [name: 'derived trait override', meta: [trait: 'other'], expected: 'value is derived'],
+        [name: 'trait mismatch', parent: [trait: 'other'], expected: 'incompatible trait'],
+        [name: 'build mismatch', parent: [build: 'GRCh38'], expected: 'incompatible build'],
+        [name: 'mixed ancestry without MR-MEGA', parent: [ancestry: 'AFR'], expected: 'different ancestry labels require explicit mrmega'],
+    ]
+    rejected.each { scenario ->
+        test("${scenario.name} fails the manifest boundary") {
+            function "validateRelationalInput"
+            when {
+                function {
+                    invoke(projectDir, [base('first'), base('second', scenario.parent ?: [:]), derived(scenario.meta ?: [:])])
+                }
+            }
+            then {
+                assertAll(
+                    { assert !function.success },
+                    { assert function.stdout.join('\n').contains(scenario.expected) },
+                    { assert function.stdout.join('\n').contains('summaries.csv row') },
+                )
+            }
+        }
+    }
+
+    test("meta-analysis parents remain base summaries") {
+        function "validateRelationalInput"
+        when {
+            function {
+                invoke(projectDir, [base('first'), base('second'), derived(), derived([id: 'second_meta', source_summary_statistics_ids: 'first,combined'])])
+            }
+        }
+        then {
+            assertAll(
+                { assert !function.success },
+                { assert function.stdout.join('\n').contains('parents must be declared base summaries') },
+            )
+        }
+    }
+
+    def invalidOptions = [
+        [name: 'missing axes', options: [meta_requests: [combined: [mrmega: [:]]]], models: 'fixed,mrmega', expected: 'containing axes'],
+        [name: 'noninteger axes', options: [meta_requests: [combined: [mrmega: [axes: 'one']]]], models: 'fixed,mrmega', expected: 'expected an integer'],
+        [name: 'unselected MR-MEGA options', options: [meta_requests: [combined: [mrmega: [axes: 1]]]], models: 'fixed', expected: 'mrmega must be selected'],
+        [name: 'unknown request option', options: [meta_requests: [combined: [native_args: []]]], models: 'fixed', expected: 'unknown options'],
+        [name: 'undeclared request ID', options: [meta_requests: [unknown: [:]]], models: 'fixed', expected: 'no meta-analysis row declares this result'],
+    ]
+    invalidOptions.each { scenario ->
+        test("${scenario.name} fails the method-options boundary") {
+            function "validateRelationalInput"
+            when {
+                def options = RELATIONAL.methodOptions(outputDir, 'meta_invalid_options', scenario.options)
+                function {
+                    invoke(projectDir, [base('first'), base('second'), derived([meta_analysis_models: scenario.models])], options)
+                }
+            }
+            then {
+                assertAll(
+                    { assert !function.success },
+                    { assert function.stdout.join('\n').contains(scenario.expected) },
+                )
+            }
+        }
+    }
+}

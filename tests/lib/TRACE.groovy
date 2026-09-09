@@ -6,7 +6,7 @@
 //
 // nf-test exposes each trace row as a task whose `name` is the fully qualified process name followed
 // by the process tag in parentheses, for example
-// `NFCORE_GWAS:GWAS:PREPARE_COHORT_GENOTYPES:PLINK2_VCF (example_vcf)`.
+// `NFCORE_GWAS:GWAS:PREPARE_COHORT_GENOTYPES:PLINK2_MAKEBED (example_pgen)`.
 class TRACE {
 
     // How many tasks of `process` the run executed.

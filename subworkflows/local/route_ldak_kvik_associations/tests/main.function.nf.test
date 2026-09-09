@@ -7,7 +7,47 @@ nextflow_function {
     tag "kvik"
     tag "prediction"
 
-    test("the route-local key covers predictor policy and scientific files") {
+    test("the thin-common key covers prepared view and effective native options") {
+        function "buildThinCommonKey"
+
+        when {
+            function {
+                """
+                input[0] = 'prepared_view_a'
+                input[1] = [window_kb: 1000, maf: 0.01]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == 'thin_common.ef9abca496e6' },
+            )
+        }
+    }
+
+    test("a scientific thinning-option change produces another thin-common key") {
+        function "buildThinCommonKey"
+
+        when {
+            function {
+                """
+                input[0] = 'prepared_view_a'
+                input[1] = [window_kb: 2000, maf: 0.01]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == 'thin_common.21eddcf7268e' },
+            )
+        }
+    }
+
+    test("the prediction key covers the resolved predictor artifact and scientific files") {
         function "buildKvikPredictionKey"
 
         when {
@@ -16,11 +56,11 @@ nextflow_function {
                 def fixtures = '${FIXTURES.base(projectDir)}results/fixtures/pheno_cov/'
                 def qcovar = file(fixtures + 'example.qcovar', checkIfExists: true)
                 input[0] = [cohort: 'example_pgen', trait: 'QT', is_binary: false]
-                input[1] = file(fixtures + 'example.pheno', checkIfExists: true)
-                input[2] = qcovar
-                input[3] = file(fixtures + 'example.catcovar', checkIfExists: true)
-                input[4] = 'provided'
-                input[5] = qcovar
+                input[1] = 'prepared_view_a'
+                input[2] = file(fixtures + 'example.pheno', checkIfExists: true)
+                input[3] = qcovar
+                input[4] = file(fixtures + 'example.catcovar', checkIfExists: true)
+                input[5] = 'provided.0123456789abcdef'
                 """
             }
         }
@@ -28,7 +68,33 @@ nextflow_function {
         then {
             assertAll(
                 { assert function.success },
-                { assert function.result == 'a0ebcec31af9' },
+                { assert function.result == '3fb37ddf4a25' },
+            )
+        }
+    }
+
+    test("focal analysis identity does not fragment prediction reuse") {
+        function "buildKvikPredictionKey"
+
+        when {
+            function {
+                """
+                def fixtures = '${FIXTURES.base(projectDir)}results/fixtures/pheno_cov/'
+                def qcovar = file(fixtures + 'example.qcovar', checkIfExists: true)
+                input[0] = [id: 'another_analysis', cohort: 'example_pgen', trait: 'QT', is_binary: false]
+                input[1] = 'prepared_view_a'
+                input[2] = file(fixtures + 'example.pheno', checkIfExists: true)
+                input[3] = qcovar
+                input[4] = file(fixtures + 'example.catcovar', checkIfExists: true)
+                input[5] = 'provided.0123456789abcdef'
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == '3fb37ddf4a25' },
             )
         }
     }

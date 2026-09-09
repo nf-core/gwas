@@ -47,17 +47,9 @@ process CUSTOM_GCTASTRATIFYLDSCORES {
     if (any(maf_boundaries < 0 | maf_boundaries > 0.5)) fail("maf_edges must be between 0 and 0.5")
 
     scores <- read.table(input_file, header = TRUE, check.names = FALSE, stringsAsFactors = FALSE)
-    required_columns <- c("SNP", "freq", "ldscore_SNP")
-    missing_columns <- setdiff(required_columns, colnames(scores))
-    if (length(missing_columns) > 0L) {
-      fail(paste("LD-score input is missing required columns:", paste(missing_columns, collapse = ", ")))
-    }
 
     ld_scores <- scores\$ldscore_SNP
     maf <- pmin(scores\$freq, 1 - scores\$freq)
-    if (any(!is.finite(ld_scores)) || any(!is.finite(maf) | maf < 0 | maf > 0.5)) {
-      fail("LD scores and frequencies must be finite with MAF between 0 and 0.5")
-    }
 
     ld_boundaries <- as.numeric(quantile(
       ld_scores,

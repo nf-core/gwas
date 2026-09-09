@@ -1,22 +1,29 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
 name: "prepare_relatedness_matrices"
-description: Build each distinct relatedness matrix once under a content-derived reuse key and fan it out to every unary analysis or explicit pair request that needs one
+description: Build reusable base relatedness artifacts and their scientifically keyed derivatives once, then fan the selected artifact out to every unary analysis or explicit pair request that needs it
 keywords:
   - relatedness
   - grm
   - kinship
   - deduplication
+  - artifact identity
 # The helper functions are listed alongside the subworkflow because `nf-core subworkflows lint`
 # compares every `include` in main.nf against this list, and it lowercases the include name without
 # lowercasing the entry it is matched against — so a camel-cased function name here is reported as
 # missing. Function entries are therefore spelled lowercase.
 components:
   - plink_prepare_grm_gcta
+  - plink_prepare_ldms_plan_gcta
   - plink_prepare_grm_ldms_gcta
   - plink_prepare_grm_ldak
+  - plink_prepare_grm_mph
+  - plink_prepare_grm_ldms_mph
   - gcta/makebksparse
+  - buildscientificartifactkey
+  - canonicalisescientificidentifier
+  - canonicalisescientificvalue
   - digestfilebytes
-  - digestidentitytext
+  - getmatrixkindcontract
   - getmethodcapabilities
 input:
   - ch_analyses:
@@ -25,18 +32,24 @@ input:
       pattern: "*.{pgen,psam,pvar,bed,bim,fam,vcf,vcf.gz,weights}"
       ontologies:
         - edam: "http://edamontology.org/format_2330"
-  - ch_cohort_genotypes:
-      description: One prepared PLINK 2 bundle per distinct cohort, carrying cohort metadata with meta.id set to the cohort identifier.
-      structure: [map cohort_meta, path pgen, path psam, path pvar]
-      pattern: "*.{pgen,psam,pvar}"
+  - ch_cohort_native_genotypes:
+      description: One native bundle per distinct cohort in format-polymorphic member order (primary genotype, variant file, sample file), carrying cohort metadata with meta.id set to the cohort identifier. The dense GCTA builder selects its native flag from the primary member's extension.
+      structure: [map cohort_meta, path primary_genotype, path variant_file, path sample_file]
+      pattern: "*.{bed,bim,fam,pgen,pvar,psam}"
       ontologies:
         - edam: "http://edamontology.org/format_2330"
   - ch_plink1_genotypes:
-      description: Lazy PLINK 1 derivatives for analyses whose selected route requires them. Analyses on one cohort share one conversion upstream.
+      description: The PLINK 1 view of every analysis whose selected method reads PLINK 1. Analyses on one cohort share one view upstream.
       structure: [map meta, path bed, path bim, path fam]
       pattern: "*.{bed,bim,fam}"
       ontologies:
         - edam: "http://edamontology.org/format_3003"
+  - ch_cohort_native_view_keys:
+      description: One native view key per cohort. A base request whose matrix kind declares the format-polymorphic bundle is keyed against this identity.
+      structure: [val cohort_id, val native_view_key]
+  - ch_cohort_plink1_view_keys:
+      description: One PLINK 1 view key per cohort that has a PLINK 1 view. A base request whose matrix kind declares the PLINK 1 bundle is keyed against this identity; the channel is partial by design, and total for exactly those kinds.
+      structure: [val cohort_id, val plink1_view_key]
   - gcta_grm_parts:
       description: Run/profile partition count used for every GCTA matrix build.
       structure: integer
@@ -54,14 +67,20 @@ output:
       ontologies:
         - edam: "http://edamontology.org/format_2330"
   - gcta_ldms:
-      description: The LD-by-MAF-stratified GCTA matrix family of each requesting unary GREML-LDMS analysis or bivariate LDMS request, carrying focal attribution metadata.
-      structure: [map meta, path mgrm_manifest, list grm_files]
-      pattern: "*.mgrm, *.grm.{bin,N.bin,id}"
+      description: The LD-by-MAF-stratified GCTA matrix family of each requesting unary GREML-LDMS analysis or bivariate LDMS request, carrying focal attribution metadata and explicit non-empty stratum prefix order.
+      structure: [map meta, list grm_files, list grm_prefixes]
+      pattern: "*.grm.{bin,N.bin,id}"
+      ontologies:
+        - edam: "http://edamontology.org/format_2330"
+  - gcta_ldms_artifacts:
+      description: Each unique LDMS base artifact before focal fan-out, for pipeline-owned keyed publication.
+      structure: [map matrix_meta, list grm_files, list grm_prefixes]
+      pattern: "*.grm.{bin,N.bin,id}"
       ontologies:
         - edam: "http://edamontology.org/format_2330"
   - ldak_kinship:
-      description: The filtered or unfiltered LDAK kinship matrix requested by each analysis unit, carrying its optional unrelated-sample keep list.
-      structure: "[map meta, list grm_files, path keep|[]]"
+      description: The selected base or unrelated-sample child LDAK kinship artifact requested by each analysis unit. The artifact key remains beside unchanged focal metadata, and the keep list is present only for a subset child.
+      structure: "[map meta, string artifact_key, list grm_files, path keep|[]]"
       pattern: "*.{grm.bin,grm.id,grm.details,grm.adjust,keep}"
       ontologies:
         - edam: "http://edamontology.org/format_2330"

@@ -1,0 +1,470 @@
+nextflow_process {
+
+    name "Test Process MPH_REML"
+    config "./nextflow.config"
+    script "../main.nf"
+    process "MPH_REML"
+
+    tag "modules"
+    tag "modules_local"
+    tag "mph"
+    tag "mph/reml"
+    tag "mph/makegrm"
+    tag "custom/mphsnpinfo"
+
+    // The matrices are built by the module that owns MPH's own layout rather than staged from a shipped
+    // bundle, because a GRM this fit can read is not interchangeable with GCTA's in either direction: the
+    // header, the triangle orientation, the scaling and the identifier companion all differ, and neither tool
+    // refuses the other's file usefully.
+    setup {
+        run("CUSTOM_MPHSNPINFO", alias: "MPHSNPINFO_DENSE") {
+            script "../../../custom/mphsnpinfo/main.nf"
+            process {
+                """
+                input[0] = [
+                    [ id:'dense_plan' ],
+                    file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bim', checkIfExists: true)
+                ]
+                input[1] = [ [ id:'dense' ], [], [], [ 'all' ] ]
+                input[2] = 22
+                """
+            }
+        }
+
+        run("CUSTOM_MPHSNPINFO", alias: "MPHSNPINFO_SPLIT") {
+            script "../../../custom/mphsnpinfo/main.nf"
+            process {
+                """
+                def bimFile = file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bim', checkIfExists: true)
+                def variantNames = bimFile.text.readLines().findAll { line -> line.trim() }.collect { line -> line.trim().tokenize()[1] }
+                def half = variantNames.size().intdiv(2)
+
+                file('ld01_snp_group.txt').text = variantNames[0..<half].join('\\n') + '\\n'
+                file('ld02_snp_group.txt').text = variantNames[half..<variantNames.size()].join('\\n') + '\\n'
+                file('split.strata.tsv').text = 'stratum_key\\tgroup_filename\\n' +
+                    'ld01\\tld01_snp_group.txt\\n' +
+                    'ld02\\tld02_snp_group.txt\\n'
+
+                input[0] = [ [ id:'ld_maf_plan' ], bimFile ]
+                input[1] = [
+                    [ id:'ld_maf' ],
+                    file('split.strata.tsv'),
+                    [ file('ld01_snp_group.txt'), file('ld02_snp_group.txt') ],
+                    [ 'ld01', 'ld02' ]
+                ]
+                input[2] = 22
+                """
+            }
+        }
+
+        run("MPH_MAKEGRM", alias: "MPH_MAKEGRM_DENSE") {
+            script "../../makegrm/main.nf"
+            process {
+                """
+                input[0] = [
+                    [ id:'dense' ],
+                    file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bed', checkIfExists: true),
+                    file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bim', checkIfExists: true),
+                    file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.fam', checkIfExists: true)
+                ]
+                input[1] = MPHSNPINFO_DENSE.out.snp_info.map { plan_meta, snp_info, weight_names -> [ plan_meta, snp_info, weight_names.first() ] }
+                """
+            }
+        }
+
+        run("MPH_MAKEGRM", alias: "MPH_MAKEGRM_SPLIT") {
+            script "../../makegrm/main.nf"
+            process {
+                """
+                input[0] = Channel.of('ld01', 'ld02').map { column ->
+                    [
+                        [ id: column ],
+                        file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bed', checkIfExists: true),
+                        file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bim', checkIfExists: true),
+                        file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.fam', checkIfExists: true)
+                    ]
+                }
+                input[1] = MPHSNPINFO_SPLIT.out.snp_info.flatMap { plan_meta, snp_info, weight_names ->
+                    weight_names.collect { column -> [ plan_meta, snp_info, column ] }
+                }
+                """
+            }
+        }
+    }
+
+    // The popgen FAM is `per0..per199` in that order. The tables are written from that dimension rather than
+    // shipped, and every cell is a finite number: MPH has no missing-value token at all, `NA` and any other
+    // non-numeric string abort the process inside `std::stof`, `-9` is silently read as the number minus nine,
+    // and a literal `nan` in a phenotype is an unbounded disk-filling loop. Only an empty cell means missing.
+    def tables = { outputDir, name ->
+        def root = new File(outputDir.toString(), "mph_${name}")
+        root.mkdirs()
+        def write = { fileName, text ->
+            def target = new File(root, fileName)
+            target.text = text
+            target
+        }
+        def firstTrait = { index -> String.format('%.6f', Math.sin(index * 0.7d) * 2.0d + index * 0.01d) }
+        // Deliberately not a monotone function of the first trait, so a two-trait fit has something to
+        // correlate rather than a rank-one pair.
+        def secondTrait = { index -> String.format('%.6f', Math.sin(index * 0.7d) * 1.2d + Math.cos(index * 0.23d) * 1.5d) }
+        [
+            phenotype: write('traits.csv', 'IID,QT,QT2\n' + (0..<200).collect { index -> "per${index},${firstTrait(index)},${secondTrait(index)}" }.join('\n') + '\n'),
+            // MPH synthesises an intercept only when no covariate is named, so a covariate model that wants
+            // one has to carry an explicit literal-1 column and name it first.
+            covariates: write('covariates.csv', 'IID,intercept,cov\n' + (0..<200).collect { index -> "per${index},1,${index % 7}" }.join('\n') + '\n'),
+        ]
+    }
+
+    // Every numeric field is read by column name. `.mq.vc.csv` appends one sampling-covariance column per
+    // matrix and per trait pair, and those appended labels repeat the matrix names, so the leading named
+    // columns are the only ones a header lookup can address safely.
+    def table = { produced -> path(produced).readLines().findAll { line -> line.trim() }.collect { line -> line.split(',', -1).collect { field -> field.trim() } } }
+
+    def valuesOf = { produced, name -> def rows = table(produced); def index = rows.first().indexOf(name); rows.tail().collect { row -> row[index] } }
+
+    def componentOf = { produced, vcName ->
+        def rows = table(produced)
+        def header = rows.first()
+        def row = rows.tail().find { entry -> entry[header.indexOf('vc_name')] == vcName }
+        [var: row[header.indexOf('var')] as Double, pve: row[header.indexOf('pve')] as Double]
+    }
+
+    def sidecar = { produced, name -> path(produced).parent.resolve(name) }
+
+    // The public shape of one fit: five channels always, the sixth only for a multi-trait fit, one identity on
+    // every tuple, and the version the estimate was produced by. The numbers themselves are deliberately not
+    // snapshotted -- `--seed`, `--num_threads` and `--save_memory` all move them, the first one materially.
+    def contract = { outputs, id, traitCount ->
+        [
+            [name: 'variance_components', suffix: '.mq.vc.csv'],
+            [name: 'fixed_effects', suffix: '.mq.blue.csv'],
+            [name: 'iterations', suffix: '.mq.iter.csv'],
+            [name: 'projected_phenotypes', suffix: '.mq.py.csv'],
+            [name: 'log', suffix: '.log'],
+        ].each { channel ->
+            assert outputs[channel.name].size() == 1
+            assert outputs[channel.name].get(0).get(0).id == id
+            assert file(outputs[channel.name].get(0).get(1)).name == "${id}${channel.suffix}".toString()
+        }
+        assert outputs.correlations.size() == (traitCount > 1 ? 1 : 0)
+        if (traitCount > 1) {
+            assert outputs.correlations.get(0).get(0).id == id
+            assert file(outputs.correlations.get(0).get(1)).name == "${id}.mq.cor.csv".toString()
+        }
+        assert outputs.versions_mph.get(0) == ['MPH_REML', 'mph', '0.55.1']
+        true
+    }
+
+    test("homo_sapiens popgen - one matrix and no covariate fits MPH's synthesised intercept") {
+
+        when {
+            def fixtures = tables(outputDir, 'plain')
+            process {
+                """
+                input[0] = MPH_MAKEGRM_DENSE.out.grm_files.map { _meta, grm_files -> [ [ id:'single_plain' ], grm_files, [ 'dense' ] ] }
+                input[1] = [ [ id:'traits' ], file('${fixtures.phenotype}', checkIfExists: true), [ 'QT' ] ]
+                input[2] = [ [ id:'traits' ], [], [] ]
+                """
+            }
+        }
+
+        then {
+            def blue = process.out.fixed_effects.get(0).get(1)
+            def variance = process.out.variance_components.get(0).get(1)
+            assertAll(
+                { assert process.success },
+                { assert contract(process.out, 'single_plain', 1) },
+                // Naming no covariate is a different model from naming an empty covariate list, not an empty
+                // one: MPH fits its own intercept here, and the flag is absent from the invocation entirely.
+                { assert !sidecar(blue, '.command.sh').text.contains('--covariate_names') },
+                { assert valuesOf(blue, 'covar') == ['intercept'] },
+                { assert valuesOf(variance, 'vc_name') == ['dense', 'err'] }
+            )
+        }
+    }
+
+    test("homo_sapiens popgen - an explicit intercept column is fitted beside the covariate that needs it") {
+
+        when {
+            def fixtures = tables(outputDir, 'covariates')
+            process {
+                """
+                input[0] = MPH_MAKEGRM_DENSE.out.grm_files.map { _meta, grm_files -> [ [ id:'single_covariate' ], grm_files, [ 'dense' ] ] }
+                input[1] = [ [ id:'traits' ], file('${fixtures.phenotype}', checkIfExists: true), [ 'QT' ] ]
+                input[2] = [ [ id:'traits' ], file('${fixtures.covariates}', checkIfExists: true), [ 'intercept', 'cov' ] ]
+                """
+            }
+        }
+
+        then {
+            def blue = process.out.fixed_effects.get(0).get(1)
+            assertAll(
+                { assert process.success },
+                { assert contract(process.out, 'single_covariate', 1) },
+                // A `--covariate_file` given without `--covariate_names` is silently ignored and fits an
+                // intercept-only model, and naming covariates drops MPH's synthesised intercept, so the two
+                // flags travel together and the intercept is named first, explicitly.
+                { assert sidecar(blue, '.command.sh').text.contains('--covariate_names "intercept,cov"') },
+                { assert valuesOf(blue, 'covar') == ['intercept', 'cov'] }
+            )
+        }
+    }
+
+    test("homo_sapiens popgen - two matrices are listed and reported in the caller's order") {
+
+        when {
+            def fixtures = tables(outputDir, 'two_component')
+            process {
+                """
+                input[0] = MPH_MAKEGRM_SPLIT.out.grm_files
+                    .map { _meta, grm_files -> grm_files }
+                    .collect()
+                    .map { staged -> [ [ id:'two_component' ], staged.flatten(), [ 'ld01', 'ld02' ] ] }
+                input[1] = [ [ id:'traits' ], file('${fixtures.phenotype}', checkIfExists: true), [ 'QT' ] ]
+                input[2] = [ [ id:'traits' ], file('${fixtures.covariates}', checkIfExists: true), [ 'intercept', 'cov' ] ]
+                """
+            }
+        }
+
+        then {
+            def variance = process.out.variance_components.get(0).get(1)
+            def grmList = sidecar(variance, 'two_component.grm_list')
+            assertAll(
+                { assert process.success },
+                { assert contract(process.out, 'two_component', 1) },
+                // One bare prefix per line and nothing else: MPH has no comment character, reads a second
+                // whitespace-separated column as an initial variance component, and segfaults on an empty
+                // list. The order of the list is the row order of the result and the column order of the
+                // appended covariance blocks, so it is a contract rather than an implementation detail.
+                { assert grmList.readLines() == ['ld01', 'ld02'] },
+                { assert valuesOf(variance, 'vc_name') == ['ld01', 'ld02', 'err'] }
+            )
+        }
+    }
+
+    test("homo_sapiens popgen - a two-trait fit adds the correlation table and its aggregate row") {
+
+        when {
+            def fixtures = tables(outputDir, 'two_trait')
+            process {
+                """
+                input[0] = MPH_MAKEGRM_DENSE.out.grm_files.map { _meta, grm_files -> [ [ id:'two_trait' ], grm_files, [ 'dense' ] ] }
+                input[1] = [ [ id:'traits' ], file('${fixtures.phenotype}', checkIfExists: true), [ 'QT', 'QT2' ] ]
+                input[2] = [ [ id:'traits' ], file('${fixtures.covariates}', checkIfExists: true), [ 'intercept', 'cov' ] ]
+                """
+            }
+        }
+
+        then {
+            def correlations = process.out.correlations.get(0).get(1)
+            assertAll(
+                { assert process.success },
+                { assert contract(process.out, 'two_trait', 2) },
+                // `G` is a synthetic total over every matrix rather than a matrix name, and MPH prints the
+                // trait pair in the reverse of the requested order, so both the rows and the pair are read by
+                // name and the aggregate is identified explicitly.
+                { assert valuesOf(correlations, 'vc_name') == ['dense', 'err', 'G'] },
+                { assert (valuesOf(correlations, 'trait_x') + valuesOf(correlations, 'trait_y')).toSet() == ['QT', 'QT2'].toSet() },
+                { assert valuesOf(correlations, 'trait_x').every { trait -> trait != valuesOf(correlations, 'trait_y')[0] } }
+            )
+        }
+    }
+
+    test("homo_sapiens popgen - the stochastic settings reach the invocation and the option echo") {
+
+        when {
+            params {
+                module_args = "--seed 7 --num_random_vectors 50"
+            }
+            def fixtures = tables(outputDir, 'seeded')
+            process {
+                """
+                input[0] = MPH_MAKEGRM_DENSE.out.grm_files.map { _meta, grm_files -> [ [ id:'seeded' ], grm_files, [ 'dense' ] ] }
+                input[1] = [ [ id:'traits' ], file('${fixtures.phenotype}', checkIfExists: true), [ 'QT' ] ]
+                input[2] = [ [ id:'traits' ], file('${fixtures.covariates}', checkIfExists: true), [ 'intercept', 'cov' ] ]
+                """
+            }
+        }
+
+        then {
+            def log = process.out.log.get(0).get(1)
+            assertAll(
+                { assert process.success },
+                { assert contract(process.out, 'seeded', 1) },
+                // The seed moves the point estimate, not merely its standard error -- at the default hundred
+                // random vectors the spread across eight seeds is over half the estimate's own size -- so the
+                // caller's seed reaching MPH is a correctness property, not a tidiness one. The echo is
+                // asserted beside the command line because MPH resolves unique option prefixes silently and
+                // prints the resolved name, so the echo is the only proof the intended option was set.
+                { assert sidecar(log, '.command.sh').text.contains('--seed 7') },
+                { assert sidecar(log, '.command.sh').text.contains('--num_random_vectors 50') },
+                { assert path(log).text.contains('OPTION seed with ARG 7') },
+                { assert path(log).text.contains('OPTION num_random_vectors with ARG 50') }
+            )
+        }
+    }
+
+    test("homo_sapiens popgen - reading the matrices on the fly does not move the estimate") {
+
+        when {
+            def fixtures = tables(outputDir, 'save_memory')
+            process {
+                """
+                input[0] = MPH_MAKEGRM_DENSE.out.grm_files.flatMap { _meta, grm_files ->
+                    [
+                        [ [ id:'in_memory', native_args:'' ], grm_files, [ 'dense' ] ],
+                        [ [ id:'on_the_fly', native_args:'--save_memory' ], grm_files, [ 'dense' ] ]
+                    ]
+                }
+                input[1] = [ [ id:'traits' ], file('${fixtures.phenotype}', checkIfExists: true), [ 'QT' ] ]
+                input[2] = [ [ id:'traits' ], file('${fixtures.covariates}', checkIfExists: true), [ 'intercept', 'cov' ] ]
+                """
+            }
+        }
+
+        then {
+            def variances = process.out.variance_components.collectEntries { entry -> [(entry.get(0).id): entry.get(1)] }
+            def logs = process.out.log.collectEntries { entry -> [(entry.get(0).id): entry.get(1)] }
+            def inMemory = componentOf(variances['in_memory'], 'dense')
+            def onTheFly = componentOf(variances['on_the_fly'], 'dense')
+            def agrees = { left, right -> Math.abs(left - right) <= 1e-5 * Math.max(Math.abs(left), Math.abs(right)) + 1e-9 }
+            // The same channel-by-channel identity and naming contract every other case asserts through the
+            // shared helper, restated for the two arms this case runs side by side.
+            // Keyed rather than ordered: two tasks of one process emit in whatever order they finish in.
+            def named = { channel -> channel.collectEntries { entry -> [(entry.get(0).id): file(entry.get(1)).name] } }
+            def expected = { suffix -> [in_memory: "in_memory${suffix}".toString(), on_the_fly: "on_the_fly${suffix}".toString()] }
+            assertAll(
+                { assert process.success },
+                { assert named(process.out.variance_components) == expected('.mq.vc.csv') },
+                { assert named(process.out.fixed_effects) == expected('.mq.blue.csv') },
+                { assert named(process.out.iterations) == expected('.mq.iter.csv') },
+                { assert named(process.out.projected_phenotypes) == expected('.mq.py.csv') },
+                { assert named(process.out.log) == expected('.log') },
+                { assert process.out.correlations.size() == 0 },
+                { assert process.out.versions_mph.get(0) == ['MPH_REML', 'mph', '0.55.1'] },
+                { assert variances.keySet().sort() == ['in_memory', 'on_the_fly'] },
+                { assert sidecar(variances['on_the_fly'], '.command.sh').text.contains('--save_memory') },
+                { assert !sidecar(variances['in_memory'], '.command.sh').text.contains('--save_memory') },
+                { assert path(logs['on_the_fly']).text.contains('GRMs will be read on the fly.') },
+                { assert !path(logs['in_memory']).text.contains('GRMs will be read on the fly.') },
+                // `--save_memory` is safe with a covariate file and does not change the answer to any
+                // reportable precision, but it does break byte-level equality: the log line above is the only
+                // place the two runs visibly differ, and the trailing digits of the sampling covariance move.
+                // The agreement is therefore asserted numerically rather than by comparing files.
+                { assert agrees(inMemory.var, onTheFly.var) },
+                { assert agrees(inMemory.pve, onTheFly.pve) }
+            )
+        }
+    }
+
+    test("homo_sapiens popgen - a fit capped below convergence still emits a complete result") {
+
+        when {
+            params {
+                module_args = "--num_iterations 1"
+            }
+            def fixtures = tables(outputDir, 'capped')
+            process {
+                """
+                input[0] = MPH_MAKEGRM_DENSE.out.grm_files.map { _meta, grm_files -> [ [ id:'capped' ], grm_files, [ 'dense' ] ] }
+                input[1] = [ [ id:'traits' ], file('${fixtures.phenotype}', checkIfExists: true), [ 'QT' ] ]
+                input[2] = [ [ id:'traits' ], file('${fixtures.covariates}', checkIfExists: true), [ 'intercept', 'cov' ] ]
+                """
+            }
+        }
+
+        then {
+            def log = process.out.log.get(0).get(1)
+            assertAll(
+                // Non-convergence is a native state with a complete, well-formed result behind it and nothing
+                // in the CSVs records it, so the module deliberately does not fail on a `Warning:` line. The
+                // classification is the caller's, and it can only be made from the log this channel carries --
+                // which is exactly why the log has to reach the caller for a run the module calls successful.
+                { assert process.success },
+                { assert process.exitStatus == 0 },
+                { assert contract(process.out, 'capped', 1) },
+                { assert path(log).text.contains('Warning: not converged after 1 iterations.') },
+                { assert path(process.out.variance_components.get(0).get(1)).readLines().size() > 1 },
+                { assert path(process.out.fixed_effects.get(0).get(1)).readLines().size() > 1 },
+                { assert path(process.out.iterations.get(0).get(1)).readLines().size() > 1 },
+                { assert path(process.out.projected_phenotypes.get(0).get(1)).readLines().size() > 1 }
+            )
+        }
+    }
+
+    test("a matrix prefix that is not staged is refused") {
+
+        when {
+            def fixtures = tables(outputDir, 'absent')
+            process {
+                """
+                input[0] = MPH_MAKEGRM_DENSE.out.grm_files.map { _meta, grm_files -> [ [ id:'absent_matrix' ], grm_files, [ 'dense', 'not_staged' ] ] }
+                input[1] = [ [ id:'traits' ], file('${fixtures.phenotype}', checkIfExists: true), [ 'QT' ] ]
+                input[2] = [ [ id:'traits' ], file('${fixtures.covariates}', checkIfExists: true), [ 'intercept', 'cov' ] ]
+                """
+            }
+        }
+
+        then {
+            // MPH prints the error, writes no result file at all and returns 0. The exit code is therefore not
+            // the contract: the result file and the absence of an error line in the log are, and this case is
+            // what proves that guard is live rather than decorative.
+            assertAll(
+                { assert !process.success },
+                { assert process.exitStatus != 0 },
+                { assert process.errorReport.contains('GRM files [not_staged (.grm.bin/.grm.iid)] not found.') }
+            )
+        }
+    }
+
+    test("homo_sapiens popgen - stub") {
+
+        options "-stub"
+
+        when {
+            def fixtures = tables(outputDir, 'stub')
+            process {
+                """
+                input[0] = MPH_MAKEGRM_DENSE.out.grm_files.map { _meta, grm_files -> [ [ id:'stubbed' ], grm_files, [ 'dense' ] ] }
+                input[1] = [ [ id:'traits' ], file('${fixtures.phenotype}', checkIfExists: true), [ 'QT' ] ]
+                input[2] = [ [ id:'traits' ], [], [] ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                // The stub branches on the same trait count as the script, so the multi-trait output
+                // cardinality stays exercised in stub mode and a one-trait stub emits no correlation table.
+                { assert contract(process.out, 'stubbed', 1) },
+                { assert snapshot(sanitizeOutput(process.out, unstableKeys: ["log"])).match() }
+            )
+        }
+    }
+
+    test("stub - a two-trait fit emits the correlation table") {
+
+        options "-stub"
+
+        when {
+            def fixtures = tables(outputDir, 'stub_two_trait')
+            process {
+                """
+                input[0] = MPH_MAKEGRM_DENSE.out.grm_files.map { _meta, grm_files -> [ [ id:'stubbed_two_trait' ], grm_files, [ 'dense' ] ] }
+                input[1] = [ [ id:'traits' ], file('${fixtures.phenotype}', checkIfExists: true), [ 'QT', 'QT2' ] ]
+                input[2] = [ [ id:'traits' ], [], [] ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                { assert contract(process.out, 'stubbed_two_trait', 2) },
+                { assert snapshot(sanitizeOutput(process.out, unstableKeys: ["log"])).match() }
+            )
+        }
+    }
+}
