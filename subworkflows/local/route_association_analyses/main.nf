@@ -11,25 +11,20 @@
 // consumer of it derives its own native flag from the primary member, while the PLINK 1 stream carries only
 // the requests whose selected method the registry says reads PLINK 1.
 //
-// The two prediction-reusing routes are called as subworkflows rather than inlined: `ROUTE_REGENIE_ASSOCIATIONS`
-// and `ROUTE_LDAK_KVIK_ASSOCIATIONS` own their own Step 1 reuse identity, and those keys stay private to them.
-// GCTA fastGWA-MLM is invoked directly, because a composition wrapping a single module is not a subworkflow
-// and would only add a scope level. Every constituent process reports directly to the run-wide versions
-// topic, so this subworkflow emits no versions, and it reads no params, no workflow and no projectDir — the
-// three REGENIE execution controls arrive as explicit values.
+// REGENIE fitting and testing are composed publicly; this controller declares one fit per analysis.
+// KVIK retains its separate caller because shared predictor-resource selection remains substantial.
 
 // MODULE: Local to the pipeline
 include { GCTA_FASTGWA                 } from '../../../modules/local/gcta/fastgwa/main'
 
-// SUBWORKFLOWS: Pipeline-local association routes that own their own Step 1 fit reuse
+// SUBWORKFLOWS: Reusable REGENIE association and pipeline-owned KVIK predictor policy
 include { ROUTE_LDAK_KVIK_ASSOCIATIONS } from '../route_ldak_kvik_associations'
-include { ROUTE_REGENIE_ASSOCIATIONS   } from '../route_regenie_associations'
+include { PLINK_ASSOCIATION_REGENIE    } from '../plink_association_regenie/main'
 
 workflow ROUTE_ASSOCIATION_ANALYSES {
     take:
     ch_native_genotypes // channel: [ val(meta), path(primary_genotype), path(variant_file), path(sample_file) ], the cohort's native bundle in format-polymorphic member order, fanned out one element per genotype request, including the relationship-scoped rows the spine also routes to matrix construction
     ch_plink1_genotypes // channel: [ val(meta), path(bed), path(bim), path(fam) ], the PLINK 1 view, present only for requests whose selected method reads PLINK 1
-    ch_cohort_native_view_keys // channel: [ val(cohort_id), val(native_view_key) ], one per cohort
     ch_cohort_plink1_view_keys // channel: [ val(cohort_id), val(plink1_view_key) ], only cohorts with a PLINK 1 view, which is exactly the set of cohorts reaching ch_plink1_genotypes
     ch_phenotypes // channel: [ val(meta), path(phenotype) ], the headered canonical phenotype of every analysis unit
     ch_covariates // channel: [ val(meta), path(covariates) ], the headered merged covariate design, present only for an analysis unit that declared covariates
@@ -54,27 +49,22 @@ workflow ROUTE_ASSOCIATION_ANALYSES {
         .join(ch_covariates, remainder: true)
 
     //
-    // SUBWORKFLOW: Pipeline route for REGENIE association with shared Step 1 predictions
+    // SUBWORKFLOW: REGENIE association from explicitly declared fits and test requests
     //
-    // The local route owns nf-core/gwas scientific identity, cross-analysis fit reuse and output
-    // attribution. Upstream-ready REGENIE components remain unaware of the relational input contract.
-    // The native view key travels as a tuple member rather than in metadata: it is the route's Step 1 reuse
-    // identity, not focal analysis identity, and it must not reach any emitted meta map.
-    def ch_regenie_analyses = ch_analysis_inputs
+    // Pipeline analyses each declare their own F. The public component can also attach one caller-declared
+    // producer to many analyses or chromosome bundles; byte equivalence does not choose pipeline fits.
+    def ch_regenie_requests = ch_analysis_inputs
         .filter { meta, _primary, _variant_file, _sample_file, _phenotype, _covariates -> 'regenie' in meta.association_methods }
-        .map { meta, primary, variant_file, sample_file, phenotype, covariates -> [meta.cohort, meta, primary, variant_file, sample_file, phenotype, covariates] }
-        .combine(ch_cohort_native_view_keys, by: 0)
-        .map { _cohort_id, meta, primary, variant_file, sample_file, phenotype, covariates, view_key -> [meta, primary, variant_file, sample_file, phenotype, covariates, view_key] }
+        .multiMap { meta, primary, variant_file, sample_file, phenotype, covariates ->
+            def fit_meta = [id: meta.id, is_binary: meta.is_binary, cat_covariate_names: meta.cat_covariate_names]
+            fits: tuple(meta.id, fit_meta, primary, variant_file, sample_file, phenotype, covariates ?: [], meta.method_options.regenie.step1_bsize, regenie_step1_mode, regenie_step1_mode == 'chunked' ? regenie_step1_jobs : [])
+            tests: tuple(meta.id, meta, primary, variant_file, sample_file, phenotype, covariates ?: [], regenie_step2_bsize)
+        }
 
-    ROUTE_REGENIE_ASSOCIATIONS(
-        ch_regenie_analyses,
-        regenie_step2_bsize,
-        regenie_step1_mode,
-        regenie_step1_jobs,
-    )
+    PLINK_ASSOCIATION_REGENIE(ch_regenie_requests.fits, channel.empty(), ch_regenie_requests.tests)
 
     //
-    // SUBWORKFLOW: Pipeline route for LDAK-KVIK association with shared Step 1 predictions
+    // SUBWORKFLOW: Pipeline route for LDAK-KVIK association with shared predictor resources
     //
     // LDAK consumes the headerless phenotype serialisation and keeps quantitative and categorical
     // covariates separate, so it is narrowed out of the prepared headerless stream rather than the headered
@@ -82,8 +72,8 @@ workflow ROUTE_ASSOCIATION_ANALYSES {
     def ch_kvik_phenotypes = ch_headerless_phenotypes.filter { meta, _phenotype, _quant_covariates, _cat_covariates -> 'ldak_kvik' in meta.association_methods }
 
     // The stageable predictor resource and its validated policy come from the relational LDAK family map.
-    // Both remain explicit tuple members so Nextflow stages the file, while their content identity is folded
-    // into the Step 1 reuse key the route owns.
+    // Both remain explicit tuple members so Nextflow stages the file; the route shares predictor resources
+    // independently of its per-analysis fit requests.
     def ch_kvik_extract_policy = ch_predictor_extracts
         .filter { meta, _kvik_extract -> 'ldak_kvik' in meta.association_methods }
         .map { meta, kvik_extract -> [meta, kvik_extract, meta.method_options.ldak.kvik_step1_subset] }
@@ -172,7 +162,7 @@ workflow ROUTE_ASSOCIATION_ANALYSES {
     def ch_association_results = channel.empty()
 
     ch_association_results = ch_association_results.mix(
-        ROUTE_REGENIE_ASSOCIATIONS.out.results.map { meta, sumstats -> [meta + [method: 'regenie'], sumstats] }
+        PLINK_ASSOCIATION_REGENIE.out.results.map { meta, sumstats -> [meta + [method: 'regenie'], sumstats] }
     )
     ch_association_results = ch_association_results.mix(
         ROUTE_LDAK_KVIK_ASSOCIATIONS.out.harmonisation_input.map { meta, sumstats -> [meta + [method: 'ldak_kvik'], sumstats] }

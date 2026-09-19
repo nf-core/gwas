@@ -74,6 +74,7 @@ workflow {
     publish:
     genotype_views      = NFCORE_GWAS.out.genotype_views
     gcta_ldms_artifacts = params.save_relatedness_matrices ? NFCORE_GWAS.out.gcta_ldms_artifacts : channel.empty()
+    mph_dense_artifacts = params.save_relatedness_matrices ? NFCORE_GWAS.out.mph_dense_artifacts : channel.empty()
     mph_ldms_artifacts  = params.save_relatedness_matrices ? NFCORE_GWAS.out.mph_ldms_artifacts : channel.empty()
     ldms_plan_artifacts = params.save_relatedness_matrices ? NFCORE_GWAS.out.ldms_plan_artifacts : channel.empty()
 }
@@ -86,6 +87,9 @@ output {
     }
     gcta_ldms_artifacts {
         path { matrix_meta, _grm_files, _grm_prefixes -> "quality_control/relatedness_matrices/${matrix_meta.key}" }
+    }
+    mph_dense_artifacts {
+        path { matrix_meta, _grm_files -> "quality_control/relatedness_matrices/${matrix_meta.key}" }
     }
     mph_ldms_artifacts {
         path { matrix_meta, _grm_files, _grm_prefixes -> "quality_control/relatedness_matrices/${matrix_meta.key}" }
@@ -136,6 +140,7 @@ workflow NFCORE_GWAS {
     multiqc_report      = GWAS.out.multiqc_report // channel: [ [ path(report) ] ]
     genotype_views      = GWAS.out.genotype_views // channel: [ val(cohort_id), path(genotype_view_record) ], one per cohort
     gcta_ldms_artifacts = GWAS.out.gcta_ldms_artifacts // channel: [ val(matrix_meta), path(grm_files), val(grm_prefixes) ], one per base key
+    mph_dense_artifacts = GWAS.out.mph_dense_artifacts // channel: [ val(matrix_meta), path(grm_files) ], one per base key
     mph_ldms_artifacts  = GWAS.out.mph_ldms_artifacts // channel: [ val(matrix_meta), path(grm_files), val(grm_prefixes) ], one per base key
     ldms_plan_artifacts = GWAS.out.ldms_plan_artifacts // channel: [ val(plan_meta), path(ld_scores), path(strata_manifest), [ path(snp_group_file), ... ] ], one per plan key
 }

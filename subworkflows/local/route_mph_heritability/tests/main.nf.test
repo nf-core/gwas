@@ -101,7 +101,6 @@ nextflow_workflow {
                 // route minted for its own use.
                 { assert workflow.out.mph_results.every { record -> record[0].id == 'both' } },
                 { assert workflow.out.mph_results.every { record -> !record[0].containsKey('mph_effective') } },
-                { assert workflow.out.mph_results.every { record -> !record[0].containsKey('mph_trait_names') } },
             )
         }
     }

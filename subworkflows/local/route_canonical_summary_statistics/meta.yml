@@ -37,6 +37,6 @@ output:
       pattern: "*.gwaslab.log"
       ontologies: []
 authors:
-  - "@andongni"
+  - "@lyh970817"
 maintainers:
-  - "@andongni"
+  - "@lyh970817"

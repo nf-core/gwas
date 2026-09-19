@@ -1,4 +1,79 @@
 {
+    "plan and generic groups preserve identity and row order - stub": {
+        "content": [
+            {
+                "0": [
+                    [
+                        {
+                            "id": "stub_plan"
+                        },
+                        "stub_plan.strata.tsv:md5,04fb7dee1294cae6b2f64c39a27cd739",
+                        [
+                            "stub_plan_snp_group_ld01_maf01.txt:md5,a48b3426cc201c1c0be8e11cf34e9365",
+                            "stub_plan_snp_group_ld02_maf01.txt:md5,6d0959c8d45c313c024c6d3fa5c8c630"
+                        ]
+                    ]
+                ],
+                "1": [
+                    [
+                        {
+                            "id": "stub_plan"
+                        },
+                        "stub_plan.groups.tsv:md5,45782be56ecbb5255e94923d70fbffe0",
+                        [
+                            "stub_plan_snp_group_ld01_maf01.txt:md5,a48b3426cc201c1c0be8e11cf34e9365",
+                            "stub_plan_snp_group_ld02_maf01.txt:md5,6d0959c8d45c313c024c6d3fa5c8c630"
+                        ]
+                    ]
+                ],
+                "2": [
+                    [
+                        {
+                            "id": "stub_plan"
+                        },
+                        "stub_plan_gcta_ld.score.ld:md5,4c8bdfaec662d9f299756105e212f067"
+                    ]
+                ],
+                "groups": [
+                    [
+                        {
+                            "id": "stub_plan"
+                        },
+                        "stub_plan.groups.tsv:md5,45782be56ecbb5255e94923d70fbffe0",
+                        [
+                            "stub_plan_snp_group_ld01_maf01.txt:md5,a48b3426cc201c1c0be8e11cf34e9365",
+                            "stub_plan_snp_group_ld02_maf01.txt:md5,6d0959c8d45c313c024c6d3fa5c8c630"
+                        ]
+                    ]
+                ],
+                "ld_scores": [
+                    [
+                        {
+                            "id": "stub_plan"
+                        },
+                        "stub_plan_gcta_ld.score.ld:md5,4c8bdfaec662d9f299756105e212f067"
+                    ]
+                ],
+                "plan": [
+                    [
+                        {
+                            "id": "stub_plan"
+                        },
+                        "stub_plan.strata.tsv:md5,04fb7dee1294cae6b2f64c39a27cd739",
+                        [
+                            "stub_plan_snp_group_ld01_maf01.txt:md5,a48b3426cc201c1c0be8e11cf34e9365",
+                            "stub_plan_snp_group_ld02_maf01.txt:md5,6d0959c8d45c313c024c6d3fa5c8c630"
+                        ]
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T18:51:32.943632553",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
     "a two-bin plan partitions the retained LD-score variants into ordered disjoint groups": {
         "content": [
             {
@@ -19,7 +94,31 @@
                         {
                             "id": "popgen_plan"
                         },
+                        "popgen_plan.groups.tsv:md5,0904ec64ede1c3bf8609b67a4d487c8f",
+                        [
+                            "popgen_plan_snp_group_ld01_maf01.txt:md5,50003a8a14579d958a46bb747d998c21",
+                            "popgen_plan_snp_group_ld02_maf01.txt:md5,16b353ad5bc56ac1deaf551083ddaf62"
+                        ]
+                    ]
+                ],
+                "2": [
+                    [
+                        {
+                            "id": "popgen_plan"
+                        },
                         "popgen_plan_gcta_ld.score.ld:md5,5a4859a8538b2468ce58d798856889ce"
+                    ]
+                ],
+                "groups": [
+                    [
+                        {
+                            "id": "popgen_plan"
+                        },
+                        "popgen_plan.groups.tsv:md5,0904ec64ede1c3bf8609b67a4d487c8f",
+                        [
+                            "popgen_plan_snp_group_ld01_maf01.txt:md5,50003a8a14579d958a46bb747d998c21",
+                            "popgen_plan_snp_group_ld02_maf01.txt:md5,16b353ad5bc56ac1deaf551083ddaf62"
+                        ]
                     ]
                 ],
                 "ld_scores": [
@@ -44,7 +143,7 @@
                 ]
             }
         ],
-        "timestamp": "2026-09-03T10:30:04.034597545",
+        "timestamp": "2026-09-18T18:51:18.247374465",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.6"

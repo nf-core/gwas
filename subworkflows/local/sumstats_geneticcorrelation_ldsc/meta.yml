@@ -1,0 +1,54 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
+name: sumstats_geneticcorrelation_ldsc
+description: Munge declared summary-statistics producers and estimate genetic correlation for ordered pairs with LD Score Regression
+keywords:
+  - summary statistics
+  - linkage disequilibrium score regression
+  - geneticcorrelation
+components:
+  - ldsc/mungesumstats
+  - ldsc/rg
+input:
+  - ch_producers:
+      description: |
+        Declared summary-statistics endpoints, each munged exactly once even when several pairs
+        share it. Producer meta.id is unique and referenced by at least one pair, and producer
+        metadata propagates unchanged to the preparation outputs. sumstats is a native association
+        summary table; meta2 identifies the merge-allele resource, normally the HapMap3
+        `w_hm3.snplist`, which is optional per producer and omitted by supplying [] as merge_alleles.
+      structure: "[map meta, path sumstats, map meta2, path merge_alleles|[]]"
+      pattern: "*.{txt,tsv,csv,txt.gz,tsv.gz,csv.gz}, *.{txt,tsv,snplist}"
+      ontologies: []
+  - ch_pairs:
+      description: |
+        Ordered endpoint pairs, one per focal fit. Pair meta.id is unique, focal pair metadata is
+        preserved unchanged on the fitted log, and the left and right producer ids reference
+        producer meta.id in native `--rg` order. meta2 identifies the reference LD-score directory
+        and meta3 the separate regression-weight directory; each holds per-chromosome `<chr>.l2.*`
+        files at its top level. Native optional fit arguments belong in task.ext.args. The caller
+        owns reference selection, prevalence, and publication policy.
+      structure:
+        "[map meta, map meta2, path reference_ld_scores, map meta3, path regression_weights,
+        string left_producer_id, string right_producer_id]"
+      pattern: "*.l2.{ldscore.gz,M_5_50}"
+      ontologies: []
+output:
+  - munged_sumstats:
+      description: One LDSC summary-statistics product per declared producer, with producer metadata.
+      structure: [map meta, path sumstats]
+      pattern: "*.sumstats.gz"
+      ontologies: []
+  - munging_log:
+      description: Native preparation log per declared producer, with producer metadata.
+      structure: [map meta, path log]
+      pattern: "*.log"
+      ontologies: []
+  - rg_log:
+      description: Native genetic correlation log per ordered pair, with the focal pair metadata.
+      structure: [map meta, path log]
+      pattern: "*.log"
+      ontologies: []
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"

@@ -4,6 +4,7 @@ nextflow_workflow {
     script "../main.nf"
     workflow "ROUTE_GCTA_BIVARIATE_RELATIONSHIPS"
     tag "subworkflow"
+    tag "subworkflows_local"
     tag "gcta"
     tag "bivariate"
     tag "relationship"

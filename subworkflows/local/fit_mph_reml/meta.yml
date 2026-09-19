@@ -1,0 +1,92 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
+name: fit_mph_reml
+description: Prepare IID-keyed trait and covariate designs and fit ordered native MPH relationship matrices.
+  No integration selector is mandatory; configure MPH_REML `ext.args` for optional native fit options.
+keywords:
+- genome relationship matrix
+- minque for partitioning heritability
+- restricted maximum likelihood
+- phenotype
+- covariates
+components:
+- prepare_mph_inputs
+- mph/reml
+input:
+- ch_inputs:
+    description: Focal sample-set metadata, ordered native MPH GRM bundles, headerless FID IID traits, optional
+      headered quantitative and categorical covariates, FAM identity mapping, ordered trait names, and explicit
+      missing-value tokens. Each covariate table is optional and absence is `[]`. Categorical covariates use
+      lexical-reference treatment coding; covariate designs include an explicit intercept, and the fit names
+      the encoded columns to MPH from the header of the prepared design. All GRMs share one IID order.
+    structure:
+    - map meta
+    - path grm_files
+    - path phenotypes
+    - path quant_covariates
+    - path cat_covariates
+    - path fam
+    - list trait_names
+    - list missing_tokens
+    ontologies: []
+output:
+- phenotype:
+    description: Prepared IID-keyed trait table.
+    structure:
+    - map meta
+    - path phenotype
+    pattern: '*.mph.pheno.csv'
+    ontologies: []
+- covariates:
+    description: Prepared IID-keyed design; absent without covariates. Its header states the encoded column
+      names the fit passes to MPH.
+    structure:
+    - map meta
+    - path covariates
+    pattern: '*.mph.covar.csv'
+    ontologies: []
+- variance_components:
+    description: Variance-component estimates.
+    structure:
+    - map meta
+    - path variance_components
+    pattern: '*.mq.vc.csv'
+    ontologies: []
+- fixed_effects:
+    description: Fixed-effect estimates.
+    structure:
+    - map meta
+    - path fixed_effects
+    pattern: '*.mq.blue.csv'
+    ontologies: []
+- iterations:
+    description: Native iteration trace.
+    structure:
+    - map meta
+    - path iterations
+    pattern: '*.mq.iter.csv'
+    ontologies: []
+- projected_phenotypes:
+    description: Projected phenotype table.
+    structure:
+    - map meta
+    - path projected_phenotypes
+    pattern: '*.mq.py.csv'
+    ontologies: []
+- correlations:
+    description: Native correlations; multi-trait fits only.
+    structure:
+    - map meta
+    - path correlations
+    pattern: '*.mq.cor.csv'
+    ontologies: []
+- native_log:
+    description: Native MPH log.
+    structure:
+    - map meta
+    - path native_log
+    pattern: '*.log'
+    ontologies: []
+authors:
+- '@lyh970817'
+maintainers:
+- '@lyh970817'

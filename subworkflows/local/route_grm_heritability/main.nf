@@ -2,19 +2,18 @@
 // Relatedness construction remains on the pipeline spine; this controller owns estimator adaptation and
 // covariate-adjusted LDAK derivative reuse above the estimator fan-out.
 
-// SUBWORKFLOWS: Upstream-ready estimator compositions used inside a pipeline-local route
-include { GRM_HERITABILITY_GCTA                               } from '../grm_heritability_gcta/main'
-include { GRM_HERITABILITY_LDAK as GRM_HERITABILITY_LDAK_HE   } from '../grm_heritability_ldak/main'
-include { GRM_HERITABILITY_LDAK as GRM_HERITABILITY_LDAK_PCGC } from '../grm_heritability_ldak/main'
-include { GRM_HERITABILITY_LDAK as GRM_HERITABILITY_LDAK_REML } from '../grm_heritability_ldak/main'
-
 // MODULE: Local to the pipeline
-include { LDAK_ADJUSTGRM                                      } from '../../../modules/local/ldak/adjustgrm/main'
+include { GCTA_REML                  } from '../../../modules/local/gcta/reml/main'
+include { GCTA_REMLLDMS              } from '../../../modules/local/gcta/remlldms/main'
+include { LDAK_ADJUSTGRM             } from '../../../modules/local/ldak/adjustgrm/main'
+include { LDAK_REML                  } from '../../../modules/local/ldak/reml/main'
+include { LDAK_HE                    } from '../../../modules/local/ldak/he/main'
+include { LDAK_PCGC                  } from '../../../modules/local/ldak/pcgc/main'
 
 // FUNCTION: Local to the pipeline
-include { buildScientificArtifactKey                          } from '../utils_nfcore_gwas_pipeline'
-include { digestFileBytes                                     } from '../utils_nfcore_gwas_pipeline'
-include { digestIdentityText                                  } from '../utils_nfcore_gwas_pipeline'
+include { buildScientificArtifactKey } from '../utils_nfcore_gwas_pipeline'
+include { digestFileBytes            } from '../utils_nfcore_gwas_pipeline'
+include { digestIdentityText         } from '../utils_nfcore_gwas_pipeline'
 
 workflow ROUTE_GRM_HERITABILITY {
     take:
@@ -33,32 +32,41 @@ workflow ROUTE_GRM_HERITABILITY {
             ch_ldms_matrices.map { meta, grm_files, grm_prefixes -> [meta, grm_files, grm_prefixes, 'greml_ldms'] }
         )
 
-    def ch_greml_inputs = ch_greml_matrices
+    def ch_greml_routes = ch_greml_matrices
         .combine(ch_headerless_phenotypes, by: 0)
-        .multiMap { meta, grm_files, grm_prefixes, estimator, phenotype, quant_covariates, cat_covariates ->
-            def route_meta = meta + [gcta_estimator: estimator]
-            grm: [route_meta, grm_files, grm_prefixes]
-            pheno: [route_meta, phenotype]
-            qcovar: [route_meta, quant_covariates]
-            covar: [route_meta, cat_covariates]
-            estimator: [route_meta, estimator]
+        .branch { _meta, _grm_files, _grm_prefixes, estimator, _phenotype, _quant_covariates, _cat_covariates ->
+            greml: estimator == 'greml'
+            greml_ldms: estimator == 'greml_ldms'
         }
 
-    GRM_HERITABILITY_GCTA(
-        ch_greml_inputs.grm,
-        ch_greml_inputs.pheno,
-        ch_greml_inputs.qcovar,
-        ch_greml_inputs.covar,
-        ch_greml_inputs.estimator,
-    )
+    def ch_greml_inputs = ch_greml_routes.greml.multiMap { meta, grm_files, _grm_prefixes, estimator, phenotype, quant_covariates, cat_covariates ->
+        def route_meta = meta + [gcta_estimator: estimator]
+        grm: [route_meta, grm_files]
+        pheno: [route_meta, phenotype]
+        qcovar: [route_meta, quant_covariates]
+        covar: [route_meta, cat_covariates]
+    }
+    GCTA_REML(ch_greml_inputs.grm, ch_greml_inputs.pheno, ch_greml_inputs.qcovar, ch_greml_inputs.covar)
+
+    // GCTA's component order is scientific result identity; order complete staged bundles by the planner's
+    // declared family before the native module derives its MGRM entries from their filenames. The declared
+    // family and the staged bundle are two members of one `PLINK_PREPARE_GRM_LDMS_GCTA.out.grm_family`
+    // emission, so every declared prefix has its files here and the ordering never drops a component.
+    def ch_ldms_inputs = ch_greml_routes.greml_ldms.multiMap { meta, grm_files, grm_prefixes, estimator, phenotype, quant_covariates, cat_covariates ->
+        def route_meta = meta + [gcta_estimator: estimator]
+        grm: [route_meta, grm_prefixes.collectMany { grm_prefix -> grm_files.findAll { grm_file -> grm_file.name.startsWith("${grm_prefix}.grm.") } }]
+        pheno: [route_meta, phenotype]
+        qcovar: [route_meta, quant_covariates]
+        covar: [route_meta, cat_covariates]
+    }
+    GCTA_REMLLDMS(ch_ldms_inputs.grm, ch_ldms_inputs.pheno, ch_ldms_inputs.qcovar, ch_ldms_inputs.covar)
 
     // Expand one selected LDAK parent per analysis into its requested estimators while retaining the parent
     // artifact key beside, rather than inside, focal metadata.
+    // The remainder join also emits covariate-only records for other methods; their absent parent is filtered.
     def ch_ldak_inputs = ch_ldak_kinship_matrices
         .join(ch_headerless_phenotypes, failOnDuplicate: true)
         .join(ch_adjustment_covariates, remainder: true)
-        // A covariate-only join record (no matrix for this analysis) carries null in position 1; drop it
-        // here rather than downstream. The arity test guarded the same case by shape.
         .filter { record -> record[1] != null }
         .flatMap { meta, parent_key, grm_files, keep, phenotype, quant_covariates, cat_covariates, adjustment_covariates ->
             [
@@ -114,8 +122,8 @@ workflow ROUTE_GRM_HERITABILITY {
     )
 
     def ch_adjusted_grm = LDAK_ADJUSTGRM.out.adjusted_grm
-        .map { artifact_meta, grm_bin, grm_id, grm_details, grm_adjust, grm_root ->
-            [artifact_meta.key, [grm_bin, grm_id, grm_details, grm_adjust, grm_root]]
+        .map { artifact_meta, grm_files ->
+            [artifact_meta.key, grm_files]
         }
         .combine(ch_adjustment_reference_covariates, by: 0)
 
@@ -138,75 +146,48 @@ workflow ROUTE_GRM_HERITABILITY {
             [meta, estimator, grm_files, keep, phenotype, quant_covariates, cat_covariates]
         }
 
-    def ch_ldak_invocations = ch_direct_invocations.mix(ch_adjusted_invocations)
-
-    def ch_ldak_reml_inputs = ch_ldak_invocations
-        .filter { _meta, estimator, _grm_files, _keep, _phenotype, _quant_covariates, _cat_covariates -> estimator == 'reml' }
-        .multiMap { meta, _estimator, grm_files, keep, phenotype, quant_covariates, cat_covariates ->
-            grm: [meta, grm_files]
-            pheno: [meta, phenotype, meta.population_prevalence != null ? meta.population_prevalence : []]
-            qcovar: [meta, quant_covariates]
-            covar: [meta, cat_covariates]
-            keep: [meta, keep ?: []]
-            estimator: [meta, 'reml']
+    def ch_ldak_invocations = ch_direct_invocations
+        .mix(ch_adjusted_invocations)
+        .branch { _meta, estimator, _grm_files, _keep, _phenotype, _quant_covariates, _cat_covariates ->
+            reml: estimator == 'reml'
+            he: estimator == 'he'
+            pcgc: estimator == 'pcgc'
         }
 
-    GRM_HERITABILITY_LDAK_REML(
-        ch_ldak_reml_inputs.grm,
-        ch_ldak_reml_inputs.pheno,
-        ch_ldak_reml_inputs.qcovar,
-        ch_ldak_reml_inputs.covar,
-        ch_ldak_reml_inputs.keep,
-        ch_ldak_reml_inputs.estimator,
-    )
+    def ch_ldak_reml_inputs = ch_ldak_invocations.reml.multiMap { meta, _estimator, grm_files, keep, phenotype, quant_covariates, cat_covariates ->
+        pheno: [meta, phenotype]
+        grm: [meta, grm_files]
+        keep: [meta, keep ?: []]
+        qcovar: [meta, quant_covariates]
+        covar: [meta, cat_covariates]
+    }
+    LDAK_REML(ch_ldak_reml_inputs.pheno, ch_ldak_reml_inputs.grm, ch_ldak_reml_inputs.keep, ch_ldak_reml_inputs.qcovar, ch_ldak_reml_inputs.covar)
 
-    def ch_ldak_he_inputs = ch_ldak_invocations
-        .filter { _meta, estimator, _grm_files, _keep, _phenotype, _quant_covariates, _cat_covariates -> estimator == 'he' }
-        .multiMap { meta, _estimator, grm_files, keep, phenotype, quant_covariates, cat_covariates ->
-            grm: [meta, grm_files]
-            pheno: [meta, phenotype, meta.population_prevalence != null ? meta.population_prevalence : []]
-            qcovar: [meta, quant_covariates]
-            covar: [meta, cat_covariates]
-            keep: [meta, keep ?: []]
-            estimator: [meta, 'he']
-        }
+    def ch_ldak_he_inputs = ch_ldak_invocations.he.multiMap { meta, _estimator, grm_files, keep, phenotype, quant_covariates, cat_covariates ->
+        pheno: [meta, phenotype]
+        grm: [meta, grm_files]
+        keep: [meta, keep ?: []]
+        qcovar: [meta, quant_covariates]
+        covar: [meta, cat_covariates]
+    }
+    LDAK_HE(ch_ldak_he_inputs.pheno, ch_ldak_he_inputs.grm, ch_ldak_he_inputs.keep, ch_ldak_he_inputs.qcovar, ch_ldak_he_inputs.covar)
 
-    GRM_HERITABILITY_LDAK_HE(
-        ch_ldak_he_inputs.grm,
-        ch_ldak_he_inputs.pheno,
-        ch_ldak_he_inputs.qcovar,
-        ch_ldak_he_inputs.covar,
-        ch_ldak_he_inputs.keep,
-        ch_ldak_he_inputs.estimator,
-    )
-
-    def ch_ldak_pcgc_inputs = ch_ldak_invocations
-        .filter { _meta, estimator, _grm_files, _keep, _phenotype, _quant_covariates, _cat_covariates -> estimator == 'pcgc' }
-        .multiMap { meta, _estimator, grm_files, keep, phenotype, quant_covariates, cat_covariates ->
-            grm: [meta, grm_files]
-            pheno: [meta, phenotype, meta.population_prevalence]
-            qcovar: [meta, quant_covariates]
-            covar: [meta, cat_covariates]
-            keep: [meta, keep ?: []]
-            estimator: [meta, 'pcgc']
-        }
-
-    GRM_HERITABILITY_LDAK_PCGC(
-        ch_ldak_pcgc_inputs.grm,
-        ch_ldak_pcgc_inputs.pheno,
-        ch_ldak_pcgc_inputs.qcovar,
-        ch_ldak_pcgc_inputs.covar,
-        ch_ldak_pcgc_inputs.keep,
-        ch_ldak_pcgc_inputs.estimator,
-    )
+    def ch_ldak_pcgc_inputs = ch_ldak_invocations.pcgc.multiMap { meta, _estimator, grm_files, keep, phenotype, quant_covariates, cat_covariates ->
+        pheno: [meta, phenotype, meta.population_prevalence]
+        grm: [meta, grm_files]
+        keep: [meta, keep ?: []]
+        qcovar: [meta, quant_covariates]
+        covar: [meta, cat_covariates]
+    }
+    LDAK_PCGC(ch_ldak_pcgc_inputs.pheno, ch_ldak_pcgc_inputs.grm, ch_ldak_pcgc_inputs.keep, ch_ldak_pcgc_inputs.qcovar, ch_ldak_pcgc_inputs.covar)
 
     emit:
-    gcta_heritability   = GRM_HERITABILITY_GCTA.out.heritability // channel: [ val(meta), path(hsq) ], one per analysis per selected GCTA estimator
-    ldak_reml_results   = GRM_HERITABILITY_LDAK_REML.out.reml_results // channel: [ val(meta), path(reml) ], one per analysis selecting ldak_reml
-    ldak_reml_liability = GRM_HERITABILITY_LDAK_REML.out.reml_liability // channel: [ val(meta), path(reml_liab) ], only for a row declaring population prevalence
-    ldak_he_results     = GRM_HERITABILITY_LDAK_HE.out.he_results // channel: [ val(meta), path(he) ], one per analysis selecting ldak_he
-    ldak_pcgc_results   = GRM_HERITABILITY_LDAK_PCGC.out.pcgc_results // channel: [ val(meta), path(pcgc) ], one per analysis selecting ldak_pcgc
-    ldak_pcgc_marginal  = GRM_HERITABILITY_LDAK_PCGC.out.pcgc_marginal // channel: [ val(meta), path(pcgc_marginal) ], optional PCGC-route records
+    gcta_heritability   = GCTA_REML.out.reml_results.mix(GCTA_REMLLDMS.out.reml_results) // channel: [ val(meta), path(hsq) ], one per analysis per selected GCTA estimator
+    ldak_reml_results   = LDAK_REML.out.reml_results // channel: [ val(meta), path(reml) ], one per analysis selecting ldak_reml
+    ldak_reml_liability = LDAK_REML.out.reml_liability // channel: [ val(meta), path(reml_liab) ], only for a row declaring population prevalence
+    ldak_he_results     = LDAK_HE.out.he_results // channel: [ val(meta), path(he) ], one per analysis selecting ldak_he
+    ldak_pcgc_results   = LDAK_PCGC.out.pcgc_results // channel: [ val(meta), path(pcgc) ], one per analysis selecting ldak_pcgc
+    ldak_pcgc_marginal  = LDAK_PCGC.out.pcgc_marginal // channel: [ val(meta), path(pcgc_marginal) ], optional PCGC-route records
 }
 
 /*

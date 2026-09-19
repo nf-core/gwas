@@ -2,6 +2,7 @@
 name: "plink_prepare_ldms_plan_gcta"
 description: Build one ordered LD-by-MAF component plan from a PLINK 1 bundle, shared by every stratified matrix family
 keywords:
+  - genome-wide complex trait analysis
   - gcta
   - ldms
   - linkage disequilibrium by minor allele frequency stratification
@@ -40,6 +41,11 @@ output:
       ontologies:
         - edam: "http://edamontology.org/format_3475"
         - edam: "http://edamontology.org/format_2330"
+  - groups:
+      description: Generic ordered group table with group_id and group_filename columns and the same SNP files as plan.
+      structure: [map meta, path group_manifest, list snp_group_files]
+      pattern: "*.groups.tsv, *_snp_group*.txt"
+      ontologies: []
   - ld_scores:
       description: Per-variant LD scores and allele frequencies the plan was derived from.
       structure: [map meta, path ld_scores]
@@ -47,6 +53,6 @@ output:
       ontologies:
         - edam: "http://edamontology.org/format_3475"
 authors:
-  - "@andongni"
+  - "@lyh970817"
 maintainers:
-  - "@andongni"
+  - "@lyh970817"

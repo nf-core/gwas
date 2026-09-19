@@ -14,10 +14,9 @@ keywords:
 components:
   - plink_prepare_grm_gcta
   - plink_prepare_ldms_plan_gcta
-  - plink_prepare_grm_ldms_gcta
+  - plink_prepare_grm_groups_gcta
   - plink_prepare_grm_ldak
-  - plink_prepare_grm_mph
-  - plink_prepare_grm_ldms_mph
+  - plink_prepare_grm_groups_mph
   - gcta/makebksparse
   - buildscientificartifactkey
   - canonicalisescientificidentifier
@@ -84,7 +83,32 @@ output:
       pattern: "*.{grm.bin,grm.id,grm.details,grm.adjust,keep}"
       ontologies:
         - edam: "http://edamontology.org/format_2330"
+  - mph_dense:
+      description: One native MPH matrix per requesting analysis with explicit matrix identity.
+      structure: [map meta, map matrix_identity, list grm_files]
+      pattern: "*.grm.{bin,iid}"
+      ontologies: []
+  - mph_ldms:
+      description: Ordered native MPH family per requesting analysis with explicit matrix identity.
+      structure: [map meta, map matrix_identity, list grm_files, list grm_prefixes]
+      pattern: "*.grm.{bin,iid}"
+      ontologies: []
+  - mph_dense_artifacts:
+      description: Each unique single-group MPH base artifact for caller-owned keyed publication.
+      structure: [map matrix_meta, list grm_files]
+      pattern: "*.grm.{bin,iid}"
+      ontologies: []
+  - mph_ldms_artifacts:
+      description: Each unique MPH LDMS family before focal fan-out for keyed publication.
+      structure: [map matrix_meta, list grm_files, list grm_prefixes]
+      pattern: "*.grm.{bin,iid}"
+      ontologies: []
+  - ldms_plan_artifacts:
+      description: Each unique LDMS plan with LD scores and full scientific provenance.
+      structure: [map plan_meta, path ld_scores, path strata_manifest, list snp_group_files]
+      pattern: "*.{tsv,txt,ldscore}"
+      ontologies: []
 authors:
-  - "@andongni"
+  - "@lyh970817"
 maintainers:
-  - "@andongni"
+  - "@lyh970817"

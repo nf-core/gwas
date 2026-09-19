@@ -9,8 +9,11 @@ keywords:
   - pcgc
   - relatedness matrix
 components:
-  - grm_heritability_gcta
-  - grm_heritability_ldak
+  - gcta/reml
+  - gcta/remlldms
+  - ldak/reml
+  - ldak/he
+  - ldak/pcgc
   - ldak/adjustgrm
   - buildscientificartifactkey
   - digestfilebytes
@@ -73,6 +76,6 @@ output:
       pattern: "*.pcgc.marginal"
       ontologies: []
 authors:
-  - "@andongni"
+  - "@lyh970817"
 maintainers:
-  - "@andongni"
+  - "@lyh970817"

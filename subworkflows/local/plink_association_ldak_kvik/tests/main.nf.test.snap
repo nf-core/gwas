@@ -1,0 +1,64 @@
+{
+    "one explicit fit feeds two analyses and distinct chromosome bundles": {
+        "content": [
+            [
+                [
+                    {
+                        "id": "analysis_b"
+                    },
+                    "F.step2.chr21.assoc"
+                ],
+                [
+                    {
+                        "id": "analysis_a"
+                    },
+                    "F.step2.chr21.assoc"
+                ],
+                [
+                    {
+                        "id": "analysis_a"
+                    },
+                    "F.step2.chr22.assoc"
+                ]
+            ],
+            [
+                [
+                    "F",
+                    {
+                        "id": "fit"
+                    },
+                    [
+                        "F.step1.root",
+                        "F.step1.loco.details",
+                        "F.step1.loco.prs"
+                    ]
+                ]
+            ],
+            [
+                [
+                    {
+                        "id": "analysis_b"
+                    },
+                    "F.step2.chr21.summaries"
+                ],
+                [
+                    {
+                        "id": "analysis_a"
+                    },
+                    "F.step2.chr21.summaries"
+                ],
+                [
+                    {
+                        "id": "analysis_a"
+                    },
+                    "F.step2.chr22.summaries"
+                ]
+            ]
+        ],
+        "timestamp": "2026-09-18T22:03:07.79083412",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

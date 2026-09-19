@@ -63,6 +63,6 @@ output:
       pattern: "*.html"
       ontologies: []
 authors:
-  - "@andongni"
+  - "@lyh970817"
 maintainers:
-  - "@andongni"
+  - "@lyh970817"

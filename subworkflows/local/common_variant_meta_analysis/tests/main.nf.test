@@ -6,13 +6,21 @@ nextflow_workflow {
     config "./nextflow.config"
 
     tag "subworkflows"
-    tag "subworkflows_local"
+    tag "subworkflows_nfcore"
     tag "common_variant_meta_analysis"
+    tag "subworkflows/common_variant_meta_analysis"
+    tag "gwaslab/metaanalyze"
+    tag "custom/preparemrmegainput"
+    tag "metasoft/re2"
+    tag "mrmega"
 
     def parent = { directory, name, offset ->
         def target = new File(directory.toString(), "${name}.tsv")
-        target.text = 'SNPID\tCHR\tPOS\tEA\tNEA\tSTATUS\tEAF\tBETA\tSE\tP\tN\n' +
-            "rs1\t1\t1000\tA\tG\t9999999\t${0.20d + offset}\t${0.10d + offset}\t0.02\t1e-6\t4000\n"
+        def rows = (1..30).collect { marker ->
+            "rs${marker}\t1\t${marker * 1000000}\tA\tG\t9999999\t${0.20d + offset + marker * 0.001d}\t${0.10d + offset}\t0.02\t1e-6\t4000"
+        }
+        target.text = 'SNPID\tCHR\tPOS\tEA\tNEA\tSTATUS\tEAF\tBETA\tSE\tP\tN\n' + rows.join('\n') + '\n'
+
         target
     }
 
@@ -28,13 +36,11 @@ nextflow_workflow {
             'GRCh37',
             'quantitative',
             ${groovy.json.JsonOutput.toJson(models)},
-            ${models.contains('mrmega') ? '1' : 'null'},
         ])
         """
     }
 
     test("fixed-only selection leaves every optional model output absent") {
-        options "-stub -resume"
 
         when {
             workflow {
@@ -57,7 +63,6 @@ nextflow_workflow {
     }
 
     test("random and RE2 selections expose separate native outputs") {
-        options "-stub"
 
         when {
             workflow {
@@ -81,9 +86,9 @@ nextflow_workflow {
     }
 
     test("MR-MEGA selection runs one genome-wide native invocation") {
-        options "-stub"
 
         when {
+            params { mrmega_args = '--pc 1' }
             workflow {
                 request(outputDir, 'mrmega', ['fixed', 'mrmega'])
             }
@@ -102,4 +107,55 @@ nextflow_workflow {
             )
         }
     }
+    test("declared trait type selects each native MR-MEGA input-column mode") {
+        when {
+            params { mrmega_args = '--pc 1' }
+            def files = (0..<5).collect { index -> parent(outputDir, "mixed_${index}", index * 0.05d) }
+            def staged = files.collect { file -> "file('${file}', checkIfExists: true)" }.join(', ')
+            workflow {
+                """
+                input[0] = Channel.of(
+                    [[id: 'binary'], [${staged}], ['one', 'two', 'three', 'four', 'five'], 'gwaslab', 'GRCh37', 'binary', ['fixed', 'mrmega']],
+                    [[id: 'quantitative'], [${staged}], ['one', 'two', 'three', 'four', 'five'], 'gwaslab', 'GRCh37', 'quantitative', ['fixed', 'mrmega']],
+                )
+                """
+            }
+        }
+        then {
+            assert workflow.success
+            def results = workflow.out.mrmega_result.collectEntries { meta, result -> [meta.id, result] }
+            def logs = workflow.out.mrmega_log.collectEntries { meta, log -> [meta.id, new File(log.toString()).text] }
+            assertAll(
+                { assert workflow.out.mrmega_result.collect { row -> row[0] }.toSet() == [[id: 'binary'], [id: 'quantitative']].toSet() },
+                { assert logs.binary.contains('Binary trait analysis') },
+                { assert logs.quantitative.contains('Quantitative trait analysis') },
+                {
+                    results.each { id, result ->
+                        def rows = new File(result.toString()).readLines()
+                        def header = rows[0].split('\t').toList()
+                        // MR-MEGA fits every one of the 30 fixture markers, which all five studies observe.
+                        assert rows.size() == 31
+                        assert rows[1].split('\t')[header.indexOf('P-value_association')] != 'NA'
+                    }
+                },
+            )
+        }
+    }
+
+    test("all model outputs preserve focal metadata - stub") {
+        options "-stub"
+        when {
+            workflow { request(outputDir, 'all_models', ['fixed', 'random', 're2', 'mrmega']) }
+        }
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert workflow.out.fixed.get(0)[0] == [id: 'all_models'] },
+                { assert workflow.out.random_effects.get(0)[0] == [id: 'all_models'] },
+                { assert workflow.out.metasoft_result.get(0)[0] == [id: 'all_models'] },
+                { assert workflow.out.mrmega_result.get(0)[0] == [id: 'all_models'] },
+            )
+        }
+    }
+
 }

@@ -66,6 +66,6 @@ output:
         projection policy and the information that policy discards. Provenance only; no consumer keys on it.
       structure: [map cohort_meta, val view_record]
 authors:
-  - "@andongni"
+  - "@lyh970817"
 maintainers:
-  - "@andongni"
+  - "@lyh970817"

@@ -1,6 +1,6 @@
 nextflow_function {
 
-    name "Test LDAK-KVIK prediction identity"
+    name "Test LDAK-KVIK shared predictor identity"
     script "../main.nf"
     tag "function"
     tag "ldak"
@@ -47,55 +47,4 @@ nextflow_function {
         }
     }
 
-    test("the prediction key covers the resolved predictor artifact and scientific files") {
-        function "buildKvikPredictionKey"
-
-        when {
-            function {
-                """
-                def fixtures = '${FIXTURES.base(projectDir)}results/fixtures/pheno_cov/'
-                def qcovar = file(fixtures + 'example.qcovar', checkIfExists: true)
-                input[0] = [cohort: 'example_pgen', trait: 'QT', is_binary: false]
-                input[1] = 'prepared_view_a'
-                input[2] = file(fixtures + 'example.pheno', checkIfExists: true)
-                input[3] = qcovar
-                input[4] = file(fixtures + 'example.catcovar', checkIfExists: true)
-                input[5] = 'provided.0123456789abcdef'
-                """
-            }
-        }
-
-        then {
-            assertAll(
-                { assert function.success },
-                { assert function.result == '3fb37ddf4a25' },
-            )
-        }
-    }
-
-    test("focal analysis identity does not fragment prediction reuse") {
-        function "buildKvikPredictionKey"
-
-        when {
-            function {
-                """
-                def fixtures = '${FIXTURES.base(projectDir)}results/fixtures/pheno_cov/'
-                def qcovar = file(fixtures + 'example.qcovar', checkIfExists: true)
-                input[0] = [id: 'another_analysis', cohort: 'example_pgen', trait: 'QT', is_binary: false]
-                input[1] = 'prepared_view_a'
-                input[2] = file(fixtures + 'example.pheno', checkIfExists: true)
-                input[3] = qcovar
-                input[4] = file(fixtures + 'example.catcovar', checkIfExists: true)
-                input[5] = 'provided.0123456789abcdef'
-                """
-            }
-        }
-
-        then {
-            assertAll(
-                { assert function.success },
-                { assert function.result == '3fb37ddf4a25' },
-            )
-        }
-    }
 }

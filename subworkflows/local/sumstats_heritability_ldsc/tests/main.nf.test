@@ -1,0 +1,80 @@
+nextflow_workflow {
+    name "Test SUMSTATS_HERITABILITY_LDSC"
+    script "../main.nf"
+    workflow "SUMSTATS_HERITABILITY_LDSC"
+    config "./nextflow.config"
+    tag "subworkflows"
+    tag "subworkflows_nfcore"
+    tag "subworkflows/sumstats_heritability_ldsc"
+    tag "ldsc/mungesumstats"
+    tag "ldsc/h2"
+    tag "ldsc"
+
+    def inputs = { outputDir, name ->
+        def root = new File(outputDir.toString(), "fixture_${name}")
+        def reference = new File(root, 'reference')
+        def weights = new File(root, 'weights')
+        reference.mkdirs()
+        weights.mkdirs()
+        def writeGzip = { File target, String body ->
+            target.withOutputStream { output ->
+                def gzip = new java.util.zip.GZIPOutputStream(output)
+                gzip.write(body.getBytes('UTF-8'))
+                gzip.close()
+            }
+        }
+        def rows = []
+        (1..2).each { chromosome ->
+            def referenceRows = []
+            def weightRows = []
+            (1..500).each { index ->
+                def globalIndex = (chromosome - 1) * 500 + index
+                def ldScore = 1.0 + (globalIndex % 47) / 10.0
+                def weight = 1.0 + (globalIndex % 13) / 20.0
+                referenceRows << "${chromosome}\trs${globalIndex}\t${globalIndex}\t${ldScore}"
+                weightRows << "${chromosome}\trs${globalIndex}\t${globalIndex}\t${weight}"
+                def sign = globalIndex % 2 == 0 ? 1.0 : -1.0
+                def z = sign * Math.sqrt(1.0 + 0.5 * ldScore) + ((globalIndex % 7) - 3) / 20.0
+                rows << "rs${globalIndex}\tA\tG\t${String.format(java.util.Locale.ROOT, '%.8f', z)}\t10000\t${Math.exp(-z * z / 2.0)}"
+            }
+            writeGzip(new File(reference, "${chromosome}.l2.ldscore.gz"), "CHR\tSNP\tBP\tL2\n${referenceRows.join('\n')}\n")
+            new File(reference, "${chromosome}.l2.M_5_50").text = '500\n'
+            writeGzip(new File(weights, "${chromosome}.l2.ldscore.gz"), "CHR\tSNP\tBP\tL2\n${weightRows.join('\n')}\n")
+        }
+        def sumstats = new File(root, "${name}.sumstats.gz")
+        def body = "SNP\tA1\tA2\tZ\tN\tP\n${rows.join('\n')}\n"
+        writeGzip(sumstats, body)
+        def alleles = new File(root, 'alleles.tsv')
+        alleles.text = 'SNP\tA1\tA2\n' + (1..1000).collect { index -> "rs${index}\tA\tG" }.join('\n') + '\n'
+        [sumstats: sumstats, reference: reference, weights: weights, alleles: alleles]
+    }
+
+    [false, true].each { stub ->
+        test("prepare and fit an explicit producer reference" + (stub ? " - stub" : "")) {
+            if (stub) { options "-stub" }
+            when {
+                def fixture = inputs(outputDir, stub ? 'stub' : 'native')
+                workflow {
+                    """
+                    input[0] = channel.of(
+                        [[id: 'producer_a'], file('${fixture.sumstats}'), [id: 'alleles'], file('${fixture.alleles}')]
+                    )
+                    input[1] = channel.of([[id: 'fit_a'], [id: 'ld'], file('${fixture.reference}'), [id: 'weights'], file('${fixture.weights}'), 'producer_a'], [[id: 'fit_b'], [id: 'ld'], file('${fixture.reference}'), [id: 'weights'], file('${fixture.weights}'), 'producer_a'])
+                    """
+                }
+            }
+            then {
+                assert workflow.success
+                assert workflow.out.munged_sumstats.collect { meta, _file -> meta }.sort { meta -> meta.id } == [[id: 'producer_a']]
+                assert workflow.out.h2_log.collect { meta, _file -> meta }.sort { meta -> meta.id } == [[id: 'fit_a'], [id: 'fit_b']]
+                assert workflow.out.munging_log.size() == 1
+                assert workflow.out.h2_log.every { _meta, logfile -> new File(logfile.toString()).text.contains(stub ? 'stub' : 'Total Observed scale h2:') }
+                // Native logs contain elapsed times; snapshot stable public identities and file names.
+                assert snapshot(workflow.out.collectEntries { name, values ->
+                    [(name): values.collect { meta, artifact -> [meta, new File(artifact.toString()).name] }.sort { row -> row[0].id }]
+                }).match()
+
+            }
+        }
+    }
+}

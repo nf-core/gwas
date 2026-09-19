@@ -2,6 +2,7 @@
 name: "plink_prepare_grm_gcta"
 description: Construct and merge dense GCTA genetic relationship matrix parts
 keywords:
+  - genome-wide complex trait analysis
   - gcta
   - genome relationship matrix
   - grm
@@ -11,21 +12,26 @@ components:
   - custom/gctamergegrmparts
 input:
   - ch_genotypes:
-      description: PLINK multi-file bundle for the focal analysis. Public outputs retain meta.
+      description: PLINK multi-file bundle for the focal analysis. The manifest references the staged matching genotype, variant and sample basenames; public outputs retain meta.
       structure: [map meta, path mfile, path bed_pgen, path bim_pvar, path fam_psam]
-      pattern: "*.{mbfile,mpfile}, *.{bed,pgen}, *.{bim,pvar}, *.{fam,psam}"
+      pattern: "*.{mbfile,mpfile,txt}, *.{bed,pgen}, *.{bim,pvar}, *.{fam,psam}"
       ontologies:
         - edam: "http://edamontology.org/format_3003"
         - edam: "http://edamontology.org/format_2330"
   - ch_snp_group_file:
-      description: Optional SNP group file in the second metadata-bearing tuple; use [] when absent.
+      description: |
+        Optional SNP group file in the second metadata-bearing tuple; use [] when absent. This tuple is
+        joined to ch_genotypes on the identifier, so meta2.id equals meta.id and every focal analysis
+        supplies exactly one record.
       structure: "[map meta2, path snp_group_file|[]]"
       pattern: "*"
       optional: true
       ontologies:
         - edam: "http://edamontology.org/format_2330"
   - ch_n_parts:
-      description: Requested GRM part count in the third metadata-bearing tuple.
+      description: |
+        Requested GRM part count in the third metadata-bearing tuple. This tuple is joined to ch_genotypes on
+        the identifier, so meta3.id equals meta.id and every focal analysis supplies exactly one record.
       structure: [map meta3, integer requested_parts]
 output:
   - grm_files:
@@ -35,6 +41,6 @@ output:
       ontologies:
         - edam: "http://edamontology.org/format_2330"
 authors:
-  - "@andongni"
+  - "@lyh970817"
 maintainers:
-  - "@andongni"
+  - "@lyh970817"

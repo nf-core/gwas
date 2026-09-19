@@ -1,11 +1,11 @@
 // Fit REGENIE Step 1 prediction models in standard mode or through the split L0/L1 route.
 // Every constituent process reports directly to the run-wide versions topic, so this subworkflow emits no versions.
 
-// MODULE: Installed directly from nf-core/modules
-include { REGENIE_STEP1   } from '../../../modules/nf-core/regenie/step1/main'
-include { REGENIE_SPLITL0 } from '../../../modules/nf-core/regenie/splitl0/main'
-include { REGENIE_RUNL0   } from '../../../modules/nf-core/regenie/runl0/main'
-include { REGENIE_RUNL1   } from '../../../modules/nf-core/regenie/runl1/main'
+// MODULE: Portable REGENIE candidates
+include { REGENIE_STEP1   } from '../../../modules/local/regenie/step1/main'
+include { REGENIE_SPLITL0 } from '../../../modules/local/regenie/splitl0/main'
+include { REGENIE_RUNL0   } from '../../../modules/local/regenie/runl0/main'
+include { REGENIE_RUNL1   } from '../../../modules/local/regenie/runl1/main'
 
 workflow PLINK_FIT_REGENIE {
     take:
@@ -19,7 +19,7 @@ workflow PLINK_FIT_REGENIE {
     main:
     ch_modes = ch_step1_mode.map { meta, step1_mode ->
         if (!['standard', 'chunked'].contains(step1_mode)) {
-            error("[nf-core/gwas] ERROR: PLINK_FIT_REGENIE step1_mode must be 'standard' or 'chunked', got '${step1_mode}'")
+            error("PLINK_FIT_REGENIE: step1_mode must be 'standard' or 'chunked', got '${step1_mode}'")
         }
         tuple(meta.id, step1_mode)
     }
@@ -56,22 +56,26 @@ workflow PLINK_FIT_REGENIE {
     }
     REGENIE_SPLITL0(ch_splitl0.genotypes, ch_splitl0.pheno, ch_splitl0.covar, ch_splitl0.bsize, ch_splitl0.n_l0_jobs)
 
+    // Native --run-l0 consumes the job number encoded in each emitted SNP-list name.
+    // Gather completion uses the emitted count because --split-l0 can produce fewer jobs than requested.
     ch_split_jobs = REGENIE_SPLITL0.out.master
         .map { meta, master -> tuple(meta.id, master) }
         .join(REGENIE_SPLITL0.out.snplists.map { meta, snplists -> tuple(meta.id, snplists) }, by: 0, failOnDuplicate: true, failOnMismatch: true)
         .flatMap { analysis_id, master, snplists ->
-            (snplists instanceof List ? snplists : [snplists]).collect { snplist ->
+            def observed_snplists = snplists instanceof List ? snplists : [snplists]
+            def fit_group = groupKey(analysis_id, observed_snplists.size())
+            observed_snplists.collect { snplist ->
                 def job_match = snplist.name =~ /_job(\d+)\.snplist$/
-                tuple(analysis_id, master, snplist, job_match[0][1] as Integer)
+                tuple(analysis_id, fit_group, master, snplist, job_match[0][1] as Integer)
             }
         }
 
     ch_runl0_inputs = ch_chunked_inputs
         .combine(ch_split_jobs, by: 0)
-        .map { analysis_id, genotypes, pheno, covar, bsize, _n_l0_jobs, master, snplist, job_number ->
-            tuple(analysis_id, job_number, genotypes, tuple(genotypes[0], master, snplist, job_number), pheno, covar, bsize)
+        .map { analysis_id, genotypes, pheno, covar, bsize, _n_l0_jobs, fit_group, master, snplist, job_number ->
+            tuple(analysis_id, job_number, fit_group, genotypes, tuple(genotypes[0], master, snplist, job_number), pheno, covar, bsize)
         }
-    ch_runl0 = ch_runl0_inputs.multiMap { _analysis_id, _job_number, genotypes, l0_inputs, pheno, covar, bsize ->
+    ch_runl0 = ch_runl0_inputs.multiMap { _analysis_id, _job_number, _fit_group, genotypes, l0_inputs, pheno, covar, bsize ->
         genotypes: genotypes
         l0: l0_inputs
         pheno: pheno
@@ -81,7 +85,7 @@ workflow PLINK_FIT_REGENIE {
     REGENIE_RUNL0(ch_runl0.genotypes, ch_runl0.l0, ch_runl0.pheno, ch_runl0.covar, ch_runl0.bsize)
 
     ch_l0_bundle = ch_runl0_inputs
-        .map { analysis_id, job_number, _genotypes, l0_inputs, _pheno, _covar, _bsize -> tuple(analysis_id, job_number, l0_inputs[1], l0_inputs[2]) }
+        .map { analysis_id, job_number, fit_group, _genotypes, l0_inputs, _pheno, _covar, _bsize -> tuple(analysis_id, job_number, fit_group, l0_inputs[1], l0_inputs[2]) }
         .join(
             REGENIE_RUNL0.out.l0_predictions.map { meta, l0_predictions ->
                 def prediction_files = l0_predictions instanceof List ? l0_predictions : [l0_predictions]
@@ -92,10 +96,13 @@ workflow PLINK_FIT_REGENIE {
             failOnDuplicate: true,
             failOnMismatch: true,
         )
+        .map { _analysis_id, job_number, fit_group, master, snplist, l0_predictions ->
+            tuple(fit_group, job_number, master, snplist, l0_predictions)
+        }
         .groupTuple(by: 0)
-        .map { analysis_id, job_numbers, masters, snplists, l0_predictions ->
+        .map { fit_group, job_numbers, masters, snplists, l0_predictions ->
             def indices = (0..<job_numbers.size()).toList().sort { index -> job_numbers[index] }
-            tuple(analysis_id, masters[indices[0]], indices.collect { index -> snplists[index] }, indices.collectMany { index -> l0_predictions[index] })
+            tuple(fit_group.getGroupTarget(), masters[indices[0]], indices.collect { index -> snplists[index] }, indices.collectMany { index -> l0_predictions[index] })
         }
 
     ch_runl1 = ch_chunked_inputs

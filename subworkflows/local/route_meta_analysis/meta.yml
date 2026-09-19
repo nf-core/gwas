@@ -40,6 +40,6 @@ output:
       type: channel
       description: "[meta, native_log] when mrmega is selected"
 authors:
-  - "@andongni"
+  - "@lyh970817"
 maintainers:
-  - "@andongni"
+  - "@lyh970817"

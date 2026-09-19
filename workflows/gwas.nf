@@ -258,7 +258,6 @@ workflow GWAS {
     ROUTE_ASSOCIATION_ANALYSES(
         PREPARE_COHORT_GENOTYPES.out.native_genotypes,
         PREPARE_COHORT_GENOTYPES.out.plink1_genotypes,
-        PREPARE_COHORT_GENOTYPES.out.cohort_native_view_keys,
         PREPARE_COHORT_GENOTYPES.out.cohort_plink1_view_keys,
         ch_prepared_phenotype,
         ch_prepared_covariates,
@@ -492,6 +491,7 @@ workflow GWAS {
     multiqc_report      = ROUTE_GWAS_REPORTING.out.report.toList() // channel: [ [ path(report) ] ]
     genotype_views      = ch_genotype_view_records // channel: [ val(cohort_id), path(genotype_view_record) ], one per cohort
     gcta_ldms_artifacts = PREPARE_RELATEDNESS_MATRICES.out.gcta_ldms_artifacts // channel: [ val(matrix_meta), path(grm_files), val(grm_prefixes) ], one per base key
+    mph_dense_artifacts = PREPARE_RELATEDNESS_MATRICES.out.mph_dense_artifacts // channel: [ val(matrix_meta), path(grm_files) ], one per base key
     mph_ldms_artifacts  = PREPARE_RELATEDNESS_MATRICES.out.mph_ldms_artifacts // channel: [ val(matrix_meta), path(grm_files), val(grm_prefixes) ], one per base key
     ldms_plan_artifacts = PREPARE_RELATEDNESS_MATRICES.out.ldms_plan_artifacts // channel: [ val(plan_meta), path(ld_scores), path(strata_manifest), [ path(snp_group_file), ... ] ], one per plan key
 }

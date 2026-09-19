@@ -1,22 +1,21 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
 name: route_ldak_kvik_associations
-description: Resolve reusable predictor artifacts and route nf-core/gwas analyses through scientifically identical LDAK-KVIK Step 1 fits
+description: Resolve shared predictor artifacts and declare per-analysis LDAK-KVIK fits and testing requests
 keywords:
   - ldak
   - kvik
   - genome-wide association study
-  - prediction reuse
+  - explicit fit references
   - predictor reuse
 components:
   - ldak/thincommon
-  - ldak/kvikstep1
-  - ldak/kvikstep2
+  - plink_association_ldak_kvik
+  - prepare_ldak_kvik_harmonisation
   - digestfilebytes
-  - buildcanonicalpredictionkey
   - buildscientificartifactkey
 input:
   - ch_genotypes:
-      description: PLINK 1 genotype bundle for each LDAK-KVIK analysis, with its cohort's PLINK 1 view key. The key is the thin-common and Step 1 reuse identity and stays a tuple member, never in metadata
+      description: PLINK 1 genotype bundle for each LDAK-KVIK analysis, with its cohort's PLINK 1 view key. The key identifies shared thin-common resources and stays a tuple member
       structure: "[map meta, path bed, path bim, path fam, val view_key]"
       pattern: "*.{bed,bim,fam}"
       ontologies: []
@@ -31,23 +30,12 @@ input:
       pattern: "*.in"
       ontologies: []
 output:
-  - results:
-      description: LDAK-KVIK Step 2 association result files carrying each consuming analysis metadata map
-      structure: "[map meta, path assoc]"
-      pattern: "*.step2*.assoc"
-      ontologies: []
   - harmonisation_input:
-      description: LDAK-KVIK association tables prepared for harmonisation
+      description: LDAK-KVIK association tables prepared for harmonisation. The native association, summary, predictor and progress files stay in the work directory
       structure: "[map meta, path harmonisation_input]"
       pattern: "*.step2*.harmonisation.tsv"
       ontologies: []
-  - progress:
-      description: ThinCommon progress files, once per genotype-view and effective-thinning-options predictor artifact
-      structure: "[map meta, path progress]"
-      pattern: "*.progress"
-      optional: true
-      ontologies: []
 authors:
-  - "@andongni"
+  - "@lyh970817"
 maintainers:
-  - "@andongni"
+  - "@lyh970817"

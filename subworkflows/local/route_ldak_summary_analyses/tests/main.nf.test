@@ -4,6 +4,7 @@ nextflow_workflow {
     script "../main.nf"
     workflow "ROUTE_LDAK_SUMMARY_ANALYSES"
     tag "subworkflow"
+    tag "subworkflows_local"
     tag "ldak"
     tag "ldak_sumher"
     tag "ldak_sumcors"

@@ -644,7 +644,7 @@ nextflow_function {
         when {
             function {
                 """
-                input[0] = file('${RELATIONAL.resource(outputDir, 'mph_family.snp_info.counts.tsv', 'stratum_key\tpredictor_count\nld01_maf01\t1100\nld02_maf01\t900\n__unassigned__\t200\n__bim_rows__\t2200\n')}', checkIfExists: true)
+                input[0] = file('${RELATIONAL.resource(outputDir, 'mph_family.snp_info.counts.tsv', 'group_id\tpredictor_count\nld01_maf01\t1100\nld02_maf01\t900\n__unassigned__\t200\n__bim_rows__\t2200\n')}', checkIfExists: true)
                 """
             }
         }
@@ -664,4 +664,22 @@ nextflow_function {
             )
         }
     }
+    test("the caller selects autosomal SNPs for an explicit dense MPH group") {
+        function "selectAutosomalSnps"
+        when {
+            function {
+                """
+                input[0] = file('${RELATIONAL.resource(outputDir, 'mixed_chromosomes.bim', '1 rs1 0 1 A G\n22 rs22 0 2 A G\n23 rs23 0 3 A G\nX rsX 0 4 A G\n0 rs0 0 5 A G\n')}', checkIfExists: true)
+                input[1] = 22
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == ['rs1', 'rs22'] },
+            )
+        }
+    }
+
 }

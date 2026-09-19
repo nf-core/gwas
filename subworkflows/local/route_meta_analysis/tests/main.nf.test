@@ -4,6 +4,7 @@ nextflow_workflow {
     workflow "ROUTE_META_ANALYSIS"
     config "./nextflow.config"
     tag "subworkflows"
+    tag "subworkflows_local"
     tag "meta_analysis"
 
     def parents = { directory ->
@@ -58,6 +59,7 @@ nextflow_workflow {
             def mrmegaLines = new File(workflow.out.mrmega_result[0][1].toString()).readLines()
             def mrmegaHeader = mrmegaLines[0].split('\\t').toList()
             def nativeMrmega = mrmegaLines[1].split('\\t')
+            // The aligned matrix is not re-emitted by the composition; read it where METASOFT_RE2 staged it.
             def matrix = new File(re2File.parentFile, 'all_models.metasoft.input.txt').readLines()[0].split(' ')
             assertAll(
                 { assert workflow.success },

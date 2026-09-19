@@ -4,6 +4,7 @@ nextflow_workflow {
     script "../main.nf"
     workflow "VALIDATE_GWAS_INPUT"
     tag "subworkflow"
+    tag "subworkflows_local"
     tag "input"
     tag "relational"
 

@@ -4,6 +4,7 @@ nextflow_workflow {
     script "../main.nf"
     workflow "ROUTE_CANONICAL_SUMMARY_STATISTICS"
     tag "subworkflow"
+    tag "subworkflows_local"
     tag "gwaslab"
     tag "summary_statistics"
     tag "external_summary"

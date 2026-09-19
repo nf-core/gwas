@@ -4,6 +4,7 @@ nextflow_workflow {
     script "../main.nf"
     workflow "ROUTE_LDAK_DIRECT_HERITABILITY"
     tag "subworkflow"
+    tag "subworkflows_local"
     tag "heritability"
     tag "ldak"
     tag "ldak_fast"
@@ -115,8 +116,8 @@ nextflow_workflow {
                 { assert TRACE.count(workflow, 'LDAK_CALCKINS') == 0 },
                 { assert TRACE.count(workflow, 'LDAK_HE') == 0 },
                 { assert TRACE.count(workflow, 'LDAK_PCGC') == 0 },
-                // The bare `withName` selectors apply at this scope, so the rendered prefix and the
-                // publication path are exercised here rather than only at pipeline scope.
+                // The `(.*:)?ROUTE_LDAK_DIRECT_HERITABILITY:` selectors match this scope too, so the rendered
+                // prefix and the publication path are exercised here rather than only at pipeline scope.
                 { assert new File("${params.outdir}/heritability/individual/ldak_fast_he/alpha/alpha.ldak_fast_he.fasthe").isFile() },
                 { assert new File("${params.outdir}/heritability/individual/ldak_fast_he/gamma/gamma.ldak_fast_he.fasthe").isFile() },
                 { assert new File("${params.outdir}/heritability/individual/ldak_fast_pcgc/beta/beta.ldak_fast_pcgc.fastpcgc").isFile() },

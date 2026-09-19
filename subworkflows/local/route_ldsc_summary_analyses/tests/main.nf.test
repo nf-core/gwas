@@ -4,9 +4,10 @@ nextflow_workflow {
     script "../main.nf"
     workflow "ROUTE_LDSC_SUMMARY_ANALYSES"
     tag "subworkflow"
+    tag "subworkflows_local"
     tag "ldsc"
-    tag "ldsc_h2"
-    tag "ldsc_rg"
+    tag "ldsc/h2"
+    tag "ldsc/rg"
     tag "summary_statistics"
 
     // Every case is stubbed, so the staged resources only have to exist. One GWASLab file is reused for

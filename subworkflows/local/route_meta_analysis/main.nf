@@ -1,6 +1,6 @@
 // Pipeline-owned ordered membership, result assembly and derived-summary identity.
 include { COMMON_VARIANT_META_ANALYSIS } from '../common_variant_meta_analysis/main'
-include { FINALISE_META_ANALYSIS } from '../../../modules/local/finalise_meta_analysis/main'
+include { FINALISE_META_ANALYSIS       } from '../../../modules/local/finalise_meta_analysis/main'
 
 workflow ROUTE_META_ANALYSIS {
     take:
@@ -25,7 +25,7 @@ workflow ROUTE_META_ANALYSIS {
         .map { request_key, ordinals, source_ids, sources ->
             def meta = request_key.getGroupTarget()
             def ordered = orderMetaAnalysisParents(meta, ordinals, source_ids, sources)
-            [meta, ordered.sources, ordered.ids, 'gwaslab', meta.build, meta.trait_type, meta.meta_analysis_models, meta.axes]
+            [meta, ordered.sources, ordered.ids, 'gwaslab', meta.build, meta.trait_type, meta.meta_analysis_models]
         }
 
     COMMON_VARIANT_META_ANALYSIS(ch_parents)
@@ -51,13 +51,13 @@ workflow ROUTE_META_ANALYSIS {
 
     emit:
     summary_statistics = FINALISE_META_ANALYSIS.out.summary_statistics // channel: [ val(meta), path(derived_gwaslab_summary) ]
-    fixed = COMMON_VARIANT_META_ANALYSIS.out.fixed // channel: [ val(meta), path(native_fixed) ]
-    random_effects = COMMON_VARIANT_META_ANALYSIS.out.random_effects // channel: [ val(meta), path(native_random) ]
-    gwaslab_log = COMMON_VARIANT_META_ANALYSIS.out.gwaslab_log // channel: [ val(meta), path(native_log) ]
-    metasoft_result = COMMON_VARIANT_META_ANALYSIS.out.metasoft_result // channel: [ val(meta), path(native_result) ]
-    metasoft_log = COMMON_VARIANT_META_ANALYSIS.out.metasoft_log // channel: [ val(meta), path(native_log) ]
-    mrmega_result = COMMON_VARIANT_META_ANALYSIS.out.mrmega_result // channel: [ val(meta), path(native_result) ]
-    mrmega_log = COMMON_VARIANT_META_ANALYSIS.out.mrmega_log // channel: [ val(meta), path(native_log) ]
+    fixed              = COMMON_VARIANT_META_ANALYSIS.out.fixed // channel: [ val(meta), path(native_fixed) ]
+    random_effects     = COMMON_VARIANT_META_ANALYSIS.out.random_effects // channel: [ val(meta), path(native_random) ]
+    gwaslab_log        = COMMON_VARIANT_META_ANALYSIS.out.gwaslab_log // channel: [ val(meta), path(native_log) ]
+    metasoft_result    = COMMON_VARIANT_META_ANALYSIS.out.metasoft_result // channel: [ val(meta), path(native_result) ]
+    metasoft_log       = COMMON_VARIANT_META_ANALYSIS.out.metasoft_log // channel: [ val(meta), path(native_log) ]
+    mrmega_result      = COMMON_VARIANT_META_ANALYSIS.out.mrmega_result // channel: [ val(meta), path(native_result) ]
+    mrmega_log         = COMMON_VARIANT_META_ANALYSIS.out.mrmega_log // channel: [ val(meta), path(native_log) ]
 }
 
 def orderMetaAnalysisParents(meta, ordinals, source_ids, sources) {

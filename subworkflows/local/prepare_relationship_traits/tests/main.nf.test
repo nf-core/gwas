@@ -4,6 +4,7 @@ nextflow_workflow {
     script "../main.nf"
     workflow "PREPARE_RELATIONSHIP_TRAITS"
     tag "subworkflow"
+    tag "subworkflows_local"
     tag "relationship"
 
     // Every case is stubbed, so the staged phenotypes and covariate tables only have to exist; the scientific

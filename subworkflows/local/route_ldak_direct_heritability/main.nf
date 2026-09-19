@@ -58,7 +58,7 @@ workflow ROUTE_LDAK_DIRECT_HERITABILITY {
     // two-identity tag name the analysis and the bundle rather than repeating the analysis twice. The bundle
     // meta is tag-only: every output keys on the focal analysis meta.
     def ch_he_inputs = ch_direct_inputs.he.multiMap { meta, _mode, bed, bim, fam, phenotype, quant_covariates, cat_covariates, weights ->
-        pheno: [meta, phenotype, meta.population_prevalence != null ? meta.population_prevalence : []]
+        pheno: [meta, phenotype]
         genotypes: [[id: meta.cohort], bed, bim, fam, meta.method_options.ldak.power]
         weights: [meta, weights]
         qcovar: [meta, quant_covariates]

@@ -4,6 +4,7 @@ nextflow_workflow {
     script "../main.nf"
     workflow "ROUTE_GRM_HERITABILITY"
     tag "subworkflow"
+    tag "subworkflows_local"
     tag "heritability"
     tag "gcta"
     tag "ldak"
@@ -202,11 +203,11 @@ nextflow_workflow {
                 { assert workflow.out.ldak_he_results.collect { meta, _he -> meta.id }.sort() == ['beta', 'gamma'] },
                 { assert workflow.out.ldak_pcgc_results.collect { meta, _pcgc -> meta.id }.sort() == ['beta', 'gamma'] },
                 { assert workflow.out.gcta_heritability.size() == 0 },
-                // Liability-scale REML is emitted only where a population prevalence was declared: `alpha` is
-                // quantitative and passes `[]`, `gamma` declares one and passes it through.
-                { assert workflow.out.ldak_reml_liability.collect { meta, _liab -> meta.id } == ['gamma'] },
+                // The stub mirrors LDAK's full output set, so the optional liability channel carries every
+                // routed record here and the route's own prevalence fragment stays untested in a stub run.
+                // `tests/heritability_ldak_reml.nf.test` covers the real prevalence-conditioned emission.
+                { assert workflow.out.ldak_reml_liability.collect { meta, _liab -> meta.id }.sort() == ['alpha', 'gamma'] },
                 { assert new File("${params.outdir}/heritability/individual/ldak_reml/gamma/gamma.ldak_reml.reml.liab").isFile() },
-                { assert !new File("${params.outdir}/heritability/individual/ldak_reml/alpha/alpha.ldak_reml.reml.liab").exists() },
             )
         }
     }

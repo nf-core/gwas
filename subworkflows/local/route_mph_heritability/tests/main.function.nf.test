@@ -176,28 +176,6 @@ nextflow_function {
         }
     }
 
-    test("the covariate column names are read back from the serialised header the encoder produced") {
-        function "readCsvHeader"
-
-        when {
-            function {
-                """
-                input[0] = file('${RELATIONAL.resource(outputDir, 'route-covariates.mph.covar.csv', 'IID,intercept,AGE,batch_B\nS001,1,30,0\n')}', checkIfExists: true)
-                """
-            }
-        }
-
-        then {
-            assertAll(
-                { assert function.success },
-                { assert function.result == ['IID', 'intercept', 'AGE', 'batch_B'] },
-                // The identifier column is dropped by the caller, leaving exactly what `--covariate_names`
-                // has to name, in the order the encoder wrote it.
-                { assert function.result.drop(1) == ['intercept', 'AGE', 'batch_B'] },
-            )
-        }
-    }
-
     test("route bookkeeping is stripped before emission while the selected token stays") {
         function "stripMphRouteState"
 
@@ -209,7 +187,6 @@ nextflow_function {
                     trait: 'QT',
                     heritability_methods: ['mph_reml'],
                     mph_estimator: 'mph_reml',
-                    mph_trait_names: ['QT'],
                     mph_effective: [native_arguments: ['--seed 7']],
                 ]
                 """

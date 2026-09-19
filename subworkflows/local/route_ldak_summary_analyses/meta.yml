@@ -133,6 +133,6 @@ output:
       pattern: "*.log"
       ontologies: []
 authors:
-  - "@andongni"
+  - "@lyh970817"
 maintainers:
-  - "@andongni"
+  - "@lyh970817"

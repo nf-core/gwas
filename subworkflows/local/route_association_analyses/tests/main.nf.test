@@ -4,6 +4,7 @@ nextflow_workflow {
     script "../main.nf"
     workflow "ROUTE_ASSOCIATION_ANALYSES"
     tag "subworkflow"
+    tag "subworkflows_local"
     tag "association"
     tag "regenie"
     tag "ldak"
@@ -76,7 +77,6 @@ nextflow_workflow {
 
     // The two cohort-scoped view-key channels. The PLINK 1 one is partial by design: it holds an element for
     // exactly the cohorts that have a PLINK 1 view, which is exactly the set reaching `ch_plink1_genotypes`.
-    def nativeViewKeys = { cohorts -> "channel.of(${cohorts.collect { cohort -> "['${cohort}', 'native_view_${cohort}']" }.join(', ')})" }
 
     def plink1ViewKeys = { cohorts -> cohorts ? "channel.of(${cohorts.collect { cohort -> "['${cohort}', 'plink1_view_${cohort}']" }.join(', ')})" : 'channel.empty()' }
 
@@ -129,32 +129,32 @@ nextflow_workflow {
                     ${plink1Genotypes(projectDir, "beta")},
                     ${plink1Genotypes(projectDir, "gamma")},
                 )
-                input[2] = ${nativeViewKeys(['cohort_a'])}
-                input[3] = ${plink1ViewKeys(['cohort_a'])}
-                input[4] = channel.of(
+
+                input[2] = ${plink1ViewKeys(['cohort_a'])}
+                input[3] = channel.of(
                     ${phenotype(projectDir, "alpha")},
                     ${phenotype(projectDir, "beta")},
                     ${phenotype(projectDir, "gamma")},
                 )
-                input[5] = channel.of(
+                input[4] = channel.of(
                     ${covariates(projectDir, "alpha")},
                     ${covariates(projectDir, "beta")},
                     ${covariates(projectDir, "gamma")},
                 )
-                input[6] = channel.of(
+                input[5] = channel.of(
                     ${headerlessPhenotype(projectDir, "alpha")},
                     ${headerlessPhenotype(projectDir, "beta")},
                     ${headerlessPhenotype(projectDir, "gamma")},
                 )
-                input[7] = channel.of(${sparseMatrix(projectDir, "gamma")})
-                input[8] = channel.of(
+                input[6] = channel.of(${sparseMatrix(projectDir, "gamma")})
+                input[7] = channel.of(
                     [alpha, []],
                     [beta, ${RESOURCE(projectDir, 'predictors.extract')}],
                     [gamma, []],
                 )
-                input[9] = 200
-                input[10] = 'standard'
-                input[11] = null
+                input[8] = 200
+                input[9] = 'standard'
+                input[10] = null
                 """
             }
         }
@@ -206,19 +206,19 @@ nextflow_workflow {
                     ${plink2Genotypes(projectDir, "beta")},
                 )
                 input[1] = channel.empty()
-                input[2] = ${nativeViewKeys(['cohort_a'])}
-                input[3] = ${plink1ViewKeys([])}
-                input[4] = channel.of(
+
+                input[2] = ${plink1ViewKeys([])}
+                input[3] = channel.of(
                     ${phenotype(projectDir, "alpha")},
                     ${phenotype(projectDir, "beta")},
                 )
-                input[5] = channel.of(${covariates(projectDir, "alpha")})
+                input[4] = channel.of(${covariates(projectDir, "alpha")})
+                input[5] = channel.empty()
                 input[6] = channel.empty()
                 input[7] = channel.empty()
-                input[8] = channel.empty()
-                input[9] = 200
-                input[10] = 'standard'
-                input[11] = null
+                input[8] = 200
+                input[9] = 'standard'
+                input[10] = null
                 """
             }
         }
@@ -241,7 +241,7 @@ nextflow_workflow {
         }
     }
 
-    test("scientifically identical analyses share one Step 1 fit and the fit keys never reach the emitted metadata") {
+    test("scientifically identical analyses retain distinct declared fits and unchanged focal metadata") {
 
         options "-stub"
 
@@ -262,25 +262,25 @@ nextflow_workflow {
                     ${plink1Genotypes(projectDir, "alpha")},
                     ${plink1Genotypes(projectDir, "beta")},
                 )
-                input[2] = ${nativeViewKeys(['cohort_a'])}
-                input[3] = ${plink1ViewKeys(['cohort_a'])}
-                input[4] = channel.of(
+
+                input[2] = ${plink1ViewKeys(['cohort_a'])}
+                input[3] = channel.of(
                     ${phenotype(projectDir, "alpha")},
                     ${phenotype(projectDir, "beta")},
                 )
-                input[5] = channel.of(
+                input[4] = channel.of(
                     ${covariates(projectDir, "alpha")},
                     ${covariates(projectDir, "beta")},
                 )
-                input[6] = channel.of(
+                input[5] = channel.of(
                     ${headerlessPhenotype(projectDir, "alpha")},
                     ${headerlessPhenotype(projectDir, "beta")},
                 )
-                input[7] = channel.empty()
-                input[8] = channel.of([alpha, []], [beta, []])
-                input[9] = 200
-                input[10] = 'standard'
-                input[11] = null
+                input[6] = channel.empty()
+                input[7] = channel.of([alpha, []], [beta, []])
+                input[8] = 200
+                input[9] = 'standard'
+                input[10] = null
                 """
             }
         }
@@ -288,13 +288,11 @@ nextflow_workflow {
         then {
             assertAll(
                 { assert workflow.success },
-                // Both analyses agree on every cohort-defining and scientific input, so each family fits once
-                // and tests twice. The reuse identities belong to the nested routes; this controller only has
-                // to keep the streams that feed them byte-identical.
-                { assert TRACE.count(workflow, 'REGENIE_STEP1') == 1 },
+                // Each analysis declares a separate fit even when the scientific inputs agree.
+                { assert TRACE.count(workflow, 'REGENIE_STEP1') == 2 },
                 { assert TRACE.count(workflow, 'REGENIE_STEP2') == 2 },
                 { assert TRACE.tags(workflow, 'REGENIE_STEP2') == ['alpha', 'beta'] },
-                { assert TRACE.count(workflow, 'LDAK_KVIKSTEP1') == 1 },
+                { assert TRACE.count(workflow, 'LDAK_KVIKSTEP1') == 2 },
                 { assert TRACE.count(workflow, 'LDAK_KVIKSTEP2') == 2 },
                 { assert TRACE.tags(workflow, 'LDAK_KVIKSTEP2') == ['alpha:alpha', 'beta:beta'] },
                 { assert workflow.out.association_results.collect { meta, _sumstats -> "${meta.id}/${meta.method}" }.sort() == ['alpha/ldak_kvik', 'alpha/regenie', 'beta/ldak_kvik', 'beta/regenie'] },
@@ -329,16 +327,16 @@ nextflow_workflow {
                     ${plink1Genotypes(projectDir, "alpha")},
                     ${plink1Genotypes(projectDir, "relationship")},
                 )
-                input[2] = ${nativeViewKeys(['cohort_a'])}
-                input[3] = ${plink1ViewKeys(['cohort_a'])}
-                input[4] = channel.of(${phenotype(projectDir, "alpha")})
-                input[5] = channel.of(${covariates(projectDir, "alpha")})
-                input[6] = channel.of(${headerlessPhenotype(projectDir, "alpha")})
-                input[7] = channel.of(${sparseMatrix(projectDir, "alpha")})
-                input[8] = channel.of([alpha, []])
-                input[9] = 200
-                input[10] = 'standard'
-                input[11] = null
+
+                input[2] = ${plink1ViewKeys(['cohort_a'])}
+                input[3] = channel.of(${phenotype(projectDir, "alpha")})
+                input[4] = channel.of(${covariates(projectDir, "alpha")})
+                input[5] = channel.of(${headerlessPhenotype(projectDir, "alpha")})
+                input[6] = channel.of(${sparseMatrix(projectDir, "alpha")})
+                input[7] = channel.of([alpha, []])
+                input[8] = 200
+                input[9] = 'standard'
+                input[10] = null
                 """
             }
         }
@@ -374,16 +372,16 @@ nextflow_workflow {
 
                 input[0] = channel.of(${plink2Genotypes(projectDir, "alpha")})
                 input[1] = channel.empty()
-                input[2] = ${nativeViewKeys(['cohort_a'])}
-                input[3] = ${plink1ViewKeys([])}
-                input[4] = channel.of(${phenotype(projectDir, "alpha")})
-                input[5] = channel.empty()
-                input[6] = channel.of(${headerlessPhenotype(projectDir, "alpha", null, null)})
-                input[7] = channel.empty()
-                input[8] = channel.of([alpha, []])
-                input[9] = 200
-                input[10] = 'standard'
-                input[11] = null
+
+                input[2] = ${plink1ViewKeys([])}
+                input[3] = channel.of(${phenotype(projectDir, "alpha")})
+                input[4] = channel.empty()
+                input[5] = channel.of(${headerlessPhenotype(projectDir, "alpha", null, null)})
+                input[6] = channel.empty()
+                input[7] = channel.of([alpha, []])
+                input[8] = 200
+                input[9] = 'standard'
+                input[10] = null
                 """
             }
         }
@@ -419,22 +417,22 @@ nextflow_workflow {
                     ${plink2Genotypes(projectDir, "regenie")},
                 )
                 input[1] = channel.of(${plink1Genotypes(projectDir, "kvik")})
-                input[2] = ${nativeViewKeys(['cohort_kvik', 'cohort_regenie'])}
-                input[3] = ${plink1ViewKeys(['cohort_kvik'])}
-                input[4] = channel.of(
+
+                input[2] = ${plink1ViewKeys(['cohort_kvik'])}
+                input[3] = channel.of(
                     ${phenotype(projectDir, "kvik")},
                     ${phenotype(projectDir, "regenie")},
                 )
-                input[5] = channel.of(
+                input[4] = channel.of(
                     ${covariates(projectDir, "kvik")},
                     ${covariates(projectDir, "regenie")},
                 )
-                input[6] = channel.of(${headerlessPhenotype(projectDir, "kvik")})
-                input[7] = channel.empty()
-                input[8] = channel.of([kvik, []])
-                input[9] = 200
-                input[10] = 'standard'
-                input[11] = null
+                input[5] = channel.of(${headerlessPhenotype(projectDir, "kvik")})
+                input[6] = channel.empty()
+                input[7] = channel.of([kvik, []])
+                input[8] = 200
+                input[9] = 'standard'
+                input[10] = null
                 """
             }
         }
@@ -474,22 +472,22 @@ nextflow_workflow {
                     ${plink1Genotypes(projectDir, "alpha")},
                     ${plink1Genotypes(projectDir, "gamma")},
                 )
-                input[2] = ${nativeViewKeys(['cohort_a'])}
-                input[3] = ${plink1ViewKeys(['cohort_a'])}
-                input[4] = channel.of(
+
+                input[2] = ${plink1ViewKeys(['cohort_a'])}
+                input[3] = channel.of(
                     ${phenotype(projectDir, "alpha")},
                     ${phenotype(projectDir, "gamma")},
                 )
-                input[5] = channel.of(
+                input[4] = channel.of(
                     ${covariates(projectDir, "alpha")},
                     ${covariates(projectDir, "gamma")},
                 )
-                input[6] = channel.of(${headerlessPhenotype(projectDir, "gamma")})
-                input[7] = channel.of(${sparseMatrix(projectDir, "gamma")})
-                input[8] = channel.of([gamma, []])
-                input[9] = 200
-                input[10] = 'standard'
-                input[11] = null
+                input[5] = channel.of(${headerlessPhenotype(projectDir, "gamma")})
+                input[6] = channel.of(${sparseMatrix(projectDir, "gamma")})
+                input[7] = channel.of([gamma, []])
+                input[8] = 200
+                input[9] = 'standard'
+                input[10] = null
                 """
             }
         }

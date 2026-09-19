@@ -2,23 +2,23 @@
 // Every component reports on the run-wide versions topic, so this subworkflow emits no versions.
 
 // SUBWORKFLOW: Consisting of a mix of local and nf-core/modules
-include { PLINK_PREPARE_GRM_GCTA           } from '../plink_prepare_grm_gcta/main'
-include { PLINK_PREPARE_LDMS_PLAN_GCTA     } from '../plink_prepare_ldms_plan_gcta/main'
-include { PLINK_PREPARE_GRM_LDMS_GCTA      } from '../plink_prepare_grm_ldms_gcta/main'
-include { PLINK_PREPARE_GRM_LDAK           } from '../plink_prepare_grm_ldak/main'
-include { PLINK_PREPARE_GRM_MPH            } from '../plink_prepare_grm_mph/main'
-include { PLINK_PREPARE_GRM_LDMS_MPH       } from '../plink_prepare_grm_ldms_mph/main'
+include { PLINK_PREPARE_GRM_GCTA                                             } from '../plink_prepare_grm_gcta/main'
+include { PLINK_PREPARE_LDMS_PLAN_GCTA                                       } from '../plink_prepare_ldms_plan_gcta/main'
+include { PLINK_PREPARE_GRM_GROUPS_GCTA                                      } from '../plink_prepare_grm_groups_gcta/main'
+include { PLINK_PREPARE_GRM_LDAK                                             } from '../plink_prepare_grm_ldak/main'
+include { PLINK_PREPARE_GRM_GROUPS_MPH as PLINK_PREPARE_GRM_GROUPS_MPH_DENSE } from '../plink_prepare_grm_groups_mph/main'
+include { PLINK_PREPARE_GRM_GROUPS_MPH as PLINK_PREPARE_GRM_GROUPS_MPH_LDMS  } from '../plink_prepare_grm_groups_mph/main'
 
 // MODULE: Local to the pipeline
-include { GCTA_MAKEBKSPARSE                } from '../../../modules/local/gcta/makebksparse/main'
+include { GCTA_MAKEBKSPARSE                                                  } from '../../../modules/local/gcta/makebksparse/main'
 
 // FUNCTION: Local to the pipeline
-include { buildScientificArtifactKey       } from '../utils_nfcore_gwas_pipeline'
-include { canonicaliseScientificIdentifier } from '../utils_nfcore_gwas_pipeline'
-include { canonicaliseScientificValue      } from '../utils_nfcore_gwas_pipeline'
-include { digestFileBytes                  } from '../utils_nfcore_gwas_pipeline'
-include { getMatrixKindContract            } from '../validate_gwas_input/method_registry'
-include { getMethodCapabilities            } from '../validate_gwas_input/method_registry'
+include { buildScientificArtifactKey                                         } from '../utils_nfcore_gwas_pipeline'
+include { canonicaliseScientificIdentifier                                   } from '../utils_nfcore_gwas_pipeline'
+include { canonicaliseScientificValue                                        } from '../utils_nfcore_gwas_pipeline'
+include { digestFileBytes                                                    } from '../utils_nfcore_gwas_pipeline'
+include { getMatrixKindContract                                              } from '../validate_gwas_input/method_registry'
+include { getMethodCapabilities                                              } from '../validate_gwas_input/method_registry'
 
 workflow PREPARE_RELATEDNESS_MATRICES {
     take:
@@ -206,32 +206,32 @@ workflow PREPARE_RELATEDNESS_MATRICES {
         ch_plan_requests.maf_edges,
     )
 
-    def ch_plans_by_key = PLINK_PREPARE_LDMS_PLAN_GCTA.out.plan.map { plan_meta, strata_manifest, snp_group_files -> [plan_meta.key, strata_manifest, snp_group_files] }
+    def ch_plans_by_key = PLINK_PREPARE_LDMS_PLAN_GCTA.out.groups.map { plan_meta, group_manifest, snp_group_files -> [plan_meta.key, group_manifest, snp_group_files] }
 
     // LDMS remains one base-family artifact. Its reusable product is the ordered GRM family; each native
     // consumer writes its own task-local MGRM control list from the explicit prefix order.
     def ch_ldms_builds = ch_base_by_type.gcta_ldms
         .map { _key, matrix_meta, base, _weights_file, parts -> [base.plan_key, base.view_compatibility_key, matrix_meta, parts] }
         .combine(ch_plans_by_key, by: 0)
-        .map { _plan_key, view_key, matrix_meta, parts, strata_manifest, snp_group_files -> [view_key, matrix_meta, parts, strata_manifest, snp_group_files] }
+        .map { _plan_key, view_key, matrix_meta, parts, group_manifest, snp_group_files -> [view_key, matrix_meta, parts, group_manifest, snp_group_files] }
         .combine(ch_plink1_by_view_key, by: 0)
-        .map { _view_key, matrix_meta, parts, strata_manifest, snp_group_files, bed, bim, fam -> [matrix_meta, parts, strata_manifest, snp_group_files, bed, bim, fam] }
+        .map { _view_key, matrix_meta, parts, group_manifest, snp_group_files, bed, bim, fam -> [matrix_meta, parts, group_manifest, snp_group_files, bed, bim, fam] }
 
     def ch_ldms_manifests = ch_ldms_builds
-        .map { matrix_meta, _parts, _strata_manifest, _snp_group_files, bed, _bim, _fam -> [matrix_meta, bed.baseName] }
+        .map { matrix_meta, _parts, _group_manifest, _snp_group_files, bed, _bim, _fam -> [matrix_meta, bed.baseName] }
         .collectFile { matrix_meta, stem -> ["${matrix_meta.id}.mbfile", "${stem}\n"] }
         .map { manifest -> [manifest.baseName, manifest] }
 
     def ch_ldms_inputs = ch_ldms_builds
-        .map { matrix_meta, parts, strata_manifest, snp_group_files, bed, bim, fam -> [matrix_meta.id, matrix_meta, parts, strata_manifest, snp_group_files, bed, bim, fam] }
+        .map { matrix_meta, parts, group_manifest, snp_group_files, bed, bim, fam -> [matrix_meta.id, matrix_meta, parts, group_manifest, snp_group_files, bed, bim, fam] }
         .join(ch_ldms_manifests, failOnDuplicate: true, failOnMismatch: true)
-        .multiMap { _matrix_id, matrix_meta, parts, strata_manifest, snp_group_files, bed, bim, fam, manifest ->
-            plan: [matrix_meta, strata_manifest, snp_group_files]
+        .multiMap { _matrix_id, matrix_meta, parts, group_manifest, snp_group_files, bed, bim, fam, manifest ->
+            plan: [matrix_meta, group_manifest, snp_group_files]
             genotypes: [matrix_meta, manifest, bed, bim, fam]
             n_parts: [matrix_meta, parts]
         }
 
-    PLINK_PREPARE_GRM_LDMS_GCTA(
+    PLINK_PREPARE_GRM_GROUPS_GCTA(
         ch_ldms_inputs.plan,
         ch_ldms_inputs.genotypes,
         ch_ldms_inputs.n_parts,
@@ -244,19 +244,39 @@ workflow PREPARE_RELATEDNESS_MATRICES {
         .combine(ch_plink1_by_view_key, by: 0)
         .map { _view_key, matrix_meta, bed, bim, fam -> [matrix_meta, bed, bim, fam] }
 
-    PLINK_PREPARE_GRM_MPH(ch_mph_dense_builds, autosome_count)
+    // The selected universe belongs to the caller. The reusable builder receives the same explicit group
+    // table for one group as it does for many groups and has no chromosome-selection policy.
+    def ch_mph_all_lists = ch_mph_dense_builds
+        .map { matrix_meta, _bed, bim, _fam ->
+            def selected_snps = selectAutosomalSnps(bim, autosome_count)
+            [matrix_meta.id, selected_snps.join('\n') + '\n']
+        }
+        .collectFile { matrix_id, snps -> ["${matrix_id}.all.snps.txt", snps] }
+        .map { group_file -> [group_file.name - '.all.snps.txt', group_file] }
+
+    def ch_mph_all_manifests = ch_mph_all_lists
+        .collectFile { matrix_id, group_file -> ["${matrix_id}.groups.tsv", "group_id\tgroup_filename\nall\t${group_file.name}\n"] }
+        .map { manifest -> [manifest.name - '.groups.tsv', manifest] }
+
+    def ch_mph_all_groups = ch_mph_dense_builds
+        .map { matrix_meta, _bed, _bim, _fam -> [matrix_meta.id, matrix_meta] }
+        .join(ch_mph_all_lists, failOnDuplicate: true, failOnMismatch: true)
+        .join(ch_mph_all_manifests, failOnDuplicate: true, failOnMismatch: true)
+        .map { _matrix_id, matrix_meta, group_file, manifest -> [matrix_meta, manifest, [group_file]] }
+
+    PLINK_PREPARE_GRM_GROUPS_MPH_DENSE(ch_mph_all_groups, ch_mph_dense_builds)
 
     def ch_mph_ldms_builds = ch_base_by_type.mph_ldms
         .map { _key, matrix_meta, base, _weights_file, _parts -> [base.plan_key, base.view_compatibility_key, matrix_meta] }
         .combine(ch_plans_by_key, by: 0)
-        .map { _plan_key, view_key, matrix_meta, strata_manifest, snp_group_files -> [view_key, matrix_meta, strata_manifest, snp_group_files] }
+        .map { _plan_key, view_key, matrix_meta, group_manifest, snp_group_files -> [view_key, matrix_meta, group_manifest, snp_group_files] }
         .combine(ch_plink1_by_view_key, by: 0)
-        .multiMap { _view_key, matrix_meta, strata_manifest, snp_group_files, bed, bim, fam ->
-            plan: [matrix_meta, strata_manifest, snp_group_files]
+        .multiMap { _view_key, matrix_meta, group_manifest, snp_group_files, bed, bim, fam ->
+            plan: [matrix_meta, group_manifest, snp_group_files]
             genotypes: [matrix_meta, bed, bim, fam]
         }
 
-    PLINK_PREPARE_GRM_LDMS_MPH(ch_mph_ldms_builds.plan, ch_mph_ldms_builds.genotypes, autosome_count)
+    PLINK_PREPARE_GRM_GROUPS_MPH_LDMS(ch_mph_ldms_builds.plan, ch_mph_ldms_builds.genotypes)
 
     // CALCKINS sees only LDAK base requests. Optional filtering/subsetting is supplied as a child request whose
     // parent key selects the completed base, so unrestricted and filtered consumers share construction.
@@ -264,15 +284,15 @@ workflow PREPARE_RELATEDNESS_MATRICES {
         .map { key, matrix_meta, base, weights_file, _parts -> [base.view_compatibility_key, key, matrix_meta, base, weights_file] }
         .combine(ch_plink1_by_view_key, by: 0)
         .map { _view_key, key, matrix_meta, base, weights_file, bed, bim, fam -> [key, matrix_meta, base, weights_file, bed, bim, fam] }
-        .multiMap { _key, matrix_meta, base, weights_file, bed, bim, fam ->
-            genotypes: [matrix_meta, bed, bim, fam, base.settings.power]
-            weights: [matrix_meta, weights_file]
+        .multiMap { producer_ref, matrix_meta, base, weights_file, bed, bim, fam ->
+            genotypes: [matrix_meta, bed, bim, fam, base.settings.power, producer_ref]
+            weights: [matrix_meta, weights_file, producer_ref]
         }
 
     def ch_ldak_subset_requests = ch_requests
         .filter { _selected_key, _meta, request, _weights_file -> request.derived && request.derived.type == 'ldak_subset' }
-        .map { _selected_key, _meta, request, _weights_file -> [request.derived.parent_key, buildRelatednessArtifactMeta(request.derived)] }
-        .unique { _parent_key, derived_meta -> derived_meta.key }
+        .map { _selected_key, _meta, request, _weights_file -> [buildRelatednessArtifactMeta(request.derived), request.derived.parent_key] }
+        .unique { derived_meta, _parent_key -> derived_meta.key }
 
     PLINK_PREPARE_GRM_LDAK(
         ch_ldak_inputs.genotypes,
@@ -303,17 +323,17 @@ workflow PREPARE_RELATEDNESS_MATRICES {
         .filter { _selected_key, _meta, request, _weights_file -> request.kind == 'gcta_ldms' }
         .map { selected_key, meta, _request, _weights_file -> [selected_key, meta.relationship_id ? meta + [matrix_key: selected_key] : meta] }
         .combine(
-            PLINK_PREPARE_GRM_LDMS_GCTA.out.grm_family.map { matrix_meta, grm_files, grm_prefixes -> [matrix_meta.key, grm_files, grm_prefixes] },
+            PLINK_PREPARE_GRM_GROUPS_GCTA.out.grm_family.map { matrix_meta, grm_files, grm_prefixes -> [matrix_meta.key, grm_files, grm_prefixes] },
             by: 0
         )
         .map { _selected_key, meta, grm_files, grm_prefixes -> [meta, grm_files, grm_prefixes] }
 
     // The MPH families carry their identity in a tuple position rather than in analysis metadata. The matrix
     // identity includes the plan and declared predictor counts read from the completed construction outputs.
-    def ch_mph_dense_artifacts = PLINK_PREPARE_GRM_MPH.out.grm_files
-        .map { matrix_meta, grm_files -> [matrix_meta.key, matrix_meta, grm_files] }
+    def ch_mph_dense_artifacts = PLINK_PREPARE_GRM_GROUPS_MPH_DENSE.out.grm_family
+        .map { matrix_meta, grm_files, _grm_prefixes -> [matrix_meta.key, matrix_meta, grm_files] }
         .join(
-            PLINK_PREPARE_GRM_MPH.out.counts.map { matrix_meta, counts -> [matrix_meta.key, counts] },
+            PLINK_PREPARE_GRM_GROUPS_MPH_DENSE.out.counts.map { matrix_meta, counts -> [matrix_meta.key, counts] },
             failOnDuplicate: true,
             failOnMismatch: true,
         )
@@ -325,10 +345,10 @@ workflow PREPARE_RELATEDNESS_MATRICES {
         .combine(ch_mph_dense_artifacts, by: 0)
         .map { _selected_key, meta, matrix_identity, grm_files -> [meta, matrix_identity, grm_files] }
 
-    def ch_mph_ldms_artifacts = PLINK_PREPARE_GRM_LDMS_MPH.out.grm_family
+    def ch_mph_ldms_artifacts = PLINK_PREPARE_GRM_GROUPS_MPH_LDMS.out.grm_family
         .map { matrix_meta, grm_files, grm_prefixes -> [matrix_meta.key, matrix_meta, grm_files, grm_prefixes] }
         .join(
-            PLINK_PREPARE_GRM_LDMS_MPH.out.counts.map { matrix_meta, counts -> [matrix_meta.key, counts] },
+            PLINK_PREPARE_GRM_GROUPS_MPH_LDMS.out.counts.map { matrix_meta, counts -> [matrix_meta.key, counts] },
             failOnDuplicate: true,
             failOnMismatch: true,
         )
@@ -344,7 +364,7 @@ workflow PREPARE_RELATEDNESS_MATRICES {
         .filter { _selected_key, _meta, request, _weights_file -> request.kind == 'ldak_kinship' && !request.derived }
         .map { selected_key, meta, _request, _weights_file -> [selected_key, meta] }
         .combine(
-            PLINK_PREPARE_GRM_LDAK.out.base_grm.map { matrix_meta, grm_files -> [matrix_meta.key, grm_files] },
+            PLINK_PREPARE_GRM_LDAK.out.base_grm.map { _matrix_meta, grm_files, producer_ref -> [producer_ref, grm_files] },
             by: 0
         )
         .map { selected_key, meta, grm_files -> [meta, selected_key, grm_files, []] }
@@ -379,11 +399,12 @@ workflow PREPARE_RELATEDNESS_MATRICES {
     gcta_dense          = ch_gcta_dense // channel: [ val(meta), path(grm_files) ]
     gcta_sparse         = ch_gcta_sparse // channel: [ val(meta), path(sparse_grm_files) ]
     gcta_ldms           = ch_gcta_ldms // channel: [ val(meta), path(grm_files), val(grm_prefixes) ]
-    gcta_ldms_artifacts = PLINK_PREPARE_GRM_LDMS_GCTA.out.grm_family // channel: [ val(matrix_meta), path(grm_files), val(grm_prefixes) ], one per base key
+    gcta_ldms_artifacts = PLINK_PREPARE_GRM_GROUPS_GCTA.out.grm_family // channel: [ val(matrix_meta), path(grm_files), val(grm_prefixes) ], one per base key
     ldak_kinship        = ch_ldak_kinship // channel: [ val(meta), val(artifact_key), path(grm_files), path(keep) ]
     mph_dense           = ch_mph_dense // channel: [ val(meta), val(matrix_identity), path(grm_files) ]
     mph_ldms            = ch_mph_ldms // channel: [ val(meta), val(matrix_identity), path(grm_files), val(grm_prefixes) ]
-    mph_ldms_artifacts  = PLINK_PREPARE_GRM_LDMS_MPH.out.grm_family // channel: [ val(matrix_meta), path(grm_files), val(grm_prefixes) ], one per base key
+    mph_dense_artifacts = PLINK_PREPARE_GRM_GROUPS_MPH_DENSE.out.grm_family.map { matrix_meta, grm_files, _grm_prefixes -> [matrix_meta, grm_files] } // channel: [ val(matrix_meta), path(grm_files) ], one per base key
+    mph_ldms_artifacts  = PLINK_PREPARE_GRM_GROUPS_MPH_LDMS.out.grm_family // channel: [ val(matrix_meta), path(grm_files), val(grm_prefixes) ], one per base key
     ldms_plan_artifacts = ch_ldms_plan_artifacts // channel: [ val(plan_meta), path(ld_scores), path(strata_manifest), [ path(snp_group_file), ... ] ], one per plan key
 }
 
@@ -639,4 +660,13 @@ def buildRelatednessArtifactRequest(meta, view_compatibility_key, kind, weights_
         derived: derived,
         selected_key: derived ? derived.key : base.key,
     ]
+}
+
+// Dense MPH construction must use the same caller-selected autosomal universe as the other matrix routes.
+def selectAutosomalSnps(bim, autosome_count) {
+    return bim
+        .readLines()
+        .collect { row -> row.tokenize() }
+        .findAll { fields -> fields[0].isInteger() && fields[0].toInteger() in 1..autosome_count }
+        .collect { fields -> fields[1] }
 }

@@ -4,6 +4,7 @@ nextflow_workflow {
     script "../main.nf"
     workflow "ROUTE_GWAS_REPORTING"
     tag "subworkflow"
+    tag "subworkflows_local"
     tag "reporting"
     tag "multiqc"
 

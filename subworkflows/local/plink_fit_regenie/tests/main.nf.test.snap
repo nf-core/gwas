@@ -1,0 +1,274 @@
+{
+    "homo_sapiens popgen - chunked fitting": {
+        "content": [
+            [
+                [
+                    {
+                        "id": "fit"
+                    },
+                    "plink_simulated_pred.list"
+                ]
+            ],
+            [
+                [
+                    {
+                        "id": "fit"
+                    },
+                    [
+                        "plink_simulated_1.loco.gz"
+                    ]
+                ]
+            ],
+            [
+                [
+                    {
+                        "id": "fit"
+                    },
+                    "plink_simulated.log"
+                ],
+                [
+                    {
+                        "id": "fit"
+                    },
+                    "plink_simulated.log"
+                ],
+                [
+                    {
+                        "id": "fit"
+                    },
+                    "plink_simulated_job1.log"
+                ],
+                [
+                    {
+                        "id": "fit"
+                    },
+                    "plink_simulated_job2.log"
+                ]
+            ]
+        ],
+        "timestamp": "2026-09-18T20:21:22.002581079",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "homo_sapiens popgen - observed single chunk without covariates": {
+        "content": [
+            [
+                [
+                    {
+                        "id": "fit"
+                    },
+                    "plink_simulated_pred.list"
+                ]
+            ],
+            [
+                [
+                    {
+                        "id": "fit"
+                    },
+                    [
+                        "plink_simulated_1.loco.gz"
+                    ]
+                ]
+            ],
+            [
+                [
+                    {
+                        "id": "fit"
+                    },
+                    "plink_simulated.log"
+                ],
+                [
+                    {
+                        "id": "fit"
+                    },
+                    "plink_simulated.log"
+                ],
+                [
+                    {
+                        "id": "fit"
+                    },
+                    "plink_simulated_job1.log"
+                ]
+            ]
+        ],
+        "timestamp": "2026-09-18T20:21:33.69773371",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "homo_sapiens popgen - standard fitting - stub": {
+        "content": [
+            [
+                [
+                    {
+                        "id": "fit"
+                    },
+                    "plink_simulated_pred.list"
+                ]
+            ],
+            [
+                [
+                    {
+                        "id": "fit"
+                    },
+                    [
+                        "plink_simulated_1.loco.gz"
+                    ]
+                ]
+            ],
+            [
+                [
+                    {
+                        "id": "fit"
+                    },
+                    "plink_simulated.log"
+                ]
+            ]
+        ],
+        "timestamp": "2026-09-18T20:21:40.768086613",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "homo_sapiens popgen - standard fitting": {
+        "content": [
+            [
+                [
+                    {
+                        "id": "fit"
+                    },
+                    "plink_simulated_pred.list"
+                ]
+            ],
+            [
+                [
+                    {
+                        "id": "fit"
+                    },
+                    [
+                        "plink_simulated_1.loco.gz"
+                    ]
+                ]
+            ],
+            [
+                [
+                    {
+                        "id": "fit"
+                    },
+                    "plink_simulated.log"
+                ]
+            ]
+        ],
+        "timestamp": "2026-09-18T20:21:07.791452997",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "homo_sapiens popgen - chunked fitting - stub": {
+        "content": [
+            [
+                [
+                    {
+                        "id": "fit"
+                    },
+                    "plink_simulated_pred.list"
+                ]
+            ],
+            [
+                [
+                    {
+                        "id": "fit"
+                    },
+                    [
+                        "plink_simulated_1.loco.gz"
+                    ]
+                ]
+            ],
+            [
+                [
+                    {
+                        "id": "fit"
+                    },
+                    "plink_simulated.log"
+                ],
+                [
+                    {
+                        "id": "fit"
+                    },
+                    "plink_simulated.log"
+                ],
+                [
+                    {
+                        "id": "fit"
+                    },
+                    "plink_simulated_job1.log"
+                ],
+                [
+                    {
+                        "id": "fit"
+                    },
+                    "plink_simulated_job2.log"
+                ]
+            ]
+        ],
+        "timestamp": "2026-09-18T20:21:55.541186231",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "homo_sapiens popgen - mixed per-fit routes": {
+        "content": [
+            [
+                [
+                    {
+                        "id": "chunked"
+                    },
+                    "plink_simulated_pred.list"
+                ],
+                [
+                    {
+                        "id": "standard"
+                    },
+                    "plink_simulated_pred.list"
+                ]
+            ],
+            [
+                [
+                    {
+                        "id": "chunked"
+                    },
+                    "plink_simulated.log"
+                ],
+                [
+                    {
+                        "id": "chunked"
+                    },
+                    "plink_simulated.log"
+                ],
+                [
+                    {
+                        "id": "chunked"
+                    },
+                    "plink_simulated_job1.log"
+                ],
+                [
+                    {
+                        "id": "standard"
+                    },
+                    "plink_simulated.log"
+                ]
+            ]
+        ],
+        "timestamp": "2026-09-18T20:22:07.865775936",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

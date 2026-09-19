@@ -34,7 +34,7 @@ nextflow_function {
         variant_counts: [bim_rows: 1100, assigned: 1100, unassigned: 0],
     ]
 
-    test("the route meta keeps the request identity and carries the declared trait order into the fit") {
+    test("the route meta keeps the request identity and its matrix attribution") {
         function "resolveMphPairRouteMeta"
 
         when {
@@ -54,10 +54,6 @@ nextflow_function {
                 { assert function.result.id == 'mph_bivariate_reml_ldms--qt_qt2' },
                 { assert function.result.request_id == 'mph_bivariate_reml_ldms--qt_qt2' },
                 { assert function.result.matrix_key == 'ldms000001' },
-                // Declared manifest order, never sorted: this list becomes `--trait_names` and therefore fixes
-                // which endpoint is the left one in every published record. `QT2` sorts before `QT` on no
-                // ordering this pipeline uses, but the point is that no ordering is applied at all.
-                { assert function.result.mph_trait_names == ['QT', 'QT2'] },
                 { assert function.result.mph_estimator == 'mph_bivariate_reml_ldms' },
                 { assert function.result.mph_effective.native_arguments == ['--seed 7'] },
             )
@@ -65,13 +61,12 @@ nextflow_function {
     }
 
     test("the declared orientation is taken as given even when it reverses the alphabetical order") {
-        function "resolveMphPairRouteMeta"
+        function "mphTraitNames"
 
         when {
             function {
                 """
                 input[0] = ${(PAIR + [left_trait_id: 'ZTRAIT', right_trait_id: 'ATRAIT']).inspect()}
-                input[1] = ${MATRIX.inspect()}
                 """
             }
         }
@@ -79,7 +74,29 @@ nextflow_function {
         then {
             assertAll(
                 { assert function.success },
-                { assert function.result.mph_trait_names == ['ZTRAIT', 'ATRAIT'] },
+                // Declared manifest order, never sorted: this list becomes `--trait_names` and therefore fixes
+                // which endpoint is the left one in every published record. `ATRAIT` sorts before `ZTRAIT` on
+                // no ordering this pipeline uses, but the point is that no ordering is applied at all.
+                { assert function.result == ['ZTRAIT', 'ATRAIT'] },
+            )
+        }
+    }
+
+    test("the declared pair becomes the fit's trait-name list in manifest order") {
+        function "mphTraitNames"
+
+        when {
+            function {
+                """
+                input[0] = ${PAIR.inspect()}
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == ['QT', 'QT2'] },
             )
         }
     }
@@ -164,26 +181,6 @@ nextflow_function {
         }
     }
 
-    test("the covariate column names are read back from the serialised header the encoder produced") {
-        function "readCsvHeader"
-
-        when {
-            function {
-                """
-                input[0] = file('${RELATIONAL.resource(outputDir, 'pair-route-covariates.mph.covar.csv', 'IID,intercept,AGE,SEX_2\nS001,1,30,0\n')}', checkIfExists: true)
-                """
-            }
-        }
-
-        then {
-            assertAll(
-                { assert function.success },
-                { assert function.result == ['IID', 'intercept', 'AGE', 'SEX_2'] },
-                { assert function.result.drop(1) == ['intercept', 'AGE', 'SEX_2'] },
-            )
-        }
-    }
-
     test("route bookkeeping is stripped before emission and the request identity is what survives") {
         function "stripMphPairRouteState"
 
@@ -197,7 +194,6 @@ nextflow_function {
                     method: 'mph_bivariate_reml',
                     matrix_key: 'abc123',
                     mph_estimator: 'mph_bivariate_reml',
-                    mph_trait_names: ['QT', 'QT2'],
                     mph_effective: [native_arguments: ['--seed 7']],
                 ]
                 """

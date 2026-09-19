@@ -89,7 +89,10 @@ def resolveAnalyses(analysis_rows, analysis_columns, analysis_manifest, cohort_m
             def cat_covariate_names = []
             if (cells.cat_covariates) {
                 def header = file(cells.cat_covariates).readLines().find { header_line -> header_line.trim() }
-                cat_covariate_names = (header.contains('\t') ? header.split('\t', -1) : header.trim().split(/\s+/)).drop(2)
+                // `toList()` because `split` yields an array, whose equality and hash are by identity: an array
+                // left in metadata compares unequal to the copy the task cache restores, so a resumed run's
+                // join by that metadata mismatches.
+                cat_covariate_names = (header.contains('\t') ? header.split('\t', -1) : header.trim().split(/\s+/)).drop(2).toList()
             }
             // The declared genotype view identity is added as a key only when the cohort declared one, and is
             // never added as a `null`. Analysis metadata is a task-hash input everywhere downstream, so an

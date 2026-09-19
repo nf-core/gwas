@@ -1,0 +1,240 @@
+{
+    "homo sapiens - reference routing": {
+        "content": [
+            {
+                "base_grm": [
+                    [
+                        {
+                            "id": "base_a"
+                        },
+                        [
+                            "base_a.grm.adjust:md5,faa0f169d0e1c28a45c1576c7f598bf5",
+                            "base_a.grm.bin:md5,ffcc9a23d394873683e7ff084c074a58",
+                            "base_a.grm.details:md5,82c37b3e673a1c85eb312d690b1ad931",
+                            "base_a.grm.id:md5,aa346d8df9251f28144e8a6aa3912c5f"
+                        ],
+                        "producer-a"
+                    ],
+                    [
+                        {
+                            "id": "base_b"
+                        },
+                        [
+                            "base_b.grm.adjust:md5,a8f828676577fac03660b1eacf8903e5",
+                            "base_b.grm.bin:md5,da042bab3ad6b3d599ed7d9193ec8a34",
+                            "base_b.grm.details:md5,13739b92c6718f40ba2e3a423a1d74fd",
+                            "base_b.grm.id:md5,aa346d8df9251f28144e8a6aa3912c5f"
+                        ],
+                        "producer-b"
+                    ]
+                ],
+                "filtered_list": [
+                    [
+                        {
+                            "id": "subset_a"
+                        },
+                        "subset_a.keep:md5,c8c14b946089b7f16c1179f37fcdb8bf",
+                        "subset_a.lose:md5,ac7d6cbbf2def728c2a05bd8359c5fad"
+                    ],
+                    [
+                        {
+                            "id": "subset_b"
+                        },
+                        "subset_b.keep:md5,b4b09fedda56f7222cc31b5f1e25d8a4",
+                        "subset_b.lose:md5,e3781f903e33ddeb314da3154a118959"
+                    ]
+                ],
+                "maxrel": [
+                    [
+                        {
+                            "id": "subset_a"
+                        },
+                        "subset_a.maxrel:md5,de3165b9e5105201924a076ea72ec7ca"
+                    ],
+                    [
+                        {
+                            "id": "subset_b"
+                        },
+                        "subset_b.maxrel:md5,a70d49b489019839ae89175a7e95b84d"
+                    ]
+                ],
+                "subset_grm": [
+                    [
+                        {
+                            "id": "subset_a"
+                        },
+                        [
+                            "subset_a.grm.bin:md5,bc9222cb2bd00539c5d4cebb831161bc",
+                            "subset_a.grm.id:md5,c8c14b946089b7f16c1179f37fcdb8bf",
+                            "subset_a.grm.details:md5,48032959036229fda18561cfd0ea698f",
+                            "subset_a.grm.adjust:md5,1db80d3d65d5a23d21f627a7d655810d"
+                        ]
+                    ],
+                    [
+                        {
+                            "id": "subset_b"
+                        },
+                        [
+                            "subset_b.grm.bin:md5,df6aaf21205a9ece8a94dcbd0297abe7",
+                            "subset_b.grm.id:md5,b4b09fedda56f7222cc31b5f1e25d8a4",
+                            "subset_b.grm.details:md5,f18f6fc38071979105bba95056e9159a",
+                            "subset_b.grm.adjust:md5,dd4fff4e029da733027eb51ee9eaedeb"
+                        ]
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-19T09:39:55.673760773",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "homo sapiens - base only - stub": {
+        "content": [
+            {
+                "base_grm": [
+                    [
+                        {
+                            "id": "base_a"
+                        },
+                        [
+                            "base_a.grm.adjust:md5,d41d8cd98f00b204e9800998ecf8427e",
+                            "base_a.grm.bin:md5,d41d8cd98f00b204e9800998ecf8427e",
+                            "base_a.grm.details:md5,d41d8cd98f00b204e9800998ecf8427e",
+                            "base_a.grm.id:md5,d41d8cd98f00b204e9800998ecf8427e"
+                        ],
+                        "producer-a"
+                    ]
+                ],
+                "filtered_list": [
+                    
+                ],
+                "maxrel": [
+                    
+                ],
+                "subset_grm": [
+                    
+                ]
+            }
+        ],
+        "timestamp": "2026-09-19T09:39:38.737365128",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "homo sapiens - base only": {
+        "content": [
+            {
+                "base_grm": [
+                    [
+                        {
+                            "id": "base_a"
+                        },
+                        [
+                            "base_a.grm.adjust:md5,faa0f169d0e1c28a45c1576c7f598bf5",
+                            "base_a.grm.bin:md5,ffcc9a23d394873683e7ff084c074a58",
+                            "base_a.grm.details:md5,82c37b3e673a1c85eb312d690b1ad931",
+                            "base_a.grm.id:md5,aa346d8df9251f28144e8a6aa3912c5f"
+                        ],
+                        "producer-a"
+                    ]
+                ],
+                "filtered_list": [
+                    
+                ],
+                "maxrel": [
+                    
+                ],
+                "subset_grm": [
+                    
+                ]
+            }
+        ],
+        "timestamp": "2026-09-19T09:39:32.270579802",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "homo sapiens - one producer many derivatives": {
+        "content": [
+            {
+                "base_grm": [
+                    [
+                        {
+                            "id": "base_a"
+                        },
+                        [
+                            "base_a.grm.adjust:md5,faa0f169d0e1c28a45c1576c7f598bf5",
+                            "base_a.grm.bin:md5,ffcc9a23d394873683e7ff084c074a58",
+                            "base_a.grm.details:md5,82c37b3e673a1c85eb312d690b1ad931",
+                            "base_a.grm.id:md5,aa346d8df9251f28144e8a6aa3912c5f"
+                        ],
+                        "producer-a"
+                    ]
+                ],
+                "filtered_list": [
+                    [
+                        {
+                            "id": "subset_one"
+                        },
+                        "subset_one.keep:md5,c8c14b946089b7f16c1179f37fcdb8bf",
+                        "subset_one.lose:md5,ac7d6cbbf2def728c2a05bd8359c5fad"
+                    ],
+                    [
+                        {
+                            "id": "subset_two"
+                        },
+                        "subset_two.keep:md5,c8c14b946089b7f16c1179f37fcdb8bf",
+                        "subset_two.lose:md5,ac7d6cbbf2def728c2a05bd8359c5fad"
+                    ]
+                ],
+                "maxrel": [
+                    [
+                        {
+                            "id": "subset_one"
+                        },
+                        "subset_one.maxrel:md5,de3165b9e5105201924a076ea72ec7ca"
+                    ],
+                    [
+                        {
+                            "id": "subset_two"
+                        },
+                        "subset_two.maxrel:md5,de3165b9e5105201924a076ea72ec7ca"
+                    ]
+                ],
+                "subset_grm": [
+                    [
+                        {
+                            "id": "subset_one"
+                        },
+                        [
+                            "subset_one.grm.bin:md5,bc9222cb2bd00539c5d4cebb831161bc",
+                            "subset_one.grm.id:md5,c8c14b946089b7f16c1179f37fcdb8bf",
+                            "subset_one.grm.details:md5,48032959036229fda18561cfd0ea698f",
+                            "subset_one.grm.adjust:md5,1db80d3d65d5a23d21f627a7d655810d"
+                        ]
+                    ],
+                    [
+                        {
+                            "id": "subset_two"
+                        },
+                        [
+                            "subset_two.grm.bin:md5,bc9222cb2bd00539c5d4cebb831161bc",
+                            "subset_two.grm.id:md5,c8c14b946089b7f16c1179f37fcdb8bf",
+                            "subset_two.grm.details:md5,48032959036229fda18561cfd0ea698f",
+                            "subset_two.grm.adjust:md5,1db80d3d65d5a23d21f627a7d655810d"
+                        ]
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-19T09:39:46.323407134",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

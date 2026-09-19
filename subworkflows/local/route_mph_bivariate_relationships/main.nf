@@ -1,22 +1,9 @@
-// Route nf-core/gwas individual-level relationship requests through MPH bivariate REML on native MPH
-// relatedness matrices, one-component and LD-by-MAF-stratified. A relationship is a declared, oriented pair of
-// analysis units over one cohort. The ordered two-trait table and the relationship-owned covariates are
-// prepared once on the spine and shared with the GCTA bivariate controller, so selecting MPH beside GCTA costs
-// no second preparation and defines no second endpoint sample set.
-//
-// MPH matrices are a different on-disk format from GCTA's and are never interchanged: this controller consumes
-// only the mph_dense and mph_ldms families and takes each request's stream from the registry's matrix kind,
-// never from a method-name literal. It owns estimator selection, the IID-keyed serialisation of the shared
-// pair and the effective settings the native call renders.
-//
-// Declared left/right orientation is written into `--trait_names` in that order. Native output labels are
-// retained unchanged. This controller owns pipeline routing, reuse identity and publication policy.
-// Every constituent process reports directly to the run-wide versions topic, so this subworkflow emits no
-// versions, and it reads no params, no workflow and no projectDir.
+// Route oriented relationship requests to shared sample/design preparation and MPH REML fitting.
+// The pipeline supplies the shared pair tables, selects the matrix family, and preserves request identity.
+// Trait orientation, missing-value spellings, native options, and publication remain caller-owned.
 
-// MODULE: Local to the pipeline
-include { PREPARE_MPH_INPUTS              } from '../../../modules/local/prepare_mph_inputs/main'
-include { MPH_REML                        } from '../../../modules/local/mph/reml/main'
+// SUBWORKFLOW: Pipeline-owned composition of local components
+include { FIT_MPH_REML                    } from '../fit_mph_reml/main'
 
 // FUNCTION: Local to the pipeline
 include { getMethodTokensWithCapabilities } from '../validate_gwas_input/method_registry'
@@ -83,39 +70,22 @@ workflow ROUTE_MPH_BIVARIATE_RELATIONSHIPS {
             [route_meta, grm_files, grm_prefixes, phenotype, quant_covariates, cat_covariates, fam]
         }
 
-    //
-    // MODULE: Serialise the shared pair into the IID-keyed CSVs MPH consumes, in the matrix family's own order
-    //
-    def ch_serializer_inputs = ch_requests.multiMap { route_meta, grm_files, _grm_prefixes, phenotype, quant_covariates, cat_covariates, fam ->
-        tables: [route_meta, phenotype, quant_covariates, cat_covariates]
-        // Every component shares one matrix sample order; the FAM supplies the matching FID for each IID.
-        identity: [route_meta, grm_files.find { grm_file -> grm_file.name.endsWith('.grm.iid') }, fam]
-    }
-    PREPARE_MPH_INPUTS(ch_serializer_inputs.tables, ch_serializer_inputs.identity)
-
-    //
-    // MODULE: Fit the two traits jointly over the matrix family
-    //
-    def ch_reml_inputs = ch_requests
-        .map { route_meta, grm_files, grm_prefixes, _phenotype, _quant_covariates, _cat_covariates, _fam -> [route_meta.request_id, route_meta, grm_files, grm_prefixes] }
-        .join(PREPARE_MPH_INPUTS.out.phenotype.map { meta, phenotype_csv -> [meta.request_id, phenotype_csv] }, failOnDuplicate: true, failOnMismatch: true)
-        .join(PREPARE_MPH_INPUTS.out.covariates.map { meta, covariate_csv -> [meta.request_id, covariate_csv] }, failOnDuplicate: true, remainder: true)
-        .filter { record -> record[1] != null }
-        .multiMap { _request_id, route_meta, grm_files, grm_prefixes, phenotype_csv, covariate_csv ->
-            grm: [route_meta, grm_files, grm_prefixes]
-            // The declared left/right order fixes the native trait orientation.
-            pheno: [route_meta, phenotype_csv, route_meta.mph_trait_names]
-            // Read the encoded column names from the completed CSV.
-            covar: [route_meta, covariate_csv ?: [], covariate_csv ? readCsvHeader(covariate_csv).drop(1) : []]
+    // The caller resolves matrix order and the accepted missing-value spelling before crossing the
+    // portable preparation-and-fit boundary. Scientific method selection stays in this route.
+    def ch_fit_inputs = ch_requests.map { route_meta, grm_files, grm_prefixes, phenotype, quant_covariates, cat_covariates, fam ->
+        def ordered_grm_files = grm_prefixes.collectMany { grm_prefix ->
+            grm_files.findAll { grm_file -> grm_file.name in ["${grm_prefix}.grm.bin".toString(), "${grm_prefix}.grm.iid".toString()] }
         }
-    MPH_REML(ch_reml_inputs.grm, ch_reml_inputs.pheno, ch_reml_inputs.covar)
+        [route_meta, ordered_grm_files, phenotype, quant_covariates, cat_covariates, fam, mphTraitNames(route_meta), ['', 'na', 'nan', '-9']]
+    }
+    FIT_MPH_REML(ch_fit_inputs)
 
     emit:
-    bivariate_results      = MPH_REML.out.variance_components.map { meta, variance_components -> [stripMphPairRouteState(meta), variance_components] } // channel: [ val(meta), path(mq.vc.csv) ], one per request
-    bivariate_correlations = MPH_REML.out.correlations.map { meta, correlations -> [stripMphPairRouteState(meta), correlations] } // channel: [ val(meta), path(mq.cor.csv) ]
-    bivariate_fixed        = MPH_REML.out.fixed_effects.map { meta, fixed_effects -> [stripMphPairRouteState(meta), fixed_effects] } // channel: [ val(meta), path(mq.blue.csv) ]
-    bivariate_iterations   = MPH_REML.out.iterations.map { meta, iterations -> [stripMphPairRouteState(meta), iterations] } // channel: [ val(meta), path(mq.iter.csv) ]
-    bivariate_log          = MPH_REML.out.log.map { meta, native_log -> [stripMphPairRouteState(meta), native_log] } // channel: [ val(meta), path(log) ]
+    bivariate_results      = FIT_MPH_REML.out.variance_components.map { meta, variance_components -> [stripMphPairRouteState(meta), variance_components] } // channel: [ val(meta), path(mq.vc.csv) ], one per request
+    bivariate_correlations = FIT_MPH_REML.out.correlations.map { meta, correlations -> [stripMphPairRouteState(meta), correlations] } // channel: [ val(meta), path(mq.cor.csv) ]
+    bivariate_fixed        = FIT_MPH_REML.out.fixed_effects.map { meta, fixed_effects -> [stripMphPairRouteState(meta), fixed_effects] } // channel: [ val(meta), path(mq.blue.csv) ]
+    bivariate_iterations   = FIT_MPH_REML.out.iterations.map { meta, iterations -> [stripMphPairRouteState(meta), iterations] } // channel: [ val(meta), path(mq.iter.csv) ]
+    bivariate_log          = FIT_MPH_REML.out.native_log.map { meta, native_log -> [stripMphPairRouteState(meta), native_log] } // channel: [ val(meta), path(log) ]
 }
 
 /*
@@ -131,9 +101,14 @@ def resolveMphPairRouteMeta(pair_meta, matrix_identity) {
     return pair_meta + [
         matrix_key: matrix_identity.key,
         mph_estimator: pair_meta.method,
-        mph_trait_names: [pair_meta.left_trait_id, pair_meta.right_trait_id],
         mph_effective: buildMphEffectiveSettings(pair_meta.request_options.mph, pair_meta.native_args),
     ]
+}
+
+// The declared orientation of the pair, in manifest order and never sorted. This list becomes MPH's
+// `--trait_names` and therefore fixes which endpoint is the left one in every published record.
+def mphTraitNames(pair_meta) {
+    return [pair_meta.left_trait_id, pair_meta.right_trait_id]
 }
 
 // The staged bundle's prefix, taken from the member whose name defines it. MPH's `--grm_list` names prefixes
@@ -143,28 +118,22 @@ def grmPrefix(grm_files) {
     return grm_iid_name.substring(0, grm_iid_name.length() - '.grm.iid'.length())
 }
 
-// One line of a completed process output read in an operator, which is legal in the way a `path` input read
-// inside a `script:` block is not.
-def readCsvHeader(csv) {
-    return csv.readLines()[0].split(',').toList()
-}
-
-// Render the curated options and validated native additions for the configured MPH argument closure.
+// Render the curated options and validated native additions for the configured MPH argument closure. Each
+// fragment is rendered to a plain String: a GString is not equal to the String the task cache restores it as,
+// so one left in metadata makes a resumed run's join by that metadata mismatch.
 def buildMphEffectiveSettings(options, native_args) {
-    return [
-        native_arguments: [
-            options.iterations != null ? "--num_iterations ${options.iterations}" : null,
-            options.tolerance != null ? "--tolerance ${options.tolerance}" : null,
-            options.random_vectors != null ? "--num_random_vectors ${options.random_vectors}" : null,
-            options.seed != null ? "--seed ${options.seed}" : null,
-            options.save_memory ? '--save_memory' : null,
-        ].findAll { argument -> argument != null } + (native_args ?: []).collect { argument -> argument.toString() }
-    ]
+    return [native_arguments: [
+        options.iterations != null ? "--num_iterations ${options.iterations}".toString() : null,
+        options.tolerance != null ? "--tolerance ${options.tolerance}".toString() : null,
+        options.random_vectors != null ? "--num_random_vectors ${options.random_vectors}".toString() : null,
+        options.seed != null ? "--seed ${options.seed}".toString() : null,
+        options.save_memory ? '--save_memory' : null,
+    ].findAll { argument -> argument != null } + (native_args ?: []).collect { argument -> argument.toString() }]
 }
 
 // The route-local keys exist so the atoms, the adapters and the configured publication closures can see the
 // selected token and its resolved settings. They are stripped before emission, so a consumer receives the
 // request identity it supplied and the route cannot leak its own bookkeeping.
 def stripMphPairRouteState(meta) {
-    return meta.findAll { name, _value -> !(name in ['matrix_key', 'mph_estimator', 'mph_trait_names', 'mph_effective']) }
+    return meta.findAll { name, _value -> !(name in ['matrix_key', 'mph_estimator', 'mph_effective']) }
 }
