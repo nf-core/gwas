@@ -54,8 +54,6 @@ nextflow_process {
 
                 input[0] = [
                     [ id:'plink_simulated_ldms1' ],
-                    1,
-                    1,
                     file('plink_simulated.mbfile'),
                     [
                         file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bed', checkIfExists: true)
@@ -65,7 +63,9 @@ nextflow_process {
                     ],
                     [
                         file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.fam', checkIfExists: true)
-                    ]
+                    ],
+                    1,
+                    1
                 ]
                 input[1] = [
                     [ id:'plink_random_selected_snp' ],
@@ -83,8 +83,6 @@ nextflow_process {
 
                 input[0] = [
                     [ id:'plink_simulated_ldms2' ],
-                    1,
-                    1,
                     file('plink_simulated.mbfile'),
                     [
                         file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bed', checkIfExists: true)
@@ -94,7 +92,9 @@ nextflow_process {
                     ],
                     [
                         file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.fam', checkIfExists: true)
-                    ]
+                    ],
+                    1,
+                    1
                 ]
                 input[1] = GAWK_COMPLEMENT_VARIANTS.out.output
                 """
@@ -177,9 +177,18 @@ nextflow_process {
         }
 
         then {
+            // `process.errorReport` embeds the rendered script, which already names the missing basename, so
+            // only GCTA's own refusal distinguishes a real rejection from a staging failure. The report
+            // indents the captured command output, hence the per-line trim before matching.
+            def reportText = process.errorReport.readLines().collect { line -> line.trim() }.join('\n')
             assertAll(
                 { assert !process.success },
-                { assert process.exitStatus != 0 }
+                { assert process.exitStatus != 0 },
+                { assert reportText.contains(
+                    'Reading IDs of the GRM from [plink_simulated_ldms_missing.part_1_1.grm.id].\n' +
+                    'Error: cannot open the file [plink_simulated_ldms_missing.part_1_1.grm.id] to read.\n' +
+                    'An error occurs, please check the options or data'
+                ) }
             )
         }
     }
