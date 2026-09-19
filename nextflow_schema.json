@@ -118,29 +118,16 @@
                 }
             }
         },
-        "gcta_run_options": {
-            "title": "GCTA run configuration",
+        "execution_options": {
+            "title": "Execution options",
             "type": "object",
             "fa_icon": "fas fa-cogs",
-            "description": "Configure operational GCTA task partitioning independently of scientific analysis metadata.",
+            "description": "Configure task partitioning and tool execution strategies. Scientific method settings belong in `method_options`; CPU, memory and time requests belong in process configuration.",
             "properties": {
                 "gcta_grm_parts": {
                     "type": "integer",
                     "minimum": 1,
                     "description": "Number of operational partitions used to construct each GCTA relatedness matrix."
-                }
-            }
-        },
-        "regenie_options": {
-            "title": "REGENIE run configuration",
-            "type": "object",
-            "fa_icon": "fas fa-chart-line",
-            "description": "Configure operational REGENIE execution independently of per-analysis scientific method options.",
-            "properties": {
-                "regenie_step2_bsize": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "description": "Number of variants in each REGENIE Step 2 block."
                 },
                 "regenie_step1_mode": {
                     "type": "string",
@@ -155,6 +142,11 @@
                 "regenie_lowmem": {
                     "type": "boolean",
                     "description": "Use REGENIE's low-memory Step 1 implementation, keeping temporary predictions in the task work directory."
+                },
+                "regenie_step2_bsize": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Number of variants in each REGENIE Step 2 block."
                 }
             },
             "allOf": [
@@ -396,10 +388,7 @@
             "$ref": "#/$defs/save_controls"
         },
         {
-            "$ref": "#/$defs/gcta_run_options"
-        },
-        {
-            "$ref": "#/$defs/regenie_options"
+            "$ref": "#/$defs/execution_options"
         },
         {
             "$ref": "#/$defs/harmonisation_options"
