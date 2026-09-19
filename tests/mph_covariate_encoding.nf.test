@@ -1,0 +1,106 @@
+nextflow_process {
+
+    name "Test Process PREPARE_MPH_INPUTS"
+    script "../modules/local/prepare_mph_inputs/main.nf"
+    process "PREPARE_MPH_INPUTS"
+
+    tag "pipeline"
+    tag "modules"
+    tag "mph_covariate_encoding"
+
+    // What this file pins, and the only thing it pins: `PREPARE_MPH_INPUTS` and
+    // `PREPARE_PHENOTYPE_INPUTS` encode the same covariate design from the same headered tables. The pipeline
+    // encodes covariates twice for two consumers -- MPH's named CSV design and LDAK's matrix-adjustment table
+    // -- so the rule is duplicated and this is the only place the two copies are held against each other. It
+    // cannot live in either module's own test, because each would have to import the other module.
+    def pad = { index -> String.format('%02d', index) }
+    def trait = { index -> String.format('%.4f', Math.sin(index * 0.7d) * 2.0d) }
+
+    // MPH indexes the relationship matrix by the *position* of an entry in `.grm.iid`, so the FAM's IID
+    // column, the matrix sample list and the rows the serializer writes are all the same sequence.
+    def famText = (1..12).collect { index -> "f${pad(index)} s${pad(index)} 0 0 0 -9" }.join('\n') + '\n'
+    def grmText = (1..12).collect { index -> "s${pad(index)}" }.join('\n') + '\n'
+
+    def write = { directory, name, text ->
+        def root = new File(directory.toString(), 'mph_covariate_encoding')
+        root.mkdirs()
+        def target = new File(root, name)
+        target.text = text
+        target
+    }
+
+    test("the covariate encoding is the one prepare_phenotype_inputs applies") {
+
+        setup {
+            // One quantitative covariate missing for one individual and one factor value missing for another,
+            // so the comparison covers a present cell, a missing cell and every dummy of a missing factor.
+            def source = write(outputDir, 'analysis.source.pheno', "FID\tIID\tQT\n" + (1..12).collect { index -> "f${pad(index)}\ts${pad(index)}\t${trait(index)}" }.join('\n') + '\n')
+            def qcovar = write(outputDir, 'analysis.qcovar', "FID\tIID\tage\tpc1\n" + (1..12).collect { index ->
+                "f${pad(index)}\ts${pad(index)}\t${index == 7 ? 'NA' : (30 + index).toString()}\t${String.format('%.4f', index * 0.011d)}"
+            }.join('\n') + '\n')
+            def catcovar = write(outputDir, 'analysis.catcovar', "FID\tIID\tbatch\n" + (1..12).collect { index ->
+                "f${pad(index)}\ts${pad(index)}\t${index == 4 ? '-9' : ['a', 'b', 'c'][index % 3]}"
+            }.join('\n') + '\n')
+            run("PREPARE_PHENOTYPE_INPUTS") {
+                script "../modules/local/prepare_phenotype_inputs/main.nf"
+                process {
+                    """
+                    input[0] = [
+                        [ id: 'analysis', phenotype_column: 'QT', is_binary: false, case_value: null, control_value: null, requires_complete_covariates: false ],
+                        file('${source}', checkIfExists: true),
+                        file('${qcovar}', checkIfExists: true),
+                        file('${catcovar}', checkIfExists: true)
+                    ]
+                    """
+                }
+            }
+        }
+
+        when {
+            // The tables under test are the ones the setup module wrote; only the cohort identity is local.
+            def fam = write(outputDir, 'cohort.fam', famText)
+            def grm = write(outputDir, 'cohort.grm.iid', grmText)
+            process {
+                """
+                input[0] = PREPARE_PHENOTYPE_INPUTS.out.phenotype_headerless
+                    .join(PREPARE_PHENOTYPE_INPUTS.out.quant_covariates)
+                    .join(PREPARE_PHENOTYPE_INPUTS.out.cat_covariates)
+                    .join(PREPARE_PHENOTYPE_INPUTS.out.adjustment_covariates)
+                    .map { _preparation_meta, headerless_phenotype, quant_covariates, cat_covariates, adjustment_covariates ->
+                        // nf-test surfaces a setup process's outputs to this block only, so the adjustment
+                        // design the comparison needs rides to the `then` block on the metadata this module
+                        // preserves. It is a declared output either way, never a work-directory search.
+                        [ [ id:'analysis', adjustment_covariates: adjustment_covariates ], headerless_phenotype, quant_covariates, cat_covariates, ['PHENO'], ['', 'na', 'nan', '-9'] ]
+                    }
+                input[1] = [[ id: 'analysis' ], file('${grm}', checkIfExists: true), file('${fam}', checkIfExists: true)]
+                """
+            }
+        }
+
+        then {
+            def covariates = path(process.out.covariates.get(0).get(1)).readLines()
+            def adjustment = path(process.out.covariates.get(0).get(0).adjustment_covariates.toString()).readLines()
+
+            // `.adjustcovar` is headerless `FID IID <design>`; this module's file is `IID intercept <design>`.
+            // Both are in cohort order here, so the designs compare row for row after their own identifier
+            // columns and the intercept are removed. The only permitted difference is the missing token: LDAK
+            // reads `NA` and MPH reads an empty field, and nothing else may differ.
+            def expected = adjustment.collect { line -> line.split('\t', -1).drop(2).collect { value -> value == 'NA' ? '' : value } }
+            def observed = covariates.drop(1).collect { line -> line.split(',', -1).drop(2) }
+            assertAll(
+                { assert process.success },
+                { assert adjustment.size() == 12 },
+                { assert observed.size() == 12 },
+                { assert covariates.first() == 'IID,intercept,age,pc1,batch_b,batch_c' },
+                // The rule under test, stated once outright so that two copies agreeing on a wrong encoding
+                // would still fail here: quantitative columns verbatim, factors treatment-coded against the
+                // lexically first observed level, a missing factor value missing across that factor's dummies
+                // and across no others.
+                { assert observed[6] == ['', '0.0770', '1', '0'] },
+                { assert observed[3] == ['34', '0.0440', '', ''] },
+                { assert observed == expected },
+            )
+        }
+    }
+
+}

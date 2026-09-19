@@ -142,7 +142,7 @@ nextflow_pipeline {
             assertAll(
                 { assert workflow.success },
                 { assert TRACE.count(workflow, 'LDAK_THINCOMMON') == 2 },
-                { assert TRACE.count(workflow, 'LDAK_KVIKSTEP1') == 4 },
+                { assert TRACE.count(workflow, 'LDAK_KVIKSTEP1') == 5 },
                 { assert TRACE.count(workflow, 'LDAK_KVIKSTEP2') == 5 },
                 { assert TRACE.count(workflow, 'GWASLAB_HARMONIZE') == 5 },
                 { assert nativeRoot.list().toList().sort() == ['example_bfile_qt', 'example_pgen_bt', 'qt_changed_covariates', 'qt_duplicate', 'qt_second_view'] },
@@ -307,17 +307,17 @@ nextflow_pipeline {
                 { assert TRACE.count(workflow, 'PREPARE_GENOTYPE_SOURCE') == 1 },
                 { assert TRACE.count(workflow, 'PREPARE_PHENOTYPE_INPUTS') == 2 },
                 { assert TRACE.count(workflow, 'LDAK_THINCOMMON') == 1 },
-                { assert TRACE.count(workflow, 'LDAK_KVIKSTEP1') == 1 },
+                { assert TRACE.count(workflow, 'LDAK_KVIKSTEP1') == 2 },
                 { assert TRACE.count(workflow, 'LDAK_KVIKSTEP2') == 2 },
                 { assert RESUME.statuses(unchangedRun.trace, 'PREPARE_GENOTYPE_SOURCE') == ['CACHED'] },
                 { assert RESUME.statuses(unchangedRun.trace, 'PREPARE_PHENOTYPE_INPUTS') == ['CACHED', 'CACHED'] },
                 { assert RESUME.statuses(unchangedRun.trace, 'LDAK_THINCOMMON') == ['CACHED'] },
-                { assert RESUME.statuses(unchangedRun.trace, 'LDAK_KVIKSTEP1') == ['CACHED'] },
+                { assert RESUME.statuses(unchangedRun.trace, 'LDAK_KVIKSTEP1') == ['CACHED', 'CACHED'] },
                 { assert RESUME.statuses(unchangedRun.trace, 'LDAK_KVIKSTEP2') == ['CACHED', 'CACHED'] },
                 { assert RESUME.statuses(step2Run.trace, 'PREPARE_GENOTYPE_SOURCE') == ['CACHED'] },
                 { assert RESUME.statuses(step2Run.trace, 'PREPARE_PHENOTYPE_INPUTS') == ['CACHED', 'CACHED'] },
                 { assert RESUME.statuses(step2Run.trace, 'LDAK_THINCOMMON') == ['CACHED'] },
-                { assert RESUME.statuses(step2Run.trace, 'LDAK_KVIKSTEP1') == ['CACHED'] },
+                { assert RESUME.statuses(step2Run.trace, 'LDAK_KVIKSTEP1') == ['CACHED', 'CACHED'] },
                 { assert RESUME.statuses(step2Run.trace, 'LDAK_KVIKSTEP2') == ['CACHED', 'COMPLETED'] },
                 { assert RESUME.hashes(step2Run.trace, 'PREPARE_PHENOTYPE_INPUTS') == RESUME.hashes(unchangedRun.trace, 'PREPARE_PHENOTYPE_INPUTS') },
                 { assert RESUME.hashes(step2Run.trace, 'LDAK_THINCOMMON') == RESUME.hashes(unchangedRun.trace, 'LDAK_THINCOMMON') },
@@ -340,7 +340,7 @@ nextflow_pipeline {
         }
     }
 
-    test("KVIK predictor policies and resource content define prediction reuse without changing focal identity") {
+    test("KVIK predictor resources are shared while each analysis declares its own fit") {
         tag "ldak_kvik_reuse"
         when {
             params {
@@ -389,7 +389,7 @@ nextflow_pipeline {
             assertAll(
                 { assert workflow.success },
                 { assert TRACE.count(workflow, 'LDAK_THINCOMMON') == 1 },
-                { assert TRACE.count(workflow, 'LDAK_KVIKSTEP1') == 4 },
+                { assert TRACE.count(workflow, 'LDAK_KVIKSTEP1') == 7 },
                 { assert TRACE.count(workflow, 'LDAK_KVIKSTEP2') == 7 },
                 { assert TRACE.count(workflow, 'GWASLAB_HARMONIZE') == 7 },
                 { assert step2Commands.size() == 7 },

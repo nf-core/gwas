@@ -91,6 +91,7 @@ nextflow_pipeline {
                 (command.contains('ldak6 --he') || command.contains('ldak6 --pcgc')) &&
                     command.contains('--grm "ldak_adjusted.')
             }
+            def heCommands = runCommands.findAll { command -> command.contains('ldak6 --he') }
             def stableName = getAllFilesFromDir(
                 individual.toString(),
                 relative: true,
@@ -105,8 +106,16 @@ nextflow_pipeline {
                 { assert adjustmentCommands.every { command -> command.contains('--covar "ldak_all_covariates.adjustcovar"') } },
                 { assert adjustmentCommands.every { command -> !command.contains('--factors ') } },
                 { assert adjustedEstimatorCommands.size() == 2 },
+                // Both consumers point to the exact matrix produced by the one adjustment task.
+                { assert adjustedEstimatorCommands.collect { command -> (command =~ /--grm "([^"]+)"/)[0][1] }.unique().size() == 1 },
+                { assert adjustedEstimatorCommands.every { command -> command.contains('--grm "' + (adjustmentCommands.first() =~ /--adjust-grm "([^"]+)"/)[0][1] + '"') } },
                 { assert adjustedEstimatorCommands.every { command -> command.contains('--covar "ldak_all_covariates.adjustcovar"') } },
                 { assert adjustedEstimatorCommands.every { command -> !command.contains('--factors ') } },
+                // The analysis declaring a population prevalence reaches HE's optional liability seam, and the
+                // one that declares none is left on the observed scale.
+                { assert heCommands.size() == 2 },
+                { assert heCommands.count { command -> command.contains('ldak6 --he "ldak_all_covariates.ldak_he"') && command.contains('--prevalence 0.3') } == 1 },
+                { assert heCommands.count { command -> command.contains('ldak6 --he "ldak_he_plain.ldak_he"') && !command.contains('--prevalence') } == 1 },
                 { assert snapshot(removeNextflowVersion(versions.toString())).match('versions') },
                 { assert snapshot(stableName, stablePath).match('heritability') },
             )

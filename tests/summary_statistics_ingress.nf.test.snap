@@ -7,11 +7,11 @@
                     "python": "3.12.13"
                 },
                 "LDSC_H2": {
-                    "ldsc": "6c673952cee74bd5c57aef1555a03b1c015399a0",
+                    "ldsc": "3.0.2",
                     "python": "3.9.13"
                 },
                 "LDSC_MUNGESUMSTATS": {
-                    "ldsc": "6c673952cee74bd5c57aef1555a03b1c015399a0",
+                    "ldsc": "3.0.2",
                     "python": "3.9.13"
                 },
                 "Workflow": {
@@ -19,7 +19,7 @@
                 }
             }
         ],
-        "timestamp": "2026-08-30T22:25:39.80754099",
+        "timestamp": "2026-09-19T19:28:37.562738775",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.6"

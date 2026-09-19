@@ -3,6 +3,7 @@
         "content": [
             {
                 "CUSTOM_GCTASTRATIFYLDSCORES": {
+                    "gcta_stratify_ldscores": "1.0.0",
                     "r-base": "4.2.1"
                 },
                 "CUSTOM_MPHSNPINFO": {
@@ -34,7 +35,7 @@
                 }
             }
         ],
-        "timestamp": "2026-09-10T05:59:25.323904055",
+        "timestamp": "2026-09-19T08:49:22.366966372",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.6"

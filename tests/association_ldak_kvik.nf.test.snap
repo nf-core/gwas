@@ -83,6 +83,9 @@
                 "PREPARE_GENOTYPE_SOURCE": {
                     "python": "3.14.5"
                 },
+                "PREPARE_LDAK_KVIK_HARMONISATION": {
+                    "python": "3.14.5"
+                },
                 "PREPARE_PHENOTYPE_INPUTS": {
                     "python": "3.14.5"
                 },
@@ -91,7 +94,7 @@
                 }
             }
         ],
-        "timestamp": "2026-09-10T03:53:36.198674169",
+        "timestamp": "2026-09-18T22:11:22.163227401",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.6"

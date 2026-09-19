@@ -17,6 +17,20 @@ nextflow_pipeline {
         return scripts
     }
 
+    // A native Step 2 product is staged into the harmonisation task as well as written in its own task
+    // directory, so a scan by file name alone matches it twice. Name the producing task by its command line
+    // and read the product from that directory.
+    def producing_task = { output_dir, command_fragment ->
+        def found = []
+        new File(new File(output_dir.toString()).parentFile, 'work').eachFileRecurse { entry ->
+            if (entry.isFile() && entry.name == '.command.sh' && entry.text.contains(command_fragment)) {
+                found << entry.parentFile
+            }
+        }
+        assert found.size() == 1
+        return found.first()
+    }
+
     def gzip_rows = { file ->
         new java.util.zip.GZIPInputStream(new FileInputStream(file))
             .withReader('UTF-8') { reader ->
@@ -69,16 +83,8 @@ nextflow_pipeline {
             def kvik_commands = commands(outputDir).findAll { command -> command.contains('--kvik-step') }
             def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
             def harmonised_rows = gzip_rows(harmonised_result)
-            def kvik_summary = null
-            def kvik_harmonisation_input = null
-            new File(new File(outputDir.toString()).parentFile, 'work').eachFileRecurse { entry ->
-                if (entry.isFile() && entry.name == 'example_pgen_qt.ldak_kvik.step2.summaries') {
-                    kvik_summary = entry
-                }
-                if (entry.isFile() && entry.name == 'example_pgen_qt.ldak_kvik.step2.harmonisation.tsv') {
-                    kvik_harmonisation_input = entry
-                }
-            }
+            def kvik_summary = new File(producing_task(outputDir, '--kvik-step2'), 'example_pgen_qt.ldak_kvik.step2.summaries')
+            def kvik_harmonisation_input = new File(producing_task(outputDir, 'PREPARE_LDAK_KVIK_HARMONISATION'), 'example_pgen_qt.ldak_kvik.step2.harmonisation.tsv')
             def summary_rows = kvik_summary.readLines().collect { line -> line.split('\t', -1).toList() }
             def summary_predictor_index = summary_rows.first().indexOf('Predictor')
             def summary_a1_index = summary_rows.first().indexOf('A1')
@@ -255,12 +261,7 @@ nextflow_pipeline {
             def step1 = commands(outputDir).find { command -> command.contains('--kvik-step1') }
             def step2 = commands(outputDir).find { command -> command.contains('--kvik-step2') }
             def harmonised_rows = gzip_rows(harmonised_result)
-            def kvik_summary = null
-            new File(new File(outputDir.toString()).parentFile, 'work').eachFileRecurse { entry ->
-                if (entry.isFile() && entry.name == 'example_pgen_bt.ldak_kvik.step2.summaries') {
-                    kvik_summary = entry
-                }
-            }
+            def kvik_summary = new File(producing_task(outputDir, '--kvik-step2'), 'example_pgen_bt.ldak_kvik.step2.summaries')
             def summary_rows = kvik_summary.readLines().collect { line -> line.split('\t', -1).toList() }
             def summary_predictor_index = summary_rows.first().indexOf('Predictor')
             def summary_n_index = summary_rows.first().indexOf('n')

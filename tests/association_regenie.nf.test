@@ -221,7 +221,7 @@ nextflow_pipeline {
         }
     }
 
-    test("identical Step 1 inputs reuse one prediction bundle fanned to every analysis") {
+    test("identical Step 1 inputs retain explicitly distinct analysis fits") {
 
         config "../conf/test_regenie_standard.config"
         tag "regenie_prediction_reuse"
@@ -250,9 +250,8 @@ nextflow_pipeline {
             def stable_path_harmonised = RELATIONAL.gzipTextHashes("${params.outdir}/summary_statistics")
             assertAll(
                 { assert workflow.success },
-                { assert TRACE.count(workflow, 'REGENIE_STEP1') == 1 },
-                // One fit for both, and two tests: the second analysis differs only in `min_mac`,
-                // which is invocation-global for Step 2 but does not enter the Step 1 fit at all.
+                { assert TRACE.count(workflow, 'REGENIE_STEP1') == 2 },
+                // Each analysis declares a fit even when its training inputs are byte-identical.
                 { assert TRACE.count(workflow, 'REGENIE_STEP2') == 2 },
                 { assert TRACE.tags(workflow, 'REGENIE_STEP2').unique().size() == 2 },
                 { assert analysisIds.every { id -> new File("${params.outdir}/association/regenie/${id}/${id}.regenie.gz").isFile() } },
@@ -263,7 +262,7 @@ nextflow_pipeline {
         }
     }
 
-    test("a covariate change prevents Step 1 prediction reuse") {
+    test("distinct covariates remain attached to their declared analysis fits") {
 
         config "../conf/test_regenie_standard.config"
         tag "regenie_prediction_identity"
@@ -344,20 +343,20 @@ nextflow_pipeline {
             assertAll(
                 { assert workflow.success },
                 { assert TRACE.count(workflow, 'PREPARE_PHENOTYPE_INPUTS') == 2 },
-                { assert TRACE.count(workflow, 'REGENIE_STEP1') == 1 },
+                { assert TRACE.count(workflow, 'REGENIE_STEP1') == 2 },
                 { assert TRACE.count(workflow, 'REGENIE_STEP2') == 2 },
                 { assert TRACE.tags(workflow, 'REGENIE_STEP2').sort() == ['regenie_resume_a', 'regenie_resume_b'] },
                 { assert RESUME.statuses(unchangedRun.trace, 'PREPARE_PHENOTYPE_INPUTS') == ['CACHED', 'CACHED'] },
-                { assert RESUME.statuses(unchangedRun.trace, 'REGENIE_STEP1') == ['CACHED'] },
+                { assert RESUME.statuses(unchangedRun.trace, 'REGENIE_STEP1') == ['CACHED', 'CACHED'] },
                 { assert RESUME.statuses(unchangedRun.trace, 'REGENIE_STEP2') == ['CACHED', 'CACHED'] },
-                // Step 2 options change only the consuming analysis; the shared fit remains cached.
+                // Step 2 options change only the consuming analysis; both declared fits remain cached.
                 { assert RESUME.statuses(step2Run.trace, 'PREPARE_PHENOTYPE_INPUTS') == ['CACHED', 'CACHED'] },
-                { assert RESUME.statuses(step2Run.trace, 'REGENIE_STEP1') == ['CACHED'] },
+                { assert RESUME.statuses(step2Run.trace, 'REGENIE_STEP1') == ['CACHED', 'CACHED'] },
                 { assert RESUME.statuses(step2Run.trace, 'REGENIE_STEP2') == ['CACHED', 'COMPLETED'] },
                 { assert RESUME.hashes(step2Run.trace, 'PREPARE_PHENOTYPE_INPUTS') == RESUME.hashes(unchangedRun.trace, 'PREPARE_PHENOTYPE_INPUTS') },
                 { assert RESUME.hashes(step2Run.trace, 'REGENIE_STEP1') == RESUME.hashes(unchangedRun.trace, 'REGENIE_STEP1') },
                 { assert RESUME.hashes(step2Run.trace, 'REGENIE_STEP2') != RESUME.hashes(unchangedRun.trace, 'REGENIE_STEP2') },
-                // Changing one phenotype creates its own fit and leaves the original analysis cached.
+                // Changing one phenotype reruns its declared fit and leaves the original analysis cached.
                 { assert RESUME.statuses(phenotypeRun.trace, 'PREPARE_PHENOTYPE_INPUTS') == ['CACHED', 'COMPLETED'] },
                 { assert RESUME.statuses(phenotypeRun.trace, 'REGENIE_STEP1') == ['CACHED', 'COMPLETED'] },
                 { assert RESUME.statuses(phenotypeRun.trace, 'REGENIE_STEP2') == ['CACHED', 'COMPLETED'] },

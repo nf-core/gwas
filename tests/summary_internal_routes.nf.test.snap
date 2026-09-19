@@ -25,15 +25,15 @@
                     "ldak": 6.3
                 },
                 "LDSC_H2": {
-                    "ldsc": "6c673952cee74bd5c57aef1555a03b1c015399a0",
+                    "ldsc": "3.0.2",
                     "python": "3.9.13"
                 },
                 "LDSC_MUNGESUMSTATS": {
-                    "ldsc": "6c673952cee74bd5c57aef1555a03b1c015399a0",
+                    "ldsc": "3.0.2",
                     "python": "3.9.13"
                 },
                 "LDSC_RG": {
-                    "ldsc": "6c673952cee74bd5c57aef1555a03b1c015399a0",
+                    "ldsc": "3.0.2",
                     "python": "3.9.13"
                 },
                 "PREPARE_GENOTYPE_SOURCE": {
@@ -50,7 +50,7 @@
                 }
             }
         ],
-        "timestamp": "2026-09-10T06:25:29.08687221",
+        "timestamp": "2026-09-19T19:28:15.659727437",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.6"

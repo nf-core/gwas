@@ -6,6 +6,7 @@
                     "coreutils": 9.5
                 },
                 "CUSTOM_GCTASTRATIFYLDSCORES": {
+                    "gcta_stratify_ldscores": "1.0.0",
                     "r-base": "4.2.1"
                 },
                 "GCTA_BIVARIATEREMLLDMS": {
@@ -34,7 +35,7 @@
                 }
             }
         ],
-        "timestamp": "2026-09-10T06:05:53.229028895",
+        "timestamp": "2026-09-19T19:25:50.300860617",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.6"

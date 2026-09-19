@@ -479,7 +479,7 @@ Both MPH routes run on a `linux/amd64` image and only there: the binary is stati
 
 | REGENIE option      | Type and default         | Consumer and constraints                                                                             |
 | ------------------- | ------------------------ | ---------------------------------------------------------------------------------------------------- |
-| `step1_bsize`       | Positive integer; `1000` | Step 1 fitted-model block size; participates in prediction-reuse identity.                           |
+| `step1_bsize`       | Positive integer; `1000` | Block size for the analysis's own Step 1 fit.                                                        |
 | `firth`             | Boolean; `true`          | Binary traits only; enable Firth fallback in Step 2.                                                 |
 | `firth_approx`      | Boolean; `true`          | Binary traits only; requires `firth` when explicitly enabled.                                        |
 | `firth_p_threshold` | Number; `0.01`           | Binary traits only; greater than `0` and at most `1`, and requires `firth` when explicitly supplied. |
@@ -514,6 +514,12 @@ Structural failures name the manifest and invalid column. Cross-row preflight fa
 Categorical covariates are passed to REGENIE by their names in the `cat_covariates` header and dummy-coded by REGENIE.
 
 ### Run-level defaults
+
+Parameters divide by what they control. Scientific specification — what is estimated and under which
+model — is declared per analysis in the method-options document, not on the command line. Execution
+strategy — task partitioning, execution modes, job counts, block sizes and low-memory modes — is set by
+the parameters in the schema's `Execution options` group, whose defaults live in `conf/execution.config`. CPU, memory and
+time requests are not parameters at all: change them with a custom process configuration passed via `-c`.
 
 | Parameter or behaviour            | Default and rationale                                                                                                                                                                                            |
 | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

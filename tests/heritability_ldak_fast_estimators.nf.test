@@ -43,7 +43,8 @@ nextflow_pipeline {
                 { assert workflow.success },
                 { assert TRACE.count(workflow, 'LDAK_FASTHE') == 1 },
                 { assert TRACE.count(workflow, 'LDAK_CALCKINS') == 0 },
-                { assert command.contains('--prevalence "0.1"') },
+                // FASTHE takes its optional prevalence through `ext.args`, so the route renders it unquoted.
+                { assert command.contains('--prevalence 0.1') },
                 { assert new File(resultDir, 'fast_he_binary.ldak_fast_he.fasthe.liab').text.contains('Her_All') },
                 { assert new File(resultDir, 'fast_he_binary.ldak_fast_he.factor').text.contains('Scaling_Factor_Observed->Liability') },
             )

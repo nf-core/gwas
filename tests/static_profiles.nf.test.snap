@@ -60,6 +60,9 @@
                 "PREPARE_GENOTYPE_SOURCE": {
                     "python": "3.14.5"
                 },
+                "PREPARE_LDAK_KVIK_HARMONISATION": {
+                    "python": "3.14.5"
+                },
                 "PREPARE_PHENOTYPE_INPUTS": {
                     "python": "3.14.5"
                 },
@@ -74,7 +77,7 @@
                 }
             }
         ],
-        "timestamp": "2026-09-10T06:24:55.497700873",
+        "timestamp": "2026-09-19T19:27:41.762556721",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.6"
@@ -87,6 +90,7 @@
                     "coreutils": 9.5
                 },
                 "CUSTOM_GCTASTRATIFYLDSCORES": {
+                    "gcta_stratify_ldscores": "1.0.0",
                     "r-base": "4.2.1"
                 },
                 "GCTA_CALCULATELDSCORES": {
@@ -130,7 +134,7 @@
                 }
             }
         ],
-        "timestamp": "2026-09-10T06:25:12.194565821",
+        "timestamp": "2026-09-19T19:27:58.458893062",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.6"
