@@ -6,9 +6,9 @@ nextflow_process {
     config "./nextflow.config"
 
     tag "modules"
-    tag "modules_local"
+    tag "modules_nfcore"
     tag "gwaslab"
-    tag "gwaslab_harmonize"
+    tag "gwaslab/harmonize"
 
     def TESTS = { project_dir -> "${project_dir}/modules/local/gwaslab/harmonize/tests" }
     def SOURCE = { project_dir, name -> "file('${TESTS(project_dir)}/${name}', checkIfExists: true)" }

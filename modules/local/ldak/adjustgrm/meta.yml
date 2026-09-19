@@ -2,7 +2,9 @@ name: ldak_adjustgrm
 description: Adjust a precomputed linkage disequilibrium-adjusted kinship (LDAK) genomic relationship matrix (GRM) for covariates to produce `.grm.root` for Haseman-Elston (HE) or phenotype correlation-genotype correlation (PCGC) analyses
 keywords:
   - ldak
+  - linkage disequilibrium adjusted kinship
   - grm
+  - genetic relationship matrix
   - heritability
 tools:
   - ldak6:
@@ -27,10 +29,11 @@ input:
         description: |
           Groovy Map containing phenotype metadata.
           Expected keys:
-            - id (string): Phenotype identifier propagated in outputs.
+            - id (string): Phenotype resource identifier.
     - phenotype_file:
         type: file
-        description: Headerless phenotype file passed to `--pheno`
+        optional: true
+        description: Optional phenotype file passed to `--pheno` to select samples with nonmissing phenotypes; pass [] when absent
         ontologies: []
   - - meta3:
         type: map
@@ -45,33 +48,17 @@ input:
         description: Metadata map paired with matrix-adjustment covariates input.
     - adjustment_covariates_file:
         type: file
-        optional: true
-        description: Optional headerless numerical design passed to `--covar`; categorical factors must already be treatment-coded because `--adjust-grm` rejects `--factors`
+        description: Required numerical design passed to `--covar`
         ontologies: []
 output:
   adjusted_grm:
     - - meta:
           type: map
           description: GRM metadata map propagated from input
-      - "${prefix}.grm.bin":
+      - "${prefix}.grm.{bin,id,details,adjust,root}":
           type: file
-          description: Adjusted GRM binary matrix
-          ontologies: []
-      - "${prefix}.grm.id":
-          type: file
-          description: Adjusted GRM sample identifiers
-          ontologies: []
-      - "${prefix}.grm.details":
-          type: file
-          description: Adjusted GRM details
-          ontologies: []
-      - "${prefix}.grm.adjust":
-          type: file
-          description: Adjusted GRM adjustment factors
-          ontologies: []
-      - "${prefix}.grm.root":
-          type: file
-          description: Adjusted GRM root file required by LDAK HE and PCGC
+          description: Adjusted matrix with its sample identifiers, details, adjustment factors and root sidecar, consumed as one bundle
+          pattern: "*.grm.{bin,id,details,adjust,root}"
           ontologies: []
   log:
     - - meta:
@@ -102,6 +89,20 @@ topics:
       - ldak6 --version 2>&1 | grep -oP '(?<=^Version )[0-9.]+':
           type: eval
           description: The expression used to obtain the version of the tool
+containers:
+  conda:
+    linux/amd64:
+      lock_file: "modules/local/ldak/adjustgrm/.conda-lock/linux_amd64-bd-452828f72b3c9129_1.txt"
+  docker:
+    linux/amd64:
+      build_id: "bd-452828f72b3c9129_1"
+      name: "community.wave.seqera.io/library/ldak6_r-base:452828f72b3c9129"
+      scan_id: "sc-65cc7b1c1a9a20b6_1"
+  singularity:
+    linux/amd64:
+      build_id: "bd-e8012f1be139af77_1"
+      name: "oras://community.wave.seqera.io/library/ldak6_r-base:e8012f1be139af77"
+      https: "https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/c9/c94e5424f08cbd7e0856ab3c3a9992b4080944a5d0c497ce0abcceb413db4a3e/data"
 authors:
   - "@lyh970817"
 maintainers:

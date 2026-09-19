@@ -1,0 +1,92 @@
+nextflow_process {
+    name "Test Process LDAK_KVIKSTEP2"
+    script "../main.nf"
+    process "LDAK_KVIKSTEP2"
+    config "./nextflow.config"
+    tag "modules"
+    tag "modules_nfcore"
+    tag "ldak"
+    tag "ldak/kvikstep2"
+    tag "ldak/kvikstep1"
+
+    // Reuse the established public simulated fixture, distributing its markers over two chromosomes so that
+    // the leave-one-chromosome-out fit has more than one chromosome to leave out.
+    def fixture_code = '''
+        def base = params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/'
+        def source_bed = file(base + 'plink_simulated.bed', checkIfExists: true)
+        def source_bim = file(base + 'plink_simulated.bim', checkIfExists: true)
+        def source_fam = file(base + 'plink_simulated.fam', checkIfExists: true)
+        def rows = source_bim.readLines()
+        def split = (rows.size() + 1).intdiv(2)
+        def multichr = rows.withIndex().collect { row, index ->
+            def fields = row.tokenize()
+            fields[0] = index < split ? '21' : '22'
+            fields.join('\\t')
+        }
+        def bed = file('training.bed'); bed.bytes = source_bed.bytes
+        def bim = file('training.bim'); bim.text = multichr.join('\\n') + '\\n'
+        def fam = file('training.fam'); fam.bytes = source_fam.bytes
+        def phenotype = file(base + 'plink_simulated_quantitative_phenoname.phe', checkIfExists: true)
+        def keep = file('samples.keep'); keep.text = source_fam.readLines().collect { row -> row.tokenize()[0..1].join(' ') }.join('\\n') + '\\n'
+    '''
+
+    setup {
+        run("LDAK_KVIKSTEP1") {
+            script "../../kvikstep1/main.nf"
+            process {
+                """
+                ${fixture_code}
+                input[0] = [[id:'fit'], bed, bim, fam]
+                input[1] = [[id:'phenotype'], phenotype]
+                input[2] = [[:], []]
+                input[3] = [[:], []]
+                input[4] = [[:], []]
+                """
+            }
+        }
+    }
+    test("homo_sapiens popgen - native prediction prefix") {
+
+        when {
+            params { module_args = '--mpheno 1 --random-seed 7' }
+            process {
+                """
+                input[0] = [[id:'analysis'], bed, bim, fam]
+                input[1] = [[id:'phenotype'], phenotype]
+                input[2] = LDAK_KVIKSTEP1.out.predictions
+                input[3] = [[:], []]
+                input[4] = [[:], []]
+                input[5] = [[id:'samples'], keep]
+                """
+            }
+        }
+        then {
+            assert process.success
+            assert process.out.results[0][0] == [id:'analysis']
+            assert path(process.out.results[0][1]).fileName.toString() == 'fit.step2.assoc'
+            assert snapshot(sanitizeOutput(process.out, unstableKeys: ['results','summaries','pvalues','log'])).match()
+        }
+    }
+    test("homo_sapiens popgen - native prediction prefix - stub") {
+        options "-stub"
+        when {
+            params { module_args = '--mpheno 1 --random-seed 7' }
+            process {
+                """
+                input[0] = [[id:'analysis'], bed, bim, fam]
+                input[1] = [[id:'phenotype'], phenotype]
+                input[2] = LDAK_KVIKSTEP1.out.predictions
+                input[3] = [[:], []]
+                input[4] = [[:], []]
+                input[5] = [[id:'samples'], keep]
+                """
+            }
+        }
+        then {
+            assert process.success
+            assert process.out.results[0][0] == [id:'analysis']
+            assert path(process.out.results[0][1]).fileName.toString() == 'fit.step2.assoc'
+            assert snapshot(sanitizeOutput(process.out, unstableKeys: ['results','summaries','pvalues','log'])).match()
+        }
+    }
+}

@@ -7,8 +7,7 @@ process GCTA_CALCULATELDSCORES {
         : 'community.wave.seqera.io/library/gcta:1.94.1--9bc35dc424fcf6e9'}"
 
     input:
-    tuple val(meta), path(bed), path(bim), path(fam)
-    val ld_score_region
+    tuple val(meta), path(bed), path(bim), path(fam), val(ld_score_region)
 
     output:
     tuple val(meta), path("*_gcta_ld.score.ld"), emit: ld_scores

@@ -1,6 +1,14 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/modules/meta-schema.json
 name: "custom_gctastratifyldscores"
-description: Stratify GCTA individual-SNP LD scores into explicit LD-by-MAF predictor groups
+description: |
+  Stratify GCTA individual-SNP LD scores into explicit LD-by-MAF predictor groups. MAF is
+  `min(freq, 1 - freq)` and the LD boundaries are R type-7 quantiles of the caller's bin count. An
+  interval includes its lower boundary and excludes its upper one, except for the final interval on each
+  axis, which includes both; empty groups are omitted. Both emitted tables carry the same LD-major,
+  MAF-minor row order and name their groups `ld01_maf01`, and the group files partition the scored
+  variants rather than the original genotype bundle. The module owns the R template
+  `templates/gcta_stratify_ldscores.R`, which runs under R 4.2.1, depends on no pipeline metadata, method
+  name or matrix builder, and is versioned independently as `gcta_stratify_ldscores` 1.0.0.
 keywords:
   - gcta
   - genome-wide complex trait analysis
@@ -11,7 +19,7 @@ keywords:
   - minor allele frequency
 tools:
   - custom:
-      description: Checked-in R adapter implementing deterministic GCTA GREML-LDMS stratification
+      description: Module-owned R template implementing deterministic LD-by-MAF stratification
       homepage: "https://github.com/nf-core/modules"
       documentation: "https://yanglab.westlake.edu.cn/software/gcta/#GREML-LDMS"
       licence: ["MIT"]
@@ -44,35 +52,50 @@ output:
             - edam: "http://edamontology.org/format_3475" # TSV
       - "${prefix}_snp_group*.txt":
           type: file
-          description: Predictor identifiers for each non-empty LD-by-MAF stratum listed in the manifest
+          description: Predictor identifiers for each non-empty LD-by-MAF stratum listed in the manifest. These
+            are the same files the groups channel emits; each manifest travels with the SNP lists it names, so
+            a consumer of either channel can stage one self-contained bundle.
           pattern: "*_snp_group*.txt"
           ontologies:
             - edam: "http://edamontology.org/format_2330" # Textual format
-  versions_r_base:
-    - - "${task.process}":
-          type: string
-          description: The process the version was collected from
-      - r-base:
-          type: string
-          description: The tool name
-      - "Rscript -e 'cat(as.character(getRversion()))'":
-          type: eval
-          description: The command used to retrieve the R version
+  groups:
+    - - meta:
+          type: map
+          description: Unchanged focal metadata
+      - "${prefix}.groups.tsv":
+          type: file
+          description: Ordered group_id and group_filename columns, preserving the full stratum manifest row order.
+          pattern: "*.groups.tsv"
+          ontologies: []
+      - "${prefix}_snp_group*.txt":
+          type: file
+          description: The same named SNP lists the strata_bundle channel emits, repeated here so the generic
+            group table is a self-contained bundle for a matrix builder that never reads the provenance table.
+          pattern: "*_snp_group*.txt"
+          ontologies: []
+  versions:
+    - versions.yml:
+        type: file
+        description: |
+          File containing software versions: the module-owned stratification template and the R interpreter
+          it ran under.
+        pattern: "versions.yml"
+        ontologies:
+          - edam: "http://edamontology.org/format_3750"
 topics:
   versions:
-    - - "${task.process}":
-          type: string
-          description: The process the version was collected from
-      - r-base:
-          type: string
-          description: The tool name
-      - "Rscript -e 'cat(as.character(getRversion()))'":
-          type: eval
-          description: The command used to retrieve the R version
+    - versions.yml:
+        type: file
+        description: |
+          File containing software versions: the module-owned stratification template and the R interpreter
+          it ran under.
+        pattern: "versions.yml"
+        ontologies:
+          - edam: "http://edamontology.org/format_3750"
 containers:
   conda:
     linux/amd64:
-      lock_file: "modules/nf-core/custom/gctastratifyldscores/.conda-lock/linux_amd64-bd-b0b5476e2e7a0872_1.txt"
+      lock_file: "modules/local/custom/gctastratifyldscores/.conda-lock/linux_amd64-bd-b0b5476e2e7a0872_1.txt"
   docker:
     linux/amd64:
       build_id: "bd-b0b5476e2e7a0872_1"
@@ -84,6 +107,6 @@ containers:
       name: "oras://community.wave.seqera.io/library/r-base:4.2.1--c5658ade82adbaf6"
       https: "https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/48/483e9d9b3b07e5658792d579e230ad40ed18daf7b9ebfb4323c08570f92fd1d5/data"
 authors:
-  - "@andongni"
+  - "@lyh970817"
 maintainers:
-  - "@andongni"
+  - "@lyh970817"

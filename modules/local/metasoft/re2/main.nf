@@ -14,11 +14,16 @@ process METASOFT_RE2 {
     tuple val(meta), path("${prefix}.metasoft.log"), emit: log
     path "versions.yml", emit: versions, topic: versions
 
+    when:
+    task.ext.when == null || task.ext.when
+
     script:
+    def args = task.ext.args ?: ''
     prefix = task.ext.prefix ?: meta.id
     def heap = (task.memory.toMega() * 0.8).intValue()
     """
     JAVA_TOOL_OPTIONS="-Xmx${heap}M" metasoft \
+        ${args} \
         -input "${effect_matrix}" \
         -output "${prefix}.metasoft.txt" \
         -log "${prefix}.metasoft.log"
@@ -26,6 +31,7 @@ process METASOFT_RE2 {
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
         metasoft: \$(metasoft --version)
+        java: \$(java -version 2>&1 | sed -n 's/.*version "\\([^" ]*\\)".*/\\1/p')
     END_VERSIONS
     """
 
@@ -36,7 +42,8 @@ process METASOFT_RE2 {
     printf 'stub\\n' > "${prefix}.metasoft.log"
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
-        metasoft: \$(metasoft --version)
+        metasoft: 2.0.1
+        java: 17.0.20.1
     END_VERSIONS
     """
 }

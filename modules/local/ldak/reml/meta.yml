@@ -3,7 +3,9 @@ name: "ldak_reml"
 description: Run linkage disequilibrium-adjusted kinship (LDAK) restricted maximum likelihood (REML) heritability estimation on a precomputed genomic relationship matrix (GRM) and phenotype
 keywords:
   - ldak
+  - linkage disequilibrium adjusted kinship
   - reml
+  - restricted maximum likelihood
   - heritability
 tools:
   - ldak6:
@@ -22,9 +24,6 @@ input:
         description: Headerless phenotype file passed to `--pheno`
         pattern: "*.{phe,pheno,txt,tsv}"
         ontologies: []
-    - prevalence:
-        type: float
-        description: Optional disease prevalence passed to `--prevalence`; pass [] when absent
   - - meta2:
         type: map
         description: |
@@ -141,7 +140,7 @@ output:
       - "*.reml.liab":
           type: file
           optional: true
-          description: Liability-scale REML summary emitted when prevalence is supplied
+          description: Liability-scale REML summary, written only when a caller passes `--prevalence` for a binary trait
           ontologies: []
   coeff_liability:
     - - meta:
@@ -150,7 +149,7 @@ output:
       - "*.coeff.liab":
           type: file
           optional: true
-          description: Liability-scale fixed-effect coefficients emitted when prevalence is supplied
+          description: Liability-scale fixed-effect coefficients, written only when a caller passes `--prevalence` for a binary trait
           ontologies: []
   indi_blp_liability:
     - - meta:
@@ -159,7 +158,7 @@ output:
       - "*.indi.blp.liab":
           type: file
           optional: true
-          description: Liability-scale individual BLP output emitted when prevalence is supplied
+          description: Liability-scale individual BLP output, written only when a caller passes `--prevalence` for a binary trait
           ontologies: []
   liability_factor:
     - - meta:
@@ -168,7 +167,7 @@ output:
       - "*.factor":
           type: file
           optional: true
-          description: Observed-to-liability conversion factor diagnostic emitted when prevalence is supplied
+          description: Observed-to-liability conversion factor diagnostic, written only when a caller passes `--prevalence` for a binary trait
           ontologies: []
   log:
     - - meta:
@@ -200,7 +199,22 @@ topics:
           type: eval
           description: The expression used to obtain the version of the tool
 notes: |
-  `task.ext.args` is passed directly to LDAK and can be used for optional phenotype-selection arguments such as `--mpheno`.
+  `task.ext.args` is passed directly to LDAK and carries its optional arguments, such as the phenotype selector `--mpheno` and the
+  `--prevalence` that turns on the liability-scale outputs.
+containers:
+  conda:
+    linux/amd64:
+      lock_file: "modules/local/ldak/reml/.conda-lock/linux_amd64-bd-452828f72b3c9129_1.txt"
+  docker:
+    linux/amd64:
+      build_id: "bd-452828f72b3c9129_1"
+      name: "community.wave.seqera.io/library/ldak6_r-base:452828f72b3c9129"
+      scan_id: "sc-65cc7b1c1a9a20b6_1"
+  singularity:
+    linux/amd64:
+      build_id: "bd-e8012f1be139af77_1"
+      name: "oras://community.wave.seqera.io/library/ldak6_r-base:e8012f1be139af77"
+      https: "https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/c9/c94e5424f08cbd7e0856ab3c3a9992b4080944a5d0c497ce0abcceb413db4a3e/data"
 authors:
   - "@lyh970817"
 maintainers:

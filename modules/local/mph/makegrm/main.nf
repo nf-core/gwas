@@ -26,6 +26,9 @@ process MPH_MAKEGRM {
     // MPH has no --version; the bare binary prints its banner and exits 1, tolerated by || true.
     tuple val("${task.process}"), val("mph"), eval("(mph 2>&1 || true) | sed -n 's/^[*] Version \\([0-9][0-9.]*\\).*/\\1/p'"), emit: versions_mph, topic: versions
 
+    when:
+    task.ext.when == null || task.ext.when
+
     script:
     def args = task.ext.args ?: ''
     def bfile_prefix = bed.baseName

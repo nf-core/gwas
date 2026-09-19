@@ -31,7 +31,7 @@ input:
         description: Groovy map containing merge-allele reference metadata
     - merge_alleles:
         type: file
-        description: SNP and allele table passed to `--merge-alleles`, normally the HapMap3 `w_hm3.snplist`
+        description: Optional SNP and allele table passed to `--merge-alleles`, normally the HapMap3 `w_hm3.snplist`; pass [] to omit
         pattern: "*.{txt,tsv,snplist}"
         ontologies: []
 output:
@@ -39,7 +39,7 @@ output:
     - - meta:
           type: map
           description: Groovy map propagated from the summary-statistics input
-      - "*.sumstats.gz":
+      - "${prefix}.sumstats.gz":
           type: file
           description: Gzip-compressed LDSC summary statistics with SNP, A1, A2, N, and Z columns
           pattern: "*.sumstats.gz"
@@ -48,7 +48,7 @@ output:
     - - meta:
           type: map
           description: Groovy map propagated from the summary-statistics input
-      - "*.log":
+      - "${prefix}.log":
           type: file
           description: Native LDSC munging log
           pattern: "*.log"
@@ -60,9 +60,9 @@ output:
       - ldsc:
           type: string
           description: The tool name
-      - "cat /opt/venv/ldsc-source-revision":
+      - "python -c 'import importlib.metadata; print(importlib.metadata.version(\"ldsc\"))'":
           type: eval
-          description: The expression used to obtain the pinned CBIIT/ldsc source revision
+          description: The expression used to obtain the installed LDSC distribution version
   versions_python:
     - - "${task.process}":
           type: string
@@ -81,9 +81,9 @@ topics:
       - ldsc:
           type: string
           description: The tool name
-      - "cat /opt/venv/ldsc-source-revision":
+      - "python -c 'import importlib.metadata; print(importlib.metadata.version(\"ldsc\"))'":
           type: eval
-          description: The expression used to obtain the pinned CBIIT/ldsc source revision
+          description: The expression used to obtain the installed LDSC distribution version
     - - "${task.process}":
           type: string
           description: The name of the process
@@ -95,7 +95,7 @@ topics:
           description: The expression used to obtain the Python version
 notes: |
   The runtime pins the CBIIT/ldsc `ldsc39` revision `6c673952cee74bd5c57aef1555a03b1c015399a0`.
-  The exact source revision is emitted as the LDSC version identity.
+  The installed distribution version is emitted on the versions topic.
   Optional non-file arguments use `task.ext.args`; callers must not duplicate the
   module-owned `--sumstats`, `--merge-alleles`, or `--out` options.
   The wrapper decompresses a gzip input into the task directory before invocation because

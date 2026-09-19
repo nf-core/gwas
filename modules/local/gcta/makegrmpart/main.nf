@@ -1,5 +1,5 @@
 process GCTA_MAKEGRMPART {
-    tag "${meta.id}: part ${part_gcta_job} of ${nparts_gcta}"
+    tag "${meta.id}: part ${part} of ${nparts}"
     label 'process_medium'
     conda "${moduleDir}/environment.yml"
     container "${workflow.containerEngine in ['singularity', 'apptainer'] && !task.ext.singularity_pull_docker_container
@@ -7,11 +7,14 @@ process GCTA_MAKEGRMPART {
         : 'community.wave.seqera.io/library/gcta:1.94.1--9bc35dc424fcf6e9'}"
 
     input:
-    tuple val(meta), val(nparts_gcta), val(part_gcta_job), path(mfile), path(bed_pgen), path(bim_pvar), path(fam_psam)
+    tuple val(meta), path(mfile), path(bed_pgen), path(bim_pvar), path(fam_psam), val(nparts), val(part)
     tuple val(meta2), path(snp_group_file)
 
     output:
-    tuple val(meta), path("*.part_${nparts}_${part}.grm.*"), val(nparts_gcta), val(part_gcta_job), emit: grm_files
+    // GCTA zero-pads the part index to the digit width of the requested part count, so `--make-grm-part 100 3`
+    // writes `.part_100_003.grm.*` while `--make-grm-part 9 1` writes `.part_9_1.grm.*`. The index is emitted
+    // as a value beside the files, so the glob does not have to restate the padding rule.
+    tuple val(meta), path("*.part_${nparts}_*.grm.*"), val(nparts), val(part), emit: grm_files
     tuple val(meta), path("*.log"), emit: log
     tuple val("${task.process}"), val("gcta"), eval("gcta --version | sed -En 's/^[*] version v([0-9.]*).*/\\1/p'"), emit: versions_gcta, topic: versions
 
@@ -25,9 +28,6 @@ process GCTA_MAKEGRMPART {
     def prefix = task.ext.prefix ?: "${meta.id}"
     def multi_file_flag = genotype_extension == 'pgen' ? '--mpfile' : '--mbfile'
     def extract_cmd = snp_group_file ? "--extract \"${snp_group_file}\"" : ''
-    nparts = nparts_gcta
-    part = part_gcta_job
-
     """
     gcta \\
         ${multi_file_flag} "${mfile}" \\
@@ -40,12 +40,11 @@ process GCTA_MAKEGRMPART {
 
     stub:
     def prefix = task.ext.prefix ?: "${meta.id}"
-    nparts = nparts_gcta
-    part = part_gcta_job
+    def part_index = String.format("%0${nparts.toString().length()}d", part as int)
     """
-    touch "${prefix}.part_${nparts}_${part}.grm.id"
-    touch "${prefix}.part_${nparts}_${part}.grm.bin"
-    touch "${prefix}.part_${nparts}_${part}.grm.N.bin"
-    touch "${prefix}.part_${nparts}_${part}.log"
+    touch "${prefix}.part_${nparts}_${part_index}.grm.id"
+    touch "${prefix}.part_${nparts}_${part_index}.grm.bin"
+    touch "${prefix}.part_${nparts}_${part_index}.grm.N.bin"
+    touch "${prefix}.part_${nparts}_${part_index}.log"
     """
 }

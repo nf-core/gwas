@@ -6,7 +6,7 @@ nextflow_process {
     config "./nextflow.config"
 
     tag "modules"
-    tag "modules_local"
+    tag "modules_nfcore"
     tag "mrmega"
 
     def fixture = { directory, label, binary ->
@@ -44,10 +44,11 @@ nextflow_process {
 
     test("one genome-wide quantitative invocation emits native result and log") {
         when {
+            params { module_args = '--pc 1' }
             def data = fixture(outputDir, 'quantitative', false)
             process {
                 """
-                input[0] = [[id: 'quantitative'], [${staged(data.files)}], file('${data.filelist}', checkIfExists: true), 1, 'quantitative']
+                input[0] = [[id: 'quantitative'], [${staged(data.files)}], file('${data.filelist}', checkIfExists: true), 'quantitative']
                 """
             }
         }
@@ -67,6 +68,7 @@ nextflow_process {
                 { assert command.contains('--qt') },
                 { assert !command.contains('--precalculated') },
                 { assert command.count('-i "quantitative.mrmega.in"') == 1 },
+                // The native P value is fixed by the sha-pinned MR-MEGA image and this deterministic fixture.
                 { assert first[header.findIndexOf { column -> column == 'P-value_association' }] == '0.0010333' },
                 { assert versions == '"MRMEGA":\n    mrmega: 0.2\n' },
             )
@@ -75,10 +77,11 @@ nextflow_process {
 
     test("trait type explicitly selects the binary route") {
         when {
+            params { module_args = '--pc 1' }
             def data = fixture(outputDir, 'binary', true)
             process {
                 """
-                input[0] = [[id: 'binary'], [${staged(data.files)}], file('${data.filelist}', checkIfExists: true), 1, 'binary']
+                input[0] = [[id: 'binary'], [${staged(data.files)}], file('${data.filelist}', checkIfExists: true), 'binary']
                 """
             }
         }
@@ -93,19 +96,20 @@ nextflow_process {
                 { assert process.success },
                 { assert log.contains('Binary trait analysis') },
                 { assert !command.contains('--qt') },
+                // The native P value is fixed by the sha-pinned MR-MEGA image and this deterministic fixture.
                 { assert first[header.findIndexOf { column -> column == 'P-value_association' }] == '0.00103304' },
             )
         }
     }
 
-    test("stub emits the native output contract") {
+    test("native output contract - stub") {
         options "-stub"
 
         when {
             def data = fixture(outputDir, 'stub', false)
             process {
                 """
-                input[0] = [[id: 'stub'], [${staged(data.files)}], file('${data.filelist}', checkIfExists: true), 2, 'quantitative']
+                input[0] = [[id: 'stub'], [${staged(data.files)}], file('${data.filelist}', checkIfExists: true), 'quantitative']
                 """
             }
         }
@@ -115,7 +119,8 @@ nextflow_process {
                 { assert process.success },
                 { assert process.out.result.size() == 1 },
                 { assert process.out.log.size() == 1 },
-                { assert new File(process.out.result.get(0)[1].toString()).readLines()[0].split('\t').size() == 26 },
+                // Nine leading columns, four coefficient pairs for MR-MEGA's documented --pc default of 3, and eleven trailing columns.
+                { assert new File(process.out.result.get(0)[1].toString()).readLines()[0].split('\t').size() == 28 },
                 { assert new File(process.out.versions.get(0).toString()).text == '"MRMEGA":\n    mrmega: 0.2\n' },
             )
         }

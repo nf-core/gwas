@@ -11,7 +11,7 @@ process LDAK_CALCKINS {
     tuple val(meta2), path(weights_file)
 
     output:
-    tuple val(meta), path("${prefix}.grm.bin"), path("${prefix}.grm.id"), path("${prefix}.grm.details"), path("${prefix}.grm.adjust"), emit: ldak_grm
+    tuple val(meta), path("${prefix}.grm.{bin,id,details,adjust}"), emit: ldak_grm
     tuple val(meta), path("${prefix}.log"), emit: log
     tuple val("${task.process}"), val("ldak6"), eval("ldak6 --version 2>&1 | grep -oP '(?<=^Version )[0-9.]+'"), emit: versions_ldak6, topic: versions
 

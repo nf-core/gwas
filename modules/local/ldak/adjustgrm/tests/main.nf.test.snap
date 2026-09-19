@@ -1,0 +1,122 @@
+{
+    "whole matrix sample set": {
+        "content": [
+            {
+                "adjusted_grm": [
+                    [
+                        {
+                            "id": "kinship"
+                        },
+                        [
+                            "kinship.adjusted.grm.adjust:md5,faa0f169d0e1c28a45c1576c7f598bf5",
+                            "kinship.adjusted.grm.bin:md5,db031525f70d88f4db0d38031767658b",
+                            "kinship.adjusted.grm.details:md5,82c37b3e673a1c85eb312d690b1ad931",
+                            "kinship.adjusted.grm.id:md5,aa346d8df9251f28144e8a6aa3912c5f",
+                            "kinship.adjusted.grm.root:md5,41501a88719c69a380ff9590f3cd0b1a"
+                        ]
+                    ]
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "kinship"
+                        },
+                        "kinship.adjusted.log"
+                    ]
+                ],
+                "versions_ldak6": [
+                    [
+                        "LDAK_ADJUSTGRM",
+                        "ldak6",
+                        "6"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-19T00:41:07.784588744",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "phenotype-selected sample set": {
+        "content": [
+            {
+                "adjusted_grm": [
+                    [
+                        {
+                            "id": "kinship"
+                        },
+                        [
+                            "kinship.adjusted.grm.adjust:md5,faa0f169d0e1c28a45c1576c7f598bf5",
+                            "kinship.adjusted.grm.bin:md5,b3c0bb6651e514c9d1a32c38075afe69",
+                            "kinship.adjusted.grm.details:md5,82c37b3e673a1c85eb312d690b1ad931",
+                            "kinship.adjusted.grm.id:md5,f1c0116cf571db2830b6bba84596168b",
+                            "kinship.adjusted.grm.root:md5,41501a88719c69a380ff9590f3cd0b1a"
+                        ]
+                    ]
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "kinship"
+                        },
+                        "kinship.adjusted.log"
+                    ]
+                ],
+                "versions_ldak6": [
+                    [
+                        "LDAK_ADJUSTGRM",
+                        "ldak6",
+                        "6"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-19T00:40:59.85165165",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "native operation - stub": {
+        "content": [
+            {
+                "adjusted_grm": [
+                    [
+                        {
+                            "id": "kinship"
+                        },
+                        [
+                            "kinship.adjusted.grm.adjust:md5,d41d8cd98f00b204e9800998ecf8427e",
+                            "kinship.adjusted.grm.bin:md5,d41d8cd98f00b204e9800998ecf8427e",
+                            "kinship.adjusted.grm.details:md5,d41d8cd98f00b204e9800998ecf8427e",
+                            "kinship.adjusted.grm.id:md5,d41d8cd98f00b204e9800998ecf8427e",
+                            "kinship.adjusted.grm.root:md5,d41d8cd98f00b204e9800998ecf8427e"
+                        ]
+                    ]
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "kinship"
+                        },
+                        "kinship.adjusted.log"
+                    ]
+                ],
+                "versions_ldak6": [
+                    [
+                        "LDAK_ADJUSTGRM",
+                        "ldak6",
+                        "6"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-19T00:41:15.975057024",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

@@ -2,10 +2,10 @@ name: ldak_fasthe
 description: Run randomized linkage disequilibrium-adjusted kinship (LDAK) Haseman-Elston regression directly on PLINK 1 genotypes, without constructing a kinship matrix
 keywords:
   - ldak
+  - linkage disequilibrium adjusted kinship
   - haseman-elston
   - randomized
   - heritability
-  - linkage disequilibrium adjusted kinship
 tools:
   - ldak6:
       description: LDAK toolset for kinship, heritability, and association analyses
@@ -22,9 +22,6 @@ input:
         type: file
         description: Headerless phenotype file passed to `--pheno`
         ontologies: []
-    - prevalence:
-        type: float
-        description: Population prevalence for native liability-scale conversion of a binary phenotype; pass [] when unused
   - - meta2:
         type: map
         description: |
@@ -233,6 +230,20 @@ topics:
       - ldak6 --version 2>&1 | grep -oP '(?<=^Version )[0-9.]+':
           type: eval
           description: The expression used to obtain the version of the tool
+containers:
+  conda:
+    linux/amd64:
+      lock_file: "modules/local/ldak/fasthe/.conda-lock/linux_amd64-bd-452828f72b3c9129_1.txt"
+  docker:
+    linux/amd64:
+      build_id: "bd-452828f72b3c9129_1"
+      name: "community.wave.seqera.io/library/ldak6_r-base:452828f72b3c9129"
+      scan_id: "sc-65cc7b1c1a9a20b6_1"
+  singularity:
+    linux/amd64:
+      build_id: "bd-e8012f1be139af77_1"
+      name: "oras://community.wave.seqera.io/library/ldak6_r-base:e8012f1be139af77"
+      https: "https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/c9/c94e5424f08cbd7e0856ab3c3a9992b4080944a5d0c497ce0abcceb413db4a3e/data"
 authors:
   - "@lyh970817"
 maintainers:

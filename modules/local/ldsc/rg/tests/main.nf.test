@@ -6,11 +6,11 @@ nextflow_process {
     config "./nextflow.config"
 
     tag "modules"
-    tag "modules_local"
+    tag "modules_nfcore"
     tag "ldsc"
-    tag "ldsc_rg"
+    tag "ldsc/rg"
 
-    def inputs = { outputDir, name, valid = true ->
+    def inputs = { outputDir, name ->
         def root = new File(outputDir.toString(), "fixture_${name}")
         def reference = new File(root, 'reference')
         def weights = new File(root, 'weights')
@@ -47,7 +47,7 @@ nextflow_process {
         def left = new File(root, 'left.sumstats.gz')
         def right = new File(root, 'right.sumstats.gz')
         writeGzip(left, "SNP\tA1\tA2\tZ\tN\n${leftRows.join('\n')}\n")
-        writeGzip(right, valid ? "SNP\tA1\tA2\tZ\tN\n${rightRows.join('\n')}\n" : "SNP\tA1\tA2\tN\nrs1\tA\tG\t12000\n")
+        writeGzip(right, "SNP\tA1\tA2\tZ\tN\n${rightRows.join('\n')}\n")
         [left: left, right: right, reference: reference, weights: weights]
     }
 
@@ -70,9 +70,9 @@ nextflow_process {
                 { assert log.name == 'trait_a--trait_b.log' },
                 { assert log.text.contains('Genetic Correlation:') },
                 { assert log.text.contains('Summary of Genetic Correlation Results') },
-                { assert process.out.versions_ldsc.get(0) == ['LDSC_RG', 'ldsc', '6c673952cee74bd5c57aef1555a03b1c015399a0'] },
+                { assert process.out.versions_ldsc.get(0) == ['LDSC_RG', 'ldsc', '3.0.2'] },
                 { assert process.out.versions_python.get(0) == ['LDSC_RG', 'python', '3.9.13'] },
-                { assert snapshot([log.name, process.out.findAll { name, value -> name.startsWith('versions_') }]).match() },
+                { assert snapshot([output: log.name, versions: process.out.findAll { name, value -> name.startsWith('versions_') }]).match() },
             )
         }
     }

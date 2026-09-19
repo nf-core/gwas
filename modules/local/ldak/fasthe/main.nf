@@ -7,7 +7,7 @@ process LDAK_FASTHE {
         : 'community.wave.seqera.io/library/ldak6_r-base:452828f72b3c9129'}"
 
     input:
-    tuple val(meta), path(phenotype_file), val(prevalence)
+    tuple val(meta), path(phenotype_file)
     tuple val(meta2), path(bed), path(bim), path(fam), val(power)
     tuple val(meta3), path(weights_file)
     tuple val(meta4), path(quant_covariates_file)
@@ -31,9 +31,11 @@ process LDAK_FASTHE {
     tuple val(meta), path("${prefix}.log"), emit: log
     tuple val("${task.process}"), val("ldak6"), eval("ldak6 --version 2>&1 | grep -oP '(?<=^Version )[0-9.]+'"), emit: versions_ldak6, topic: versions
 
+    when:
+    task.ext.when == null || task.ext.when
+
     script:
     def args = task.ext.args ?: ''
-    def prevalence_arg = prevalence ? "--prevalence \"${prevalence}\"" : ''
     prefix = task.ext.prefix ?: "${meta.id}"
     def weights_arg = weights_file ? "--weights \"${weights_file}\"" : ''
     def quant_covar_arg = quant_covariates_file ? "--covar \"${quant_covariates_file}\"" : ''
@@ -47,7 +49,6 @@ process LDAK_FASTHE {
         ${quant_covar_arg} \\
         ${cat_covar_arg} \\
         --max-threads "${task.cpus}" \\
-        ${prevalence_arg} \\
         ${args} \\
         2>&1 | tee "${prefix}.log"
     """

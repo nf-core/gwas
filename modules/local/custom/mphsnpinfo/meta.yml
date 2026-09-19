@@ -11,13 +11,11 @@ keywords:
 tools:
   - "custom":
       description: |
-        A Python 3 representation adapter. It converts a BIM and an optional LD-by-MAF component plan into the
+        A Python 3 representation adapter. It converts a BIM and ordered named SNP groups into the
         comma-separated SNP-information file MPH reads through `--snp_info_file`, whose column named by
         `--snp_weight_name` gives each variant its weight in one component.
       homepage: "https://github.com/nf-core/modules"
       documentation: "https://jiang18.github.io/mph/"
-      # This adapter is pipeline-authored code and carries the pipeline's own licence. MPH, whose file format
-      # it writes, is GPL-3.0-only and is declared by the two `mph/*` modules that actually invoke it.
       licence: ["MIT"]
       identifier: ""
 input:
@@ -37,39 +35,30 @@ input:
         type: map
         description: |
           Groovy Map containing plan information, e.g. `[ id:'plan1' ]`
-    - strata_manifest:
+    - group_manifest:
         type: file
         description: |
-          Ordered stratum manifest following the `custom/gctastratifyldscores` contract: a tab-separated table
-          whose `stratum_key` column, in row order, is the component order and whose `group_filename` column
-          names one of the staged group files. Use `[]` for the single-component case.
-        pattern: "*.strata.tsv"
+          Required TSV with header group_id and group_filename. Each row names one staged SNP list, and its
+          group_id selects the weight column that list is written into, so a one-row whole-universe manifest
+          uses the same interface as many rows. Every `group_filename` is a bare basename of a file staged
+          through `snp_group_files`, because the rows are opened relative to the task directory; a path with
+          a directory component will not resolve.
+        pattern: "*.tsv"
         ontologies:
           - edam: "http://edamontology.org/format_3475"
     - snp_group_files:
         type: file
         description: |
-          The SNP group files the manifest names, one per component, each a newline-separated variant-name
-          list. The groups must be pairwise disjoint and every named variant must be in the BIM and inside the
-          autosomal universe; all three are fatal here rather than silent in MPH. Use `[]` when no manifest is
-          supplied.
-        pattern: "*_snp_group*.txt"
+          Newline-separated variant ID lists named by the manifest. Lists are disjoint subsets of the BIM.
+          SNPs absent from every group receive zero weight. Chromosomes are not filtered.
+        pattern: "*.txt"
         ontologies:
           - edam: "http://edamontology.org/format_2330"
     - weight_names:
         type: list
         description: |
-          The ordered weight column names to write, `weight_names[k - 1]` naming component k. With a manifest
-          they must equal the manifest's `stratum_key` column in row order; without one the single accepted
-          value is `['all']`. Never derived here, and echoed back on the output tuple.
-  - - autosome_count:
-        type: integer
-        description: |
-          Highest integer chromosome code counted as autosomal, matching GCTA's `--autosome-num` default of 22.
-          A BIM row whose chromosome code is non-numeric or outside 1..autosome_count is outside the declared
-          variant universe and is written with weight 0 in every column, because MPH itself applies no
-          chromosome rule and would otherwise silently build its matrix over a different predictor set than
-          GCTA does from the same bundle.
+          Required group IDs, one per manifest row and the same set as its group_id column. These name the
+          output columns and their order is the column order. Echoed on the output tuple.
 output:
   snp_info:
     - - meta:
@@ -80,8 +69,7 @@ output:
           type: file
           description: |
             MPH SNP-information file: header `SNP` followed by the weight column names, then one row per BIM
-            variant in BIM order. A variant in no component, or outside the autosomal universe, carries 0 in
-            every column, which MPH treats exactly as it treats an omitted row.
+            variant in BIM order. A variant in no component carries 0 in every column.
           pattern: "*.snp_info.csv"
           ontologies:
             - edam: "http://edamontology.org/format_3752"
@@ -96,34 +84,42 @@ output:
       - "${prefix}.snp_info.counts.tsv":
           type: file
           description: |
-            Declared predictor counts: one `stratum_key`/`predictor_count` row per weight column in column
+            Group membership counts: one `group_id`/`predictor_count` row per weight column in column
             order, then `__unassigned__` (BIM rows carrying 0 everywhere) and `__bim_rows__` (total BIM rows).
-            Pipeline accounting rather than a native input; no MPH command reads it.
+            Group accounting rather than a native input; no MPH command reads it.
           pattern: "*.snp_info.counts.tsv"
           ontologies:
             - edam: "http://edamontology.org/format_3475"
-  versions_python:
-    - - "${task.process}":
-          type: string
-          description: The process the version was collected from
-      - python:
-          type: string
-          description: The tool name
-      - "python3 --version | sed 's/^Python //'":
-          type: eval
-          description: The command used to retrieve the Python version
+  versions:
+    - versions.yml:
+        type: file
+        description: File containing software versions
+        pattern: "versions.yml"
+        ontologies:
+          - edam: "http://edamontology.org/format_3750"
 topics:
   versions:
-    - - "${task.process}":
-          type: string
-          description: The process the version was collected from
-      - python:
-          type: string
-          description: The tool name
-      - "python3 --version | sed 's/^Python //'":
-          type: eval
-          description: The command used to retrieve the Python version
+    - versions.yml:
+        type: file
+        description: File containing software versions
+        pattern: "versions.yml"
+        ontologies:
+          - edam: "http://edamontology.org/format_3750"
 authors:
   - "@lyh970817"
 maintainers:
   - "@lyh970817"
+containers:
+  conda:
+    linux/amd64:
+      lock_file: "modules/local/custom/mphsnpinfo/.conda-lock/linux_amd64-bd-dc8358b3c5eeb927_1.txt"
+  docker:
+    linux/amd64:
+      name: "community.wave.seqera.io/library/python:3.14.5--dc8358b3c5eeb927"
+      build_id: "bd-dc8358b3c5eeb927_1"
+      scan_id: "sc-d453bf85569b853d_1"
+  singularity:
+    linux/amd64:
+      name: "oras://community.wave.seqera.io/library/python:3.14.5--b29a2f2e65e096bd"
+      build_id: "bd-b29a2f2e65e096bd_10"
+      https: "https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/18/1841daa69f98a0b0ffcb8f545070c8350a75febb167202136eab0990131d31c0/data"

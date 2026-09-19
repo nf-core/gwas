@@ -1,16 +1,18 @@
 {
     "munge summary statistics against an explicit allele set": {
         "content": [
-            [
-                "trait_a.sumstats.gz",
-                "SNP\tA1\tA2\tN\tZ",
-                201,
-                {
+            {
+                "output": [
+                    "trait_a.sumstats.gz",
+                    "SNP\tA1\tA2\tN\tZ",
+                    121
+                ],
+                "versions": {
                     "versions_ldsc": [
                         [
                             "LDSC_MUNGESUMSTATS",
                             "ldsc",
-                            "6c673952cee74bd5c57aef1555a03b1c015399a0"
+                            "3.0.2"
                         ]
                     ],
                     "versions_python": [
@@ -21,25 +23,43 @@
                         ]
                     ]
                 }
-            ]
+            }
         ],
+        "timestamp": "2026-09-19T09:02:11.062213286",
         "meta": {
-            "nf-test": "0.9.3",
-            "nextflow": "25.10.4"
-        },
-        "timestamp": "2026-08-24T04:53:40.252971366"
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
     },
     "emit a valid compressed stub": {
         "content": [
-            [
-                "trait_stub.sumstats.gz",
-                "SNP\tA1\tA2\tN\tZ\n"
-            ]
+            {
+                "output": [
+                    "trait_stub.sumstats.gz",
+                    "SNP\tA1\tA2\tN\tZ\n"
+                ],
+                "versions": {
+                    "versions_ldsc": [
+                        [
+                            "LDSC_MUNGESUMSTATS",
+                            "ldsc",
+                            "3.0.2"
+                        ]
+                    ],
+                    "versions_python": [
+                        [
+                            "LDSC_MUNGESUMSTATS",
+                            "python",
+                            "3.9.13"
+                        ]
+                    ]
+                }
+            }
         ],
+        "timestamp": "2026-09-18T23:04:34.872735272",
         "meta": {
-            "nf-test": "0.9.3",
-            "nextflow": "25.10.4"
-        },
-        "timestamp": "2026-08-24T04:53:48.177700108"
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
     }
 }

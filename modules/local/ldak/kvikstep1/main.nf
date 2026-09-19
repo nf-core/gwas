@@ -9,7 +9,7 @@ process LDAK_KVIKSTEP1 {
 
     input:
     tuple val(meta), path(bed), path(bim), path(fam)
-    tuple val(meta2), path(phenotype_file), val(is_binary)
+    tuple val(meta2), path(phenotype_file)
     tuple val(meta3), path(quant_covariates_file)
     tuple val(meta4), path(cat_covariates_file)
     tuple val(meta5), path(extract_file)
@@ -24,12 +24,11 @@ process LDAK_KVIKSTEP1 {
     task.ext.when == null || task.ext.when
 
     script:
-    def args = task.ext.args ?: ""
+    def args = task.ext.args ?: ''
     def bfile_prefix = bed.baseName
-    prefix = task.ext.prefix ?: meta2.id
+    prefix = task.ext.prefix ?: "${meta.id}"
     def covar_arg = quant_covariates_file ? "--covar \"${quant_covariates_file}\"" : ""
     def factors_arg = cat_covariates_file ? "--factors \"${cat_covariates_file}\"" : ""
-    def binary_arg = is_binary ? "--binary YES" : ""
     def extract_arg = extract_file ? "--extract \"${extract_file}\"" : ""
     """
     ldak6 --kvik-step1 "${prefix}" \\
@@ -37,7 +36,6 @@ process LDAK_KVIKSTEP1 {
         --pheno "${phenotype_file}" \\
         ${covar_arg} \\
         ${factors_arg} \\
-        ${binary_arg} \\
         ${extract_arg} \\
         --max-threads "${task.cpus}" \\
         ${args} \\
@@ -45,7 +43,7 @@ process LDAK_KVIKSTEP1 {
     """
 
     stub:
-    prefix = task.ext.prefix ?: meta2.id
+    prefix = task.ext.prefix ?: "${meta.id}"
     """
     touch "${prefix}.step1.root"
     touch "${prefix}.step1.loco.details"

@@ -1,186 +1,99 @@
 {
-    "homo_sapiens popgen - a variant in no group is written all-zero and counted as unassigned": {
+    "2 named groups preserve BIM order and explicit non-autosomal membership": {
         "content": [
             {
                 "counts": [
                     [
                         {
-                            "id": "plink_simulated"
+                            "id": "focal"
                         },
-                        "plink_simulated.snp_info.counts.tsv:md5,f1b765812965d5dbb17c97d747d544ef"
+                        "focal.snp_info.counts.tsv:md5,0bc6eef8f208ab07dbad23ab1a91dd51"
                     ]
                 ],
                 "snp_info": [
                     [
                         {
-                            "id": "plink_simulated"
+                            "id": "focal"
                         },
-                        "plink_simulated.snp_info.csv:md5,0a79b37af331d6017acc427b1cf2bbc5",
+                        "focal.snp_info.csv:md5,8456021b43a1d1bd72d9c4f3abd97da6",
                         [
-                            "sparse"
+                            "first",
+                            "second"
                         ]
                     ]
                 ],
-                "versions_python": [
-                    [
-                        "CUSTOM_MPHSNPINFO",
-                        "python",
-                        "3.14.5"
-                    ]
+                "versions": [
+                    "versions.yml:md5,8154b64808b130d7143db5265bd4f984"
                 ]
             }
         ],
-        "timestamp": "2026-09-05T15:05:03.098951902",
+        "timestamp": "2026-09-18T17:25:31.403818494",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.6"
         }
     },
-    "homo_sapiens popgen - stub": {
+    "ordered column contract - stub": {
         "content": [
             {
                 "counts": [
                     [
                         {
-                            "id": "plink_simulated"
+                            "id": "focal"
                         },
-                        "plink_simulated.snp_info.counts.tsv:md5,6be8f452a0dd27c4e2f2d42730d4ef0b"
+                        "focal.snp_info.counts.tsv:md5,aaa06856409e2899ee2d072d1589b1b8"
                     ]
                 ],
                 "snp_info": [
                     [
                         {
-                            "id": "plink_simulated"
+                            "id": "focal"
                         },
-                        "plink_simulated.snp_info.csv:md5,69327507e4b22ec5df9ea81b22fd8fb8",
+                        "focal.snp_info.csv:md5,ef546ce01039b93876fcca536cde54d6",
                         [
-                            "ld01_maf01",
-                            "ld02_maf01"
+                            "a"
                         ]
                     ]
                 ],
-                "versions_python": [
-                    [
-                        "CUSTOM_MPHSNPINFO",
-                        "python",
-                        "3.14.5"
-                    ]
+                "versions": [
+                    "versions.yml:md5,8154b64808b130d7143db5265bd4f984"
                 ]
             }
         ],
-        "timestamp": "2026-09-05T15:06:20.154325377",
+        "timestamp": "2026-09-18T17:25:41.906198677",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.6"
         }
     },
-    "a non-autosomal or unparseable chromosome code is written all-zero and counted as unassigned": {
+    "1 named groups preserve BIM order and explicit non-autosomal membership": {
         "content": [
             {
                 "counts": [
                     [
                         {
-                            "id": "synthetic"
+                            "id": "focal"
                         },
-                        "synthetic.snp_info.counts.tsv:md5,fc95ce771f5cec7b39a7007b196a4b6c"
+                        "focal.snp_info.counts.tsv:md5,12bf319c7767e30a956bc819e6bad39a"
                     ]
                 ],
                 "snp_info": [
                     [
                         {
-                            "id": "synthetic"
+                            "id": "focal"
                         },
-                        "synthetic.snp_info.csv:md5,256472712311ea1ecdad49fc92ee3bdd",
+                        "focal.snp_info.csv:md5,5e9a67d9f5b21e3ed8d86d9549b3b7bf",
                         [
-                            "all"
+                            "first"
                         ]
                     ]
                 ],
-                "versions_python": [
-                    [
-                        "CUSTOM_MPHSNPINFO",
-                        "python",
-                        "3.14.5"
-                    ]
+                "versions": [
+                    "versions.yml:md5,8154b64808b130d7143db5265bd4f984"
                 ]
             }
         ],
-        "timestamp": "2026-09-05T15:05:13.755178485",
-        "meta": {
-            "nf-test": "0.9.5",
-            "nextflow": "26.04.6"
-        }
-    },
-    "homo_sapiens popgen - the one-component plan writes one all-ones row per BIM variant": {
-        "content": [
-            {
-                "counts": [
-                    [
-                        {
-                            "id": "plink_simulated"
-                        },
-                        "plink_simulated.snp_info.counts.tsv:md5,4c6fdce17849fb371d068e13598f9383"
-                    ]
-                ],
-                "snp_info": [
-                    [
-                        {
-                            "id": "plink_simulated"
-                        },
-                        "plink_simulated.snp_info.csv:md5,2f34242f77288b21606341bedc5daf92",
-                        [
-                            "all"
-                        ]
-                    ]
-                ],
-                "versions_python": [
-                    [
-                        "CUSTOM_MPHSNPINFO",
-                        "python",
-                        "3.14.5"
-                    ]
-                ]
-            }
-        ],
-        "timestamp": "2026-09-05T15:04:35.718572767",
-        "meta": {
-            "nf-test": "0.9.5",
-            "nextflow": "26.04.6"
-        }
-    },
-    "homo_sapiens popgen - a two-stratum plan writes disjoint membership columns in the caller's order": {
-        "content": [
-            {
-                "counts": [
-                    [
-                        {
-                            "id": "plink_simulated"
-                        },
-                        "plink_simulated.snp_info.counts.tsv:md5,ccfb35ee0db9e1c934be71a2492a1c67"
-                    ]
-                ],
-                "snp_info": [
-                    [
-                        {
-                            "id": "plink_simulated"
-                        },
-                        "plink_simulated.snp_info.csv:md5,39cd6c833399a0b8065e08c73c49ba56",
-                        [
-                            "ld01_maf01",
-                            "ld02_maf01"
-                        ]
-                    ]
-                ],
-                "versions_python": [
-                    [
-                        "CUSTOM_MPHSNPINFO",
-                        "python",
-                        "3.14.5"
-                    ]
-                ]
-            }
-        ],
-        "timestamp": "2026-09-05T15:04:50.141322154",
+        "timestamp": "2026-09-18T17:25:28.133446029",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.6"

@@ -6,7 +6,6 @@ nextflow_process {
     process "LDAK_SUMCORS"
 
     tag "modules"
-    tag "modules_local"
     tag "modules_nfcore"
     tag "ldak"
     tag "ldak/sumcors"

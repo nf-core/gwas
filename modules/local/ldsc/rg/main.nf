@@ -2,6 +2,8 @@ process LDSC_RG {
     tag "${meta.id}"
     label 'process_low'
 
+    conda "${moduleDir}/environment.yml"
+
     container "${workflow.containerEngine in ['singularity', 'apptainer'] && !task.ext.singularity_pull_docker_container
         ? 'docker://ghcr.io/lyh970817/gwas/ldsc@sha256:77fbb697c16a559c3fe75204b1e7ab6a0202afcf10b8a8629bcc98592b0e412b'
         : 'ghcr.io/lyh970817/gwas/ldsc:3.0.2-cbiit-6c67395@sha256:77fbb697c16a559c3fe75204b1e7ab6a0202afcf10b8a8629bcc98592b0e412b'}"
@@ -13,8 +15,11 @@ process LDSC_RG {
 
     output:
     tuple val(meta), path("${prefix}.log"), emit: log
-    tuple val("${task.process}"), val("ldsc"), eval("cat /opt/venv/ldsc-source-revision"), emit: versions_ldsc, topic: versions
+    tuple val("${task.process}"), val("ldsc"), eval("python -c 'import importlib.metadata; print(importlib.metadata.version(\"ldsc\"))'"), emit: versions_ldsc, topic: versions
     tuple val("${task.process}"), val("python"), eval("python --version 2>&1 | sed 's/^Python //'"), emit: versions_python, topic: versions
+
+    when:
+    task.ext.when == null || task.ext.when
 
     script:
     def args = task.ext.args ?: ''
@@ -26,8 +31,8 @@ process LDSC_RG {
     export MKL_NUM_THREADS="${task.cpus}"
 
     # This LDSC release writes the complete native analysis log to stdout. Retain that stream under the
-    # declared result name; the file it opens at the same name is empty. Retire when the pinned CBIIT ldsc39
-    # revision moves to one whose --out .log carries the estimates.
+    # declared result name; the file it opens at the same name is empty. Retire this pinned-version
+    # adaptation when the CBIIT ldsc39 --out .log carries the estimates.
     ldsc.py \
         --rg "${left_sumstats},${right_sumstats}" \
         --ref-ld-chr "reference_ld_scores/" \

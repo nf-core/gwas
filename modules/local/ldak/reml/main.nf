@@ -7,7 +7,7 @@ process LDAK_REML {
         : 'community.wave.seqera.io/library/ldak6_r-base:452828f72b3c9129'}"
 
     input:
-    tuple val(meta), path(phenotype_file), val(prevalence)
+    tuple val(meta), path(phenotype_file)
     tuple val(meta2), path(grm_files)
     tuple val(meta3), path(keep_file)
     tuple val(meta4), path(quant_covariates_file)
@@ -40,7 +40,6 @@ process LDAK_REML {
     def keep_arg = keep_file ? "--keep \"${keep_file}\"" : ''
     def quant_covar_arg = quant_covariates_file ? "--covar \"${quant_covariates_file}\"" : ''
     def cat_covar_arg = cat_covariates_file ? "--factors \"${cat_covariates_file}\"" : ''
-    def prevalence_arg = prevalence ? "--prevalence \"${prevalence}\"" : ''
 
     """
     ldak6 --reml "${prefix}" \\
@@ -49,7 +48,6 @@ process LDAK_REML {
         ${keep_arg} \\
         ${quant_covar_arg} \\
         ${cat_covar_arg} \\
-        ${prevalence_arg} \\
         --max-threads "${task.cpus}" \\
         ${args} \\
         2>&1 | tee "${prefix}.log"
@@ -57,14 +55,6 @@ process LDAK_REML {
 
     stub:
     def prefix = task.ext.prefix ?: meta.id
-    def liability_outputs = prevalence
-        ? """
-    touch "${prefix}.reml.liab"
-    touch "${prefix}.coeff.liab"
-    touch "${prefix}.indi.blp.liab"
-    touch "${prefix}.factor"
-    """
-        : ''
     """
     touch "${prefix}.reml"
     touch "${prefix}.coeff"
@@ -75,7 +65,10 @@ process LDAK_REML {
     touch "${prefix}.progress"
     touch "${prefix}.share"
     touch "${prefix}.vars"
+    touch "${prefix}.reml.liab"
+    touch "${prefix}.coeff.liab"
+    touch "${prefix}.indi.blp.liab"
+    touch "${prefix}.factor"
     touch "${prefix}.log"
-    ${liability_outputs}
     """
 }

@@ -13,7 +13,7 @@ process LDAK_ADJUSTGRM {
     tuple val(meta4), path(adjustment_covariates_file)
 
     output:
-    tuple val(meta), path("${prefix}.grm.bin"), path("${prefix}.grm.id"), path("${prefix}.grm.details"), path("${prefix}.grm.adjust"), path("${prefix}.grm.root"), emit: adjusted_grm
+    tuple val(meta), path("${prefix}.grm.{bin,id,details,adjust,root}"), emit: adjusted_grm
     tuple val(meta), path("${prefix}.log"), emit: log
     tuple val("${task.process}"), val("ldak6"), eval("ldak6 --version 2>&1 | grep -oP '(?<=^Version )[0-9.]+'"), emit: versions_ldak6, topic: versions
 
@@ -23,24 +23,22 @@ process LDAK_ADJUSTGRM {
     script:
     def args = task.ext.args ?: ''
     def grm_prefix = grm_files.find { grm_file -> grm_file.name.endsWith('.grm.bin') }.name.replaceFirst(/\.grm\.bin$/, '')
-    prefix = task.ext.prefix ?: "${meta.id}"
+    prefix = task.ext.prefix ?: "${meta.id}.adjusted"
+    def phenotype_arg = phenotype_file ? "--pheno \"${phenotype_file}\"" : ''
     def keep_arg = keep_file ? "--keep \"${keep_file}\"" : ''
-    // --adjust-grm rejects --factors, so the caller supplies a treatment-coded design through
-    // --covar; see prepare_phenotype_inputs.
-    def covar_arg = adjustment_covariates_file ? "--covar \"${adjustment_covariates_file}\"" : ''
     """
     ldak6 --adjust-grm "${prefix}" \\
         --grm "${grm_prefix}" \\
-        --pheno "${phenotype_file}" \\
+        ${phenotype_arg} \\
         ${keep_arg} \\
-        ${covar_arg} \\
+        --covar "${adjustment_covariates_file}" \\
         --max-threads "${task.cpus}" \\
         ${args} \\
         2>&1 | tee "${prefix}.log"
     """
 
     stub:
-    prefix = task.ext.prefix ?: "${meta.id}"
+    prefix = task.ext.prefix ?: "${meta.id}.adjusted"
     """
     touch "${prefix}.grm.bin"
     touch "${prefix}.grm.id"

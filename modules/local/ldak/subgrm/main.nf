@@ -7,7 +7,7 @@ process LDAK_SUBGRM {
         : 'community.wave.seqera.io/library/ldak6_r-base:452828f72b3c9129'}"
 
     input:
-    tuple val(meta), path(grm_files), path(keep)
+    tuple val(meta), path(grm_files, stageAs: 'grm/*'), path(keep)
 
     output:
     tuple val(meta), path("${prefix}.grm.bin"), path("${prefix}.grm.id"), path("${prefix}.grm.details"), path("${prefix}.grm.adjust"), emit: sub_grm
@@ -18,7 +18,7 @@ process LDAK_SUBGRM {
 
     script:
     def args = task.ext.args ?: ''
-    def grm_prefix = grm_files.find { grm_file -> grm_file.name.endsWith('.grm.bin') }.name.replaceFirst(/\.grm\.bin$/, '')
+    def grm_prefix = grm_files.find { grm_file -> grm_file.name.endsWith('.grm.bin') }.toString().replaceFirst(/\.grm\.bin$/, '')
     prefix = task.ext.prefix ?: "${meta.id}"
     """
     ldak6 \\

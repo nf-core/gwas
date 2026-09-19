@@ -1,22 +1,10 @@
 #!/usr/bin/env python3
-"""Write exactly the CSVs MPH consumes for one analysis unit.
+"""Serialize FID/IID trait and covariate tables as IID-keyed MPH CSVs.
 
-MPH's file interface differs from every other individual-level estimator this pipeline drives, in four ways:
-
-    it keys the phenotype and covariate tables by IID alone, while indexing the relationship
-        matrix itself by the *order* of that matrix's `.grm.iid`. The adapter follows those native
-        identities and that declared order. It cannot prove that a `.grm.iid` still matches its own
-        `.grm.bin`; the route avoids that residual hazard by building both from the same genotype view.
-    an empty field is its only missing representation, and every other cell is parsed as a number. This is
-        not a preference: the pipeline's three missing spellings are therefore rewritten to empty fields.
-    it synthesises an intercept only when no covariate is named. A covariate file given with
-        `--covariate_names` fits exactly the named columns, so a covariate-adjusted fit without an explicit
-        column of ones is a no-intercept model. This adapter always writes that column and names it first.
-    it never expands a categorical covariate. A factor column passed through verbatim becomes a
-        numeric covariate whose levels are read as magnitudes, and the resulting rank deficiency is only a
-        warning at exit 0. Categorical columns are therefore dummy-encoded here, by the same rule
-        `prepare_phenotype_inputs` applies for LDAK's matrix-adjustment design, so the two encodings agree.
-
+Trait columns retain the caller's explicit order. Quantitative columns pass through;
+factors are treatment-coded against their lexically first observed level. Covariate
+files receive an explicit intercept. The caller declares missing-value spellings.
+The supplied sample map resolves FIDs, and the native matrix IID list orders rows.
 """
 
 import json
@@ -32,13 +20,12 @@ ANALYSIS_ID = $analysis_id_literal
 PROCESS_NAME = $task_process_literal
 TRAIT_NAMES = json.loads($trait_names_literal)
 
-# The pipeline's own missing spellings, matching `prepare_phenotype_inputs`. Every one of them becomes an empty
-# CSV field, which is MPH's only missing representation.
-MISSING_TOKENS = frozenset(["", "na", "nan", "-9"])
+# Missing-value spellings are supplied by the caller, never inferred.
+MISSING_TOKENS = frozenset(value.strip().lower() for value in json.loads($missing_tokens_literal))
 
 
 def fail(message):
-    sys.exit("[nf-core/gwas] ERROR: analysis '{}': {}".format(ANALYSIS_ID, message))
+    sys.exit("prepare_mph_inputs: sample set '{}': {}".format(ANALYSIS_ID, message))
 
 
 def is_missing(value):
@@ -46,14 +33,7 @@ def is_missing(value):
 
 
 def split_row(line):
-    """Split one input line on whichever delimiter it actually uses, per line.
-
-    The rule is `prepare_phenotype_inputs`' and it is copied rather than approximated, because getting it
-    wrong here is a silent row shift rather than a parse error. Splitting on arbitrary whitespace collapses a
-    run of tabs, so a genuinely empty cell -- the ordinary way a tab-delimited file spells a missing value --
-    would vanish and the values to its right would each move one column left, arriving at MPH under the wrong
-    covariate name. A line carrying a tab is therefore a tab-delimited line and is split on tabs.
-    """
+    """Preserve empty tab-delimited cells; accept whitespace-delimited nonempty fields."""
     line = line.rstrip("\\r\\n")
     return line.split("\\t") if "\\t" in line else line.split()
 
@@ -72,13 +52,7 @@ def read_table(path, role):
 
 
 def read_headered_table(path, role):
-    """Read a prepared covariate table: two identifier columns, then one column per named covariate.
-
-    The shape of the identifier columns is not re-checked here. Ingress already admitted this file and
-    `prepare_phenotype_inputs` wrote it, so a check would only be able to fail a row the pipeline had already
-    accepted -- and the incoming header is never forwarded to MPH in any case, because this module emits its
-    own `IID,...` line from the covariate names it derives.
-    """
+    """Read a headered FID IID covariate table."""
     rows = read_table(path, role)
     header = rows[0][1]
     if len(header) < 3:
@@ -86,8 +60,8 @@ def read_headered_table(path, role):
             "the {} file '{}' has {} columns; two identifier columns and at least one named covariate "
             "column are required".format(role, path, len(header))
         )
-    # A ragged row would otherwise be handed to MPH as a short CSV line under a full-width header, which MPH
-    # reads without complaint.
+    # A ragged row cannot be assigned to columns -- which field belongs to which name is undecidable -- so it
+    # is named and refused here rather than serialised.
     for number, fields in rows[1:]:
         if len(fields) != len(header):
             fail(
@@ -117,14 +91,11 @@ def read_sample_order():
     with open(GRM_IID) as handle:
         grm_order = [line.rstrip("\\r\\n") for line in handle if line.rstrip("\\r\\n") != ""]
 
-    # MPH indexes the matrix by this file's line order and never cross-checks it: a `.grm.iid` reordered
-    # against its own `.grm.bin` gives a complete, stable, wrong estimate at exit 0 (pve 0.1156 -> -0.2995,
-    # 5/5 runs, pinned image). Not asserted here: MPH_MAKEGRM builds every matrix from this view.
     return fam_by_iid, grm_order
 
 
 def read_traits(fam_by_iid):
-    """Read the headerless `FID IID trait...` table the pipeline prepares, keyed by IID as MPH keys it."""
+    """Read the headerless FID IID trait table, keyed by IID."""
     expected_columns = 2 + len(TRAIT_NAMES)
     rows = read_table(PHENOTYPE_TABLE, "phenotype")
     traits_by_iid = {}
@@ -145,14 +116,7 @@ def read_traits(fam_by_iid):
 
 
 def encode_covariates():
-    """Reapply the pipeline's covariate encoding rule against the headered prepared tables.
-
-    MPH's covariate interface is name-keyed, so this adapter reads the headered `.qcovar`/`.catcovar` tables
-    rather than the headerless numeric design LDAK consumes. The encoding itself is the rule of
-    `prepare_phenotype_inputs.adjustment_covariates`: quantitative columns verbatim, every categorical column
-    treatment-coded against its lexically first observed level, and a missing factor value missing across all
-    of that factor's dummies. Keeping the two in step is what a parity test exists for.
-    """
+    """Treatment-code categorical columns and join quantitative/categorical designs on FID/IID."""
     quant = read_headered_table(QUANT_COVARIATES, "quantitative covariate") if QUANT_COVARIATES else None
     cat = read_headered_table(CAT_COVARIATES, "categorical covariate") if CAT_COVARIATES else None
     if quant is None and cat is None:
@@ -191,8 +155,7 @@ def encode_covariates():
         return quant_names, quant_by_identity
     if quant is None:
         return dummy_names, cat_by_identity
-    # The inner join `prepare_phenotype_inputs` applies for the same reason: a sample described by only one of
-    # the two files has an incomplete covariate vector, which MPH would drop anyway.
+    # Only identities represented by both sources have a complete joined design.
     merged = {
         identity: quant_by_identity[identity] + cat_by_identity[identity]
         for identity in quant_by_identity

@@ -1,15 +1,19 @@
-name: ldak_thincommon
-description: Select common, moderately linkage-disequilibrium-pruned predictors with LDAK for dense-data Step 1 analyses
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/modules/meta-schema.json
+name: "ldak_thincommon"
+description: "Select common, moderately linkage-disequilibrium-pruned predictors with LDAK for dense-data Step 1 analyses"
 keywords:
-  - ldak
-  - thinning
-  - predictors
-  - association
+  - "ldak"
+  - "thinning"
+  - "predictors"
+  - "association"
+  - "linkage disequilibrium adjusted kinships"
+  - "genome-wide association study"
 tools:
-  - ldak6:
-      description: LDAK toolset for kinship, heritability, and association analyses
-      homepage: https://dougspeed.com/ldak/
-      documentation: https://dougspeed.com/ldak/
+  - "ldak6":
+      description: "LDAK toolset for kinship, heritability, and association analyses"
+      homepage: "https://dougspeed.com/ldak/"
+      documentation: "https://dougspeed.com/ldak/"
+      tool_dev_url: "https://github.com/dougspeed/LDAK"
 input:
   - - meta:
         type: map
@@ -20,14 +24,17 @@ input:
     - bed:
         type: file
         description: PLINK BED genotype file
+        pattern: "*.bed"
         ontologies: []
     - bim:
         type: file
         description: PLINK BIM variant file
+        pattern: "*.bim"
         ontologies: []
     - fam:
         type: file
         description: PLINK FAM sample file
+        pattern: "*.fam"
         ontologies: []
 output:
   predictors:
@@ -36,7 +43,10 @@ output:
           description: Metadata map carried forward from input
       - "${prefix}.in":
           type: file
-          description: Common predictors selected by LDAK for dense-data Step 1 analyses
+          description: |
+            Common predictors selected by LDAK for dense-data Step 1 analyses. `--thin-common` also writes the
+            companion list of removed predictors as `<prefix>.out`; only the retained list is a public product.
+          pattern: "*.in"
           ontologies: []
   progress:
     - - meta:
@@ -46,6 +56,7 @@ output:
           type: file
           optional: true
           description: LDAK progress log
+          pattern: "*.progress"
           ontologies: []
   versions_ldak6:
     - - ${task.process}:
@@ -69,6 +80,20 @@ topics:
           type: eval
           description: The expression used to obtain the version of the tool
 authors:
-  - "@andongni"
+  - "@lyh970817"
 maintainers:
-  - "@andongni"
+  - "@lyh970817"
+containers:
+  conda:
+    linux/amd64:
+      lock_file: modules/local/ldak/thincommon/.conda-lock/linux_amd64-bd-452828f72b3c9129_1.txt
+  docker:
+    linux/amd64:
+      name: community.wave.seqera.io/library/ldak6_r-base:452828f72b3c9129
+      build_id: bd-452828f72b3c9129_1
+      scan_id: sc-65cc7b1c1a9a20b6_1
+  singularity:
+    linux/amd64:
+      name: oras://community.wave.seqera.io/library/ldak6_r-base:e8012f1be139af77
+      build_id: bd-e8012f1be139af77_1
+      https: https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/c9/c94e5424f08cbd7e0856ab3c3a9992b4080944a5d0c497ce0abcceb413db4a3e/data

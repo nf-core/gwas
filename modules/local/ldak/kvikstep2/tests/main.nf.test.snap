@@ -1,0 +1,102 @@
+{
+    "homo_sapiens popgen - native prediction prefix": {
+        "content": [
+            {
+                "log": [
+                    [
+                        {
+                            "id": "analysis"
+                        },
+                        "fit.step2.log"
+                    ]
+                ],
+                "pvalues": [
+                    [
+                        {
+                            "id": "analysis"
+                        },
+                        "fit.step2.pvalues"
+                    ]
+                ],
+                "results": [
+                    [
+                        {
+                            "id": "analysis"
+                        },
+                        "fit.step2.assoc"
+                    ]
+                ],
+                "summaries": [
+                    [
+                        {
+                            "id": "analysis"
+                        },
+                        "fit.step2.summaries"
+                    ]
+                ],
+                "versions_ldak6": [
+                    [
+                        "LDAK_KVIKSTEP2",
+                        "ldak6",
+                        "6"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T22:02:27.398294839",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "homo_sapiens popgen - native prediction prefix - stub": {
+        "content": [
+            {
+                "log": [
+                    [
+                        {
+                            "id": "analysis"
+                        },
+                        "fit.step2.log"
+                    ]
+                ],
+                "pvalues": [
+                    [
+                        {
+                            "id": "analysis"
+                        },
+                        "fit.step2.pvalues"
+                    ]
+                ],
+                "results": [
+                    [
+                        {
+                            "id": "analysis"
+                        },
+                        "fit.step2.assoc"
+                    ]
+                ],
+                "summaries": [
+                    [
+                        {
+                            "id": "analysis"
+                        },
+                        "fit.step2.summaries"
+                    ]
+                ],
+                "versions_ldak6": [
+                    [
+                        "LDAK_KVIKSTEP2",
+                        "ldak6",
+                        "6"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T22:02:34.731235513",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

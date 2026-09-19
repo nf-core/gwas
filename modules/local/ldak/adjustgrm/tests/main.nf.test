@@ -1,0 +1,124 @@
+nextflow_process {
+    name "Test Process LDAK_ADJUSTGRM"
+    script "../main.nf"
+    process "LDAK_ADJUSTGRM"
+    config "./nextflow.config"
+    tag "modules"
+    tag "modules_nfcore"
+    tag "ldak"
+    tag "ldak/calckins"
+    tag "gawk"
+    tag "ldak/adjustgrm"
+
+    setup {
+        run("LDAK_CALCKINS") {
+            script "../../calckins/main.nf"
+            process {
+                """
+                input[0] = [
+                    [id: 'kinship'],
+                    file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bed', checkIfExists: true),
+                    file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bim', checkIfExists: true),
+                    file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.fam', checkIfExists: true),
+                    -0.25
+                ]
+                input[1] = [[id: 'weights'], []]
+                """
+            }
+        }
+        run("GAWK", alias: "GAWK_BINARY_PHENO") {
+            script "../../../../nf-core/gawk/main.nf"
+            process {
+                """
+                input[0] = [[id: 'binary'], file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated_quantitative_phenoname.phe', checkIfExists: true)]
+                input[1] = Channel.of('FNR == 1 { next } { print \$1, \$2, (\$3 > 0 ? 1 : 0) }').collectFile(name: 'binary_phenotype.awk')
+                input[2] = false
+                """
+            }
+        }
+        run("GAWK", alias: "GAWK_COVAR") {
+            script "../../../../nf-core/gawk/main.nf"
+            process {
+                """
+                input[0] = [[id: 'covariates'], file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated_covariates.txt', checkIfExists: true)]
+                input[1] = channel.of('FNR == 1 { next } { print \$1, \$2, \$4, \$5 }').collectFile(name: 'covariates.awk')
+                input[2] = false
+                """
+            }
+        }
+        run("GAWK", alias: "GAWK_KEEP") {
+            script "../../../../nf-core/gawk/main.nf"
+            process {
+                """
+                input[0] = [[id: 'sample_subset'], file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.fam', checkIfExists: true)]
+                input[1] = channel.of('NR <= 180 { print \$1, \$2 }').collectFile(name: 'subset.awk')
+                input[2] = false
+                """
+            }
+        }
+    }
+
+    test("phenotype-selected sample set") {
+
+        when {
+
+            process {
+                """
+                input[0] = LDAK_CALCKINS.out.ldak_grm
+                input[1] = GAWK_BINARY_PHENO.out.output
+                input[2] = GAWK_KEEP.out.output
+                input[3] = GAWK_COVAR.out.output
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert process.success },
+                { assert snapshot(sanitizeOutput(process.out, unstableKeys: ['log'])).match() }
+            )
+        }
+    }
+
+    test("whole matrix sample set") {
+
+        when {
+
+            process {
+                """
+                input[0] = LDAK_CALCKINS.out.ldak_grm
+                input[1] = [[id: 'phenotype'], []]
+                input[2] = [[id: 'keep'], []]
+                input[3] = GAWK_COVAR.out.output
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert process.success },
+                { assert snapshot(sanitizeOutput(process.out, unstableKeys: ['log'])).match() }
+            )
+        }
+    }
+
+    test("native operation - stub") {
+        options "-stub"
+        when {
+
+            process {
+                """
+                input[0] = LDAK_CALCKINS.out.ldak_grm
+                input[1] = GAWK_BINARY_PHENO.out.output
+                input[2] = [[id: 'keep'], []]
+                input[3] = GAWK_COVAR.out.output
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert process.success },
+                { assert snapshot(sanitizeOutput(process.out, unstableKeys: ['log'])).match() }
+            )
+        }
+    }
+
+}

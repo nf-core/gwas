@@ -6,57 +6,16 @@ nextflow_process {
     process "MPH_REML"
 
     tag "modules"
-    tag "modules_local"
+    tag "modules_nfcore"
     tag "mph"
     tag "mph/reml"
     tag "mph/makegrm"
-    tag "custom/mphsnpinfo"
 
     // The matrices are built by the module that owns MPH's own layout rather than staged from a shipped
     // bundle, because a GRM this fit can read is not interchangeable with GCTA's in either direction: the
     // header, the triangle orientation, the scaling and the identifier companion all differ, and neither tool
     // refuses the other's file usefully.
     setup {
-        run("CUSTOM_MPHSNPINFO", alias: "MPHSNPINFO_DENSE") {
-            script "../../../custom/mphsnpinfo/main.nf"
-            process {
-                """
-                input[0] = [
-                    [ id:'dense_plan' ],
-                    file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bim', checkIfExists: true)
-                ]
-                input[1] = [ [ id:'dense' ], [], [], [ 'all' ] ]
-                input[2] = 22
-                """
-            }
-        }
-
-        run("CUSTOM_MPHSNPINFO", alias: "MPHSNPINFO_SPLIT") {
-            script "../../../custom/mphsnpinfo/main.nf"
-            process {
-                """
-                def bimFile = file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bim', checkIfExists: true)
-                def variantNames = bimFile.text.readLines().findAll { line -> line.trim() }.collect { line -> line.trim().tokenize()[1] }
-                def half = variantNames.size().intdiv(2)
-
-                file('ld01_snp_group.txt').text = variantNames[0..<half].join('\\n') + '\\n'
-                file('ld02_snp_group.txt').text = variantNames[half..<variantNames.size()].join('\\n') + '\\n'
-                file('split.strata.tsv').text = 'stratum_key\\tgroup_filename\\n' +
-                    'ld01\\tld01_snp_group.txt\\n' +
-                    'ld02\\tld02_snp_group.txt\\n'
-
-                input[0] = [ [ id:'ld_maf_plan' ], bimFile ]
-                input[1] = [
-                    [ id:'ld_maf' ],
-                    file('split.strata.tsv'),
-                    [ file('ld01_snp_group.txt'), file('ld02_snp_group.txt') ],
-                    [ 'ld01', 'ld02' ]
-                ]
-                input[2] = 22
-                """
-            }
-        }
-
         run("MPH_MAKEGRM", alias: "MPH_MAKEGRM_DENSE") {
             script "../../makegrm/main.nf"
             process {
@@ -67,7 +26,9 @@ nextflow_process {
                     file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bim', checkIfExists: true),
                     file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.fam', checkIfExists: true)
                 ]
-                input[1] = MPHSNPINFO_DENSE.out.snp_info.map { plan_meta, snp_info, weight_names -> [ plan_meta, snp_info, weight_names.first() ] }
+                def variants = file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bim').readLines().collect { line -> line.tokenize()[1] }
+                file('dense.snp_info.csv').text = 'SNP,all\\n' + variants.collect { variant -> "\${variant},1" }.join('\\n') + '\\n'
+                input[1] = [[id: 'dense'], file('dense.snp_info.csv'), 'all']
                 """
             }
         }
@@ -76,7 +37,7 @@ nextflow_process {
             script "../../makegrm/main.nf"
             process {
                 """
-                input[0] = Channel.of('ld01', 'ld02').map { column ->
+                input[0] = channel.of('ld01', 'ld02').map { column ->
                     [
                         [ id: column ],
                         file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bed', checkIfExists: true),
@@ -84,9 +45,11 @@ nextflow_process {
                         file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.fam', checkIfExists: true)
                     ]
                 }
-                input[1] = MPHSNPINFO_SPLIT.out.snp_info.flatMap { plan_meta, snp_info, weight_names ->
-                    weight_names.collect { column -> [ plan_meta, snp_info, column ] }
-                }
+                def split_variants = file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bim').readLines().collect { line -> line.tokenize()[1] }
+                file('split.snp_info.csv').text = 'SNP,ld01,ld02\\n' + split_variants.withIndex().collect { variant, index ->
+                    [variant, index < split_variants.size().intdiv(2) ? 1 : 0, index < split_variants.size().intdiv(2) ? 0 : 1].join(',')
+                }.join('\\n') + '\\n'
+                input[1] = channel.of('ld01', 'ld02').map { column -> [[id: 'split'], file('split.snp_info.csv'), column] }
                 """
             }
         }
@@ -162,7 +125,7 @@ nextflow_process {
             def fixtures = tables(outputDir, 'plain')
             process {
                 """
-                input[0] = MPH_MAKEGRM_DENSE.out.grm_files.map { _meta, grm_files -> [ [ id:'single_plain' ], grm_files, [ 'dense' ] ] }
+                input[0] = MPH_MAKEGRM_DENSE.out.grm_files.map { _meta, grm_files -> [ [ id:'single_plain' ], grm_files ] }
                 input[1] = [ [ id:'traits' ], file('${fixtures.phenotype}', checkIfExists: true), [ 'QT' ] ]
                 input[2] = [ [ id:'traits' ], [], [] ]
                 """
@@ -190,7 +153,7 @@ nextflow_process {
             def fixtures = tables(outputDir, 'covariates')
             process {
                 """
-                input[0] = MPH_MAKEGRM_DENSE.out.grm_files.map { _meta, grm_files -> [ [ id:'single_covariate' ], grm_files, [ 'dense' ] ] }
+                input[0] = MPH_MAKEGRM_DENSE.out.grm_files.map { _meta, grm_files -> [ [ id:'single_covariate' ], grm_files ] }
                 input[1] = [ [ id:'traits' ], file('${fixtures.phenotype}', checkIfExists: true), [ 'QT' ] ]
                 input[2] = [ [ id:'traits' ], file('${fixtures.covariates}', checkIfExists: true), [ 'intercept', 'cov' ] ]
                 """
@@ -220,7 +183,7 @@ nextflow_process {
                 input[0] = MPH_MAKEGRM_SPLIT.out.grm_files
                     .map { _meta, grm_files -> grm_files }
                     .collect()
-                    .map { staged -> [ [ id:'two_component' ], staged.flatten(), [ 'ld01', 'ld02' ] ] }
+                    .map { staged -> [ [ id:'two_component' ], staged.flatten().sort { left, right -> right.name <=> left.name } ] }
                 input[1] = [ [ id:'traits' ], file('${fixtures.phenotype}', checkIfExists: true), [ 'QT' ] ]
                 input[2] = [ [ id:'traits' ], file('${fixtures.covariates}', checkIfExists: true), [ 'intercept', 'cov' ] ]
                 """
@@ -237,8 +200,10 @@ nextflow_process {
                 // whitespace-separated column as an initial variance component, and segfaults on an empty
                 // list. The order of the list is the row order of the result and the column order of the
                 // appended covariance blocks, so it is a contract rather than an implementation detail.
-                { assert grmList.readLines() == ['ld01', 'ld02'] },
-                { assert valuesOf(variance, 'vc_name') == ['ld01', 'ld02', 'err'] }
+                // The bundle is staged in descending name order deliberately: an implementation that sorted
+                // the staged members internally would produce `ld01, ld02` here and fail both assertions.
+                { assert grmList.readLines() == ['ld02', 'ld01'] },
+                { assert valuesOf(variance, 'vc_name') == ['ld02', 'ld01', 'err'] }
             )
         }
     }
@@ -249,7 +214,7 @@ nextflow_process {
             def fixtures = tables(outputDir, 'two_trait')
             process {
                 """
-                input[0] = MPH_MAKEGRM_DENSE.out.grm_files.map { _meta, grm_files -> [ [ id:'two_trait' ], grm_files, [ 'dense' ] ] }
+                input[0] = MPH_MAKEGRM_DENSE.out.grm_files.map { _meta, grm_files -> [ [ id:'two_trait' ], grm_files ] }
                 input[1] = [ [ id:'traits' ], file('${fixtures.phenotype}', checkIfExists: true), [ 'QT', 'QT2' ] ]
                 input[2] = [ [ id:'traits' ], file('${fixtures.covariates}', checkIfExists: true), [ 'intercept', 'cov' ] ]
                 """
@@ -280,7 +245,7 @@ nextflow_process {
             def fixtures = tables(outputDir, 'seeded')
             process {
                 """
-                input[0] = MPH_MAKEGRM_DENSE.out.grm_files.map { _meta, grm_files -> [ [ id:'seeded' ], grm_files, [ 'dense' ] ] }
+                input[0] = MPH_MAKEGRM_DENSE.out.grm_files.map { _meta, grm_files -> [ [ id:'seeded' ], grm_files ] }
                 input[1] = [ [ id:'traits' ], file('${fixtures.phenotype}', checkIfExists: true), [ 'QT' ] ]
                 input[2] = [ [ id:'traits' ], file('${fixtures.covariates}', checkIfExists: true), [ 'intercept', 'cov' ] ]
                 """
@@ -313,8 +278,8 @@ nextflow_process {
                 """
                 input[0] = MPH_MAKEGRM_DENSE.out.grm_files.flatMap { _meta, grm_files ->
                     [
-                        [ [ id:'in_memory', native_args:'' ], grm_files, [ 'dense' ] ],
-                        [ [ id:'on_the_fly', native_args:'--save_memory' ], grm_files, [ 'dense' ] ]
+                        [ [ id:'in_memory' ], grm_files ],
+                        [ [ id:'on_the_fly' ], grm_files ]
                     ]
                 }
                 input[1] = [ [ id:'traits' ], file('${fixtures.phenotype}', checkIfExists: true), [ 'QT' ] ]
@@ -367,7 +332,7 @@ nextflow_process {
             def fixtures = tables(outputDir, 'capped')
             process {
                 """
-                input[0] = MPH_MAKEGRM_DENSE.out.grm_files.map { _meta, grm_files -> [ [ id:'capped' ], grm_files, [ 'dense' ] ] }
+                input[0] = MPH_MAKEGRM_DENSE.out.grm_files.map { _meta, grm_files -> [ [ id:'capped' ], grm_files ] }
                 input[1] = [ [ id:'traits' ], file('${fixtures.phenotype}', checkIfExists: true), [ 'QT' ] ]
                 input[2] = [ [ id:'traits' ], file('${fixtures.covariates}', checkIfExists: true), [ 'intercept', 'cov' ] ]
                 """
@@ -393,13 +358,15 @@ nextflow_process {
         }
     }
 
-    test("a matrix prefix that is not staged is refused") {
+    test("homo_sapiens popgen - a bundle missing its identifier companion is refused") {
 
         when {
             def fixtures = tables(outputDir, 'absent')
             process {
                 """
-                input[0] = MPH_MAKEGRM_DENSE.out.grm_files.map { _meta, grm_files -> [ [ id:'absent_matrix' ], grm_files, [ 'dense', 'not_staged' ] ] }
+                input[0] = MPH_MAKEGRM_DENSE.out.grm_files.map { _meta, grm_files ->
+                    [ [ id:'absent_matrix' ], grm_files.findAll { grm_file -> grm_file.name.endsWith('.grm.bin') } ]
+                }
                 input[1] = [ [ id:'traits' ], file('${fixtures.phenotype}', checkIfExists: true), [ 'QT' ] ]
                 input[2] = [ [ id:'traits' ], file('${fixtures.covariates}', checkIfExists: true), [ 'intercept', 'cov' ] ]
                 """
@@ -407,13 +374,14 @@ nextflow_process {
         }
 
         then {
-            // MPH prints the error, writes no result file at all and returns 0. The exit code is therefore not
-            // the contract: the result file and the absence of an error line in the log are, and this case is
-            // what proves that guard is live rather than decorative.
+            // The prefix `dense` is on the list because its `.grm.bin` is staged, but the `.grm.iid` beside it
+            // is not, so MPH prints its error, writes no result file at all and returns 0. This case is what
+            // proves the exit-status compensation is live rather than decorative: without it the task would
+            // succeed with no result. The native message is deliberately not asserted -- `process.errorReport`
+            // embeds the rendered script, which contains the guard's own source line.
             assertAll(
                 { assert !process.success },
-                { assert process.exitStatus != 0 },
-                { assert process.errorReport.contains('GRM files [not_staged (.grm.bin/.grm.iid)] not found.') }
+                { assert process.exitStatus != 0 }
             )
         }
     }
@@ -426,7 +394,7 @@ nextflow_process {
             def fixtures = tables(outputDir, 'stub')
             process {
                 """
-                input[0] = MPH_MAKEGRM_DENSE.out.grm_files.map { _meta, grm_files -> [ [ id:'stubbed' ], grm_files, [ 'dense' ] ] }
+                input[0] = MPH_MAKEGRM_DENSE.out.grm_files.map { _meta, grm_files -> [ [ id:'stubbed' ], grm_files ] }
                 input[1] = [ [ id:'traits' ], file('${fixtures.phenotype}', checkIfExists: true), [ 'QT' ] ]
                 input[2] = [ [ id:'traits' ], [], [] ]
                 """
@@ -452,7 +420,7 @@ nextflow_process {
             def fixtures = tables(outputDir, 'stub_two_trait')
             process {
                 """
-                input[0] = MPH_MAKEGRM_DENSE.out.grm_files.map { _meta, grm_files -> [ [ id:'stubbed_two_trait' ], grm_files, [ 'dense' ] ] }
+                input[0] = MPH_MAKEGRM_DENSE.out.grm_files.map { _meta, grm_files -> [ [ id:'stubbed_two_trait' ], grm_files ] }
                 input[1] = [ [ id:'traits' ], file('${fixtures.phenotype}', checkIfExists: true), [ 'QT', 'QT2' ] ]
                 input[2] = [ [ id:'traits' ], [], [] ]
                 """

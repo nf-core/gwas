@@ -6,9 +6,9 @@ nextflow_process {
     config "./nextflow.config"
 
     tag "modules"
-    tag "modules_local"
+    tag "modules_nfcore"
     tag "metasoft"
-    tag "metasoft_re2"
+    tag "metasoft/re2"
 
     def matrix = { directory, name, rows ->
         def target = new File(directory.toString(), "${name}.txt")
@@ -38,6 +38,7 @@ nextflow_process {
                 { assert result[1].startsWith('1:100:A:G\t3\t') },
                 { assert new File(process.out.log.get(0)[1].toString()).text.contains('/opt/metasoft/HanEskinPvalueTable.txt') },
                 { assert new File(process.out.versions.get(0).toString()).text.contains('metasoft: 2.0.1') },
+                { assert new File(process.out.versions.get(0).toString()).text.contains('java: 17.0.20.1') },
             )
         }
     }
@@ -64,7 +65,7 @@ nextflow_process {
         }
     }
 
-    test("stub emits only the native contract") {
+    test("emits only the native contract - stub") {
         options "-stub"
 
         when {

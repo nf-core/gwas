@@ -6,7 +6,6 @@ nextflow_process {
     process "LDAK_FASTHE"
 
     tag "modules"
-    tag "modules_local"
     tag "modules_nfcore"
     tag "ldak"
     tag "ldak/fasthe"
@@ -116,7 +115,7 @@ nextflow_process {
             }
             process {
                 """
-                input[0] = GAWK_QUANT_PHENO.out.output.map { _meta, phenotype -> [[ id: 'fast_he_covariates' ], phenotype, []] }
+                input[0] = GAWK_QUANT_PHENO.out.output.map { _meta, phenotype -> [[ id: 'fast_he_covariates' ], phenotype] }
                 input[1] = ${genotypes}
                 input[2] = [[ id: 'weights' ], []]
                 input[3] = GAWK_QUANT_COVAR.out.output.map { _meta, covariates -> [[ id: 'fast_he_covariates' ], covariates] }
@@ -167,7 +166,7 @@ nextflow_process {
             }
             process {
                 """
-                input[0] = GAWK_QUANT_PHENO.out.output.map { _meta, phenotype -> [[ id: 'fast_he_weights' ], phenotype, []] }
+                input[0] = GAWK_QUANT_PHENO.out.output.map { _meta, phenotype -> [[ id: 'fast_he_weights' ], phenotype] }
                 input[1] = ${genotypes}
                 input[2] = GAWK_WEIGHTS_ALL.out.output.map { _meta, weights -> [[ id: 'weights_all' ], weights] }
                 input[3] = [[ id: 'quantitative_covariates' ], []]
@@ -212,7 +211,7 @@ nextflow_process {
                         [['all_predictors', phenotype, all_weights], ['half_predictors', phenotype, half_weights]]
                     }
                     .multiMap { id, phenotype, weights ->
-                        pheno: [[ id: id ], phenotype, []]
+                        pheno: [[ id: id ], phenotype]
                         genotypes: ${genotypes.trim()}
                         weights: [[ id: id ], weights]
                         qcovar: [[ id: id ], []]
@@ -259,7 +258,7 @@ nextflow_process {
                         [['equal_policy_explicit', phenotype], ['equal_policy_native', phenotype]]
                     }
                     .multiMap { id, phenotype ->
-                        pheno: [[ id: id ], phenotype, []]
+                        pheno: [[ id: id ], phenotype]
                         genotypes: ${genotypes.trim()}
                         weights: [[ id: id ], []]
                         qcovar: [[ id: id ], []]
@@ -300,11 +299,11 @@ nextflow_process {
 
         when {
             params {
-                module_args = "--mpheno 1 --ignore-weights YES --random-seed 7"
+                module_args = "--mpheno 1 --ignore-weights YES --random-seed 7 --prevalence 0.3"
             }
             process {
                 """
-                input[0] = GAWK_BINARY_PHENO.out.output.map { _meta, phenotype -> [[ id: 'fast_he_binary' ], phenotype, 0.3] }
+                input[0] = GAWK_BINARY_PHENO.out.output.map { _meta, phenotype -> [[ id: 'fast_he_binary' ], phenotype] }
                 input[1] = ${genotypes}
                 input[2] = [[ id: 'weights' ], []]
                 input[3] = [[ id: 'quantitative_covariates' ], []]
@@ -327,31 +326,6 @@ nextflow_process {
         }
     }
 
-    test("homo_sapiens popgen - a prevalence on a quantitative trait fails") {
-
-        when {
-            params {
-                module_args = "--mpheno 1"
-            }
-            process {
-                """
-                input[0] = GAWK_QUANT_PHENO.out.output.map { _meta, phenotype -> [[ id: 'fast_he_not_binary' ], phenotype, 0.3] }
-                input[1] = ${genotypes}
-                input[2] = [[ id: 'weights' ], []]
-                input[3] = [[ id: 'quantitative_covariates' ], []]
-                input[4] = [[ id: 'categorical_covariates' ], []]
-                """
-            }
-        }
-
-        then {
-            assertAll(
-                { assert !process.success },
-                { assert process.exitStatus != 0 }
-            )
-        }
-    }
-
     test("homo_sapiens popgen - quantitative trait with quantitative and categorical covariates - stub") {
 
         options "-stub"
@@ -359,7 +333,7 @@ nextflow_process {
         when {
             process {
                 """
-                input[0] = GAWK_QUANT_PHENO.out.output.map { _meta, phenotype -> [[ id: 'fast_he_stub' ], phenotype, []] }
+                input[0] = GAWK_QUANT_PHENO.out.output.map { _meta, phenotype -> [[ id: 'fast_he_stub' ], phenotype] }
                 input[1] = ${genotypes}
                 input[2] = [[ id: 'weights' ], []]
                 input[3] = GAWK_QUANT_COVAR.out.output.map { _meta, covariates -> [[ id: 'fast_he_stub' ], covariates] }

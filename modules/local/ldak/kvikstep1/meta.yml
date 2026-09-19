@@ -6,6 +6,8 @@ keywords:
   - "kvik"
   - "gwas"
   - "association"
+  - "linkage disequilibrium adjusted kinships"
+  - "genome-wide association study"
 tools:
   - "ldak6":
       description: "LDAK and LDAK-KVIK for mixed-model genome-wide association study (GWAS) and heritability analysis."
@@ -16,10 +18,8 @@ input:
   - - meta:
         type: map
         description: |
-          Groovy Map containing genotype information
-          Keep only the genotype analysis identifier in this map
-          The PLINK bundle must already be staged with basename `prefix`
-          e.g. `[ id:'merged_chr' ]`
+          Focal genotype metadata with a unique fit identifier. The BED/BIM/FAM files share a basename.
+          `id` is the default Step 1 output prefix, which `task.ext.prefix` overrides.
     - bed:
         type: file
         description: PLINK BED genotype file passed to `--bfile`
@@ -37,21 +37,13 @@ input:
         ontologies: []
   - - meta2:
         type: map
-        description: |
-          Groovy Map containing phenotype information
-          Keep `id` as the phenotype-specific analysis identifier used for the step 1 output prefix
-          Optional phenotype selection such as `--mpheno 1` is supplied via `task.ext.args`
-          e.g. `[ id:'Y1' ]`
+        description: Phenotype metadata. Optional phenotype selection and --binary YES use task.ext.args.
     - phenotype_file:
         type: file
         description: Phenotype file passed to `--pheno`
         pattern: "*.{txt,tsv,pheno,phe}"
         ontologies:
           - edam: "http://edamontology.org/format_3475"
-    - is_binary:
-        type: boolean
-        description: Optional trait-type flag; pass `true` to add `--binary YES`
-          for case-control traits
   - - meta3:
         type: map
         description: |
@@ -60,8 +52,7 @@ input:
     - quant_covariates_file:
         type: file
         optional: true
-        description: Optional quantitative covariates file passed to `--covar`;
-          provide `[]` when absent
+        description: Optional quantitative covariates file passed to `--covar`; provide `[]` when absent
         pattern: "*.{txt,tsv,covar,cov}"
         ontologies:
           - edam: "http://edamontology.org/format_3475"
@@ -73,8 +64,7 @@ input:
     - cat_covariates_file:
         type: file
         optional: true
-        description: Optional categorical covariates file passed to `--factors`;
-          provide `[]` when absent
+        description: Optional categorical covariates file passed to `--factors`; provide `[]` when absent
         pattern: "*.{txt,tsv,covar,cov}"
         ontologies:
           - edam: "http://edamontology.org/format_3475"
@@ -107,7 +97,9 @@ output:
           ontologies: []
       - "${prefix}.step1.loco.prs":
           type: file
-          description: LDAK-KVIK step 1 LOCO polygenic risk score (PRS) file. Together with the root and LOCO details files, this forms the direct `ldak/kvikstep2` handoff tuple; phenotype and covariate files remain explicit step 2 inputs.
+          description: LDAK-KVIK step 1 LOCO polygenic risk score (PRS) file. Together with the root and LOCO details
+            files, this forms the direct `ldak/kvikstep2` handoff tuple; phenotype and covariate files remain explicit
+            step 2 inputs.
           pattern: "*.step1.loco.prs"
           ontologies: []
   effects:
@@ -154,3 +146,17 @@ authors:
   - "@lyh970817"
 maintainers:
   - "@lyh970817"
+containers:
+  conda:
+    linux/amd64:
+      lock_file: modules/local/ldak/kvikstep1/.conda-lock/linux_amd64-bd-452828f72b3c9129_1.txt
+  docker:
+    linux/amd64:
+      name: community.wave.seqera.io/library/ldak6_r-base:452828f72b3c9129
+      build_id: bd-452828f72b3c9129_1
+      scan_id: sc-65cc7b1c1a9a20b6_1
+  singularity:
+    linux/amd64:
+      name: oras://community.wave.seqera.io/library/ldak6_r-base:e8012f1be139af77
+      build_id: bd-e8012f1be139af77_1
+      https: https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/c9/c94e5424f08cbd7e0856ab3c3a9992b4080944a5d0c497ce0abcceb413db4a3e/data

@@ -1,0 +1,178 @@
+{
+    "homo_sapiens popgen - quantitative without optional files": {
+        "content": [
+            {
+                "effects": [
+                    [
+                        {
+                            "id": "fit"
+                        },
+                        "fit.step1.effects"
+                    ]
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "fit"
+                        },
+                        "fit.step1.log"
+                    ]
+                ],
+                "predictions": [
+                    [
+                        {
+                            "id": "fit"
+                        },
+                        "fit.step1.root",
+                        "fit.step1.loco.details",
+                        "fit.step1.loco.prs"
+                    ]
+                ],
+                "versions_ldak6": [
+                    [
+                        "LDAK_KVIKSTEP1",
+                        "ldak6",
+                        "6"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T22:02:06.637172806",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "homo_sapiens popgen - binary phenotype": {
+        "content": [
+            {
+                "effects": [
+                    [
+                        {
+                            "id": "fit"
+                        },
+                        "fit.step1.effects"
+                    ]
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "fit"
+                        },
+                        "fit.step1.log"
+                    ]
+                ],
+                "predictions": [
+                    [
+                        {
+                            "id": "fit"
+                        },
+                        "fit.step1.root",
+                        "fit.step1.loco.details",
+                        "fit.step1.loco.prs"
+                    ]
+                ],
+                "versions_ldak6": [
+                    [
+                        "LDAK_KVIKSTEP1",
+                        "ldak6",
+                        "6"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T22:02:13.554924797",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "homo_sapiens popgen - quantitative - stub": {
+        "content": [
+            {
+                "effects": [
+                    [
+                        {
+                            "id": "fit"
+                        },
+                        "fit.step1.effects"
+                    ]
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "fit"
+                        },
+                        "fit.step1.log"
+                    ]
+                ],
+                "predictions": [
+                    [
+                        {
+                            "id": "fit"
+                        },
+                        "fit.step1.root",
+                        "fit.step1.loco.details",
+                        "fit.step1.loco.prs"
+                    ]
+                ],
+                "versions_ldak6": [
+                    [
+                        "LDAK_KVIKSTEP1",
+                        "ldak6",
+                        "6"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T22:02:20.0131056",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "homo_sapiens popgen - quantitative with provided predictors": {
+        "content": [
+            {
+                "effects": [
+                    [
+                        {
+                            "id": "fit"
+                        },
+                        "fit.step1.effects"
+                    ]
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "fit"
+                        },
+                        "fit.step1.log"
+                    ]
+                ],
+                "predictions": [
+                    [
+                        {
+                            "id": "fit"
+                        },
+                        "fit.step1.root",
+                        "fit.step1.loco.details",
+                        "fit.step1.loco.prs"
+                    ]
+                ],
+                "versions_ldak6": [
+                    [
+                        "LDAK_KVIKSTEP1",
+                        "ldak6",
+                        "6"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T22:02:00.042894434",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

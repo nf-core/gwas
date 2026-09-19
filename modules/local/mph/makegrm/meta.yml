@@ -19,12 +19,9 @@ tools:
         `.grm.bin` plus `.grm.iid` with no `.grm.N.bin`; the binary starts with an `int32` sample count and a
         `float32` sum of the SNP weights and then holds the raw, unnormalised cross-product as a row-major
         upper triangle, where GCTA writes an already-normalised row-major lower triangle beside `.grm.N.bin`
-        and `.grm.id`. Neither tool validates the other's layout and neither refuses it usefully.
+        and `.grm.id`.
 
-        `.grm.iid` is one identifier per line in the matrix's own row order, and that order is what MPH
-        indexes the matrix by. A two-column file yields an empty analysis set, a duplicated identifier aborts
-        the process, and a file whose order does not match its own binary is a silent wrong answer
-        at exit 0.
+        `.grm.iid` contains one identifier per line in the matrix's row order.
 
         MPH itself is GPL-3.0-only. The runtime image is `linux/amd64` only: the binary is statically linked
         against Intel oneMKL, which is redistributed under the Intel Simplified Software License, with

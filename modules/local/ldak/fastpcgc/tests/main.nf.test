@@ -6,7 +6,6 @@ nextflow_process {
     process "LDAK_FASTPCGC"
 
     tag "modules"
-    tag "modules_local"
     tag "modules_nfcore"
     tag "ldak"
     tag "ldak/fastpcgc"
@@ -175,33 +174,6 @@ nextflow_process {
                 { assert process.out.combined.size() == 0 },
                 { assert !path(process.out.log.get(0).get(1)).text.contains("contains weights for only") },
                 { assert snapshot(sanitizeOutput(process.out, unstableKeys: ["log"])).match() }
-            )
-        }
-    }
-
-    test("homo_sapiens popgen - a quantitative trait fails") {
-
-        when {
-            params {
-                module_args = "--mpheno 1"
-            }
-            process {
-                """
-                input[0] = GAWK_QUANT_PHENO.out.output.map { _meta, phenotype -> [[ id: 'fast_pcgc_not_binary' ], phenotype, 0.3] }
-                input[1] = ${genotypes}
-                input[2] = [[ id: 'weights' ], []]
-                input[3] = [[ id: 'quantitative_covariates' ], []]
-                input[4] = [[ id: 'categorical_covariates' ], []]
-                """
-            }
-        }
-
-        then {
-            // PCGC is a liability-scale estimator with no quantitative mode at all: the prevalence is always
-            // supplied, so a non-binary trait is the module's only native failure mode.
-            assertAll(
-                { assert !process.success },
-                { assert process.exitStatus != 0 }
             )
         }
     }

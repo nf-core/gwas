@@ -2,6 +2,8 @@ name: ldak_calckins
 description: Calculate kinship matrices with linkage disequilibrium-adjusted kinship (LDAK), configurable power, and optional single nucleotide polymorphism (SNP) weights
 keywords:
   - ldak
+  - linkage disequilibrium adjusted kinship
+  - genomic relationship matrix
   - kinship
   - grm
   - weights
@@ -45,21 +47,10 @@ output:
     - - meta:
           type: map
           description: Metadata map carried forward from input
-      - "${prefix}.grm.bin":
+      - "${prefix}.grm.{bin,id,details,adjust}":
           type: file
-          description: LDAK genomic relationship matrix (GRM) binary matrix
-          ontologies: []
-      - "${prefix}.grm.id":
-          type: file
-          description: LDAK GRM sample identifiers
-          ontologies: []
-      - "${prefix}.grm.details":
-          type: file
-          description: LDAK GRM details file
-          ontologies: []
-      - "${prefix}.grm.adjust":
-          type: file
-          description: LDAK GRM adjustment factors
+          description: LDAK genomic relationship matrix (GRM) with its sample identifiers, details and adjustment factors, consumed as one bundle
+          pattern: "*.grm.{bin,id,details,adjust}"
           ontologies: []
   log:
     - - meta:
@@ -94,3 +85,17 @@ authors:
   - "@lyh970817"
 maintainers:
   - "@lyh970817"
+containers:
+  conda:
+    linux/amd64:
+      lock_file: "modules/local/ldak/calckins/.conda-lock/linux_amd64-bd-452828f72b3c9129_1.txt"
+  docker:
+    linux/amd64:
+      build_id: "bd-452828f72b3c9129_1"
+      name: "community.wave.seqera.io/library/ldak6_r-base:452828f72b3c9129"
+      scan_id: "sc-65cc7b1c1a9a20b6_1"
+  singularity:
+    linux/amd64:
+      build_id: "bd-e8012f1be139af77_1"
+      name: "oras://community.wave.seqera.io/library/ldak6_r-base:e8012f1be139af77"
+      https: "https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/c9/c94e5424f08cbd7e0856ab3c3a9992b4080944a5d0c497ce0abcceb413db4a3e/data"

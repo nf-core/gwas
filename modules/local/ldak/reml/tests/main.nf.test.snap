@@ -1,0 +1,472 @@
+{
+    "explicit sample subset with quantitative and categorical covariates": {
+        "content": [
+            {
+                "coeff": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.coeff:md5,54fcdeaee07124f0385942309332f299"
+                    ]
+                ],
+                "coeff_liability": [
+                    
+                ],
+                "combined": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.combined:md5,75c826c2b7fdb0fee0869a81c5b7f79d"
+                    ]
+                ],
+                "cross": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.cross:md5,92a75b00dfe9d8ae1f059d93290b77a2"
+                    ]
+                ],
+                "indi_blp": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.indi.blp:md5,aa05146610688a1a47ae2a9868558733"
+                    ]
+                ],
+                "indi_blp_liability": [
+                    
+                ],
+                "indi_res": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.indi.res:md5,ffba5bfbebe4ce9cb9a57e2e13a1e762"
+                    ]
+                ],
+                "liability_factor": [
+                    
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.log"
+                    ]
+                ],
+                "progress": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.progress:md5,ab8a68ebe3721ae36eacba938a03d449"
+                    ]
+                ],
+                "reml_liability": [
+                    
+                ],
+                "reml_results": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.reml:md5,8b1a91d704fa88c17b5f6cd0ff46298f"
+                    ]
+                ],
+                "share": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.share:md5,01b0b07a8fc56e5ad02a43b20beafe6d"
+                    ]
+                ],
+                "vars": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.vars:md5,ebbde40d3baff149a47569837a002323"
+                    ]
+                ],
+                "versions_ldak6": [
+                    [
+                        "LDAK_REML",
+                        "ldak6",
+                        "6"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-19T00:44:05.957223596",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "quantitative phenotype": {
+        "content": [
+            {
+                "coeff": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.coeff:md5,a95f6db5fd0fdb17bf3b3f26a210ea6c"
+                    ]
+                ],
+                "coeff_liability": [
+                    
+                ],
+                "combined": [
+                    
+                ],
+                "cross": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.cross:md5,5dfb1741417ea5a981eeb8dca392ea1e"
+                    ]
+                ],
+                "indi_blp": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.indi.blp:md5,d0eca9192d373cc9055e01825735ac85"
+                    ]
+                ],
+                "indi_blp_liability": [
+                    
+                ],
+                "indi_res": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.indi.res:md5,39cad487a7137717a515733f9971c72a"
+                    ]
+                ],
+                "liability_factor": [
+                    
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.log"
+                    ]
+                ],
+                "progress": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.progress:md5,8ed737ee943788637741bad0a15a5f26"
+                    ]
+                ],
+                "reml_liability": [
+                    
+                ],
+                "reml_results": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.reml:md5,ff698a820812b5f511e7834402b6a6e9"
+                    ]
+                ],
+                "share": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.share:md5,01b0b07a8fc56e5ad02a43b20beafe6d"
+                    ]
+                ],
+                "vars": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.vars:md5,6dc771f71e572b5d3baddbb4fa601b48"
+                    ]
+                ],
+                "versions_ldak6": [
+                    [
+                        "LDAK_REML",
+                        "ldak6",
+                        "6"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-19T00:44:15.041128307",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "binary phenotype": {
+        "content": [
+            {
+                "coeff": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.coeff:md5,b0aa696d20a773e342a7f1748d76f417"
+                    ]
+                ],
+                "coeff_liability": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.coeff.liab:md5,eb6ab53a6d2b17c618327af8c06a3b22"
+                    ]
+                ],
+                "combined": [
+                    
+                ],
+                "cross": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.cross:md5,6cacb7a4750827cacb0f389eae9ca1ba"
+                    ]
+                ],
+                "indi_blp": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.indi.blp:md5,3d836d3d85097cd88cc11d3fbcabd2ba"
+                    ]
+                ],
+                "indi_blp_liability": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.indi.blp.liab:md5,f30d2ebe3739a658c574162eddd1815e"
+                    ]
+                ],
+                "indi_res": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.indi.res:md5,f17d727f21b9dbc68cd3988c65d9b9bc"
+                    ]
+                ],
+                "liability_factor": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.factor:md5,2321f97e191230a6cb0c9e44aec77cbd"
+                    ]
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.log"
+                    ]
+                ],
+                "progress": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.progress:md5,358125bb2bf273005c05d83e3e92a632"
+                    ]
+                ],
+                "reml_liability": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.reml.liab:md5,d52103b973f8c4ff64c2541dd42981ac"
+                    ]
+                ],
+                "reml_results": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.reml:md5,bc188a90706d60f35f182a06953d4a40"
+                    ]
+                ],
+                "share": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.share:md5,01b0b07a8fc56e5ad02a43b20beafe6d"
+                    ]
+                ],
+                "vars": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.vars:md5,340cc31772ed6874cf9327f134fc397c"
+                    ]
+                ],
+                "versions_ldak6": [
+                    [
+                        "LDAK_REML",
+                        "ldak6",
+                        "6"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-19T00:43:56.742430318",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "native operation - stub": {
+        "content": [
+            {
+                "coeff": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.coeff:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "coeff_liability": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.coeff.liab:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "combined": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.combined:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "cross": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.cross:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "indi_blp": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.indi.blp:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "indi_blp_liability": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.indi.blp.liab:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "indi_res": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.indi.res:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "liability_factor": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.factor:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.log"
+                    ]
+                ],
+                "progress": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.progress:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "reml_liability": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.reml.liab:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "reml_results": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.reml:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "share": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.share:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "vars": [
+                    [
+                        {
+                            "id": "reml_analysis"
+                        },
+                        "reml_analysis.vars:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "versions_ldak6": [
+                    [
+                        "LDAK_REML",
+                        "ldak6",
+                        "6"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-19T00:44:23.750053905",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

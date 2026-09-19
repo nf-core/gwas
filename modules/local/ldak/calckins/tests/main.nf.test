@@ -1,0 +1,69 @@
+nextflow_process {
+    name "Test Process LDAK_CALCKINS"
+    script "../main.nf"
+    config "./nextflow.config"
+    process "LDAK_CALCKINS"
+    tag "modules"
+    tag "modules_nfcore"
+    tag "ldak"
+    tag "ldak/calckins"
+
+    test("homo sapiens - absent weights") {
+        when {
+            process {
+                """
+                input[0] = Channel.of([[id:'kinship'], file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bed', checkIfExists: true),
+                        file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bim', checkIfExists: true),
+                        file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.fam', checkIfExists: true), -0.25])
+                    input[1] = Channel.of([[id:'weights'], []])
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert process.success },
+                { assert snapshot(sanitizeOutput(process.out, unstableKeys: ["log"])).match() }
+            )
+        }
+    }
+
+    test("homo sapiens - provided weights") {
+        when {
+            process {
+                """
+                input[0] = Channel.of([[id:'kinship'], file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bed', checkIfExists: true),
+                        file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bim', checkIfExists: true),
+                        file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.fam', checkIfExists: true), -0.25])
+                    weights = Channel.of(file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bim', checkIfExists: true)).splitText().map { line -> line.tokenize()[1] + '\t1' }.collectFile(name:'weights.txt', newLine:true)
+                    input[1] = weights.map { [[id:'weights'], it] }
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert process.success },
+                { assert snapshot(sanitizeOutput(process.out, unstableKeys: ["log"])).match() }
+            )
+        }
+    }
+
+    test("homo sapiens - bed bim fam - stub") {
+        options "-stub"
+        when {
+            process {
+                """
+                input[0] = Channel.of([[id:'kinship'], file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bed', checkIfExists: true),
+                        file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bim', checkIfExists: true),
+                        file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.fam', checkIfExists: true), -0.25])
+                    input[1] = Channel.of([[id:'weights'], []])
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert process.success },
+                { assert snapshot(sanitizeOutput(process.out, unstableKeys: ["log"])).match() }
+            )
+        }
+    }
+}

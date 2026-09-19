@@ -4,7 +4,6 @@ nextflow_process {
     process "GCTA_BIVARIATEHEREG"
 
     tag "modules"
-    tag "modules_local"
     tag "modules_nfcore"
     tag "gcta"
     tag "gcta/bivariatehereg"

@@ -1,0 +1,60 @@
+{
+    "homo sapiens - native": {
+        "content": [
+            {
+                "sub_grm": [
+                    [
+                        {
+                            "id": "base"
+                        },
+                        "base.grm.bin:md5,8ca21a3eb51194e68069d72dc5e175d1",
+                        "base.grm.id:md5,afa3c7ac2193dda5ea4d8e83278a31c0",
+                        "base.grm.details:md5,48032959036229fda18561cfd0ea698f",
+                        "base.grm.adjust:md5,54d4a9e7c7c0525a8fe27f5687da4359"
+                    ]
+                ],
+                "versions_ldak6": [
+                    [
+                        "LDAK_SUBGRM",
+                        "ldak6",
+                        "6"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T22:50:01.918501918",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "homo sapiens - bed bim fam - stub": {
+        "content": [
+            {
+                "sub_grm": [
+                    [
+                        {
+                            "id": "base"
+                        },
+                        "base.grm.bin:md5,d41d8cd98f00b204e9800998ecf8427e",
+                        "base.grm.id:md5,d41d8cd98f00b204e9800998ecf8427e",
+                        "base.grm.details:md5,d41d8cd98f00b204e9800998ecf8427e",
+                        "base.grm.adjust:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "versions_ldak6": [
+                    [
+                        "LDAK_SUBGRM",
+                        "ldak6",
+                        "6"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T22:48:40.185279454",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

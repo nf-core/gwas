@@ -49,22 +49,20 @@ input:
     - grm_files:
         type: file
         description: |
-          One or more `[.grm.bin, .grm.iid]` MPH matrix bundles staged flat. Every component of one family
+          One or more native MPH `[.grm.bin, .grm.iid]` bundles in caller-declared component order.
+          Prefixes are derived from the staged `.grm.bin` members in that order. Every component of one family
           shares the same `.grm.iid`, whose line order is what MPH indexes the matrix by: a `.grm.iid` that
           does not match its own `.grm.bin` produces a complete, stable, wrong result at exit 0.
           GCTA bundles are not accepted either, and MPH does not usefully refuse one.
         pattern: "*.grm.{bin,iid}"
         ontologies:
           - edam: "http://edamontology.org/format_2330"
-    - grm_prefixes:
-        type: list
-        description: |
-          The staged matrix prefixes in component order, written one per line to the `--grm_list` file. The
-          list order is the row order of the result, and each prefix appears verbatim as that row's `vc_name`.
   - - meta2:
         type: map
         description: |
-          Groovy Map containing the phenotype table's information, e.g. `[ id:'sample1' ]`
+          Groovy Map containing the phenotype table's information, e.g. `[ id:'sample1' ]`. A caller that
+          derived the tables from the same sample set passes the same map as `meta`, in which case the `tag`
+          renders that identity twice.
     - phenotype_csv:
         type: file
         description: |
@@ -82,7 +80,8 @@ input:
   - - meta3:
         type: map
         description: |
-          Groovy Map containing the covariate table's information, e.g. `[ id:'sample1' ]`
+          Groovy Map containing the covariate table's information, e.g. `[ id:'sample1' ]`. As with `meta2`,
+          a caller that derived the table from the same sample set passes the same map as `meta`.
     - covariate_csv:
         type: file
         description: |

@@ -6,22 +6,22 @@
                 "LDSC heritability stub\n"
             ]
         ],
+        "timestamp": "2026-08-24T04:46:01.71712994",
         "meta": {
             "nf-test": "0.9.3",
             "nextflow": "25.10.4"
-        },
-        "timestamp": "2026-08-24T04:46:01.71712994"
+        }
     },
     "estimate heritability from munged summary statistics": {
         "content": [
-            [
-                "trait_a.log",
-                {
+            {
+                "output": "trait_a.log",
+                "versions": {
                     "versions_ldsc": [
                         [
                             "LDSC_H2",
                             "ldsc",
-                            "6c673952cee74bd5c57aef1555a03b1c015399a0"
+                            "3.0.2"
                         ]
                     ],
                     "versions_python": [
@@ -32,12 +32,12 @@
                         ]
                     ]
                 }
-            ]
+            }
         ],
+        "timestamp": "2026-09-18T22:51:07.721460598",
         "meta": {
-            "nf-test": "0.9.3",
-            "nextflow": "25.10.4"
-        },
-        "timestamp": "2026-08-24T04:53:16.932163739"
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
     }
 }

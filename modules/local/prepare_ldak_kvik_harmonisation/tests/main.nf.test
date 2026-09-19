@@ -1,0 +1,86 @@
+nextflow_process {
+
+    name "Test Process PREPARE_LDAK_KVIK_HARMONISATION"
+    script "../main.nf"
+    process "PREPARE_LDAK_KVIK_HARMONISATION"
+
+    tag "modules"
+    tag "modules_local"
+    tag "prepare_ldak_kvik_harmonisation"
+
+    // LDAK writes the two tables of one Step 2 run under a shared basename, with the frequency and the
+    // effective size only in the summary table. Two rows with different alleles are enough for the join key,
+    // and a summary row that no association row claims is enough to show the join is directed.
+    def nativePair = { directory, name ->
+        def root = new File(directory.toString(), name)
+        root.mkdirs()
+        def assoc = new File(root, "${name}.step2.assoc")
+        assoc.text = [
+            'Chromosome\tPredictor\tBasepair\tA1\tA2\tWald_Stat\tWald_P\tEffect\tSE\tMAF',
+            '21\trs1\t1000\tA\tG\t2.5000\t0.0124\t0.0100\t0.0040\t0.3000',
+            '22\trs2\t2000\tT\tC\t-1.2500\t0.2113\t-0.0050\t0.0040\t0.4500',
+        ].join('\n') + '\n'
+        def summaries = new File(root, "${name}.step2.summaries")
+        summaries.text = [
+            'Predictor\tA1\tA2\tZ\tn\tA1Freq',
+            'rs1\tA\tG\t2.5000\t998.4\t0.7000',
+            'rs2\tT\tC\t-1.2500\t1000\t0.5500',
+            'rs3\tG\tA\t0.1000\t1000\t0.1000',
+        ].join('\n') + '\n'
+        [assoc: assoc, summaries: summaries]
+    }
+
+    test("join the native frequency and effective size onto the association table") {
+        when {
+            def pair = nativePair(outputDir, 'analysis')
+            process {
+                """
+                input[0] = [
+                    [id: 'analysis'],
+                    file('${pair.assoc}', checkIfExists: true),
+                    file('${pair.summaries}', checkIfExists: true),
+                ]
+                """
+            }
+        }
+
+        then {
+            def prepared = new File(process.out.harmonisation_input.get(0).get(1).toString())
+            def rows = prepared.readLines().collect { line -> line.split('\t', -1).toList() }
+            assertAll(
+                { assert process.success },
+                { assert prepared.name == 'analysis.step2.harmonisation.tsv' },
+                { assert rows.first() == ['Chromosome', 'Predictor', 'Basepair', 'A1', 'A2', 'Wald_P', 'Effect', 'SE', 'EAF', 'N'] },
+                { assert rows.size() == 3 },
+                // The frequency and the size are LDAK's own text, carried across unrounded and unreformatted.
+                { assert rows[1] == ['21', 'rs1', '1000', 'A', 'G', '0.0124', '0.0100', '0.0040', '0.7000', '998.4'] },
+                { assert rows[2] == ['22', 'rs2', '2000', 'T', 'C', '0.2113', '-0.0050', '0.0040', '0.5500', '1000'] },
+                { assert snapshot(process.out).match() },
+            )
+        }
+    }
+
+    test("preserve the adapter contract under stub execution") {
+        options "-stub"
+
+        when {
+            def pair = nativePair(outputDir, 'analysis')
+            process {
+                """
+                input[0] = [
+                    [id: 'analysis'],
+                    file('${pair.assoc}', checkIfExists: true),
+                    file('${pair.summaries}', checkIfExists: true),
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                { assert new File(process.out.harmonisation_input.get(0).get(1).toString()).name == 'analysis.step2.harmonisation.tsv' },
+            )
+        }
+    }
+}

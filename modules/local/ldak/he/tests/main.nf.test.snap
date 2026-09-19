@@ -157,7 +157,7 @@
                     ]
                 ],
                 "combined": [
-
+                    
                 ],
                 "cross": [
                     [
@@ -168,22 +168,22 @@
                     ]
                 ],
                 "cross_across": [
-
+                    
                 ],
                 "cross_within": [
-
+                    
                 ],
                 "factor": [
-
+                    
                 ],
                 "he_across": [
-
+                    
                 ],
                 "he_compare": [
-
+                    
                 ],
                 "he_liability": [
-
+                    
                 ],
                 "he_results": [
                     [
@@ -194,7 +194,7 @@
                     ]
                 ],
                 "he_within": [
-
+                    
                 ],
                 "log": [
                     [
@@ -221,10 +221,10 @@
                     ]
                 ],
                 "share_across": [
-
+                    
                 ],
                 "share_within": [
-
+                    
                 ],
                 "versions_ldak6": [
                     [
@@ -236,6 +236,102 @@
             }
         ],
         "timestamp": "2026-09-10T02:56:03.783716274",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "explicit sample subset": {
+        "content": [
+            {
+                "coeff": [
+                    [
+                        {
+                            "id": "he_quantitative"
+                        },
+                        "he_quantitative.coeff:md5,c66f721c7037f12bb042d4287f52e4e2"
+                    ]
+                ],
+                "combined": [
+                    
+                ],
+                "cross": [
+                    [
+                        {
+                            "id": "he_quantitative"
+                        },
+                        "he_quantitative.cross:md5,b56bfc603013e4da1fa4981f1d4b7be4"
+                    ]
+                ],
+                "cross_across": [
+                    
+                ],
+                "cross_within": [
+                    
+                ],
+                "factor": [
+                    
+                ],
+                "he_across": [
+                    
+                ],
+                "he_compare": [
+                    
+                ],
+                "he_liability": [
+                    
+                ],
+                "he_results": [
+                    [
+                        {
+                            "id": "he_quantitative"
+                        },
+                        "he_quantitative.he:md5,766184922081382f912b8c4e47161b44"
+                    ]
+                ],
+                "he_within": [
+                    
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "he_quantitative"
+                        },
+                        "he_quantitative.log"
+                    ]
+                ],
+                "progress": [
+                    [
+                        {
+                            "id": "he_quantitative"
+                        },
+                        "he_quantitative.progress:md5,3578b71626739b03e03eb2bb047a561a"
+                    ]
+                ],
+                "share": [
+                    [
+                        {
+                            "id": "he_quantitative"
+                        },
+                        "he_quantitative.share:md5,01b0b07a8fc56e5ad02a43b20beafe6d"
+                    ]
+                ],
+                "share_across": [
+                    
+                ],
+                "share_within": [
+                    
+                ],
+                "versions_ldak6": [
+                    [
+                        "LDAK_HE",
+                        "ldak6",
+                        "6"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-19T00:43:08.0489224",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.6"
@@ -253,7 +349,7 @@
                     ]
                 ],
                 "combined": [
-
+                    
                 ],
                 "cross": [
                     [
@@ -264,10 +360,10 @@
                     ]
                 ],
                 "cross_across": [
-
+                    
                 ],
                 "cross_within": [
-
+                    
                 ],
                 "factor": [
                     [
@@ -278,10 +374,10 @@
                     ]
                 ],
                 "he_across": [
-
+                    
                 ],
                 "he_compare": [
-
+                    
                 ],
                 "he_liability": [
                     [
@@ -300,7 +396,7 @@
                     ]
                 ],
                 "he_within": [
-
+                    
                 ],
                 "log": [
                     [
@@ -327,10 +423,10 @@
                     ]
                 ],
                 "share_across": [
-
+                    
                 ],
                 "share_within": [
-
+                    
                 ],
                 "versions_ldak6": [
                     [

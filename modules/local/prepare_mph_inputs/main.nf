@@ -8,16 +8,16 @@ process PREPARE_MPH_INPUTS {
         : 'community.wave.seqera.io/library/python:3.14.5--dc8358b3c5eeb927'}"
 
     input:
-    // The analysis-owned tables are staged under `input/` for the reason `prepare_phenotype_inputs` documents:
-    // an analysis named after one of its own files would otherwise have this task write back through a staged
-    // symlink onto the researcher's source.
-    tuple val(meta), path(phenotype_table, stageAs: 'input/*'), path(quant_covariates, stageAs: 'input/*'), path(cat_covariates, stageAs: 'input/*')
+    tuple val(meta), path(phenotype_table), path(quant_covariates), path(cat_covariates), val(trait_names), val(missing_tokens)
     tuple val(meta2), path(grm_iid), path(fam)
 
     output:
     tuple val(meta), path("${prefix}.mph.pheno.csv"), emit: phenotype
     tuple val(meta), path("${prefix}.mph.covar.csv"), emit: covariates, optional: true
-    path 'versions.yml', emit: versions, topic: versions
+    path "versions.yml", emit: versions, topic: versions
+
+    when:
+    task.ext.when == null || task.ext.when
 
     script:
     // `prefix` must remain visible to the output declarations. Every other assignment must remain visible to
@@ -34,13 +34,14 @@ process PREPARE_MPH_INPUTS {
     // Serialised twice on purpose: the inner call renders the structure as JSON, the outer one renders that
     // JSON as a quoted string. A bare JSON object is not valid Python -- its `null`, `true` and `false` are
     // not Python literals -- so the template parses a string rather than embedding an expression.
-    trait_names_literal = groovy.json.JsonOutput.toJson(groovy.json.JsonOutput.toJson(meta.mph_trait_names))
+    trait_names_literal = groovy.json.JsonOutput.toJson(groovy.json.JsonOutput.toJson(trait_names))
+    missing_tokens_literal = groovy.json.JsonOutput.toJson(groovy.json.JsonOutput.toJson(missing_tokens))
     template('prepare_mph_inputs.py')
 
     stub:
     prefix = task.ext.prefix ?: "${meta.id}"
-    def stub_traits = meta.mph_trait_names.join(',')
-    def stub_trait_values = meta.mph_trait_names.collect { '0' }.join(',')
+    def stub_traits = trait_names.join(',')
+    def stub_trait_values = trait_names.collect { '0' }.join(',')
     // The covariate file is written only when the analysis supplied covariates, so a stub run exercises the
     // same optional-output cardinality the real script produces.
     def stub_covariates = quant_covariates || cat_covariates

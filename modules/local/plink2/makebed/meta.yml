@@ -110,13 +110,13 @@ topics:
           type: eval
           description: The command used to retrieve the PLINK 2 version
 authors:
-  - "@andongni"
+  - "@lyh970817"
 maintainers:
-  - "@andongni"
+  - "@lyh970817"
 containers:
   conda:
     linux/amd64:
-      lock_file: "modules/nf-core/plink2/makebed/.conda-lock/linux_amd64-bd-e6710830a4b7f0c6_1.txt"
+      lock_file: "modules/local/plink2/makebed/.conda-lock/linux_amd64-bd-e6710830a4b7f0c6_1.txt"
   docker:
     linux/amd64:
       build_id: "bd-e6710830a4b7f0c6_1"

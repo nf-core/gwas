@@ -6,11 +6,11 @@ nextflow_process {
     config "./nextflow.config"
 
     tag "modules"
-    tag "modules_local"
+    tag "modules_nfcore"
     tag "ldsc"
-    tag "ldsc_h2"
+    tag "ldsc/h2"
 
-    def inputs = { outputDir, name, valid = true ->
+    def inputs = { outputDir, name ->
         def root = new File(outputDir.toString(), "fixture_${name}")
         def reference = new File(root, 'reference')
         def weights = new File(root, 'weights')
@@ -42,8 +42,7 @@ nextflow_process {
             writeGzip(new File(weights, "${chromosome}.l2.ldscore.gz"), "CHR\tSNP\tBP\tL2\n${weightRows.join('\n')}\n")
         }
         def sumstats = new File(root, "${name}.sumstats.gz")
-        def body = valid ? "SNP\tA1\tA2\tZ\tN\n${rows.join('\n')}\n" : "SNP\tA1\tA2\tN\nrs1\tA\tG\t10000\n"
-        writeGzip(sumstats, body)
+        writeGzip(sumstats, "SNP\tA1\tA2\tZ\tN\n${rows.join('\n')}\n")
         [sumstats: sumstats, reference: reference, weights: weights]
     }
 
@@ -66,9 +65,9 @@ nextflow_process {
                 { assert log.name == 'trait_a.log' },
                 { assert log.text.contains('Total Observed scale h2:') },
                 { assert log.text.contains('After merging with regression SNP LD, 1000 SNPs remain.') },
-                { assert process.out.versions_ldsc.get(0) == ['LDSC_H2', 'ldsc', '6c673952cee74bd5c57aef1555a03b1c015399a0'] },
+                { assert process.out.versions_ldsc.get(0) == ['LDSC_H2', 'ldsc', '3.0.2'] },
                 { assert process.out.versions_python.get(0) == ['LDSC_H2', 'python', '3.9.13'] },
-                { assert snapshot([log.name, process.out.findAll { name, value -> name.startsWith('versions_') }]).match() },
+                { assert snapshot([output: log.name, versions: process.out.findAll { name, value -> name.startsWith('versions_') }]).match() },
             )
         }
     }

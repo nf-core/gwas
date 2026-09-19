@@ -1,0 +1,121 @@
+nextflow_process {
+    name "Test Process LDAK_KVIKSTEP1"
+    script "../main.nf"
+    process "LDAK_KVIKSTEP1"
+    config "./nextflow.config"
+    tag "modules"
+    tag "modules_nfcore"
+    tag "ldak"
+    tag "ldak/kvikstep1"
+
+    // Reuse the established public simulated fixture, distributing its markers over two chromosomes so that
+    // the leave-one-chromosome-out fit has more than one chromosome to leave out.
+    def fixture_code = '''
+        def base = params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/'
+        def source_bed = file(base + 'plink_simulated.bed', checkIfExists: true)
+        def source_bim = file(base + 'plink_simulated.bim', checkIfExists: true)
+        def source_fam = file(base + 'plink_simulated.fam', checkIfExists: true)
+        def rows = source_bim.readLines()
+        def split = (rows.size() + 1).intdiv(2)
+        def multichr = rows.withIndex().collect { row, index ->
+            def fields = row.tokenize()
+            fields[0] = index < split ? '21' : '22'
+            fields.join('\\t')
+        }
+        def bed = file('training.bed'); bed.bytes = source_bed.bytes
+        def bim = file('training.bim'); bim.text = multichr.join('\\n') + '\\n'
+        def fam = file('training.fam'); fam.bytes = source_fam.bytes
+        def phenotype = file(base + 'plink_simulated_quantitative_phenoname.phe', checkIfExists: true)
+        def qcovar = file(base + 'plink_simulated_covariates.txt', checkIfExists: true)
+        def extract = file('predictors.in'); extract.text = rows.collect { row -> row.tokenize()[1] }.join('\\n') + '\\n'
+    '''
+
+    test("homo_sapiens popgen - quantitative with provided predictors") {
+
+        when {
+            params { module_args = '--mpheno 1 --random-seed 7' }
+            process {
+                """
+                ${fixture_code}
+
+                input[0] = [[id:'fit'], bed, bim, fam]
+                input[1] = [[id:'phenotype'], phenotype]
+                input[2] = [[id:'covariates'], qcovar]
+                input[3] = [[:], []]
+                input[4] = [[id:'predictors'], extract]
+                """
+            }
+        }
+        then {
+            assert process.success
+            assert process.out.predictions[0][0] == [id:'fit']
+            assert snapshot(sanitizeOutput(process.out, unstableKeys: ['predictions','effects','log'])).match()
+        }
+    }
+    test("homo_sapiens popgen - quantitative without optional files") {
+
+        when {
+            params { module_args = '--mpheno 1 --random-seed 7' }
+            process {
+                """
+                ${fixture_code}
+
+                input[0] = [[id:'fit'], bed, bim, fam]
+                input[1] = [[id:'phenotype'], phenotype]
+                input[2] = [[id:'covariates'], []]
+                input[3] = [[:], []]
+                input[4] = [[id:'predictors'], []]
+                """
+            }
+        }
+        then {
+            assert process.success
+            assert process.out.predictions[0][0] == [id:'fit']
+            assert snapshot(sanitizeOutput(process.out, unstableKeys: ['predictions','effects','log'])).match()
+        }
+    }
+    test("homo_sapiens popgen - binary phenotype") {
+
+        when {
+            params { module_args = '--mpheno 1 --random-seed 7 --binary YES' }
+            process {
+                """
+                ${fixture_code}
+                phenotype = file(base + 'plink_simulated_binary_phenoname.phe', checkIfExists: true)
+                input[0] = [[id:'fit'], bed, bim, fam]
+                input[1] = [[id:'phenotype'], phenotype]
+                input[2] = [[id:'covariates'], []]
+                input[3] = [[:], []]
+                input[4] = [[id:'predictors'], []]
+                """
+            }
+        }
+        then {
+            assert process.success
+            assert process.out.predictions[0][0] == [id:'fit']
+            assert snapshot(sanitizeOutput(process.out, unstableKeys: ['predictions','effects','log'])).match()
+        }
+    }
+    test("homo_sapiens popgen - quantitative - stub") {
+        options "-stub"
+        when {
+            params { module_args = '--mpheno 1' }
+            process {
+                """
+                ${fixture_code}
+
+                input[0] = [[id:'fit'], bed, bim, fam]
+                input[1] = [[id:'phenotype'], phenotype]
+                input[2] = [[id:'covariates'], []]
+                input[3] = [[:], []]
+                input[4] = [[id:'predictors'], []]
+                """
+            }
+        }
+        then {
+            assert process.success
+            assert process.out.predictions[0][0] == [id:'fit']
+            assert snapshot(sanitizeOutput(process.out, unstableKeys: ['predictions','effects','log'])).match()
+        }
+    }
+}

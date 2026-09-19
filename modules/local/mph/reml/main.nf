@@ -10,10 +10,8 @@ process MPH_REML {
         : 'ghcr.io/lyh970817/gwas/mph:0.55.1-13ffe63@sha256:c471ae7132e961bf401dd3db177d4c0c1c6cfdf0fc8306db1dcaac5b85a6c3e7'}"
 
     input:
-    // One or more `[.grm.bin, .grm.iid]` bundles staged flat, plus the prefix order the fit must use.
-    // `--grm_list` names prefixes rather than paths, and the row order of the result follows the list, so the
-    // order is a contract-defining scalar rather than something to recover from the staged file names.
-    tuple val(meta), path(grm_files), val(grm_prefixes)
+    // The ordered flat list contains complete native MPH bundles; .grm.bin order defines component order.
+    tuple val(meta), path(grm_files)
     // `--trait_names` is mandatory natively in a way the exit code hides: omitting it prints
     // "Error: --trait is required for --reml/--minque." and returns 0 with no result file at all.
     tuple val(meta2), path(phenotype_csv), val(trait_names)
@@ -32,10 +30,14 @@ process MPH_REML {
     // MPH has no --version; the bare binary prints its banner and exits 1, tolerated by || true.
     tuple val("${task.process}"), val("mph"), eval("(mph 2>&1 || true) | sed -n 's/^[*] Version \\([0-9][0-9.]*\\).*/\\1/p'"), emit: versions_mph, topic: versions
 
+    when:
+    task.ext.when == null || task.ext.when
+
     script:
     def args = task.ext.args ?: ''
     prefix = task.ext.prefix ?: "${meta.id}"
     def grm_list = "${prefix}.grm_list"
+    def grm_prefixes = grm_files.findAll { grm_file -> grm_file.name.endsWith('.grm.bin') }.collect { grm_file -> grm_file.name - '.grm.bin' }
     def grm_entries = grm_prefixes.collect { grm_prefix -> "\"${grm_prefix}\"" }.join(' ')
     def covariate_arguments = covariate_csv
         ? "--covariate_file \"${covariate_csv}\" --covariate_names \"${covariate_names.join(',')}\""

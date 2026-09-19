@@ -7,7 +7,7 @@ process LDAK_HE {
         : 'community.wave.seqera.io/library/ldak6_r-base:452828f72b3c9129'}"
 
     input:
-    tuple val(meta), path(phenotype_file), val(prevalence)
+    tuple val(meta), path(phenotype_file)
     tuple val(meta2), path(grm_files)
     tuple val(meta3), path(keep_file)
     tuple val(meta4), path(quant_covariates_file)
@@ -37,7 +37,6 @@ process LDAK_HE {
 
     script:
     def args = task.ext.args ?: ''
-    def prevalence_arg = prevalence ? "--prevalence \"${prevalence}\"" : ''
     def grm_prefix = grm_files.find { grm_file -> grm_file.name.endsWith('.grm.bin') }.name.replaceFirst(/\.grm\.bin$/, '')
     prefix = task.ext.prefix ?: "${meta.id}"
     def keep_arg = keep_file ? "--keep \"${keep_file}\"" : ''
@@ -52,7 +51,6 @@ process LDAK_HE {
         ${quant_covar_arg} \\
         ${cat_covar_arg} \\
         --max-threads "${task.cpus}" \\
-        ${prevalence_arg} \\
         ${args} \\
         2>&1 | tee "${prefix}.log"
     """
