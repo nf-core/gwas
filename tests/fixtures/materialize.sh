@@ -101,9 +101,14 @@ copy_canonical() {
     local target=$2
     mkdir -p "$(dirname "$target")"
     if [[ "$canonical_root" == http://* || "$canonical_root" == https://* ]]; then
-        curl --fail --location --silent --show-error \
+        # curl reports a 404 as a bare `curl: (22) The requested URL returned error: 404`, which names
+        # neither the fixture nor the root it came from, so the failure says which URL it was fetching.
+        if ! curl --fail --location --silent --show-error \
             "$canonical_root/$relative_path" \
-            --output "$target"
+            --output "$target"; then
+            printf 'Failed to download canonical GWAS fixture: %s\n' "$canonical_root/$relative_path" >&2
+            exit 1
+        fi
     else
         local source_path="$canonical_root/$relative_path"
         [[ -f "$source_path" ]] || {
