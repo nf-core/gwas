@@ -37,21 +37,10 @@ output:
     - - meta:
           type: map
           description: Metadata map propagated from input
-      - "${prefix}.grm.bin":
+      - "${prefix}.grm.{bin,id,details,adjust}":
           type: file
-          description: Sub-matrix GRM binary matrix (`<prefix>.grm.bin`)
-          ontologies: []
-      - "${prefix}.grm.id":
-          type: file
-          description: Sub-matrix GRM sample identifiers (`<prefix>.grm.id`)
-          ontologies: []
-      - "${prefix}.grm.details":
-          type: file
-          description: Sub-matrix GRM details (`<prefix>.grm.details`)
-          ontologies: []
-      - "${prefix}.grm.adjust":
-          type: file
-          description: Sub-matrix GRM adjustment factors (`<prefix>.grm.adjust`)
+          description: Sub-matrix LDAK genomic relationship matrix (GRM) with its sample identifiers, details and adjustment factors, consumed as one bundle
+          pattern: "*.grm.{bin,id,details,adjust}"
           ontologies: []
   versions_ldak6:
     - - ${task.process}:

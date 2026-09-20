@@ -64,10 +64,10 @@
                             "id": "subset_a"
                         },
                         [
+                            "subset_a.grm.adjust:md5,1db80d3d65d5a23d21f627a7d655810d",
                             "subset_a.grm.bin:md5,bc9222cb2bd00539c5d4cebb831161bc",
-                            "subset_a.grm.id:md5,c8c14b946089b7f16c1179f37fcdb8bf",
                             "subset_a.grm.details:md5,48032959036229fda18561cfd0ea698f",
-                            "subset_a.grm.adjust:md5,1db80d3d65d5a23d21f627a7d655810d"
+                            "subset_a.grm.id:md5,c8c14b946089b7f16c1179f37fcdb8bf"
                         ]
                     ],
                     [
@@ -75,16 +75,16 @@
                             "id": "subset_b"
                         },
                         [
+                            "subset_b.grm.adjust:md5,dd4fff4e029da733027eb51ee9eaedeb",
                             "subset_b.grm.bin:md5,df6aaf21205a9ece8a94dcbd0297abe7",
-                            "subset_b.grm.id:md5,b4b09fedda56f7222cc31b5f1e25d8a4",
                             "subset_b.grm.details:md5,f18f6fc38071979105bba95056e9159a",
-                            "subset_b.grm.adjust:md5,dd4fff4e029da733027eb51ee9eaedeb"
+                            "subset_b.grm.id:md5,b4b09fedda56f7222cc31b5f1e25d8a4"
                         ]
                     ]
                 ]
             }
         ],
-        "timestamp": "2026-09-19T09:39:55.673760773",
+        "timestamp": "2026-09-20T07:36:40.441353822",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.6"
@@ -211,10 +211,10 @@
                             "id": "subset_one"
                         },
                         [
+                            "subset_one.grm.adjust:md5,1db80d3d65d5a23d21f627a7d655810d",
                             "subset_one.grm.bin:md5,bc9222cb2bd00539c5d4cebb831161bc",
-                            "subset_one.grm.id:md5,c8c14b946089b7f16c1179f37fcdb8bf",
                             "subset_one.grm.details:md5,48032959036229fda18561cfd0ea698f",
-                            "subset_one.grm.adjust:md5,1db80d3d65d5a23d21f627a7d655810d"
+                            "subset_one.grm.id:md5,c8c14b946089b7f16c1179f37fcdb8bf"
                         ]
                     ],
                     [
@@ -222,16 +222,16 @@
                             "id": "subset_two"
                         },
                         [
+                            "subset_two.grm.adjust:md5,1db80d3d65d5a23d21f627a7d655810d",
                             "subset_two.grm.bin:md5,bc9222cb2bd00539c5d4cebb831161bc",
-                            "subset_two.grm.id:md5,c8c14b946089b7f16c1179f37fcdb8bf",
                             "subset_two.grm.details:md5,48032959036229fda18561cfd0ea698f",
-                            "subset_two.grm.adjust:md5,1db80d3d65d5a23d21f627a7d655810d"
+                            "subset_two.grm.id:md5,c8c14b946089b7f16c1179f37fcdb8bf"
                         ]
                     ]
                 ]
             }
         ],
-        "timestamp": "2026-09-19T09:39:46.323407134",
+        "timestamp": "2026-09-20T07:36:31.826401251",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.6"

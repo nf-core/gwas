@@ -38,7 +38,7 @@ nextflow_process {
         then {
             assertAll(
                 { assert process.success },
-                { assert path(process.out.sub_grm[0][2]).readLines().size() == 10 },
+                { assert path(process.out.sub_grm[0][1].find { grm_file -> grm_file.endsWith('.grm.id') }).readLines().size() == 10 },
                 { assert snapshot(sanitizeOutput(process.out)).match() }
             )
         }

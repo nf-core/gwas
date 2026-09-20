@@ -59,13 +59,9 @@ workflow PLINK_PREPARE_GRM_LDAK {
 
     LDAK_SUBGRM(ch_subgrm_inputs)
 
-    def ch_subset_grm = LDAK_SUBGRM.out.sub_grm.map { derived_meta, grm_bin, grm_id, grm_details, grm_adjust ->
-        [derived_meta, [grm_bin, grm_id, grm_details, grm_adjust]]
-    }
-
     emit:
     base_grm      = ch_base_grm // channel: [ val(base_meta), path(grm_files), val(producer_ref) ]
-    subset_grm    = ch_subset_grm // channel: [ val(derived_meta), path(grm_files) ]
+    subset_grm    = LDAK_SUBGRM.out.sub_grm // channel: [ val(derived_meta), path(grm_files) ]
     filtered_list = LDAK_FILTER.out.filtered_list // channel: [ val(derived_meta), path(keep), path(lose) ]
     maxrel        = LDAK_FILTER.out.maxrel // channel: [ val(derived_meta), path(maxrel) ], optional
 }
