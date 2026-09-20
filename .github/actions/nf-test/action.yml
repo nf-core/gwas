@@ -17,7 +17,7 @@ inputs:
     description: "Tags to pass as argument for nf-test --tag parameter"
     required: false
   fixture_source:
-    description: "Public root containing the 23 canonical nf-core/test-datasets GWAS fixtures"
+    description: "Public root containing the 20 canonical nf-core/test-datasets GWAS fixtures"
     required: false
     default: "https://raw.githubusercontent.com/nf-core/test-datasets/gwas/"
 runs:

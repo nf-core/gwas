@@ -12,9 +12,9 @@ class FIXTURES {
     // to the materialized root, so a declared fixture path stays portable in the test sources while
     // every read stays local and checksum-verified.
     static final String UPSTREAM = 'https://raw.githubusercontent.com/nf-core/test-datasets/gwas/'
-    // The 23 files published on the nf-core/test-datasets `gwas` branch, plus the bivariate options
+    // The 20 files published on the nf-core/test-datasets `gwas` branch, plus the bivariate options
     // document materialize.sh copies in from assets/examples/relational. Mirrors the canonical list in
-    // tests/fixtures/materialize.sh; the nine PLINK derivatives resolve over the network only once the
+    // tests/fixtures/materialize.sh; the six PLINK derivatives resolve over the network only once the
     // follow-up nf-core/test-datasets PR adding them has merged.
     private static final List<String> REQUIRED = [
         'results/fixtures/genotypes/example_all.vcf.gz',
@@ -24,9 +24,6 @@ class FIXTURES {
         'results/fixtures/genotypes/example_all.bed',
         'results/fixtures/genotypes/example_all.bim',
         'results/fixtures/genotypes/example_all.fam',
-        'results/fixtures/genotypes/example_chr1.pgen',
-        'results/fixtures/genotypes/example_chr1.psam',
-        'results/fixtures/genotypes/example_chr1.pvar',
         'results/fixtures/pheno_cov/example.pheno',
         'results/fixtures/pheno_cov/example.qcovar',
         'results/fixtures/pheno_cov/example.catcovar',

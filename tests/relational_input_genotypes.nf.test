@@ -352,8 +352,11 @@ nextflow_pipeline {
     // plain string property.
     def invalidRepresentations = [
         [
+            // The mismatched member is built here rather than named from the published bundle: the schema
+            // property carries `exists`, so the path must resolve, and the stem is the only thing that has
+            // to differ. A copy of the cohort's own `.pvar` under another stem is the minimal such file.
             name: 'a genotype group whose members do not share one basename stem',
-            mutate: { rows, output_dir, project_dir -> rows[0].pvar = rows[0].pvar.toString().replace('example_all.pvar', 'example_chr1.pvar') },
+            mutate: { rows, output_dir, project_dir -> rows[0].pvar = RELATIONAL.copyResource(output_dir, 'mismatched_stem.pvar', "${FIXTURES.base(project_dir)}results/fixtures/genotypes/example_all.pvar") },
             fields: ['pgen', 'psam', 'pvar'],
             message: 'do not share one basename stem',
         ],
