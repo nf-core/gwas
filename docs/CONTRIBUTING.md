@@ -70,9 +70,10 @@ For additional information, use the `--verbose` flag to view the Nextflow consol
 tests/fixtures/nf-test.sh test --tag test --profile +docker --verbose
 ```
 
-The public test profiles consume the static relational manifests and compact VCF published by
-`nf-core/test-datasets`. The wrapper also materializes PLINK layouts for focused input-representation tests and
-supplies the verified content-addressed bundle to the test suite.
+The public test profiles consume the static relational manifests and compact genotypes published on the
+`gwas` branch of `nf-core/test-datasets`, so `nextflow run . -profile test,docker --outdir out` needs nothing
+but the clone. The wrapper fetches that branch once into a verified content-addressed bundle and supplies it
+to the test suite, which reads local copies rather than the network.
 
 If you have added new functionality, ensure you update the test assertions in the `.nf.test` files in the `tests/` directory.
 Update the snapshots with the following command:
