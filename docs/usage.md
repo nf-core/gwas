@@ -356,7 +356,7 @@ The wrapper rejects whitespace or shell syntax, path separators, environment ass
 }
 ```
 
-Summary requests use the same deterministic ownership boundary. LDAK receives exactly one staged `tagging_file`; LDSC receives separate staged `hapmap3_snplist`, `reference_ld_scores` and `regression_weights` roles. `native_args` may contain non-file scientific tokens only. Wrapper-owned operation, input, output and thread flags are rejected, as are every LDSC option that selects an alternate operation or consumes an undeclared file role. These structural rejections apply to both bare `--option value` and inline `--option=value` forms without depending on whether a path exists or resembles a known extension.
+Summary requests use the same deterministic ownership boundary. LDAK receives exactly one staged `tagging_file`; LDSC receives separate staged `hapmap3_snplist`, `reference_ld_scores` and `regression_weights` roles, the latter two declared as LDSC stems rather than directories (see [Reference catalog](#reference-catalog)). `native_args` may contain non-file scientific tokens only. Wrapper-owned operation, input, output and thread flags are rejected, as are every LDSC option that selects an alternate operation or consumes an undeclared file role. These structural rejections apply to both bare `--option value` and inline `--option=value` forms without depending on whether a path exists or resembles a known extension.
 
 For `ldak_sumher` and `ldak_sumcors`, the pipeline adapts each distinct GWASLab summary once to LDAK's `Predictor A1 A2 Z n A1Freq` contract, with `A1` equal to the GWASLab effect allele and `Z = BETA / SE`; the GWASLab artifact remains unchanged. Both routes use `--cutoff 0.01` unless a request explicitly supplies `--cutoff` or `--truncate`. SumCors initially accepts `LDAK-Thin`, `Uniform-GCTA` and `Human-Default` tagging bundles. Binary SumHer receives population prevalence and sample ascertainment only when both are declared. SumCors receives the two ordered prevalence/ascertainment pairs only when both endpoints are binary and all four values are present; mixed-trait and incomplete binary pairs run without liability arguments. LDAK's native ambiguous-variant exclusion and complete-summary checks remain enabled unless an accepted scientific override changes them.
 
@@ -411,6 +411,14 @@ Each selected entity–method binding creates one deterministic primary request.
       "hapmap3_snplist": "/refs/w_hm3.snplist",
       "reference_ld_scores": "/refs/eur_w_ld_chr/",
       "regression_weights": "/refs/eur_w_ld_chr/"
+    },
+    "ldsc_eur_baselineld": {
+      "genome_build": "GRCh37",
+      "ancestry": "EUR",
+      "variant_id_system": "rsid",
+      "hapmap3_snplist": "/refs/w_hm3.snplist",
+      "reference_ld_scores": "/refs/baseline/baselineLD.",
+      "regression_weights": "/refs/weights/weights.hm3_noMHC."
     }
   },
   "ldak": {
@@ -425,7 +433,9 @@ Each selected entity–method binding creates one deterministic primary request.
 }
 ```
 
-The catalog may also declare a SHA-256 digest beside each role. Preflight checks the document shape, family, required roles, digest syntax and path availability. In the first release, `genome_build`, `ancestry`, `variant_id_system` and `model` are recorded request metadata rather than a pipeline certification of scientific compatibility. The user owns reference selection.
+`reference_ld_scores` and `regression_weights` are LDSC stems, written exactly as they would be typed after `--ref-ld-chr` and `--w-ld-chr`. LDSC completes a stem with `<chr>.l2.ldscore.gz`, and the reference set additionally with `<chr>.l2.M_5_50`. The pipeline splits the stem at the last `/`: the text before it is the directory it stages, and the text after it is the file-name prefix it hands back to LDSC. `/refs/eur_w_ld_chr/` therefore names `/refs/eur_w_ld_chr/1.l2.ldscore.gz` with an empty prefix, exactly as it always has, and `/refs/baseline/baselineLD.` names `/refs/baseline/baselineLD.1.l2.ldscore.gz`. A bare directory path with no trailing `/` is read as a stem too, so `/refs/eur_w_ld_chr` would look for `/refs/eur_w_ld_chr1.l2.ldscore.gz`; write the trailing `/` when the files are named `<chr>.l2.*`. Nothing is inferred from the directory listing: the declared text is authoritative.
+
+The catalog may also declare a SHA-256 digest beside each role. Preflight checks the document shape, family, required roles, digest syntax and path availability, and for each LDSC stem that its directory exists and holds the chromosome-1 files the stem resolves to. In the first release, `genome_build`, `ancestry`, `variant_id_system` and `model` are recorded request metadata rather than a pipeline certification of scientific compatibility. The user owns reference selection.
 
 | GCTA option          | Type and default                      | Consumer and constraints                                                                                |
 | -------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------- |

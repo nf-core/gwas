@@ -7,6 +7,14 @@
             "hapmap3_snplist": "/refs/ldsc/w_hm3.snplist",
             "reference_ld_scores": "/refs/ldsc/eur_w_ld_chr/",
             "regression_weights": "/refs/ldsc/eur_w_ld_chr/"
+        },
+        "ldsc_eur_baselineld": {
+            "genome_build": "GRCh37",
+            "ancestry": "EUR",
+            "variant_id_system": "rsid",
+            "hapmap3_snplist": "/refs/ldsc/w_hm3.snplist",
+            "reference_ld_scores": "/refs/ldsc/baseline/baselineLD.",
+            "regression_weights": "/refs/ldsc/weights/weights.hm3_noMHC."
         }
     },
     "ldak": {
