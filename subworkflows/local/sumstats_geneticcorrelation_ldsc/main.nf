@@ -16,26 +16,36 @@ workflow SUMSTATS_GENETICCORRELATION_LDSC {
 
     def ch_munged = LDSC_MUNGESUMSTATS.out.munged_sumstats.map { meta, sumstats -> [meta.id, sumstats] }
     // Resolve both roles together so each producer joins once even when it is shared by several pairs.
+    // Each endpoint travels as a named record so the fit reads its parts by key rather than by position.
     def ch_endpoints = ch_pairs
         .flatMap { meta, meta2, reference_ld_scores, meta3, regression_weights, left_producer_id, right_producer_id ->
             [[left_producer_id, 0], [right_producer_id, 1]].collect { producer_id, ordinal ->
-                [producer_id, [meta, meta2, reference_ld_scores, meta3, regression_weights, ordinal]]
+                [
+                    producer_id,
+                    [
+                        meta: meta,
+                        reference_meta: meta2,
+                        reference: reference_ld_scores,
+                        weights_meta: meta3,
+                        weights: regression_weights,
+                        ordinal: ordinal,
+                    ],
+                ]
             }
         }
         .groupTuple()
         .join(ch_munged, failOnMismatch: true, failOnDuplicate: true)
         .flatMap { _producer_id, endpoints, sumstats ->
-            endpoints.collect { meta, meta2, reference_ld_scores, meta3, regression_weights, ordinal ->
-                [groupKey(meta.id, 2), [meta, meta2, reference_ld_scores, meta3, regression_weights, ordinal, sumstats]]
-            }
+            endpoints.collect { endpoint -> [groupKey(endpoint.meta.id, 2), endpoint + [sumstats: sumstats]] }
         }
+    // Ordinal 0 is the endpoint the pair declared first, so it carries the pair identity and both resources.
     def ch_fits = ch_endpoints
         .groupTuple()
-        .map { _pair_key, endpoints -> endpoints.sort { endpoint -> endpoint[5] } }
+        .map { _pair_key, endpoints -> endpoints.sort { endpoint -> endpoint.ordinal } }
         .multiMap { left, right ->
-            sumstats: [left[0], left[6], right[6]]
-            reference: [left[1], left[2]]
-            weights: [left[3], left[4]]
+            sumstats: [left.meta, left.sumstats, right.sumstats]
+            reference: [left.reference_meta, left.reference]
+            weights: [left.weights_meta, left.weights]
         }
     LDSC_RG(ch_fits.sumstats, ch_fits.reference, ch_fits.weights)
 
