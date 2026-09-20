@@ -100,8 +100,11 @@ jobs:
           profile: ${{ matrix.profile }}
           shard: ${{ matrix.shard }}
           total_shards: ${{ env.TOTAL_SHARDS }}
-          # Use the public companion fixture PR until its compact commit is merged into test-datasets:gwas.
-          fixture_source: https://raw.githubusercontent.com/nf-core/test-datasets/refs/pull/2198/head/
+          # Temporary pin. nf-core/test-datasets:gwas does not yet carry the PLINK derivatives, so CI
+          # reads the fixtures from the fork branch behind the follow-up PR nf-core/test-datasets#2282.
+          # Remove this input once #2282 merges, so the materializer's default -- the nf-core
+          # `gwas` branch -- applies again.
+          fixture_source: https://raw.githubusercontent.com/lyh970817/test-datasets/gwas-fixtures-plink-derivatives/
 
       - name: Report test status
         if: ${{ always() }}
