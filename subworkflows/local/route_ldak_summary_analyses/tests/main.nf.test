@@ -43,7 +43,7 @@ nextflow_workflow {
                 sample_prevalence: null,
                 ${overrides}
             ],
-            [], [], [],
+            [], [], '', [], '',
             ${TAGGING(project_dir)},
         ]"""
     }
@@ -69,7 +69,7 @@ nextflow_workflow {
                 right_trait_id: 'TRAIT_${right_summary_id}',
                 right_trait_type: 'quantitative',
             ],
-            [], [], [],
+            [], [], '', [], '',
             ${TAGGING(project_dir)},
         ]"""
     }

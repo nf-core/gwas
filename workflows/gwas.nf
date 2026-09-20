@@ -43,8 +43,8 @@ workflow GWAS {
     ch_analyses // channel: [ val(meta), [ path(genotype_file), ... ], path(phenotype), path(quant_covariates), path(cat_covariates), path(kvik_extract), path(ldak_weights) ]
     ch_external_summary_statistics // channel: [ val(meta), path(source) ]
     ch_relationships // channel: [ val(meta), [ path(genotype_file), ... ], path(pair_quant_covariates), path(pair_cat_covariates) ]
-    ch_unary_requests // channel: [ val(meta), path(hapmap3_snplist), path(reference_ld_scores), path(regression_weights), path(tagging_file) ]
-    ch_pair_requests // channel: [ val(meta), path(hapmap3_snplist), path(reference_ld_scores), path(regression_weights), path(tagging_file) ]
+    ch_unary_requests // channel: [ val(meta), path(hapmap3_snplist), path(reference_ld_scores), val(reference_prefix), path(regression_weights), val(weights_prefix), path(tagging_file) ]
+    ch_pair_requests // channel: [ val(meta), path(hapmap3_snplist), path(reference_ld_scores), val(reference_prefix), path(regression_weights), val(weights_prefix), path(tagging_file) ]
     ch_meta_requests // channel: [ val(meta), val(source_summary_statistics_ids) ]
     multiqc_config // channel: val(multiqc_config)
     multiqc_logo // channel: val(multiqc_logo)
@@ -103,10 +103,10 @@ workflow GWAS {
             ch_relationships.map { meta, _genotype_files, _pair_quant_covariates, _pair_cat_covariates -> [domain: 'pairwise', meta: meta] }
         )
         .mix(
-            ch_unary_requests.map { meta, _hapmap3_snplist, _reference_ld_scores, _regression_weights, _tagging_file -> [domain: 'summary_unary', meta: meta] }
+            ch_unary_requests.map { meta, _hapmap3_snplist, _reference_ld_scores, _reference_prefix, _regression_weights, _weights_prefix, _tagging_file -> [domain: 'summary_unary', meta: meta] }
         )
         .mix(
-            ch_pair_requests.map { meta, _hapmap3_snplist, _reference_ld_scores, _regression_weights, _tagging_file -> [domain: 'pairwise', meta: meta] }
+            ch_pair_requests.map { meta, _hapmap3_snplist, _reference_ld_scores, _reference_prefix, _regression_weights, _weights_prefix, _tagging_file -> [domain: 'pairwise', meta: meta] }
         )
         .mix(
             ch_meta_requests.map { meta, _source_ids -> [domain: 'summary_set', meta: meta] }
@@ -398,8 +398,8 @@ workflow GWAS {
     // it. The spine selects the route; the controller owns preparation reuse, ordered pair resolution,
     // native-argument and runtime policy, and native outputs. It receives the full validated request tuple so
     // the reference-bundle convention stays request-owned rather than becoming spine knowledge.
-    def ch_sumher_requests = ch_unary_requests.filter { meta, _hapmap3_snplist, _reference_ld_scores, _regression_weights, _tagging_file -> meta.method == 'ldak_sumher' }
-    def ch_sumcors_requests = ch_pair_requests.filter { meta, _hapmap3_snplist, _reference_ld_scores, _regression_weights, _tagging_file -> meta.method == 'ldak_sumcors' }
+    def ch_sumher_requests = ch_unary_requests.filter { meta, _hapmap3_snplist, _reference_ld_scores, _reference_prefix, _regression_weights, _weights_prefix, _tagging_file -> meta.method == 'ldak_sumher' }
+    def ch_sumcors_requests = ch_pair_requests.filter { meta, _hapmap3_snplist, _reference_ld_scores, _reference_prefix, _regression_weights, _weights_prefix, _tagging_file -> meta.method == 'ldak_sumcors' }
 
     ROUTE_LDAK_SUMMARY_ANALYSES(
         ch_sumher_requests,
@@ -417,8 +417,8 @@ workflow GWAS {
     // declared pair order, observed- and liability-scale selection, and native logs. It
     // receives the full validated request tuple so the reference-bundle convention stays request-owned rather
     // than becoming spine knowledge.
-    def ch_ldsc_h2_requests = ch_unary_requests.filter { meta, _hapmap3_snplist, _reference_ld_scores, _regression_weights, _tagging_file -> meta.method == 'ldsc_h2' }
-    def ch_ldsc_rg_requests = ch_pair_requests.filter { meta, _hapmap3_snplist, _reference_ld_scores, _regression_weights, _tagging_file -> meta.method == 'ldsc_rg' }
+    def ch_ldsc_h2_requests = ch_unary_requests.filter { meta, _hapmap3_snplist, _reference_ld_scores, _reference_prefix, _regression_weights, _weights_prefix, _tagging_file -> meta.method == 'ldsc_h2' }
+    def ch_ldsc_rg_requests = ch_pair_requests.filter { meta, _hapmap3_snplist, _reference_ld_scores, _reference_prefix, _regression_weights, _weights_prefix, _tagging_file -> meta.method == 'ldsc_rg' }
 
     ROUTE_LDSC_SUMMARY_ANALYSES(
         ch_ldsc_h2_requests,

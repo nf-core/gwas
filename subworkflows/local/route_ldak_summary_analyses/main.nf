@@ -14,8 +14,8 @@ include { PREPARE_LDAK_SUMMARY_STATISTICS } from '../../../modules/local/prepare
 
 workflow ROUTE_LDAK_SUMMARY_ANALYSES {
     take:
-    ch_sumher_requests // channel: [ val(meta), path(hapmap3_snplist), path(reference_ld_scores), path(regression_weights), path(tagging_file) ], the ldak_sumher unary requests; LDAK-family bundles supply [] for elements 2-4
-    ch_sumcors_requests // channel: [ val(meta), path(hapmap3_snplist), path(reference_ld_scores), path(regression_weights), path(tagging_file) ], the ldak_sumcors pair requests, same convention
+    ch_sumher_requests // channel: [ val(meta), path(hapmap3_snplist), path(reference_ld_scores), val(reference_prefix), path(regression_weights), val(weights_prefix), path(tagging_file) ], the ldak_sumher unary requests; LDAK-family bundles supply [] for elements 2-4
+    ch_sumcors_requests // channel: [ val(meta), path(hapmap3_snplist), path(reference_ld_scores), val(reference_prefix), path(regression_weights), val(weights_prefix), path(tagging_file) ], the ldak_sumcors pair requests, same convention
     ch_summary_statistics // channel: [ val(meta), path(gwaslab_summary_statistics) ], one element per distinct summary_statistics_id
 
     main:
@@ -24,9 +24,9 @@ workflow ROUTE_LDAK_SUMMARY_ANALYSES {
     // requests consume it. The adapter owns only the deterministic GWASLab-to-LDAK column transform;
     // each request retains its own tagging reference, effective native arguments and publication identity.
     def ch_ldak_requested_summary_ids = ch_sumher_requests
-        .map { meta, _hapmap3_snplist, _reference_ld_scores, _regression_weights, _tagging_file -> [meta.summary_statistics_id] }
+        .map { meta, _hapmap3_snplist, _reference_ld_scores, _reference_prefix, _regression_weights, _weights_prefix, _tagging_file -> [meta.summary_statistics_id] }
         .mix(
-            ch_sumcors_requests.flatMap { meta, _hapmap3_snplist, _reference_ld_scores, _regression_weights, _tagging_file ->
+            ch_sumcors_requests.flatMap { meta, _hapmap3_snplist, _reference_ld_scores, _reference_prefix, _regression_weights, _weights_prefix, _tagging_file ->
                 [[meta.left_summary_statistics_id], [meta.right_summary_statistics_id]]
             }
         )
@@ -44,7 +44,7 @@ workflow ROUTE_LDAK_SUMMARY_ANALYSES {
     def ch_prepared_ldak_summaries = PREPARE_LDAK_SUMMARY_STATISTICS.out.summary_statistics.map { meta, summary_statistics -> [meta.summary_statistics_id, meta, summary_statistics] }
 
     def ch_sumher_invocations = ch_sumher_requests
-        .map { meta, _hapmap3_snplist, _reference_ld_scores, _regression_weights, tagging_file -> [meta.summary_statistics_id, meta, tagging_file] }
+        .map { meta, _hapmap3_snplist, _reference_ld_scores, _reference_prefix, _regression_weights, _weights_prefix, tagging_file -> [meta.summary_statistics_id, meta, tagging_file] }
         .combine(ch_prepared_ldak_summaries, by: 0)
         .multiMap { summary_statistics_id, request_meta, tagging_file, _summary_meta, summary_statistics ->
             def route_meta = request_meta + [
@@ -61,7 +61,7 @@ workflow ROUTE_LDAK_SUMMARY_ANALYSES {
     )
 
     def ch_sumcors_left = ch_sumcors_requests
-        .map { meta, _hapmap3_snplist, _reference_ld_scores, _regression_weights, tagging_file -> [meta.left_summary_statistics_id, meta, tagging_file] }
+        .map { meta, _hapmap3_snplist, _reference_ld_scores, _reference_prefix, _regression_weights, _weights_prefix, tagging_file -> [meta.left_summary_statistics_id, meta, tagging_file] }
         .combine(ch_prepared_ldak_summaries, by: 0)
         .map { _left_summary_statistics_id, request_meta, tagging_file, _left_meta, left_summary_statistics ->
             [request_meta.right_summary_statistics_id, request_meta, tagging_file, left_summary_statistics]

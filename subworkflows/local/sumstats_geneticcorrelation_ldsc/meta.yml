@@ -24,12 +24,15 @@ input:
         Ordered endpoint pairs, one per focal fit. Pair meta.id is unique, focal pair metadata is
         preserved unchanged on the fitted log, and the left and right producer ids reference
         producer meta.id in native `--rg` order. meta2 identifies the reference LD-score directory
-        and meta3 the separate regression-weight directory; each holds per-chromosome `<chr>.l2.*`
-        files at its top level. Native optional fit arguments belong in task.ext.args. The caller
-        owns reference selection, prevalence, and publication policy.
+        and meta3 the separate regression-weight directory; each holds per-chromosome
+        `<prefix><chr>.l2.*` files at its top level, where reference_prefix and weights_prefix
+        complete the native `--ref-ld-chr` and `--w-ld-chr` stems and are the empty string when the
+        files are named `<chr>.l2.*`. Native optional fit arguments belong in task.ext.args. The
+        caller owns reference selection, prevalence, and publication policy.
       structure:
-        "[map meta, map meta2, path reference_ld_scores, map meta3, path regression_weights,
-        string left_producer_id, string right_producer_id]"
+        "[map meta, map meta2, path reference_ld_scores, string reference_prefix, map meta3,
+        path regression_weights, string weights_prefix, string left_producer_id,
+        string right_producer_id]"
       pattern: "*.l2.{ldscore.gz,M_5_50}"
       ontologies: []
 output:

@@ -5,7 +5,7 @@ include { LDSC_H2            } from '../../../modules/local/ldsc/h2/main'
 workflow SUMSTATS_HERITABILITY_LDSC {
     take:
     ch_producers // channel: [ val(meta), path(sumstats), val(meta2), path(merge_alleles) ]; optional merge_alleles: []
-    ch_requests // channel: [ val(meta), val(meta2), path(reference_ld_scores), val(meta3), path(regression_weights), val(producer_id) ]
+    ch_requests // channel: [ val(meta), val(meta2), path(reference_ld_scores), val(reference_prefix), val(meta3), path(regression_weights), val(weights_prefix), val(producer_id) ]
 
     main:
     def ch_munge = ch_producers.multiMap { meta, sumstats, meta2, merge_alleles ->
@@ -16,16 +16,16 @@ workflow SUMSTATS_HERITABILITY_LDSC {
 
     def ch_munged = LDSC_MUNGESUMSTATS.out.munged_sumstats.map { meta, sumstats -> [meta.id, sumstats] }
     def ch_fits = ch_requests
-        .map { meta, meta2, reference_ld_scores, meta3, regression_weights, producer_id ->
-            [producer_id, [meta, meta2, reference_ld_scores, meta3, regression_weights]]
+        .map { meta, meta2, reference_ld_scores, reference_prefix, meta3, regression_weights, weights_prefix, producer_id ->
+            [producer_id, [meta, meta2, reference_ld_scores, reference_prefix, meta3, regression_weights, weights_prefix]]
         }
         .groupTuple()
         .join(ch_munged, failOnMismatch: true, failOnDuplicate: true)
         .flatMap { _producer_id, requests, sumstats -> requests.collect { request -> request + [sumstats] } }
-        .multiMap { meta, meta2, reference_ld_scores, meta3, regression_weights, sumstats ->
+        .multiMap { meta, meta2, reference_ld_scores, reference_prefix, meta3, regression_weights, weights_prefix, sumstats ->
             sumstats: [meta, sumstats]
-            reference: [meta2, reference_ld_scores]
-            weights: [meta3, regression_weights]
+            reference: [meta2, reference_ld_scores, reference_prefix]
+            weights: [meta3, regression_weights, weights_prefix]
         }
     LDSC_H2(ch_fits.sumstats, ch_fits.reference, ch_fits.weights)
 

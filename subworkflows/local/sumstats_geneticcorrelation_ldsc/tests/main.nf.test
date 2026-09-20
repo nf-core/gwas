@@ -60,8 +60,8 @@ nextflow_workflow {
                         [[id: 'producer_a'], file('${fixture.sumstats}'), [id: 'alleles'], file('${fixture.alleles}')],
                         [[id: 'producer_b'], file('${fixture.sumstats}'), [id: 'alleles'], []]
                     )
-                    input[1] = channel.of([[id: 'forward'], [id: 'ld'], file('${fixture.reference}'), [id: 'weights'], file('${fixture.weights}'), 'producer_a', 'producer_b'],
-                        [[id: 'reverse'], [id: 'ld'], file('${fixture.reference}'), [id: 'weights'], file('${fixture.weights}'), 'producer_b', 'producer_a'])
+                    input[1] = channel.of([[id: 'forward'], [id: 'ld'], file('${fixture.reference}'), '', [id: 'weights'], file('${fixture.weights}'), '', 'producer_a', 'producer_b'],
+                        [[id: 'reverse'], [id: 'ld'], file('${fixture.reference}'), '', [id: 'weights'], file('${fixture.weights}'), '', 'producer_b', 'producer_a'])
                     """
                 }
             }

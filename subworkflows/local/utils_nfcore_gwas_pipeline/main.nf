@@ -122,9 +122,9 @@ workflow PIPELINE_INITIALISATION {
     analyses           = VALIDATE_GWAS_INPUT.out.analyses // channel: [ val(meta), [ path(genotype_file), ... ], path(phenotype), path(quant_covariates), path(cat_covariates), path(kvik_extract), path(ldak_weights) ]
     summary_statistics = VALIDATE_GWAS_INPUT.out.summary_statistics // channel: [ val(meta), path(source) ]
     relationships      = VALIDATE_GWAS_INPUT.out.relationships // channel: [ val(meta), [ path(genotype_file), ... ], path(pair_quant_covariates), path(pair_cat_covariates) ]
-    unary_requests     = VALIDATE_GWAS_INPUT.out.unary_requests // channel: [ val(meta), path(hapmap3_snplist), path(reference_ld_scores), path(regression_weights), path(tagging_file) ]
+    unary_requests     = VALIDATE_GWAS_INPUT.out.unary_requests // channel: [ val(meta), path(hapmap3_snplist), path(reference_ld_scores), val(reference_prefix), path(regression_weights), val(weights_prefix), path(tagging_file) ]
     meta_requests      = VALIDATE_GWAS_INPUT.out.meta_requests // channel: [ val(meta), val(source_summary_statistics_ids) ]
-    pair_requests      = VALIDATE_GWAS_INPUT.out.pair_requests // channel: [ val(meta), path(hapmap3_snplist), path(reference_ld_scores), path(regression_weights), path(tagging_file) ]
+    pair_requests      = VALIDATE_GWAS_INPUT.out.pair_requests // channel: [ val(meta), path(hapmap3_snplist), path(reference_ld_scores), val(reference_prefix), path(regression_weights), val(weights_prefix), path(tagging_file) ]
 }
 
 /*

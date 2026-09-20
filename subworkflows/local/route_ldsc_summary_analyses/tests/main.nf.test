@@ -53,7 +53,9 @@ nextflow_workflow {
             ],
             ${SNPLIST(project_dir, snplist)},
             ${LD_SCORES(project_dir)},
+            '',
             ${WEIGHTS(project_dir)},
+            '',
             [],
         ]"""
     }
@@ -83,7 +85,9 @@ nextflow_workflow {
             ],
             ${SNPLIST(project_dir, 'hapmap3_primary.snplist')},
             ${LD_SCORES(project_dir)},
+            '',
             ${WEIGHTS(project_dir)},
+            '',
             [],
         ]"""
     }

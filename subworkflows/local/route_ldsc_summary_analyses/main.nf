@@ -17,8 +17,8 @@ include { digestIdentityText } from '../utils_nfcore_gwas_pipeline'
 
 workflow ROUTE_LDSC_SUMMARY_ANALYSES {
     take:
-    ch_h2_requests // channel: [ val(meta), path(hapmap3_snplist), path(reference_ld_scores), path(regression_weights), path(tagging_file) ], the ldsc_h2 unary requests; an LDSC-family bundle supplies [] for the tagging file
-    ch_rg_requests // channel: [ val(meta), path(hapmap3_snplist), path(reference_ld_scores), path(regression_weights), path(tagging_file) ], the ldsc_rg pair requests, same convention
+    ch_h2_requests // channel: [ val(meta), path(hapmap3_snplist), path(reference_ld_scores), val(reference_prefix), path(regression_weights), val(weights_prefix), path(tagging_file) ], the ldsc_h2 unary requests; an LDSC-family bundle supplies [] for the tagging file
+    ch_rg_requests // channel: [ val(meta), path(hapmap3_snplist), path(reference_ld_scores), val(reference_prefix), path(regression_weights), val(weights_prefix), path(tagging_file) ], the ldsc_rg pair requests, same convention
     ch_summary_statistics // channel: [ val(meta), path(gwaslab_summary_statistics) ], one element per distinct summary_statistics_id
 
     main:
@@ -28,12 +28,12 @@ workflow ROUTE_LDSC_SUMMARY_ANALYSES {
     // pairwise, primary and named sensitivity requests reuse the same expensive preparation without making
     // ancestry, bundle names, H2/RG native arguments or output identity part of that derivation.
     def ch_ldsc_munging_requests = ch_h2_requests
-        .map { meta, hapmap3_snplist, _reference_ld_scores, _regression_weights, _tagging_file ->
+        .map { meta, hapmap3_snplist, _reference_ld_scores, _reference_prefix, _regression_weights, _weights_prefix, _tagging_file ->
             def key = getLdscMungingKey(meta.summary_statistics_id, hapmap3_snplist)
             [meta.summary_statistics_id, key, hapmap3_snplist]
         }
         .mix(
-            ch_rg_requests.flatMap { meta, hapmap3_snplist, _reference_ld_scores, _regression_weights, _tagging_file ->
+            ch_rg_requests.flatMap { meta, hapmap3_snplist, _reference_ld_scores, _reference_prefix, _regression_weights, _weights_prefix, _tagging_file ->
                 [meta.left_summary_statistics_id, meta.right_summary_statistics_id].collect { summary_statistics_id ->
                     [summary_statistics_id, getLdscMungingKey(summary_statistics_id, hapmap3_snplist), hapmap3_snplist]
                 }
@@ -67,11 +67,11 @@ workflow ROUTE_LDSC_SUMMARY_ANALYSES {
     // Each request runs once, with native liability conversion only when the binary endpoint declares
     // both prevalences. Request identity and LD/weight resources are joined after shared munging.
     def ch_ldsc_h2_invocations = ch_h2_requests
-        .map { meta, hapmap3_snplist, reference_ld_scores, regression_weights, _tagging_file ->
-            [getLdscMungingKey(meta.summary_statistics_id, hapmap3_snplist), meta, reference_ld_scores, regression_weights]
+        .map { meta, hapmap3_snplist, reference_ld_scores, reference_prefix, regression_weights, weights_prefix, _tagging_file ->
+            [getLdscMungingKey(meta.summary_statistics_id, hapmap3_snplist), meta, reference_ld_scores, reference_prefix, regression_weights, weights_prefix]
         }
         .combine(ch_ldsc_munged, by: 0)
-        .multiMap { key, meta, reference_ld_scores, regression_weights, _munging_meta, munged_sumstats ->
+        .multiMap { key, meta, reference_ld_scores, reference_prefix, regression_weights, weights_prefix, _munging_meta, munged_sumstats ->
             def liability = meta.is_binary && meta.population_prevalence != null && meta.sample_prevalence != null
             def route_meta = meta + [
                 munging_keys: [key],
@@ -80,8 +80,8 @@ workflow ROUTE_LDSC_SUMMARY_ANALYSES {
                 effective_sample_prevalence: liability ? [meta.sample_prevalence] : [],
             ]
             sumstats: [route_meta, munged_sumstats]
-            reference_ld_scores: [[id: meta.reference_bundle_id], reference_ld_scores]
-            regression_weights: [[id: meta.reference_bundle_id], regression_weights]
+            reference_ld_scores: [[id: meta.reference_bundle_id], reference_ld_scores, reference_prefix]
+            regression_weights: [[id: meta.reference_bundle_id], regression_weights, weights_prefix]
         }
 
     LDSC_H2(
@@ -94,19 +94,19 @@ workflow ROUTE_LDSC_SUMMARY_ANALYSES {
     // one HapMap3 resource selected by this request, then the request-owned LD-score and regression-weight
     // directories are passed unchanged to RG.
     def ch_ldsc_rg_left = ch_rg_requests
-        .map { meta, hapmap3_snplist, reference_ld_scores, regression_weights, _tagging_file ->
+        .map { meta, hapmap3_snplist, reference_ld_scores, reference_prefix, regression_weights, weights_prefix, _tagging_file ->
             def left_key = getLdscMungingKey(meta.left_summary_statistics_id, hapmap3_snplist)
-            [left_key, meta, hapmap3_snplist, reference_ld_scores, regression_weights]
+            [left_key, meta, hapmap3_snplist, reference_ld_scores, reference_prefix, regression_weights, weights_prefix]
         }
         .combine(ch_ldsc_munged, by: 0)
-        .map { left_key, meta, hapmap3_snplist, reference_ld_scores, regression_weights, _left_munging_meta, left_sumstats ->
+        .map { left_key, meta, hapmap3_snplist, reference_ld_scores, reference_prefix, regression_weights, weights_prefix, _left_munging_meta, left_sumstats ->
             def right_key = getLdscMungingKey(meta.right_summary_statistics_id, hapmap3_snplist)
-            [right_key, left_key, meta, reference_ld_scores, regression_weights, left_sumstats]
+            [right_key, left_key, meta, reference_ld_scores, reference_prefix, regression_weights, weights_prefix, left_sumstats]
         }
 
     def ch_ldsc_rg_invocations = ch_ldsc_rg_left
         .combine(ch_ldsc_munged, by: 0)
-        .multiMap { right_key, left_key, meta, reference_ld_scores, regression_weights, left_sumstats, _right_munging_meta, right_sumstats ->
+        .multiMap { right_key, left_key, meta, reference_ld_scores, reference_prefix, regression_weights, weights_prefix, left_sumstats, _right_munging_meta, right_sumstats ->
             def has_binary = meta.left_is_binary || meta.right_is_binary
             def complete = [
                 [binary: meta.left_is_binary, population: meta.left_population_prevalence, sample: meta.left_sample_prevalence],
@@ -128,8 +128,8 @@ workflow ROUTE_LDSC_SUMMARY_ANALYSES {
                 effective_sample_prevalence: liability ? sample : [],
             ]
             sumstats: [route_meta, left_sumstats, right_sumstats]
-            reference_ld_scores: [[id: meta.reference_bundle_id], reference_ld_scores]
-            regression_weights: [[id: meta.reference_bundle_id], regression_weights]
+            reference_ld_scores: [[id: meta.reference_bundle_id], reference_ld_scores, reference_prefix]
+            regression_weights: [[id: meta.reference_bundle_id], regression_weights, weights_prefix]
         }
 
     LDSC_RG(

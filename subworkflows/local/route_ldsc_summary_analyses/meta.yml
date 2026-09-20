@@ -16,12 +16,14 @@ components:
 input:
   - ch_h2_requests:
       description: Validated H2 requests with request-owned LDSC resources
-      structure: "[map meta, path hapmap3_snplist, path reference_ld_scores, path regression_weights, path tagging_file|[]]"
+      structure: "[map meta, path hapmap3_snplist, path reference_ld_scores, string reference_prefix,
+        path regression_weights, string weights_prefix, path tagging_file|[]]"
       pattern: "*.{snplist,txt,tsv}"
       ontologies: []
   - ch_rg_requests:
       description: Validated ordered RG requests with request-owned LDSC resources
-      structure: "[map meta, path hapmap3_snplist, path reference_ld_scores, path regression_weights, path tagging_file|[]]"
+      structure: "[map meta, path hapmap3_snplist, path reference_ld_scores, string reference_prefix,
+        path regression_weights, string weights_prefix, path tagging_file|[]]"
       pattern: "*.{snplist,txt,tsv}"
       ontologies: []
   - ch_summary_statistics:
