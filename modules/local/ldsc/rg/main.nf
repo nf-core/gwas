@@ -10,8 +10,8 @@ process LDSC_RG {
 
     input:
     tuple val(meta), path(left_sumstats, stageAs: 'left/*'), path(right_sumstats, stageAs: 'right/*')
-    tuple val(meta2), path(reference_ld_scores, stageAs: 'reference_ld_scores')
-    tuple val(meta3), path(regression_weights, stageAs: 'regression_weights')
+    tuple val(meta2), path(reference_ld_scores, stageAs: 'reference_ld_scores'), val(reference_prefix)
+    tuple val(meta3), path(regression_weights, stageAs: 'regression_weights'), val(weights_prefix)
 
     output:
     tuple val(meta), path("${prefix}.log"), emit: log
@@ -35,8 +35,8 @@ process LDSC_RG {
     # adaptation when the CBIIT ldsc39 --out .log carries the estimates.
     ldsc.py \
         --rg "${left_sumstats},${right_sumstats}" \
-        --ref-ld-chr "reference_ld_scores/" \
-        --w-ld-chr "regression_weights/" \
+        --ref-ld-chr "reference_ld_scores/${reference_prefix}" \
+        --w-ld-chr "regression_weights/${weights_prefix}" \
         --out "${prefix}" \
         ${args} \
         > "${prefix}.stdout.log"

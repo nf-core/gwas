@@ -10,7 +10,7 @@ nextflow_process {
     tag "ldsc"
     tag "ldsc/rg"
 
-    def inputs = { outputDir, name ->
+    def inputs = { outputDir, name, referencePrefix = '', weightsPrefix = '' ->
         def root = new File(outputDir.toString(), "fixture_${name}")
         def reference = new File(root, 'reference')
         def weights = new File(root, 'weights')
@@ -40,9 +40,9 @@ nextflow_process {
                 leftRows << "rs${globalIndex}\tA\tG\t${String.format(java.util.Locale.ROOT, '%.8f', leftZ)}\t10000"
                 rightRows << "rs${globalIndex}\tA\tG\t${String.format(java.util.Locale.ROOT, '%.8f', rightZ)}\t12000"
             }
-            writeGzip(new File(reference, "${chromosome}.l2.ldscore.gz"), "CHR\tSNP\tBP\tL2\n${referenceRows.join('\n')}\n")
-            new File(reference, "${chromosome}.l2.M_5_50").text = '500\n'
-            writeGzip(new File(weights, "${chromosome}.l2.ldscore.gz"), "CHR\tSNP\tBP\tL2\n${weightRows.join('\n')}\n")
+            writeGzip(new File(reference, "${referencePrefix}${chromosome}.l2.ldscore.gz"), "CHR\tSNP\tBP\tL2\n${referenceRows.join('\n')}\n")
+            new File(reference, "${referencePrefix}${chromosome}.l2.M_5_50").text = '500\n'
+            writeGzip(new File(weights, "${weightsPrefix}${chromosome}.l2.ldscore.gz"), "CHR\tSNP\tBP\tL2\n${weightRows.join('\n')}\n")
         }
         def left = new File(root, 'left.sumstats.gz')
         def right = new File(root, 'right.sumstats.gz')
@@ -57,8 +57,8 @@ nextflow_process {
             process {
                 """
                 input[0] = [[id: 'trait_a--trait_b'], file('${fixture.left}', checkIfExists: true), file('${fixture.right}', checkIfExists: true)]
-                input[1] = [[id: 'reference'], file('${fixture.reference}', checkIfExists: true)]
-                input[2] = [[id: 'weights'], file('${fixture.weights}', checkIfExists: true)]
+                input[1] = [[id: 'reference'], file('${fixture.reference}', checkIfExists: true), '']
+                input[2] = [[id: 'weights'], file('${fixture.weights}', checkIfExists: true), '']
                 """
             }
         }
@@ -77,6 +77,33 @@ nextflow_process {
         }
     }
 
+    // LDSC reads `--ref-ld-chr`/`--w-ld-chr` as a stem it completes with `<chr>.l2.*`, so the same directory
+    // may hold files under any file-name prefix. The two prefixes differ to show that each role carries its
+    // own, and nothing is inferred from the directory listing.
+    test("complete the reference and weight stems with the declared file-name prefixes") {
+        when {
+            def fixture = inputs(outputDir, 'prefixed', 'baselineLD.', 'weights.hm3_noMHC.')
+            process {
+                """
+                input[0] = [[id: 'pair_prefixed'], file('${fixture.left}', checkIfExists: true), file('${fixture.right}', checkIfExists: true)]
+                input[1] = [[id: 'reference'], file('${fixture.reference}', checkIfExists: true), 'baselineLD.']
+                input[2] = [[id: 'weights'], file('${fixture.weights}', checkIfExists: true), 'weights.hm3_noMHC.']
+                """
+            }
+        }
+
+        then {
+            def log = new File(process.out.log.get(0).get(1).toString())
+            assertAll(
+                { assert process.success },
+                { assert log.name == 'pair_prefixed.log' },
+                { assert log.text.contains('--ref-ld-chr reference_ld_scores/baselineLD.') },
+                { assert log.text.contains('--w-ld-chr regression_weights/weights.hm3_noMHC.') },
+                { assert log.text.contains('Summary of Genetic Correlation Results') },
+            )
+        }
+    }
+
     test("emit a native-log stub") {
         options "-stub"
 
@@ -85,8 +112,8 @@ nextflow_process {
             process {
                 """
                 input[0] = [[id: 'pair_stub'], file('${fixture.left}', checkIfExists: true), file('${fixture.right}', checkIfExists: true)]
-                input[1] = [[id: 'reference'], file('${fixture.reference}', checkIfExists: true)]
-                input[2] = [[id: 'weights'], file('${fixture.weights}', checkIfExists: true)]
+                input[1] = [[id: 'reference'], file('${fixture.reference}', checkIfExists: true), '']
+                input[2] = [[id: 'weights'], file('${fixture.weights}', checkIfExists: true), '']
                 """
             }
         }

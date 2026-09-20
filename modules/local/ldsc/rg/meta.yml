@@ -39,6 +39,12 @@ input:
         description: Directory containing chromosome-split reference LD scores and matching M files
         pattern: "*"
         ontologies: []
+    - reference_prefix:
+        type: string
+        description: |
+          File-name prefix completing the `--ref-ld-chr` stem inside the staged directory, so that LDSC reads
+          `<reference_prefix><chr>.l2.ldscore.gz` and `<reference_prefix><chr>.l2.M_5_50`. Empty string when
+          the files are named `<chr>.l2.ldscore.gz`.
   - - meta3:
         type: map
         description: Groovy map containing regression-weight metadata
@@ -47,6 +53,11 @@ input:
         description: Directory containing chromosome-split regression-weight LD scores
         pattern: "*"
         ontologies: []
+    - weights_prefix:
+        type: string
+        description: |
+          File-name prefix completing the `--w-ld-chr` stem inside the staged directory, so that LDSC reads
+          `<weights_prefix><chr>.l2.ldscore.gz`. Empty string when the files are named `<chr>.l2.ldscore.gz`.
 output:
   log:
     - - meta:
