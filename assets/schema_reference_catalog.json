@@ -27,11 +27,11 @@
                     "hapmap3_snplist": { "type": "string", "format": "file-path", "exists": true },
                     "reference_ld_scores": {
                         "type": "string",
-                        "description": "LDSC `--ref-ld-chr` stem, written exactly as it would be typed. LDSC completes it with `<chr>.l2.ldscore.gz` and `<chr>.l2.M_5_50`, so `/refs/ldsc/eur_w_ld_chr/` names `/refs/ldsc/eur_w_ld_chr/1.l2.ldscore.gz` and `/refs/ldsc/baseline/baselineLD.` names `/refs/ldsc/baseline/baselineLD.1.l2.ldscore.gz`. The text before the last `/` is the staged directory and must exist; the text after it is the file-name prefix and may be empty."
+                        "description": "LDSC `--ref-ld-chr` stem, written exactly as it would be typed. LDSC completes it with `<chr>.l2.ldscore` under whichever compression is present (`.bz2`, `.gz` or none) and with `<chr>.l2.M_5_50`, so `/refs/ldsc/eur_w_ld_chr/` names `/refs/ldsc/eur_w_ld_chr/1.l2.ldscore.gz` and `/refs/ldsc/baseline/baselineLD.` names `/refs/ldsc/baseline/baselineLD.1.l2.ldscore.gz`. The text before the last `/` is the staged directory and must exist; the text after it is the file-name prefix and may be empty."
                     },
                     "regression_weights": {
                         "type": "string",
-                        "description": "LDSC `--w-ld-chr` stem, written exactly as it would be typed. LDSC completes it with `<chr>.l2.ldscore.gz`, so `/refs/ldsc/eur_w_ld_chr/` names `/refs/ldsc/eur_w_ld_chr/1.l2.ldscore.gz` and `/refs/ldsc/weights/weights.hm3_noMHC.` names `/refs/ldsc/weights/weights.hm3_noMHC.1.l2.ldscore.gz`. The text before the last `/` is the staged directory and must exist; the text after it is the file-name prefix and may be empty."
+                        "description": "LDSC `--w-ld-chr` stem, written exactly as it would be typed. LDSC completes it with `<chr>.l2.ldscore` under whichever compression is present (`.bz2`, `.gz` or none), so `/refs/ldsc/eur_w_ld_chr/` names `/refs/ldsc/eur_w_ld_chr/1.l2.ldscore.gz` and `/refs/ldsc/weights/weights.hm3_noMHC.` names `/refs/ldsc/weights/weights.hm3_noMHC.1.l2.ldscore.gz`. The text before the last `/` is the staged directory and must exist; the text after it is the file-name prefix and may be empty."
                     }
                 }
             }

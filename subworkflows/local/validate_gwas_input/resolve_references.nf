@@ -72,7 +72,8 @@ def readReferenceCatalog(reference_catalog) {
                 ? ['hapmap3_snplist', 'reference_ld_scores', 'regression_weights']
                 : ['tagging_file']
             // LDSC's `--ref-ld-chr` and `--w-ld-chr` take a stem, not a directory: LDSC appends
-            // `<chr>.l2.ldscore.gz` to it, and `<chr>.l2.M_5_50` for the reference set. The catalog records
+            // `<chr>.l2.ldscore` plus its compression to it, and `<chr>.l2.M_5_50` for the reference set.
+            // The catalog records
             // the text a person would type — `/refs/eur_w_ld_chr/` or `/refs/baseline/baselineLD.` — and the
             // split at the last `/` recovers the directory the pipeline stages and the file-name prefix the
             // LDSC modules hand back to the tool. The declared text is authoritative; nothing is inferred
@@ -94,13 +95,24 @@ def readReferenceCatalog(reference_catalog) {
                     if (!directory.toFile().isDirectory()) {
                         fail.call(bundle_id, field, "stem '${declared}' names directory '${directory_text}', which must be a directory")
                     }
-                    def expected = field == 'reference_ld_scores'
-                        ? ["${prefix}1.l2.ldscore.gz", "${prefix}1.l2.M_5_50"]
-                        : ["${prefix}1.l2.ldscore.gz"]
-                    expected.each { name ->
-                        def candidate = directory.resolve(name.toString())
-                        if (!candidate.exists()) {
-                            fail.call(bundle_id, field, "stem '${declared}' does not resolve chromosome 1; expected '${candidate}'")
+                    // LDSC opens the chromosome-1 LD scores through `ldscore.parse.which_compression`, which
+                    // probes `<stem>1.l2.ldscore.bz2`, then `<stem>1.l2.ldscore.gz`, then the bare
+                    // `<stem>1.l2.ldscore`, and raises only when none of the three is readable. Measured on
+                    // the pinned image ghcr.io/lyh970817/gwas/ldsc:3.0.2-cbiit-6c67395
+                    // @sha256:77fbb697c16a559c3fe75204b1e7ab6a0202afcf10b8a8629bcc98592b0e412b. The stem is
+                    // accepted when any one of them exists, in that same order, so the preflight admits every
+                    // layout the tool itself reads.
+                    def ldscore_candidates = ['.bz2', '.gz', ''].collect { compression ->
+                        directory.resolve("${prefix}1.l2.ldscore${compression}".toString())
+                    }
+                    if (!ldscore_candidates.any { candidate -> candidate.exists() }) {
+                        def named_candidates = ldscore_candidates.collect { candidate -> "'${candidate}'" }.join(', ')
+                        fail.call(bundle_id, field, "stem '${declared}' does not resolve chromosome 1; expected one of ${named_candidates}")
+                    }
+                    if (field == 'reference_ld_scores') {
+                        def variant_counts = directory.resolve("${prefix}1.l2.M_5_50".toString())
+                        if (!variant_counts.exists()) {
+                            fail.call(bundle_id, field, "stem '${declared}' does not resolve chromosome 1; expected '${variant_counts}'")
                         }
                     }
                     resources[field] = directory

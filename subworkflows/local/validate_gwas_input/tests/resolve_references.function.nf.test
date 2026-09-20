@@ -6,27 +6,44 @@ nextflow_function {
     tag "input"
 
     // `reference_ld_scores` and `regression_weights` are LDSC stems, not directories: LDSC completes each
-    // with `<chr>.l2.ldscore.gz`, and the reference set additionally with `<chr>.l2.M_5_50`. These cases fix
-    // the split at the last `/` — the directory the pipeline stages and the file-name prefix it carries to
-    // the modules — and the rejection a person sees when the stem resolves nothing for chromosome 1.
-    def catalog = { outputDir, name, String referencePrefix, String weightsPrefix, boolean writeReference = true ->
+    // with `<chr>.l2.ldscore` plus whichever compression is present, and the reference set additionally with
+    // `<chr>.l2.M_5_50`. These cases fix the split at the last `/` — the directory the pipeline stages and
+    // the file-name prefix it carries to the modules — the three compressions `ldscore.parse.which_compression`
+    // probes, and the rejection a person sees when the stem resolves nothing for chromosome 1.
+    def LDSCORE_ROW = "CHR SNP BP L2\n1 rs1 1 1\n"
+
+    // The JDK ships a gzip encoder but no bzip2 one, and commons-compress is not on the nf-test spec
+    // classpath, so the bzip2 fixture is the real bzip2 stream of LDSCORE_ROW carried as bytes rather than
+    // compressed here. Regenerate with:
+    //   python3 -c "import bz2,base64; print(base64.b64encode(bz2.compress(open('row','rb').read())).decode())"
+    def LDSCORE_ROW_BZIP2 = 'QlpoOTFBWSZTWVFoTlcAAAdegAAQQAAwABhFWAAYACAAIajymhk9IQAAEsSKMC90jJb89C/i7kinChIKLQnK4A=='
+
+    def catalog = { outputDir, name, String referencePrefix, String weightsPrefix, String compression = '.gz', boolean writeReference = true ->
         def root = new File(outputDir.toString(), "reference_catalog_${name}")
         def reference = new File(root, 'reference')
         def weights = new File(root, 'weights')
         reference.mkdirs()
         weights.mkdirs()
-        def writeGzip = { File target ->
-            target.withOutputStream { output ->
-                def gzip = new java.util.zip.GZIPOutputStream(output)
-                gzip.write("CHR SNP BP L2\n1 rs1 1 1\n".getBytes('UTF-8'))
-                gzip.close()
+        def writeLdscore = { File target ->
+            if (compression == '.gz') {
+                target.withOutputStream { output ->
+                    def gzip = new java.util.zip.GZIPOutputStream(output)
+                    gzip.write(LDSCORE_ROW.getBytes('UTF-8'))
+                    gzip.close()
+                }
+            }
+            else if (compression == '.bz2') {
+                target.bytes = LDSCORE_ROW_BZIP2.decodeBase64()
+            }
+            else {
+                target.text = LDSCORE_ROW
             }
         }
         if (writeReference) {
-            writeGzip(new File(reference, "${referencePrefix}1.l2.ldscore.gz"))
+            writeLdscore(new File(reference, "${referencePrefix}1.l2.ldscore${compression}"))
             new File(reference, "${referencePrefix}1.l2.M_5_50").text = '1\n'
         }
-        writeGzip(new File(weights, "${weightsPrefix}1.l2.ldscore.gz"))
+        writeLdscore(new File(weights, "${weightsPrefix}1.l2.ldscore${compression}"))
         def hapmap3 = new File(root, 'hapmap3.snplist')
         hapmap3.text = "SNP\tA1\tA2\nrs1\tA\tG\n"
         def document = [
@@ -96,11 +113,40 @@ nextflow_function {
         }
     }
 
+    // `ldscore.parse.which_compression` probes bz2, then gz, then the bare path, so a bundle carrying any
+    // one of the three is a bundle LDSC reads and the preflight must not narrow that to gzip alone.
+    [
+        [name: 'bzip2', compression: '.bz2'],
+        [name: 'no', compression: ''],
+    ].each { scenario ->
+        test("a stem whose chromosome-1 LD scores carry ${scenario.name} compression is accepted") {
+            function "readReferenceCatalog"
+
+            when {
+                def fixture = catalog(outputDir, "compression_${scenario.name}", '', '', scenario.compression)
+                function {
+                    """
+                    input[0] = '${fixture.path}'
+                    """
+                }
+            }
+
+            then {
+                def bundle = function.result.ldsc_eur
+                assertAll(
+                    { assert function.success },
+                    { assert bundle.stem_prefixes.reference_ld_scores == '' },
+                    { assert bundle.resources.reference_ld_scores.toString() == "${outputDir}/reference_catalog_compression_${scenario.name}/reference" },
+                )
+            }
+        }
+    }
+
     test("a stem that resolves no chromosome-1 file names the field and the file it expected") {
         function "readReferenceCatalog"
 
         when {
-            def fixture = catalog(outputDir, 'missing_chromosome_one', 'baselineLD.', '', false)
+            def fixture = catalog(outputDir, 'missing_chromosome_one', 'baselineLD.', '', '.gz', false)
             function {
                 """
                 input[0] = '${fixture.path}'
@@ -112,7 +158,7 @@ nextflow_function {
             def reference = "${outputDir}/reference_catalog_missing_chromosome_one/reference"
             assertAll(
                 { assert function.failed },
-                { assert function.stdout.join('\n').contains("reference_bundle_id 'ldsc_eur', field 'reference_ld_scores': stem '${reference}/baselineLD.' does not resolve chromosome 1; expected '${reference}/baselineLD.1.l2.ldscore.gz'") },
+                { assert function.stdout.join('\n').contains("reference_bundle_id 'ldsc_eur', field 'reference_ld_scores': stem '${reference}/baselineLD.' does not resolve chromosome 1; expected one of '${reference}/baselineLD.1.l2.ldscore.bz2', '${reference}/baselineLD.1.l2.ldscore.gz', '${reference}/baselineLD.1.l2.ldscore'") },
             )
         }
     }
