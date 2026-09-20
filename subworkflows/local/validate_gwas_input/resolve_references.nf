@@ -92,7 +92,7 @@ def readReferenceCatalog(reference_catalog) {
                     if (!directory.exists()) {
                         fail.call(bundle_id, field, "stem '${declared}' names directory '${directory_text}', which does not exist")
                     }
-                    if (!directory.toFile().isDirectory()) {
+                    if (!directory.isDirectory()) {
                         fail.call(bundle_id, field, "stem '${declared}' names directory '${directory_text}', which must be a directory")
                     }
                     // LDSC opens the chromosome-1 LD scores through `ldscore.parse.which_compression`, which
@@ -124,7 +124,7 @@ def readReferenceCatalog(reference_catalog) {
                     if (!resource.exists()) {
                         fail.call(bundle_id, field, "resource path '${declared}' does not exist")
                     }
-                    if (!resource.toFile().isFile()) {
+                    if (!resource.isFile()) {
                         fail.call(bundle_id, field, "resource path '${declared}' must be a file")
                     }
                     resources[field] = resource
