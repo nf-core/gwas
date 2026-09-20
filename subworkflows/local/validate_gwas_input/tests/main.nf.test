@@ -96,18 +96,21 @@ nextflow_workflow {
                 { assert unary.collect { record -> record[0].request_id } as Set == ['ldsc_h2--external_qt', 'ldsc_h2--external_qt--alternate'] as Set },
                 { assert unary.find { record -> record[0].request_id.endsWith('--alternate') }[0].native_args == ['--chisq-max', '999'] },
                 { assert unary.every { record -> record[0].reference_bundle_id == 'ldsc_eur' } },
-                { assert unary.every { record -> record[1..3].every { resource -> resource } } },
-                { assert unary.every { record -> record[4] == [] } },
+                { assert unary.every { record -> [record[1], record[2], record[4]].every { resource -> resource } } },
+                // A stem whose files are named `<chr>.l2.*` carries the empty prefix in both stem positions.
+                { assert unary.every { record -> record[3] == '' && record[5] == '' } },
+                { assert unary.every { record -> record[6] == [] } },
                 { assert pairsById.keySet() == ['ldsc_rg--external_pair', 'ldsc_rg--external_pair--constrained', 'ldak_sumcors--external_pair'] as Set },
                 { assert pairsById['ldsc_rg--external_pair'][0].left_summary_statistics_id == 'external_qt' },
                 { assert pairsById['ldsc_rg--external_pair'][0].right_summary_statistics_id == 'external_bt' },
                 { assert pairsById['ldsc_rg--external_pair'][0].left_genome_build == 'GRCh37' },
                 { assert pairsById['ldsc_rg--external_pair'][0].right_ancestry == 'EUR' },
-                { assert pairsById['ldsc_rg--external_pair'][1..3].every { resource -> resource } },
+                { assert [1, 2, 4].every { index -> pairsById['ldsc_rg--external_pair'][index] } },
+                { assert pairsById['ldsc_rg--external_pair'][3] == '' && pairsById['ldsc_rg--external_pair'][5] == '' },
                 { assert pairsById['ldsc_rg--external_pair--constrained'][0].primary_request_id == 'ldsc_rg--external_pair' },
                 { assert pairsById['ldsc_rg--external_pair--constrained'][0].native_args == ['--intercept-gencov', '0'] },
-                { assert pairsById['ldak_sumcors--external_pair'][1..3] == [[], [], []] },
-                { assert pairsById['ldak_sumcors--external_pair'][4] },
+                { assert pairsById['ldak_sumcors--external_pair'][1..5] == [[], [], '', [], ''] },
+                { assert pairsById['ldak_sumcors--external_pair'][6] },
             )
         }
     }

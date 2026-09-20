@@ -1,15 +1,20 @@
-include { getMethodCapabilities               } from './method_registry'
-include { getMethodCapability                 } from './method_registry'
-include { getMethodTokensWithCapabilities     } from './method_registry'
+include { getMethodCapabilities                    } from './method_registry'
+include { getMethodCapability                      } from './method_registry'
+include { getMethodTokensWithCapabilities          } from './method_registry'
 include { getMethodOptionDefaults ; validateMphOptionValues } from './method_options'
 include { validateAnalysisPairNativeArgumentTokens ; validateSummaryNativeArgumentTokens } from './native_option_policy'
 
+// Each LDSC LD-score role travels as the staged directory followed by the file-name prefix the catalog stem
+// declared, because that prefix is what LDSC's `--ref-ld-chr`/`--w-ld-chr` stem is completed with downstream.
 def requestResourceTuple(meta, bundle) {
+    def ldsc = bundle && bundle.family == 'ldsc'
     return [
         meta,
-        bundle && bundle.family == 'ldsc' ? bundle.resources.hapmap3_snplist : [],
-        bundle && bundle.family == 'ldsc' ? bundle.resources.reference_ld_scores : [],
-        bundle && bundle.family == 'ldsc' ? bundle.resources.regression_weights : [],
+        ldsc ? bundle.resources.hapmap3_snplist : [],
+        ldsc ? bundle.resources.reference_ld_scores : [],
+        ldsc ? bundle.stem_prefixes.reference_ld_scores : '',
+        ldsc ? bundle.resources.regression_weights : [],
+        ldsc ? bundle.stem_prefixes.regression_weights : '',
         bundle && bundle.family == 'ldak' ? bundle.resources.tagging_file : [],
     ]
 }

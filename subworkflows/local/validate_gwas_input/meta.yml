@@ -53,12 +53,14 @@ output:
         - edam: "http://edamontology.org/format_2330"
   - unary_requests:
       description: Resolved unary summary-statistics requests with explicit family-specific reference resources
-      structure: "[map meta, path hapmap3_snplist|[], path reference_ld_scores|[], path regression_weights|[], path tagging_file|[]]"
+      structure: "[map meta, path hapmap3_snplist|[], path reference_ld_scores|[], string reference_prefix,
+        path regression_weights|[], string weights_prefix, path tagging_file|[]]"
       pattern: "*"
       ontologies: []
   - pair_requests:
       description: Resolved pair summary-statistics requests with explicit family-specific reference resources
-      structure: "[map meta, path hapmap3_snplist|[], path reference_ld_scores|[], path regression_weights|[], path tagging_file|[]]"
+      structure: "[map meta, path hapmap3_snplist|[], path reference_ld_scores|[], string reference_prefix,
+        path regression_weights|[], string weights_prefix, path tagging_file|[]]"
       pattern: "*"
       ontologies: []
   - meta_requests:

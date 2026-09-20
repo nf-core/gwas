@@ -278,8 +278,18 @@ class RELATIONAL {
         def regressionWeights = new File(resourceRoot, 'weights')
         referenceLd.mkdirs()
         regressionWeights.mkdirs()
-        new File(referenceLd, '1.l2.ldscore').text = "CHR SNP BP L2\n1 rs1 1 1\n"
-        new File(regressionWeights, '1.l2.ldscore').text = "CHR SNP BP L2\n1 rs1 1 1\n"
+        // The catalog records LDSC stems, so the structural preflight opens `<stem>1.l2.ldscore.gz` — and
+        // `1.l2.M_5_50` for the reference set — exactly as LDSC would complete them.
+        def gzipRow = { File target ->
+            target.withOutputStream { output ->
+                def gzip = new java.util.zip.GZIPOutputStream(output)
+                gzip.write("CHR SNP BP L2\n1 rs1 1 1\n".getBytes('UTF-8'))
+                gzip.close()
+            }
+        }
+        gzipRow(new File(referenceLd, '1.l2.ldscore.gz'))
+        new File(referenceLd, '1.l2.M_5_50').text = '1\n'
+        gzipRow(new File(regressionWeights, '1.l2.ldscore.gz'))
         def tagging = resource(outputDir, "${name}/reference.tagging", "Predictor Tagging\nrs1 1\n")
         def document = [
             ldsc: [
@@ -288,8 +298,8 @@ class RELATIONAL {
                     ancestry: 'EUR',
                     variant_id_system: 'rsid',
                     hapmap3_snplist: hapmap3,
-                    reference_ld_scores: referenceLd.absolutePath,
-                    regression_weights: regressionWeights.absolutePath,
+                    reference_ld_scores: "${referenceLd.absolutePath}/",
+                    regression_weights: "${regressionWeights.absolutePath}/",
                 ],
             ],
             ldak: [
@@ -366,8 +376,8 @@ class RELATIONAL {
                     ancestry: 'EUR',
                     variant_id_system: 'rsid',
                     hapmap3_snplist: hapmap3.absolutePath,
-                    reference_ld_scores: reference.absolutePath,
-                    regression_weights: weights.absolutePath,
+                    reference_ld_scores: "${reference.absolutePath}/",
+                    regression_weights: "${weights.absolutePath}/",
                 ],
             ],
         ]

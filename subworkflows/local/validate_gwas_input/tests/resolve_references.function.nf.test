@@ -1,0 +1,120 @@
+nextflow_function {
+
+    name "Test linked GWAS input contract functions"
+    script "../resolve_references.nf"
+    tag "function"
+    tag "input"
+
+    // `reference_ld_scores` and `regression_weights` are LDSC stems, not directories: LDSC completes each
+    // with `<chr>.l2.ldscore.gz`, and the reference set additionally with `<chr>.l2.M_5_50`. These cases fix
+    // the split at the last `/` — the directory the pipeline stages and the file-name prefix it carries to
+    // the modules — and the rejection a person sees when the stem resolves nothing for chromosome 1.
+    def catalog = { outputDir, name, String referencePrefix, String weightsPrefix, boolean writeReference = true ->
+        def root = new File(outputDir.toString(), "reference_catalog_${name}")
+        def reference = new File(root, 'reference')
+        def weights = new File(root, 'weights')
+        reference.mkdirs()
+        weights.mkdirs()
+        def writeGzip = { File target ->
+            target.withOutputStream { output ->
+                def gzip = new java.util.zip.GZIPOutputStream(output)
+                gzip.write("CHR SNP BP L2\n1 rs1 1 1\n".getBytes('UTF-8'))
+                gzip.close()
+            }
+        }
+        if (writeReference) {
+            writeGzip(new File(reference, "${referencePrefix}1.l2.ldscore.gz"))
+            new File(reference, "${referencePrefix}1.l2.M_5_50").text = '1\n'
+        }
+        writeGzip(new File(weights, "${weightsPrefix}1.l2.ldscore.gz"))
+        def hapmap3 = new File(root, 'hapmap3.snplist')
+        hapmap3.text = "SNP\tA1\tA2\nrs1\tA\tG\n"
+        def document = [
+            ldsc: [
+                ldsc_eur: [
+                    genome_build: 'GRCh37',
+                    ancestry: 'EUR',
+                    variant_id_system: 'rsid',
+                    hapmap3_snplist: hapmap3.absolutePath,
+                    reference_ld_scores: "${reference.absolutePath}/${referencePrefix}".toString(),
+                    regression_weights: "${weights.absolutePath}/${weightsPrefix}".toString(),
+                ],
+            ],
+        ]
+        def file = new File(root, 'reference_catalog.json')
+        file.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(document)) + '\n'
+        return [path: file.absolutePath, reference: reference.absolutePath, weights: weights.absolutePath]
+    }
+
+    test("a stem whose files carry no prefix keeps the directory meaning it always had") {
+        function "readReferenceCatalog"
+
+        when {
+            def fixture = catalog(outputDir, 'empty_prefix', '', '')
+            function {
+                """
+                input[0] = '${fixture.path}'
+                """
+            }
+        }
+
+        then {
+            def bundle = function.result.ldsc_eur
+            assertAll(
+                { assert function.success },
+                { assert bundle.stem_prefixes.reference_ld_scores == '' },
+                { assert bundle.stem_prefixes.regression_weights == '' },
+                { assert bundle.resources.reference_ld_scores.toString() == "${outputDir}/reference_catalog_empty_prefix/reference" },
+                { assert bundle.resources.regression_weights.toString() == "${outputDir}/reference_catalog_empty_prefix/weights" },
+                { assert bundle.role_names.reference_ld_scores == 'reference/' },
+            )
+        }
+    }
+
+    test("a stem whose files carry a prefix stages the directory and keeps the prefix") {
+        function "readReferenceCatalog"
+
+        when {
+            def fixture = catalog(outputDir, 'prefixed', 'baselineLD.', 'weights.hm3_noMHC.')
+            function {
+                """
+                input[0] = '${fixture.path}'
+                """
+            }
+        }
+
+        then {
+            def bundle = function.result.ldsc_eur
+            assertAll(
+                { assert function.success },
+                { assert bundle.stem_prefixes.reference_ld_scores == 'baselineLD.' },
+                { assert bundle.stem_prefixes.regression_weights == 'weights.hm3_noMHC.' },
+                { assert bundle.resources.reference_ld_scores.toString() == "${outputDir}/reference_catalog_prefixed/reference" },
+                { assert bundle.resources.regression_weights.toString() == "${outputDir}/reference_catalog_prefixed/weights" },
+                { assert bundle.role_names.reference_ld_scores == 'reference/baselineLD.' },
+            )
+        }
+    }
+
+    test("a stem that resolves no chromosome-1 file names the field and the file it expected") {
+        function "readReferenceCatalog"
+
+        when {
+            def fixture = catalog(outputDir, 'missing_chromosome_one', 'baselineLD.', '', false)
+            function {
+                """
+                input[0] = '${fixture.path}'
+                """
+            }
+        }
+
+        then {
+            def reference = "${outputDir}/reference_catalog_missing_chromosome_one/reference"
+            assertAll(
+                { assert function.failed },
+                { assert function.stdout.join('\n').contains("reference_bundle_id 'ldsc_eur', field 'reference_ld_scores': stem '${reference}/baselineLD.' does not resolve chromosome 1; expected '${reference}/baselineLD.1.l2.ldscore.gz'") },
+            )
+        }
+    }
+
+}

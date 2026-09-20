@@ -76,7 +76,7 @@ workflow VALIDATE_GWAS_INPUT {
     analyses           = ch_analyses // channel: [ val(meta), [ path(genotype_file), ... ], path(phenotype), path(quant_covariates), path(cat_covariates), path(kvik_extract), path(ldak_weights) ]
     summary_statistics = ch_summary_statistics // channel: [ val(meta), path(source) ]
     relationships      = ch_relationships // channel: [ val(meta), [ path(genotype_file), ... ], path(pair_quant_covariates), path(pair_cat_covariates) ]
-    unary_requests     = ch_unary_requests // channel: [ val(meta), path(hapmap3_snplist), path(reference_ld_scores), path(regression_weights), path(tagging_file) ]
+    unary_requests     = ch_unary_requests // channel: [ val(meta), path(hapmap3_snplist), path(reference_ld_scores), val(reference_prefix), path(regression_weights), val(weights_prefix), path(tagging_file) ]
     meta_requests      = ch_meta_requests // channel: [ val(meta), val(source_summary_statistics_ids) ]
-    pair_requests      = ch_pair_requests // channel: [ val(meta), path(hapmap3_snplist), path(reference_ld_scores), path(regression_weights), path(tagging_file) ]
+    pair_requests      = ch_pair_requests // channel: [ val(meta), path(hapmap3_snplist), path(reference_ld_scores), val(reference_prefix), path(regression_weights), val(weights_prefix), path(tagging_file) ]
 }
