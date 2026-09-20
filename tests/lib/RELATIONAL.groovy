@@ -522,14 +522,8 @@ class RELATIONAL {
         def directory = new File(new File(outputDir.toString()).parentFile, "resources/${name}")
         directory.mkdirs()
         def sourcePath = { value -> value.toString().replace(FIXTURES.UPSTREAM, fixtureBase) }
-        def sourceBytes = { value ->
-            def path = sourcePath(value)
-            return path.startsWith('http') ? new URL(path).bytes : new File(path).bytes
-        }
-        def sourceLines = { value ->
-            def path = sourcePath(value)
-            return path.startsWith('http') ? new URL(path).readLines() : new File(path).readLines()
-        }
+        def sourceBytes = { value -> new File(sourcePath(value)).bytes }
+        def sourceLines = { value -> new File(sourcePath(value)).readLines() }
         def bed = new File(directory, 'example_two_chromosomes.bed')
         def bim = new File(directory, 'example_two_chromosomes.bim')
         def fam = new File(directory, 'example_two_chromosomes.fam')
@@ -549,7 +543,7 @@ class RELATIONAL {
     static String predictors(Object projectDir, Object outputDir, String name, int count) {
         def source = cohort('example_pgen').pvar
         def fixture = source.toString().replace(FIXTURES.UPSTREAM, FIXTURES.base(projectDir))
-        def lines = fixture.startsWith('http') ? new URL(fixture).readLines() : new File(fixture).readLines()
+        def lines = new File(fixture).readLines()
         def records = lines.findAll { line -> line && !line.startsWith('#') }
         def firstCount = Math.max(1, (int) (count / 2))
         def predictors = (records.take(firstCount) + records.takeRight(count - firstCount))
@@ -563,7 +557,7 @@ class RELATIONAL {
     static String weights(Object projectDir, Object outputDir, String name, int value, int stride = 1) {
         def source = cohort('example_pgen').pvar
         def fixture = source.toString().replace(FIXTURES.UPSTREAM, FIXTURES.base(projectDir))
-        def lines = fixture.startsWith('http') ? new URL(fixture).readLines() : new File(fixture).readLines()
+        def lines = new File(fixture).readLines()
         def content = lines
             .findAll { line -> line && !line.startsWith('#') }
             .withIndex()
@@ -587,7 +581,7 @@ class RELATIONAL {
     // Returns the resource path and the identity of the sample whose cell was removed.
     static Map covariatesWithMissingCell(Object projectDir, Object outputDir, String name, String fixtureName, String column) {
         def fixture = "${FIXTURES.base(projectDir)}results/fixtures/pheno_cov/${fixtureName}"
-        def lines = fixture.startsWith('http') ? new URL(fixture).readLines() : new File(fixture).readLines()
+        def lines = new File(fixture).readLines()
         def header = lines.first().split('\t', -1).toList()
         def index = header.indexOf(column)
         if (index < 2) {
@@ -608,7 +602,7 @@ class RELATIONAL {
     // estimator, so a gap in them is not a defect. Returns the resource path.
     static String phenotypeWithoutSample(Object projectDir, Object outputDir, String name, String fixtureName, String column, String fid, String iid) {
         def fixture = "${FIXTURES.base(projectDir)}results/fixtures/pheno_cov/${fixtureName}"
-        def lines = fixture.startsWith('http') ? new URL(fixture).readLines() : new File(fixture).readLines()
+        def lines = new File(fixture).readLines()
         def header = lines.first().split('\t', -1).toList()
         def index = header.indexOf(column)
         if (index < 2) {
