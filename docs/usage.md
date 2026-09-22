@@ -620,6 +620,8 @@ The generic software profiles include `docker`, `singularity`, `apptainer`, `pod
 
 The pipeline also loads institutional profiles from [nf-core/configs](https://github.com/nf-core/configs#documentation).
 
+The `single_node` profile runs the whole pipeline with the local executor inside one compute allocation, instead of submitting each task to the scheduler. Use it when the run's inputs are only visible on the node the pipeline is launched from, as with a host-mounted view that no other node can see. Inside a Slurm allocation it sizes the run from `SLURM_CPUS_ON_NODE` and `SLURM_MEM_PER_NODE` (MB); outside one, or under `--mem=0`, it falls back to every core the host reports and to 8 GB. It selects no container engine, so stack it with one: `-profile single_node,apptainer` or `-profile single_node,singularity`.
+
 ### `-resume`
 
 Add `-resume` when restarting a run. Nextflow reuses cached tasks whose inputs, code and configuration have not changed. You can resume a named run with `-resume <run-name>`; use `nextflow log` to list run names.
