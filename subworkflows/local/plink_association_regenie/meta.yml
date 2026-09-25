@@ -20,7 +20,18 @@ input:
         the --use-relative-path selector this component's nextflow.config declares, because every
         staged bundle is read from a Step 2 work directory rather than from the fit work directory.
       structure:
-        [string fit_id, map meta, path genotype, path variants, path samples, path pheno, path covar, integer bsize, string mode, integer jobs]
+        [
+          string fit_id,
+          map meta,
+          path genotype,
+          path variants,
+          path samples,
+          path pheno,
+          path covar,
+          integer bsize,
+          string mode,
+          integer jobs,
+        ]
       pattern: "*.{bed,pgen}, *.{bim,pvar}, *.{fam,psam}, *.{phe,pheno,txt,tsv}, *.{covar,cov,txt,tsv}"
       ontologies:
         - edam: "http://edamontology.org/format_3003" # BED
