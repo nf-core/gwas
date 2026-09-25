@@ -70,9 +70,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# The complete published bundle. The six PLINK derivatives resolve over the network only once the
-# follow-up nf-core/test-datasets PR adding them to the `gwas` branch has merged; until then reach them
-# through GWAS_FIXTURE_SOURCE pointed at that branch's checkout.
+# The complete published bundle: every file the `gwas` branch carries under results/fixtures.
 canonical_files=(
     results/fixtures/genotypes/example_all.vcf.gz
     results/fixtures/genotypes/example_all.pgen

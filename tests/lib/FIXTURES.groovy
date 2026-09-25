@@ -14,8 +14,7 @@ class FIXTURES {
     static final String UPSTREAM = 'https://raw.githubusercontent.com/nf-core/test-datasets/gwas/'
     // The 20 files published on the nf-core/test-datasets `gwas` branch, plus the bivariate options
     // document materialize.sh copies in from assets/examples/relational. Mirrors the canonical list in
-    // tests/fixtures/materialize.sh; the six PLINK derivatives resolve over the network only once the
-    // follow-up nf-core/test-datasets PR adding them has merged.
+    // tests/fixtures/materialize.sh.
     private static final List<String> REQUIRED = [
         'results/fixtures/genotypes/example_all.vcf.gz',
         'results/fixtures/genotypes/example_all.pgen',
@@ -52,7 +51,7 @@ class FIXTURES {
                 'branch per case. Materialize the bundle and export the root it prints:\n' +
                 '  export GWAS_TEST_FIXTURES=$(tests/fixtures/materialize.sh --profile docker)\n' +
                 'or launch a focused run through tests/fixtures/nf-test.sh, which does that for you. ' +
-                'Set GWAS_FIXTURE_SOURCE to the canonical fixture source before materializing the bundle.')
+                'Set GWAS_FIXTURE_SOURCE only to materialize from a source other than the published branch.')
         }
 
         def directory = new File(declared).absoluteFile
