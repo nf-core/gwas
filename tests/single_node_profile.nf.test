@@ -28,12 +28,14 @@ nextflow_pipeline {
         }
 
         then {
+            def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
             assertAll(
                 { assert workflow.success },
                 { assert TRACE.count(workflow, 'REGENIE_STEP1') == 1 },
                 { assert TRACE.count(workflow, 'REGENIE_STEP2') == 1 },
                 { assert TRACE.count(workflow, 'GWASLAB_HARMONIZE') == 1 },
                 { assert new File("${params.outdir}/association/regenie/example_quantitative").isDirectory() },
+                { assert snapshot(removeNextflowVersion(versions.toString())).match('versions') },
             )
         }
     }

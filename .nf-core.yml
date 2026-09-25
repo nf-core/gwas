@@ -18,6 +18,12 @@ lint:
   # absent from `nextflow_schema.json`; listing it here keeps the diagnostic without restoring the contract.
   nextflow_config:
     - params.input
+  # A process-level parity test rather than a pipeline run: it holds the MPH and phenotype-preparation
+  # covariate encoders against each other, so it lives in tests/ instead of beside either module. It
+  # has no pipeline outdir and no pipeline software-versions file for the two pipeline-test checks to
+  # find; every other file under tests/ is still checked.
+  nf_test_content:
+    - tests/mph_covariate_encoding.nf.test
 nf_core_version: 4.0.3
 repository_type: pipeline
 template:
