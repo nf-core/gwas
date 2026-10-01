@@ -353,6 +353,8 @@ Preparation preserves the representation a cohort was supplied in. A PLINK 1 or 
 
 </details>
 
+A cohort that declares `genotype_view_id` in its manifest row, such as a [mounted VCZ cohort](usage.md#mounted-vcz-cohorts), shows `source.identity` as `{"mode": "declared", "value": "<genotype_view_id>"}` and no member digests.
+
 The view record is what explains every other published key of that cohort. A relatedness matrix, a REGENIE Step 1 fit and an LDAK thin-common artifact are shared by every cohort whose genotypes are byte-identical in the same representation, and their published directories are named by the artifact key rather than by a cohort — so when two `cohort_id`s name the same files, one directory serves both, and the two view records show why.
 
 ### Prepared phenotypes and covariates

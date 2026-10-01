@@ -54,8 +54,8 @@ workflow PREPARE_COHORT_GENOTYPES {
     // The identity is either the declared token or a content digest computed in a task. `source` carries only
     // the pair `[mode, value]`, which is what enters keys and process metadata; the per-member detail travels
     // on its own channel and never reaches a task hash, so a byte-identical bundle under different names
-    // keeps every artifact key it produced. A launcher-mounted view declares its identity and is therefore
-    // never opened here, which is the whole point of the declaration.
+    // keeps every artifact key it produced. A cohort that declares its identity, such as a mounted view, is
+    // therefore never opened here, which is the whole point of the declaration.
     //
     def ch_by_identity = ch_cohorts.branch { cohort_meta, _genotype_files ->
         declared: cohort_meta.genotype_view_id

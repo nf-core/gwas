@@ -80,7 +80,7 @@
             "genotype_view_id": {
                 "type": "string",
                 "pattern": "^([a-z][a-z0-9_]*:)?[0-9a-f]{16,64}$",
-                "description": "Optional immutable identity of the supplied genotype view: a lowercase hexadecimal digest you computed over the supplied files, or the content-addressed view identity written by a genotype backend launcher, optionally prefixed by that backend's namespace (for example 'biofuse:'). When absent, the pipeline digests the supplied file bytes once per cohort.",
+                "description": "Optional immutable identity of the supplied genotype view: a lowercase hexadecimal digest you computed over the supplied files, or a content-addressed view identity supplied by the backend that serves the files, optionally prefixed by that backend's namespace (for example 'biofuse:'). When absent, the pipeline digests the supplied file bytes once per cohort.",
                 "errorMessage": "genotype_view_id must be 16 to 64 lowercase hexadecimal characters, optionally prefixed by a backend namespace such as 'biofuse:'"
             }
         },
