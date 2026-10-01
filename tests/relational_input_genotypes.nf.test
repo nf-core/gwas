@@ -141,6 +141,46 @@ nextflow_pipeline {
         }
     }
 
+    test("a declared PLINK 1 view reaches LDAK-KVIK as supplied, with no PLINK 1 derivation") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, "declared_identity_kvik", { rows ->
+                    rows[0] = RELATIONAL.cohort('example_bfile')
+                    rows[0].genotype_view_id = 'biofuse:52d1d326413775cd'
+                })
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, "declared_identity_kvik", { rows ->
+                    rows[0].analysis_id = 'example_bfile_declared_kvik_qt'
+                    rows[0].cohort_id = 'example_bfile'
+                    rows[0].association_methods = 'ldak_kvik'
+                })
+            }
+        }
+
+        then {
+            def record = new File("${params.outdir}/genotypes/example_bfile/example_bfile.genotype_view.json")
+            def view = new groovy.json.JsonSlurper().parse(record)
+            def rendered = commands(outputDir)
+            assertAll(
+                { assert workflow.success },
+                // This is the cohort a mounted view (for example one served by the nf-biofuse plugin) hands the
+                // pipeline: a PLINK 1 trio under a declared identity. A PLINK 1 consumer reads it as supplied, so
+                // no task opens, digests or rewrites it.
+                { assert TRACE.count(workflow, 'PREPARE_GENOTYPE_SOURCE') == 0 },
+                { assert TRACE.count(workflow, 'PLINK2_MAKEBED') == 0 },
+                { assert TRACE.count(workflow, 'LDAK_KVIKSTEP2') == 1 },
+                { assert rendered.any { command -> command.contains('--kvik-step2') && command.contains('--bfile "example_all"') } },
+                { assert view.source.identity == [mode: 'declared', value: 'biofuse:52d1d326413775cd'] },
+                { assert view.native_view.format == 'plink1' },
+                // The PLINK 1 view LDAK-KVIK read is the supplied one, not a projection of it.
+                { assert view.plink1.origin == 'supplied' },
+                { assert view.plink1.key == view.native_view.key },
+                { assert view.plink1.information_loss == [] },
+            )
+        }
+    }
+
     test("two cohort identifiers over identical genotypes share one relatedness matrix") {
 
         when {
