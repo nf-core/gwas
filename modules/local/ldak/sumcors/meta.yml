@@ -1,0 +1,157 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/modules/meta-schema.json
+name: ldak_sumcors
+description: Estimate pairwise genetic correlation from two GWAS summary-statistics files and a precomputed LDAK tagging file
+keywords:
+  - ldak
+  - gwas
+  - summary statistics
+  - genetic correlation
+tools:
+  - ldak:
+      description: Linkage Disequilibrium Adjusted Kinships and Loads More
+      homepage: https://dougspeed.com/
+      documentation: https://dougspeed.com/genetic-correlations/
+      licence: ["GPL-3.0-or-later"]
+      identifier: ""
+input:
+  - - meta:
+        type: map
+        description: Metadata map for the first trait summary statistics
+    - summary_statistics:
+        type: file
+        description: First-trait GWAS summary statistics in the native LDAK format passed to `--summary`
+        pattern: "*.{summaries,txt,tsv}"
+        ontologies:
+          - edam: http://edamontology.org/format_3475
+  - - meta2:
+        type: map
+        description: Metadata map for the second trait summary statistics
+    - summary_statistics2:
+        type: file
+        description: Second-trait GWAS summary statistics in the native LDAK format passed to `--summary2`
+        pattern: "*.{summaries,txt,tsv}"
+        ontologies:
+          - edam: http://edamontology.org/format_3475
+  - - meta3:
+        type: map
+        description: Metadata map for the LDAK tagging reference
+    - tagging_file:
+        type: file
+        description: Precomputed LDAK tagging file passed to `--tagfile`
+        pattern: "*.tagging"
+        ontologies: []
+output:
+  correlations:
+    - - meta:
+          type: map
+          description: Metadata map propagated from the first summary-statistics input
+      - meta2:
+          type: map
+          description: Metadata map propagated from the second summary-statistics input
+      - ${prefix}.cors:
+          type: file
+          description: Main heritability, coheritability, and genetic-correlation estimates
+          pattern: "*.cors"
+          ontologies: []
+  correlations_full:
+    - - meta:
+          type: map
+          description: Metadata map propagated from the first summary-statistics input
+      - meta2:
+          type: map
+          description: Metadata map propagated from the second summary-statistics input
+      - ${prefix}.cors.full:
+          type: file
+          description: Full SumCors estimates and uncertainties
+          pattern: "*.cors.full"
+          ontologies: []
+  labels:
+    - - meta:
+          type: map
+          description: Metadata map propagated from the first summary-statistics input
+      - meta2:
+          type: map
+          description: Metadata map propagated from the second summary-statistics input
+      - ${prefix}.labels:
+          type: file
+          description: Labels for the fitted categories
+          pattern: "*.labels"
+          ontologies: []
+  progress:
+    - - meta:
+          type: map
+          description: Metadata map propagated from the first summary-statistics input
+      - meta2:
+          type: map
+          description: Metadata map propagated from the second summary-statistics input
+      - ${prefix}.progress:
+          type: file
+          description: Solver progress records
+          pattern: "*.progress"
+          ontologies: []
+  overlap:
+    - - meta:
+          type: map
+          description: Metadata map propagated from the first summary-statistics input
+      - meta2:
+          type: map
+          description: Metadata map propagated from the second summary-statistics input
+      - ${prefix}.overlap:
+          type: file
+          description: Category-overlap information
+          pattern: "*.overlap"
+          ontologies: []
+  correlations_liability:
+    - - meta:
+          type: map
+          description: Metadata map propagated from the first summary-statistics input
+      - meta2:
+          type: map
+          description: Metadata map propagated from the second summary-statistics input
+      - ${prefix}.cors.liab:
+          type: file
+          optional: true
+          description: Liability-scale estimates emitted when both prevalence and ascertainment pairs are supplied
+          pattern: "*.cors.liab"
+          ontologies: []
+  log:
+    - - meta:
+          type: map
+          description: Metadata map propagated from the first summary-statistics input
+      - meta2:
+          type: map
+          description: Metadata map propagated from the second summary-statistics input
+      - ${prefix}.log:
+          type: file
+          description: Captured LDAK standard output and error stream
+          pattern: "*.log"
+          ontologies: []
+  versions_ldak:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - ldak:
+          type: string
+          description: The name of the tool
+      - cat /opt/ldak/version:
+          type: eval
+          description: Exact LDAK version recorded in the checksum-verified compatibility image
+topics:
+  versions:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - ldak:
+          type: string
+          description: The name of the tool
+      - cat /opt/ldak/version:
+          type: eval
+          description: Exact LDAK version recorded in the checksum-verified compatibility image
+notes: |
+  The mandatory native `--summary`, `--summary2`, and `--tagfile` inputs are explicit. Optional scientific arguments are passed through `task.ext.args`; callers remain responsible for providing a valid LDAK argument set.
+
+  LDAK's native banner identifies this binary only as `Version 6`. The compatibility image records exact version 6.3 separately and pins the official upstream binary by revision and SHA-256. A genuine LDAK 6.3 Conda package is not currently available, so this module deliberately has no Conda environment rather than misrepresenting the 6.1 package as 6.3.
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"

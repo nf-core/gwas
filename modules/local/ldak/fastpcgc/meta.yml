@@ -1,0 +1,245 @@
+name: ldak_fastpcgc
+description: Run randomized linkage disequilibrium-adjusted kinship (LDAK) phenotype correlation-genotype correlation (PCGC) regression directly on PLINK 1 genotypes, without constructing a kinship matrix
+keywords:
+  - ldak
+  - linkage disequilibrium adjusted kinship
+  - pcgc
+  - phenotype correlation genotype correlation
+  - randomized
+  - heritability
+tools:
+  - ldak6:
+      description: LDAK toolset for kinship, heritability, and association analyses
+      homepage: https://dougspeed.com/ldak/
+      documentation: https://dougspeed.com/ldak/
+input:
+  - - meta:
+        type: map
+        description: |
+          Groovy Map containing phenotype metadata.
+          Expected keys:
+            - id (string): Output prefix for the randomized PCGC artifacts.
+    - phenotype_file:
+        type: file
+        description: Headerless binary phenotype file passed to `--pheno`; LDAK errors with `Phenotype 1 is not binary` on a quantitative trait
+        ontologies: []
+    - prevalence:
+        type: float
+        description: Required population disease prevalence passed to `--prevalence`, strictly between zero and one; LDAK errors when it is omitted
+  - - meta2:
+        type: map
+        description: |
+          Groovy Map containing genotype-bundle metadata.
+          Expected keys:
+            - id (string): Genotype-bundle identifier used in the process tag.
+    - bed:
+        type: file
+        description: PLINK BED genotype file; the three bundle members must share one basename because `--bfile` is basename-driven
+        ontologies: []
+    - bim:
+        type: file
+        description: PLINK BIM variant file
+        ontologies: []
+    - fam:
+        type: file
+        description: PLINK FAM sample file
+        ontologies: []
+    - power:
+        type: float
+        description: Required LDAK `--power` value controlling the predictor-scaling heritability model; LDAK errors when it is omitted
+  - - meta3:
+        type: map
+        description: Metadata map paired with optional weights input.
+    - weights_file:
+        type: file
+        optional: true
+        description: |
+          Optional LDAK predictor weights file passed to `--weights`; pass [] when absent. LDAK gives weight
+          zero to every BIM predictor absent from the file and only warns (`contains weights for only`), so
+          the caller owns coverage. `--weights` and `--ignore-weights YES` are natively contradictory.
+        ontologies: []
+  - - meta4:
+        type: map
+        description: Metadata map paired with optional quantitative covariates input.
+    - quant_covariates_file:
+        type: file
+        optional: true
+        description: |
+          Optional quantitative covariates file passed to `--covar`; pass [] when absent. LDAK does not parse
+          a missing cell: it fits whatever value was last in its read buffer and excludes neither the sample
+          nor the column, so the caller owns completeness.
+        ontologies: []
+  - - meta5:
+        type: map
+        description: Metadata map paired with optional categorical covariates input.
+    - cat_covariates_file:
+        type: file
+        optional: true
+        description: |
+          Optional categorical covariates file passed to `--factors`; pass [] when absent. A missing cell
+          becomes an additional factor level rather than a missing value.
+        ontologies: []
+output:
+  fastpcgc_results:
+    - - meta:
+          type: map
+          description: Metadata map propagated from input
+      - "${prefix}.fastpcgc":
+          type: file
+          description: Randomized PCGC variance-component results on the liability scale (`<prefix>.fastpcgc`)
+          ontologies: []
+  fastpcgc_marginal:
+    - - meta:
+          type: map
+          description: Metadata map propagated from input
+      - "${prefix}.fastpcgc.marginal":
+          type: file
+          optional: true
+          description: Optional marginal PCGC estimate, which differs from the conditional estimate when covariates are supplied
+          ontologies: []
+  cats:
+    - - meta:
+          type: map
+          description: Metadata map propagated from input
+      - "${prefix}.cats":
+          type: file
+          optional: true
+          description: Optional per-category heritability output (`<prefix>.cats`)
+          ontologies: []
+  coeff:
+    - - meta:
+          type: map
+          description: Metadata map propagated from input
+      - "${prefix}.coeff":
+          type: file
+          optional: true
+          description: Optional covariate log-odds output (`<prefix>.coeff`)
+          ontologies: []
+  combined:
+    - - meta:
+          type: map
+          description: Metadata map propagated from input
+      - "${prefix}.combined":
+          type: file
+          optional: true
+          description: Optional combined covariate design echo, written whenever `--factors` is supplied
+          ontologies: []
+  cross:
+    - - meta:
+          type: map
+          description: Metadata map propagated from input
+      - "${prefix}.cross":
+          type: file
+          optional: true
+          description: Optional cross-product output (`<prefix>.cross`)
+          ontologies: []
+  enrich:
+    - - meta:
+          type: map
+          description: Metadata map propagated from input
+      - "${prefix}.enrich":
+          type: file
+          optional: true
+          description: Optional category enrichment output (`<prefix>.enrich`)
+          ontologies: []
+  share:
+    - - meta:
+          type: map
+          description: Metadata map propagated from input
+      - "${prefix}.share":
+          type: file
+          optional: true
+          description: Optional heritability share output (`<prefix>.share`)
+          ontologies: []
+  ind_hers:
+    - - meta:
+          type: map
+          description: Metadata map propagated from input
+      - "${prefix}.ind.hers":
+          type: file
+          optional: true
+          description: Optional per-predictor heritability contributions (`<prefix>.ind.hers`)
+          ontologies: []
+  jackests:
+    - - meta:
+          type: map
+          description: Metadata map propagated from input
+      - "${prefix}.jackests":
+          type: file
+          optional: true
+          description: Optional block-jackknife estimates, one line per jackknife block (`<prefix>.jackests`)
+          ontologies: []
+  labels:
+    - - meta:
+          type: map
+          description: Metadata map propagated from input
+      - "${prefix}.labels":
+          type: file
+          optional: true
+          description: Optional component label output (`<prefix>.labels`)
+          ontologies: []
+  progress:
+    - - meta:
+          type: map
+          description: Metadata map propagated from input
+      - "${prefix}.progress":
+          type: file
+          optional: true
+          description: Optional progress output (`<prefix>.progress`)
+          ontologies: []
+  repetitions:
+    - - meta:
+          type: map
+          description: Metadata map propagated from input
+      - "${prefix}.repetitions":
+          type: file
+          optional: true
+          description: Optional random-vector repetition output, one line per random vector (`<prefix>.repetitions`)
+          ontologies: []
+  log:
+    - - meta:
+          type: map
+          description: Metadata map propagated from input
+      - "${prefix}.log":
+          type: file
+          description: LDAK randomized PCGC log file (`<prefix>.log`)
+          ontologies: []
+  versions_ldak6:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - ldak6:
+          type: string
+          description: The tool name
+      - ldak6 --version 2>&1 | grep -oP '(?<=^Version )[0-9.]+':
+          type: eval
+          description: The expression used to obtain the version of the tool
+topics:
+  versions:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - ldak6:
+          type: string
+          description: The tool name
+      - ldak6 --version 2>&1 | grep -oP '(?<=^Version )[0-9.]+':
+          type: eval
+          description: The expression used to obtain the version of the tool
+containers:
+  conda:
+    linux/amd64:
+      lock_file: "modules/local/ldak/fastpcgc/.conda-lock/linux_amd64-bd-452828f72b3c9129_1.txt"
+  docker:
+    linux/amd64:
+      build_id: "bd-452828f72b3c9129_1"
+      name: "community.wave.seqera.io/library/ldak6_r-base:452828f72b3c9129"
+      scan_id: "sc-65cc7b1c1a9a20b6_1"
+  singularity:
+    linux/amd64:
+      build_id: "bd-e8012f1be139af77_1"
+      name: "oras://community.wave.seqera.io/library/ldak6_r-base:e8012f1be139af77"
+      https: "https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/c9/c94e5424f08cbd7e0856ab3c3a9992b4080944a5d0c497ce0abcceb413db4a3e/data"
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"

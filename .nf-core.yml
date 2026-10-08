@@ -2,6 +2,28 @@ lint:
   files_exist:
     - conf/igenomes.config
     - conf/igenomes_ignored.config
+    # The single module config is split into per-method-family files under `conf/modules/`, so that a
+    # new association or heritability route adds a file instead of editing a shared one. Both this
+    # `files_exist` entry and the `modules_config` toggle below are required: the first stops lint
+    # demanding the deleted file, the second stops the `withName:` check reading it.
+    - conf/modules.config
+  files_unchanged:
+    - .github/workflows/branch.yml
+    - .github/workflows/linting.yml
+  modules_config: false
+  # Containers are selected by module directives and per-method configs; the generated
+  # conf/containers_*.config files are not included by this pipeline.
+  container_configs: false
+  # The retired `--input` parameter is exercised only by a migration-diagnostic test. It is intentionally
+  # absent from `nextflow_schema.json`; listing it here keeps the diagnostic without restoring the contract.
+  nextflow_config:
+    - params.input
+  # A process-level parity test rather than a pipeline run: it holds the MPH and phenotype-preparation
+  # covariate encoders against each other, so it lives in tests/ instead of beside either module. It
+  # has no pipeline outdir and no pipeline software-versions file for the two pipeline-test checks to
+  # find; every other file under tests/ is still checked.
+  nf_test_content:
+    - tests/mph_covariate_encoding.nf.test
 nf_core_version: 4.0.3
 repository_type: pipeline
 template:

@@ -1,0 +1,65 @@
+{
+    "versions": {
+        "content": [
+            {
+                "CUSTOM_GCTAMERGEGRMPARTS": {
+                    "coreutils": 9.5
+                },
+                "CUSTOM_GCTASTRATIFYLDSCORES": {
+                    "gcta_stratify_ldscores": "1.0.0",
+                    "r-base": "4.2.1"
+                },
+                "GCTA_CALCULATELDSCORES": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_MAKEGRMPART": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_REMLLDMS": {
+                    "gcta": "1.94.1"
+                },
+                "PREPARE_GENOTYPE_SOURCE": {
+                    "python": "3.14.5"
+                },
+                "PREPARE_PHENOTYPE_INPUTS": {
+                    "python": "3.14.5"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "timestamp": "2026-09-18T19:14:40.083993893",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "heritability": {
+        "content": [
+            [
+                "individual",
+                "individual/gcta_greml_ldms",
+                "individual/gcta_greml_ldms/ldms_different_bins",
+                "individual/gcta_greml_ldms/ldms_different_bins/ldms_different_bins.gcta_greml_ldms.hsq",
+                "individual/gcta_greml_ldms/ldms_different_edges",
+                "individual/gcta_greml_ldms/ldms_different_edges/ldms_different_edges.gcta_greml_ldms.hsq",
+                "individual/gcta_greml_ldms/ldms_same_1",
+                "individual/gcta_greml_ldms/ldms_same_1/ldms_same_1.gcta_greml_ldms.hsq",
+                "individual/gcta_greml_ldms/ldms_same_2",
+                "individual/gcta_greml_ldms/ldms_same_2/ldms_same_2.gcta_greml_ldms.hsq"
+            ],
+            [
+                "ldms_different_bins.gcta_greml_ldms.hsq:md5,b0b893c27948aad255fc3e6f544a7429",
+                "ldms_different_edges.gcta_greml_ldms.hsq:md5,92c41000ec3d486536abd196692ab68b",
+                "ldms_same_1.gcta_greml_ldms.hsq:md5,3475afa4e0119452ee59e94502a1ccd7",
+                "ldms_same_2.gcta_greml_ldms.hsq:md5,3475afa4e0119452ee59e94502a1ccd7"
+            ]
+        ],
+        "timestamp": "2026-08-12T21:29:07.764090069",
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        }
+    }
+}

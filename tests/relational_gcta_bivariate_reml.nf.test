@@ -1,0 +1,171 @@
+nextflow_pipeline {
+
+    name "Test primary dense GCTA bivariate REML relationship route"
+    script "../main.nf"
+    tag "pipeline"
+    tag "relational"
+    tag "heritability"
+    tag "genetic_correlation"
+    tag "gcta"
+    tag "gcta_bivariate_reml"
+
+    def pairInputs = { projectDir, outputDir, name ->
+        def analyses = RELATIONAL.analyses(projectDir, outputDir, name, { rows ->
+            def binary = RELATIONAL.analysis(projectDir, 'example_pgen_bt')
+            binary.population_prevalence = 0.1
+            rows << binary
+            rows.each { row ->
+                row.association_methods = ''
+                row.heritability_methods = ''
+            }
+        })
+        return [
+            cohort: RELATIONAL.cohorts(projectDir, outputDir, name),
+            analyses: analyses,
+            relationships: RELATIONAL.relationships(projectDir, outputDir, name),
+        ]
+    }
+
+    def workFiles = { outputDir ->
+        def files = []
+        new File(new File(outputDir.toString()).parentFile, 'work').eachFileRecurse { entry ->
+            if (entry.isFile()) {
+                files << entry
+            }
+        }
+        return files
+    }
+
+    test("mixed quantitative-binary pair publishes native outputs") {
+        when {
+            def inputs = pairInputs(projectDir, outputDir, 'gcta_bivariate_primary')
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = inputs.cohort
+                analysis_manifest = inputs.analyses
+                relationship_manifest = inputs.relationships
+                method_options = RELATIONAL.methodOptions(outputDir, 'gcta_bivariate_primary', [
+                    analyses: [:],
+                    pair_requests: [
+                        'gcta_bivariate_reml--qt_bt': [native_args: ['--reml-maxit', '500']],
+                    ],
+                ])
+                gcta_grm_parts = 1
+            }
+        }
+
+        then {
+            def request = new File("${params.outdir}/requests/gcta_bivariate_reml/gcta_bivariate_reml--qt_bt")
+            def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
+            def nativeCommand = workFiles(outputDir).find { entry ->
+                entry.name == '.command.sh' && entry.text.contains('--reml-bivar 1 2')
+            }
+            def grmCommand = workFiles(outputDir).find { entry ->
+                entry.name == '.command.sh' && entry.text.contains('--make-grm-part')
+            }
+            def stableRequestNames = request.listFiles()*.name.sort()
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'GCTA_MAKEGRMPART') == 1 },
+                // The cohort is supplied as PLINK 2 and the dense GRM builder is format-polymorphic, so it
+                // reads the researcher's own PGEN through `--mpfile` with no conversion in between.
+                { assert grmCommand != null },
+                { assert grmCommand.text.contains('--mpfile') },
+                { assert TRACE.count(workflow, 'PLINK2_MAKEBED') == 0 },
+                { assert TRACE.count(workflow, 'CUSTOM_GCTAMERGEGRMPARTS') == 1 },
+                { assert TRACE.count(workflow, 'PREPARE_BIVARIATE_TRAITS') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEREML') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_REML') == 0 },
+                { assert new File(request, 'native.hsq').isFile() },
+                { assert new File(request, 'native.log').isFile() },
+                { assert nativeCommand != null },
+                { assert nativeCommand.text.contains('--reml-bivar-prevalence 0.1') },
+                { assert nativeCommand.text.contains('--reml-maxit 500') },
+                { assert !nativeCommand.text.contains('\n        --prevalence ') },
+                { assert snapshot(removeNextflowVersion(versions.toString())).match('versions') },
+                { assert snapshot(stableRequestNames, new File(request, 'native.hsq').text).match('results') },
+            )
+        }
+    }
+
+    test("default unary GREML and pair requests share one dense matrix without migrating unary outputs") {
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, 'gcta_bivariate_coexistence')
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, 'gcta_bivariate_coexistence', { rows ->
+                    def binary = RELATIONAL.analysis(projectDir, 'example_pgen_bt')
+                    binary.population_prevalence = 0.1
+                    rows << binary
+                    rows.each { row ->
+                        row.association_methods = ''
+                        row.heritability_methods = 'gcta_greml'
+                    }
+                })
+                relationship_manifest = RELATIONAL.relationships(projectDir, outputDir, 'gcta_bivariate_coexistence')
+                gcta_grm_parts = 1
+            }
+        }
+
+        then {
+            def unaryRoot = new File("${params.outdir}/heritability/individual/gcta_greml")
+            def pairRequest = new File("${params.outdir}/requests/gcta_bivariate_reml/gcta_bivariate_reml--qt_bt")
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'GCTA_MAKEGRMPART') == 1 },
+                { assert TRACE.count(workflow, 'CUSTOM_GCTAMERGEGRMPARTS') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_REML') == 2 },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEREML') == 1 },
+                { assert new File(unaryRoot, 'example_pgen_qt/example_pgen_qt.gcta_greml.hsq').isFile() },
+                { assert new File(unaryRoot, 'example_pgen_bt/example_pgen_bt.gcta_greml.hsq').isFile() },
+                { assert new File(pairRequest, 'native.hsq').isFile() },
+                { assert new File(pairRequest, 'native.log').isFile() },
+            )
+        }
+    }
+
+    // The one pipeline-level relationship-validation case. It is the only rejection here that joins all three
+    // manifests -- two cohorts, two analyses and one relationship -- so it is what proves the resolver reads
+    // the analysis rows' cohorts from the cohort manifest rather than from the relationship row. The
+    // single-manifest rules it used to run beside (same endpoint twice, an equal trait_id, a reversed
+    // duplicate binding, a half-populated summary pair) are asserted with their full row and field
+    // attribution in `subworkflows/local/validate_gwas_input/tests/resolve_relationships.function.nf.test`,
+    // and the native-argument firewall in that directory's `native_option_policy.function.nf.test`.
+    test("relationship validation rejects endpoints from different cohorts before task submission") {
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, 'invalid_pair_cohort', { rows ->
+                    rows << RELATIONAL.cohort('example_bfile')
+                })
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, 'invalid_pair_cohort', { rows ->
+                    def right = RELATIONAL.analysis(projectDir, 'example_pgen_bt')
+                    right.analysis_id = 'example_bfile_bt'
+                    right.cohort_id = 'example_bfile'
+                    rows << right
+                    rows.each { row ->
+                        row.association_methods = ''
+                        row.heritability_methods = ''
+                    }
+                })
+                relationship_manifest = RELATIONAL.relationships(projectDir, outputDir, 'invalid_pair_cohort', { rows ->
+                    rows[0].right_analysis_id = 'example_bfile_bt'
+                })
+            }
+        }
+
+        then {
+            def report = VALIDATION.report(outputDir, workflow.stdout)
+            assertAll(
+                { assert !workflow.success },
+                { assert report.contains("individual-level relationship methods require one cohort") },
+                { assert report.contains("'example_pgen_qt' uses 'example_pgen'") },
+                { assert report.contains("'example_bfile_bt' uses 'example_bfile'") },
+                // "Before task submission" as the direct claim rather than as two named zero-counts.
+                { assert workflow.trace.tasks().isEmpty() },
+                { assert TRACE.count(workflow, 'GCTA_MAKEGRMPART') == 0 },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEREML') == 0 },
+            )
+        }
+    }
+}

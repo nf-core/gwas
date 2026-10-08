@@ -1,0 +1,5 @@
+REGENIE_STEP2:
+  regenie: 4.1.2
+Workflow:
+  nf-core/gwas: v1.0.0dev
+  Nextflow: 25.10.4

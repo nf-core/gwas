@@ -1,0 +1,184 @@
+{
+    "official compact fixture - quantitative trait pair": {
+        "content": [
+            {
+                "correlations": [
+                    [
+                        {
+                            "id": "trait1"
+                        },
+                        {
+                            "id": "trait2"
+                        },
+                        "trait1_trait2.cors:md5,af74603ea4a4a165663ab628e23c56c2"
+                    ]
+                ],
+                "correlations_full": [
+                    [
+                        {
+                            "id": "trait1"
+                        },
+                        {
+                            "id": "trait2"
+                        },
+                        "trait1_trait2.cors.full:md5,531ec9bf9017b8b597db48ea7b02cba0"
+                    ]
+                ],
+                "correlations_liability": [
+
+                ],
+                "labels": [
+                    [
+                        {
+                            "id": "trait1"
+                        },
+                        {
+                            "id": "trait2"
+                        },
+                        "trait1_trait2.labels:md5,8be2c01f7bd55a30066ad529ade5db8e"
+                    ]
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "trait1"
+                        },
+                        {
+                            "id": "trait2"
+                        },
+                        "trait1_trait2.log"
+                    ]
+                ],
+                "overlap": [
+                    [
+                        {
+                            "id": "trait1"
+                        },
+                        {
+                            "id": "trait2"
+                        },
+                        "trait1_trait2.overlap:md5,ab6ac56b9ac3e307eba1b9f55eb8a06b"
+                    ]
+                ],
+                "progress": [
+                    [
+                        {
+                            "id": "trait1"
+                        },
+                        {
+                            "id": "trait2"
+                        },
+                        "trait1_trait2.progress:md5,7f0f02d26b5ed08fcdabb3d121347207"
+                    ]
+                ],
+                "versions_ldak": [
+                    [
+                        "LDAK_SUMCORS",
+                        "ldak",
+                        "6.3"
+                    ]
+                ]
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-24T03:46:28.285668021"
+    },
+    "official compact fixture - stub with liability output": {
+        "content": [
+            {
+                "correlations": [
+                    [
+                        {
+                            "id": "trait1_stub"
+                        },
+                        {
+                            "id": "trait2_stub"
+                        },
+                        "trait1_stub_trait2_stub.cors:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "correlations_full": [
+                    [
+                        {
+                            "id": "trait1_stub"
+                        },
+                        {
+                            "id": "trait2_stub"
+                        },
+                        "trait1_stub_trait2_stub.cors.full:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "correlations_liability": [
+                    [
+                        {
+                            "id": "trait1_stub"
+                        },
+                        {
+                            "id": "trait2_stub"
+                        },
+                        "trait1_stub_trait2_stub.cors.liab:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "labels": [
+                    [
+                        {
+                            "id": "trait1_stub"
+                        },
+                        {
+                            "id": "trait2_stub"
+                        },
+                        "trait1_stub_trait2_stub.labels:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "trait1_stub"
+                        },
+                        {
+                            "id": "trait2_stub"
+                        },
+                        "trait1_stub_trait2_stub.log"
+                    ]
+                ],
+                "overlap": [
+                    [
+                        {
+                            "id": "trait1_stub"
+                        },
+                        {
+                            "id": "trait2_stub"
+                        },
+                        "trait1_stub_trait2_stub.overlap:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "progress": [
+                    [
+                        {
+                            "id": "trait1_stub"
+                        },
+                        {
+                            "id": "trait2_stub"
+                        },
+                        "trait1_stub_trait2_stub.progress:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "versions_ldak": [
+                    [
+                        "LDAK_SUMCORS",
+                        "ldak",
+                        "6.3"
+                    ]
+                ]
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-24T03:46:35.960737401"
+    }
+}

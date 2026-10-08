@@ -1,0 +1,120 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/modules/meta-schema.json
+name: "gcta_bivariatehereg"
+description: Run bivariate Haseman-Elston cross-product regression for two traits with one dense GRM
+keywords:
+  - gcta
+  - genome-wide complex trait analysis
+  - haseman-elston regression
+  - hereg
+  - bivariate
+  - genetic correlation
+  - grm
+  - genetic relationship matrix
+  - genetics
+tools:
+  - "gcta":
+      description: "Genome-wide Complex Trait Analysis (GCTA) estimates genetic relationships, variance components, and association statistics from genome-wide data."
+      homepage: "https://yanglab.westlake.edu.cn/software/gcta/"
+      documentation: "https://yanglab.westlake.edu.cn/software/gcta/static/gcta_doc_latest.pdf"
+      tool_dev_url: "https://yanglab.westlake.edu.cn/software/gcta/"
+      licence: ["GPL-3.0-only"]
+      identifier: "biotools:gcta"
+input:
+  - - meta:
+        type: map
+        description: |
+          Groovy map containing dense GRM metadata
+          e.g. `[ id:'plink_simulated_dense' ]`
+          The dense GRM basename passed to `--grm` is taken from the staged
+          `.grm.bin` file, while `meta.id` names the outputs
+    - grm_files:
+        type: file
+        description: Dense GRM bundle containing sample identifier, binary matrix,
+          and sample-count matrix files
+        pattern: "*.grm.*"
+        ontologies: []
+  - - meta2:
+        type: map
+        description: |
+          Groovy map containing phenotype metadata; should carry the same sample
+          identity as `meta`, for example `[ id:'plink_simulated_dense' ]`
+    - phenotypes_file:
+        type: file
+        description: |
+          Headerless `FID IID trait1 trait2 ...` phenotype file passed to `--pheno`.
+          `gcta --HEreg-bivar` accepts no covariate file: GCTA 1.94.1 lists
+          `--qcovar` and `--covar` under its accepted options but never reads them
+          for this analysis, so the caller must supply phenotypes that already
+          carry the intended adjustment.
+        pattern: "*.{phe,pheno,txt,tsv}"
+        ontologies:
+          - edam: "http://edamontology.org/format_3475"
+    - phenotype_col1:
+        type: integer
+        description: |
+          One-based index of the first trait among the phenotype columns that
+          follow `FID IID`. Pass `[]` for both columns to accept the native
+          default of traits 1 and 2.
+    - phenotype_col2:
+        type: integer
+        description: |
+          One-based index of the second trait among the phenotype columns that
+          follow `FID IID`. Pass `[]` for both columns to accept the native
+          default of traits 1 and 2.
+output:
+  hereg_results:
+    - - meta:
+          type: map
+          description: |
+            Groovy map containing dense GRM metadata
+            e.g. `[ id:'plink_simulated_dense' ]`
+      - "*.HEreg":
+          type: file
+          description: |
+            Bivariate Haseman-Elston cross-product result table with one `HE-CP`
+            section holding the per-trait intercepts, `V(G)/Vp_tr1`,
+            `V(G)/Vp_tr2`, `C(G)/Vp_tr12`, `rG` and the two per-trait sample
+            counts, each with an OLS and a jackknife standard error
+          pattern: "*.HEreg"
+          ontologies:
+            - edam: "http://edamontology.org/format_2330"
+  log:
+    - - meta:
+          type: map
+          description: |
+            Groovy map containing dense GRM metadata
+            e.g. `[ id:'plink_simulated_dense' ]`
+      - "*.log":
+          type: file
+          description: |
+            GCTA log; it additionally carries the ordinary-least-squares design
+            matrix and the jackknife sampling variance/covariance matrix of the
+            estimates, neither of which is written to the `.HEreg` table
+          pattern: "*.log"
+          ontologies:
+            - edam: "http://edamontology.org/format_2330"
+  versions_gcta:
+    - - "${task.process}":
+          type: string
+          description: The process the version was collected from
+      - "gcta":
+          type: string
+          description: The tool name
+      - "gcta --version | sed -En 's/^[*] version v([0-9.]*).*/\\1/p'":
+          type: eval
+          description: The command used to retrieve the GCTA version
+topics:
+  versions:
+    - - ${task.process}:
+          type: string
+          description: The process the version was collected from
+      - gcta:
+          type: string
+          description: The tool name
+      - "gcta --version | sed -En 's/^[*] version v([0-9.]*).*/\\1/p'":
+          type: eval
+          description: The command used to retrieve the GCTA version
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"

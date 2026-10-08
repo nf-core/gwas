@@ -1,0 +1,7 @@
+id: "nf-core-gwas-methods-description"
+description: "Custom methods description template used by the route_gwas_reporting tests."
+section_name: "nf-core/gwas Methods Description"
+plot_type: "html"
+data: |
+  <p>ROUTE_GWAS_REPORTING custom methods description asset</p>
+  <p>${tool_citations}</p>

@@ -1,0 +1,170 @@
+{
+    "provided-native": {
+        "content": [
+            [
+                "example_pgen_qt",
+                "example_pgen_qt/example_pgen_qt.ldak_kvik.step2.assoc"
+            ],
+            [
+                "example_pgen_qt.ldak_kvik.step2.assoc:md5,d900ec29ee8c14586bf8d9045f315d1b"
+            ]
+        ],
+        "timestamp": "2026-09-10T03:54:23.586511155",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "thin-common-native": {
+        "content": [
+            [
+                "example_pgen_qt",
+                "example_pgen_qt/example_pgen_qt.ldak_kvik.step2.assoc"
+            ],
+            [
+                "example_pgen_qt.ldak_kvik.step2.assoc:md5,d900ec29ee8c14586bf8d9045f315d1b"
+            ]
+        ],
+        "timestamp": "2026-09-10T03:54:00.508632667",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "binary-harmonised": {
+        "content": [
+            [
+                "example_pgen_bt--ldak_kvik",
+                "example_pgen_bt--ldak_kvik/example_pgen_bt--ldak_kvik.gwaslab.log",
+                "example_pgen_bt--ldak_kvik/example_pgen_bt--ldak_kvik.gwaslab.tsv.gz"
+            ],
+            [
+                "example_pgen_bt--ldak_kvik/example_pgen_bt--ldak_kvik.gwaslab.tsv.gz:md5,5ac23344d8288444e4d289d6a280a572"
+            ]
+        ],
+        "timestamp": "2026-08-30T23:16:41.249909554",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "binary-native": {
+        "content": [
+            [
+                "example_pgen_bt",
+                "example_pgen_bt/example_pgen_bt.ldak_kvik.step2.assoc"
+            ],
+            [
+                "example_pgen_bt.ldak_kvik.step2.assoc:md5,8435a2b63c69a428bd49adb1d28f03c0"
+            ]
+        ],
+        "timestamp": "2026-08-12T20:44:16.885802173",
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        }
+    },
+    "versions": {
+        "content": [
+            {
+                "GWASLAB_HARMONIZE": {
+                    "gwaslab": "4.1.9",
+                    "python": "3.12.13"
+                },
+                "LDAK_KVIKSTEP1": {
+                    "ldak6": 6
+                },
+                "LDAK_KVIKSTEP2": {
+                    "ldak6": 6
+                },
+                "PLINK2_MAKEBED": {
+                    "plink2": "2.0.0-a.6.9LM"
+                },
+                "PREPARE_GENOTYPE_SOURCE": {
+                    "python": "3.14.5"
+                },
+                "PREPARE_LDAK_KVIK_HARMONISATION": {
+                    "python": "3.14.5"
+                },
+                "PREPARE_PHENOTYPE_INPUTS": {
+                    "python": "3.14.5"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "timestamp": "2026-09-18T22:11:22.163227401",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "all-harmonised": {
+        "content": [
+            [
+                "example_pgen_qt--ldak_kvik",
+                "example_pgen_qt--ldak_kvik/example_pgen_qt--ldak_kvik.gwaslab.log",
+                "example_pgen_qt--ldak_kvik/example_pgen_qt--ldak_kvik.gwaslab.tsv.gz"
+            ],
+            [
+                "example_pgen_qt--ldak_kvik/example_pgen_qt--ldak_kvik.gwaslab.tsv.gz:md5,a98586ed5327e821eeb99c774578727a"
+            ]
+        ],
+        "timestamp": "2026-09-10T03:53:36.169931495",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "thin-common-harmonised": {
+        "content": [
+            [
+                "example_pgen_qt--ldak_kvik",
+                "example_pgen_qt--ldak_kvik/example_pgen_qt--ldak_kvik.gwaslab.log",
+                "example_pgen_qt--ldak_kvik/example_pgen_qt--ldak_kvik.gwaslab.tsv.gz"
+            ],
+            [
+                "example_pgen_qt--ldak_kvik/example_pgen_qt--ldak_kvik.gwaslab.tsv.gz:md5,06495c6743f296a1503271f24216d27c"
+            ]
+        ],
+        "timestamp": "2026-09-10T03:54:00.516055583",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "provided-harmonised": {
+        "content": [
+            [
+                "example_pgen_qt--ldak_kvik",
+                "example_pgen_qt--ldak_kvik/example_pgen_qt--ldak_kvik.gwaslab.log",
+                "example_pgen_qt--ldak_kvik/example_pgen_qt--ldak_kvik.gwaslab.tsv.gz"
+            ],
+            [
+                "example_pgen_qt--ldak_kvik/example_pgen_qt--ldak_kvik.gwaslab.tsv.gz:md5,06495c6743f296a1503271f24216d27c"
+            ]
+        ],
+        "timestamp": "2026-09-10T03:54:23.595022891",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "all-native": {
+        "content": [
+            [
+                "example_pgen_qt",
+                "example_pgen_qt/example_pgen_qt.ldak_kvik.step2.assoc"
+            ],
+            [
+                "example_pgen_qt.ldak_kvik.step2.assoc:md5,efd0d5e1dbb23dcd80c13bbfd87ce66f"
+            ]
+        ],
+        "timestamp": "2026-09-10T03:53:36.152588712",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

@@ -1,0 +1,103 @@
+nextflow_process {
+
+    name "Test Process CUSTOM_PREPAREMRMEGAINPUT"
+    script "../main.nf"
+    process "CUSTOM_PREPAREMRMEGAINPUT"
+    config "./nextflow.config"
+
+    tag "modules"
+    tag "modules_nfcore"
+    tag "custom"
+    tag "custom/preparemrmegainput"
+
+    def aligned = { directory, name ->
+        def target = new File(directory.toString(), "${name}.tsv.gz")
+        def text = 'META_VARIANT_KEY\tSNPID\tCHR\tPOS\tEA\tNEA\tEAF_1\tBETA_1\tSE_1\tN_1\tEAF_2\tBETA_2\tSE_2\tN_2\n' +
+            '1:1000:A:G\trs1\t1\t1000\tA\tG\t0.25\t0.1\t0.01\t4000.0\t0.26\t0.11\t0.012\t3000.0\n' +
+            '23:2000:G:A\trs2\tX\t2000\tG\tA\t0.15\t0.2\t0.03\t4000.0\tNA\tNA\tNA\tNA\n'
+        target.withOutputStream { output ->
+            def gzip = new java.util.zip.GZIPOutputStream(output)
+            gzip.write(text.bytes)
+            gzip.close()
+        }
+        target
+    }
+
+    def gunzip = { path ->
+        new java.util.zip.GZIPInputStream(new FileInputStream(path.toString())).getText('UTF-8')
+    }
+
+    test("quantitative inputs preserve deterministic declared study order") {
+        when {
+            def source = aligned(outputDir, 'quantitative')
+            process {
+                """
+                input[0] = [[id: 'quantitative'], file('${source}', checkIfExists: true), ['STUDY_B', 'STUDY_A'], 'quantitative']
+                """
+            }
+        }
+
+        then {
+            def files = process.out.study_files.get(0)[1]
+            def filelist = new File(process.out.filelist.get(0)[1].toString()).readLines()
+            def first = gunzip(files[0]).readLines()
+            def second = gunzip(files[1]).readLines()
+            def versions = new File(process.out.versions.get(0).toString()).text
+            assertAll(
+                { assert process.success },
+                { assert files.collect { path -> path.toString().split('/').last() } == ['01_STUDY_B.txt.gz', '02_STUDY_A.txt.gz'] },
+                { assert filelist == ['quantitative.mrmega_inputs/01_STUDY_B.txt.gz', 'quantitative.mrmega_inputs/02_STUDY_A.txt.gz'] },
+                { assert first[0] == 'MARKERNAME\tEA\tNEA\tEAF\tBETA\tSE\tN\tCHROMOSOME\tPOSITION' },
+                { assert first[1] == '1:1000:A:G\tA\tG\t0.25\t0.1\t0.01\t4000\t1\t1000' },
+                { assert first[2].endsWith('\t23\t2000') },
+                { assert second.size() == 2 },
+                { assert versions.contains('python:') },
+            )
+        }
+    }
+
+    test("binary inputs contain native odds ratios and confidence bounds") {
+        when {
+            def source = aligned(outputDir, 'binary')
+            process {
+                """
+                input[0] = [[id: 'binary'], file('${source}', checkIfExists: true), ['STUDY_B', 'STUDY_A'], 'binary']
+                """
+            }
+        }
+
+        then {
+            def rows = gunzip(process.out.study_files.get(0)[1][0]).readLines()
+            def fields = rows[1].split('\t')
+            assertAll(
+                { assert process.success },
+                { assert rows[0] == 'MARKERNAME\tEA\tNEA\tEAF\tOR\tOR_95L\tOR_95U\tN\tCHROMOSOME\tPOSITION' },
+                { assert Math.abs(Math.log(fields[4] as double) - 0.1d) < 1e-15 },
+                { assert Math.abs(Math.log(fields[5] as double) - (0.1d - 1.959963984540054d * 0.01d)) < 1e-15 },
+                { assert Math.abs(Math.log(fields[6] as double) - (0.1d + 1.959963984540054d * 0.01d)) < 1e-15 },
+            )
+        }
+    }
+
+    test("emits the staged file-list contract - stub") {
+        options "-stub"
+
+        when {
+            def source = aligned(outputDir, 'stub')
+            process {
+                """
+                input[0] = [[id: 'stub'], file('${source}', checkIfExists: true), ['ONE', 'TWO'], 'quantitative']
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.study_files.get(0)[1].size() == 2 },
+                { assert new File(process.out.filelist.get(0)[1].toString()).readLines() == ['stub.mrmega_inputs/01_ONE.txt.gz', 'stub.mrmega_inputs/02_TWO.txt.gz'] },
+                { assert new File(process.out.versions.get(0).toString()).text.contains('python:') },
+            )
+        }
+    }
+}

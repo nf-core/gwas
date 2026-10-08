@@ -1,0 +1,53 @@
+nextflow_process {
+    name "Test GCTA LD-score calculation"
+    script "../main.nf"
+    process "GCTA_CALCULATELDSCORES"
+    config "./nextflow.config"
+    tag "modules"
+    tag "modules_nfcore"
+    tag "gcta"
+    tag "gcta/calculateldscores"
+
+    def inputCode = """
+        def root = params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.'
+        // Map positions are stretched so the bundle spans more than the requested native 50 kb LD region.
+        // Test-side compensation measured on the pinned image
+        // `community.wave.seqera.io/library/gcta:1.94.1--9bc35dc424fcf6e9`: GCTA 1.94.1 segmentation-faults in
+        // `--ld-score-region` when the bundle spans less than one region width, and the shipped popgen BIM
+        // spans 220 bp. Retire this rewrite once the pinned image moves to a release that no longer crashes.
+        def bim = file('plink_simulated.bim')
+        bim.text = file(root + 'bim').readLines().collect { row ->
+            def fields = row.split(/\\s+/).toList()
+            fields[3] = ((fields[3] as int) * 1000).toString()
+            fields.join('\\t')
+        }.join('\\n') + '\\n'
+        input[0] = [[id: 'focal'], file(root + 'bed'), bim, file(root + 'fam'), 50]
+    """
+
+    test("native LD scores - real") {
+        when {
+            process { inputCode }
+        }
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.ld_scores[0][0] == [id: 'focal'] },
+                { assert snapshot(sanitizeOutput(process.out, unstableKeys: ['log'])).match() }
+            )
+        }
+    }
+
+    test("native LD scores - stub") {
+        options "-stub"
+        when {
+            process { inputCode }
+        }
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.ld_scores[0][0] == [id: 'focal'] },
+                { assert snapshot(sanitizeOutput(process.out, unstableKeys: ['log'])).match() }
+            )
+        }
+    }
+}

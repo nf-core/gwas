@@ -1,0 +1,28 @@
+nextflow_function {
+
+    name "Test linked GWAS input contract functions"
+    script "../identity_helpers.nf"
+    tag "function"
+    tag "input"
+
+    test("internal summary-statistics identities are explicit and deterministic") {
+        function "getSummaryStatisticsId"
+
+        when {
+            function {
+                """
+                input[0] = 'analysis_a'
+                input[1] = 'regenie'
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == 'analysis_a--regenie' },
+            )
+        }
+    }
+
+}

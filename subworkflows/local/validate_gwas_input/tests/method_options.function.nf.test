@@ -1,0 +1,450 @@
+nextflow_function {
+
+    name "Test linked GWAS input contract functions"
+    script "../method_options.nf"
+    tag "function"
+    tag "input"
+
+    test("method option defaults have one canonical resolved shape") {
+        function "getMethodOptionDefaults"
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result.gcta == [
+                    grm_maf: null,
+                    grm_extract: [],
+                    reml_no_constrain: false,
+                    sparse_cutoff: 0.05,
+                    ld_score_region_kb: 200,
+                    ld_bins: 4,
+                    ldms_maf_edges: [0, 0.01, 0.05, 0.2, 0.5],
+                ] },
+                { assert function.result.ldak == [
+                    model: 'human_default',
+                    power: -0.25,
+                    weights_policy: 'equal',
+                    weights: [],
+                    relatedness_filter: false,
+                    kvik_step1_subset: 'all',
+                    predictor_extract: [],
+                    kvik_step2_keep: [],
+                    fast_repetitions: null,
+                    fast_num_blocks: null,
+                    fast_seed: null,
+                ] },
+                { assert function.result.mph == [
+                    iterations: null,
+                    tolerance: null,
+                    random_vectors: null,
+                    seed: null,
+                    save_memory: false,
+                ] },
+                { assert function.result.regenie == [
+                    step1_bsize: 1000,
+                    firth: true,
+                    firth_approx: true,
+                    firth_p_threshold: 0.01,
+                    min_mac: null,
+                ] },
+                // The family list is the accepted-family vocabulary, so its exact set is the contract.
+                { assert function.result.keySet().toList() == ['gcta', 'ldak', 'mph', 'regenie'] },
+            )
+        }
+    }
+
+    test("method-family object errors retain GCTA-first attribution") {
+        function "validateMethodOptions"
+
+        when {
+            function {
+                """
+                input[0] = file('${RELATIONAL.methodOptions(outputDir, 'family_object_order', [
+                    example: [regenie: [], mph: [], ldak: [], gcta: []],
+                ])}', checkIfExists: true)
+                input[1] = [[[id: 'example', association_methods: 'regenie,gcta_fastgwa', heritability_methods: 'ldak_reml', trait_type: 'quantitative']]]
+                """
+            }
+        }
+
+        then {
+            def report = function.stdout.join('\n')
+            assertAll(
+                { assert function.failed },
+                { assert report.contains("option 'gcta': expected an option object") },
+                { assert !report.contains("option 'ldak': expected an option object") },
+                { assert !report.contains("option 'mph': expected an option object") },
+                { assert !report.contains("option 'regenie': expected an option object") },
+            )
+        }
+    }
+
+    test("unknown options retain REGENIE-first attribution") {
+        function "validateMethodOptions"
+
+        when {
+            function {
+                """
+                input[0] = file('${RELATIONAL.methodOptions(outputDir, 'unknown_option_order', [
+                    example: [gcta: [mystery: true], ldak: [mystery: true], mph: [mystery: true], regenie: [mystery: true]],
+                ])}', checkIfExists: true)
+                input[1] = [[[id: 'example', association_methods: 'regenie,gcta_fastgwa', heritability_methods: 'ldak_reml', trait_type: 'quantitative']]]
+                """
+            }
+        }
+
+        then {
+            def report = function.stdout.join('\n')
+            assertAll(
+                { assert function.failed },
+                { assert report.contains("option 'regenie.mystery': unknown option") },
+                { assert !report.contains("option 'gcta.mystery': unknown option") },
+                { assert !report.contains("option 'ldak.mystery': unknown option") },
+                { assert !report.contains("option 'mph.mystery': unknown option") },
+            )
+        }
+    }
+
+    test("an unknown method family names the accepted family vocabulary") {
+        function "validateMethodOptions"
+
+        when {
+            function {
+                """
+                input[0] = file('${RELATIONAL.methodOptions(outputDir, 'unknown_family', [
+                    example: [mystery: [:]],
+                ])}', checkIfExists: true)
+                input[1] = [[[id: 'example', association_methods: 'regenie', heritability_methods: '', trait_type: 'quantitative']]]
+                """
+            }
+        }
+
+        then {
+            def report = function.stdout.join('\n')
+            assertAll(
+                { assert function.failed },
+                { assert report.contains("option 'mystery': unknown method family; accepted families are gcta, ldak, mph, regenie") },
+            )
+        }
+    }
+
+    def unselectedFamilies = [
+        [name: 'MPH', family: 'mph', option: 'seed', value: 7, message: 'analysis does not select an MPH method'],
+    ]
+
+    unselectedFamilies.each { scenario ->
+        // MPH has no wired selector at all, so its registry query can never match. Once a family's query does
+        // match, its entry here still has to fail on this row, because the row selects `ldak_he` instead and
+        // the rejection then comes from the analysis's own selection rather than from an empty registry answer.
+        test("${scenario.name} options are rejected on a row that selects no ${scenario.name} method") {
+            function "validateMethodOptions"
+
+            when {
+                function {
+                    """
+                    input[0] = file('${RELATIONAL.methodOptions(outputDir, "unselected_${scenario.family}", [
+                        example: [(scenario.family): [(scenario.option): scenario.value]],
+                    ])}', checkIfExists: true)
+                    input[1] = [[[id: 'example', association_methods: '', heritability_methods: 'ldak_he', trait_type: 'quantitative']]]
+                    """
+                }
+            }
+
+            then {
+                def report = function.stdout.join('\n')
+                assertAll(
+                    { assert function.failed },
+                    { assert report.contains("option '${scenario.family}.${scenario.option}': ${scenario.message}") },
+                )
+            }
+        }
+    }
+
+    def ldakFastOptions = [
+        [
+            name: 'a zero repetition count',
+            options: [ldak: [fast_repetitions: 0]],
+            heritability: 'ldak_fast_he',
+            expected: "option 'ldak.fast_repetitions': expected a positive integer or null",
+        ],
+        [
+            name: 'a fractional seed',
+            options: [ldak: [fast_seed: 1.5]],
+            heritability: 'ldak_fast_he',
+            expected: "option 'ldak.fast_seed': expected an integer or null",
+        ],
+        [
+            name: 'a stochastic control on a kinship-only row',
+            options: [ldak: [fast_seed: 7]],
+            heritability: 'ldak_he',
+            expected: "option 'ldak.fast_seed': option is consumed by the direct-genotype LDAK estimators ldak_fast_he and ldak_fast_pcgc only",
+        ],
+        [
+            name: 'the unrelated-sample filter on a fast-only row',
+            options: [ldak: [relatedness_filter: true]],
+            heritability: 'ldak_fast_he',
+            expected: "option 'ldak.relatedness_filter': option is consumed by LDAK kinship methods only",
+        ],
+    ]
+
+    ldakFastOptions.each { scenario ->
+        test("the LDAK family rejects ${scenario.name}") {
+            function "validateMethodOptions"
+
+            when {
+                function {
+                    """
+                    input[0] = file('${RELATIONAL.methodOptions(outputDir, "ldak_fast_${scenario.name.replace(' ', '_')}", [
+                        example: scenario.options,
+                    ])}', checkIfExists: true)
+                    input[1] = [[[id: 'example', association_methods: '', heritability_methods: '${scenario.heritability}', trait_type: 'quantitative']]]
+                    """
+                }
+            }
+
+            then {
+                def report = function.stdout.join('\n')
+                assertAll(
+                    { assert function.failed },
+                    { assert report.contains(scenario.expected) },
+                )
+            }
+        }
+    }
+
+    def mphOptions = [
+        [
+            name: 'a non-positive iteration count',
+            options: [mph: [iterations: 0]],
+            expected: "option 'mph.iterations': expected a positive integer or null",
+        ],
+        [
+            name: 'a fractional iteration count',
+            options: [mph: [iterations: 2.5]],
+            expected: "option 'mph.iterations': expected a positive integer or null",
+        ],
+        [
+            name: 'a non-positive tolerance',
+            options: [mph: [tolerance: 0]],
+            expected: "option 'mph.tolerance': expected a number greater than 0 or null",
+        ],
+        [
+            name: 'a non-positive random-vector count',
+            options: [mph: [random_vectors: 0]],
+            expected: "option 'mph.random_vectors': expected a positive integer or null",
+        ],
+        [
+            name: 'a fractional seed',
+            options: [mph: [seed: 1.5]],
+            expected: "option 'mph.seed': expected an integer or null",
+        ],
+        [
+            name: 'a non-boolean memory-mode flag',
+            options: [mph: [save_memory: 'yes']],
+            expected: "option 'mph.save_memory': expected a boolean",
+        ],
+        [
+            name: 'an unknown option name',
+            options: [mph: [threads_per_grm: 2]],
+            expected: "option 'mph.threads_per_grm': unknown option; accepted MPH options are iterations, tolerance, random_vectors, seed, save_memory",
+        ],
+    ]
+
+    mphOptions.each { scenario ->
+        test("the MPH family rejects ${scenario.name}") {
+            function "validateMethodOptions"
+
+            when {
+                function {
+                    """
+                    input[0] = file('${RELATIONAL.methodOptions(outputDir, "mph_${scenario.name.replace(' ', '_')}", [
+                        example: scenario.options,
+                    ])}', checkIfExists: true)
+                    input[1] = [[[id: 'example', association_methods: '', heritability_methods: 'mph_reml', trait_type: 'quantitative']]]
+                    """
+                }
+            }
+
+            then {
+                def report = function.stdout.join('\n')
+                assertAll(
+                    { assert function.failed },
+                    { assert report.contains(scenario.expected) },
+                )
+            }
+        }
+    }
+
+    test("an MPH row resolves every supplied control into the shape the route reads") {
+        function "validateMethodOptions"
+
+        when {
+            function {
+                """
+                input[0] = file('${RELATIONAL.methodOptions(outputDir, 'mph_resolved', [
+                    example: [mph: [iterations: 20.0, seed: 0]],
+                ])}', checkIfExists: true)
+                input[1] = [[[id: 'example', association_methods: '', heritability_methods: 'mph_reml', trait_type: 'quantitative']]]
+                """
+            }
+        }
+
+        then {
+            // `seed: 0` survives as a real value rather than collapsing into the unset default: MPH's own
+            // unset seed is the fixed integer 0, so "asked for 0" and "asked for nothing" render different
+            // command lines and have to stay distinguishable here. A whole-numbered float coerces to the
+            // integer the native flag needs, and an option left out stays null so the native default stands.
+            assertAll(
+                { assert function.success },
+                { assert function.result.example.mph == [
+                    iterations: 20,
+                    tolerance: null,
+                    random_vectors: null,
+                    seed: 0,
+                    save_memory: false,
+                ] },
+                { assert function.result.example.mph.iterations instanceof Integer },
+            )
+        }
+    }
+
+    test("a mixed kinship and fast row keeps the unrelated-sample filter and is warned about it") {
+        function "validateMethodOptions"
+
+        when {
+            function {
+                """
+                input[0] = file('${RELATIONAL.methodOptions(outputDir, 'mixed_relatedness_filter', [
+                    example: [ldak: [relatedness_filter: true, fast_seed: 7]],
+                ])}', checkIfExists: true)
+                input[1] = [[[id: 'example', association_methods: '', heritability_methods: 'ldak_he,ldak_fast_he', trait_type: 'quantitative']]]
+                """
+            }
+        }
+
+        then {
+            // `log.warn` reaches the run log rather than the harness's captured stdout, so the report is read
+            // from both, exactly as a pipeline-level validation test reads it.
+            def report = VALIDATION.report(outputDir, function.stdout)
+            assertAll(
+                { assert function.success },
+                { assert function.result.example.ldak.relatedness_filter },
+                { assert function.result.example.ldak.fast_seed == 7 },
+                { assert report.contains("sets 'ldak.relatedness_filter' beside direct-genotype estimator(s) ldak_fast_he") },
+                { assert report.contains('estimates are computed on different sample sets') },
+            )
+        }
+    }
+
+    test("a kinship-only row is not warned about the unrelated-sample filter") {
+        function "validateMethodOptions"
+
+        when {
+            function {
+                """
+                input[0] = file('${RELATIONAL.methodOptions(outputDir, 'kinship_only_filter', [
+                    example: [ldak: [relatedness_filter: true]],
+                ])}', checkIfExists: true)
+                input[1] = [[[id: 'example', association_methods: '', heritability_methods: 'ldak_he', trait_type: 'quantitative']]]
+                """
+            }
+        }
+
+        then {
+            // The negative half of the mixed-row warning: with no direct-genotype estimator on the row there
+            // are no two sample sets to compare, so nothing should be said.
+            def report = VALIDATION.report(outputDir, function.stdout)
+            assertAll(
+                { assert function.success },
+                { assert function.result.example.ldak.relatedness_filter },
+                { assert !report.contains("sets 'ldak.relatedness_filter' beside direct-genotype estimator") },
+            )
+        }
+    }
+
+    test("invalid resolved values retain REGENIE-first attribution") {
+        function "validateMethodOptions"
+
+        when {
+            function {
+                """
+                input[0] = file('${RELATIONAL.methodOptions(outputDir, 'resolution_order', [
+                    example: [
+                        gcta: [sparse_cutoff: 2],
+                        ldak: [power: 'not-a-number'],
+                        mph: [seed: 7],
+                        regenie: [step1_bsize: 1.5],
+                    ],
+                ])}', checkIfExists: true)
+                input[1] = [[[id: 'example', association_methods: 'regenie,gcta_fastgwa', heritability_methods: 'ldak_reml', trait_type: 'quantitative']]]
+                """
+            }
+        }
+
+        then {
+            def report = function.stdout.join('\n')
+            assertAll(
+                { assert function.failed },
+                { assert report.contains("option 'regenie.step1_bsize': expected one positive integer") },
+                { assert !report.contains("option 'gcta.sparse_cutoff'") },
+                { assert !report.contains("option 'ldak.power'") },
+            )
+        }
+    }
+
+    // The MPH value rules are shared verbatim by the analysis namespace and the pair-request namespace, which
+    // is what keeps one option meaning one thing wherever it is declared. The shared validator carries no
+    // namespace of its own: it labels a failure with the bare option name and the caller renders the sentence.
+    def mphValueRules = [
+        [name: 'a non-integer iteration cap', options: [iterations: 2.5], label: 'iterations', reason: 'expected a positive integer or null'],
+        [name: 'a zero iteration cap', options: [iterations: 0], label: 'iterations', reason: 'expected a positive integer or null'],
+        [name: 'a zero tolerance', options: [tolerance: 0], label: 'tolerance', reason: 'expected a number greater than 0 or null'],
+        [name: 'a zero random-vector count', options: [random_vectors: 0], label: 'random_vectors', reason: 'expected a positive integer or null'],
+        [name: 'a fractional seed', options: [seed: 1.5], label: 'seed', reason: 'expected an integer or null'],
+        [name: 'a non-boolean memory mode', options: [save_memory: 'yes'], label: 'save_memory', reason: 'expected a boolean'],
+    ]
+
+    mphValueRules.each { scenario ->
+        test("the shared MPH value rules reject ${scenario.name} under a bare option label") {
+            function "validateMphOptionValues"
+
+            when {
+                function {
+                    """
+                    input[0] = ${scenario.options.inspect()}
+                    input[1] = [iterations: null, tolerance: null, random_vectors: null, seed: null, save_memory: false]
+                    input[2] = { option, reason -> error("[nf-core/gwas] ERROR: option '\${option}': \${reason}") }
+                    """
+                }
+            }
+
+            then {
+                assertAll(
+                    { assert function.failed },
+                    { assert function.stdout.join('\n').contains("option '${scenario.label}': ${scenario.reason}") },
+                )
+            }
+        }
+    }
+
+    test("the shared MPH value rules fall back to the declared defaults for every option left out") {
+        function "validateMphOptionValues"
+
+        when {
+            function {
+                """
+                input[0] = [seed: 7]
+                input[1] = [iterations: null, tolerance: null, random_vectors: null, seed: null, save_memory: false]
+                input[2] = { option, reason -> error("[nf-core/gwas] ERROR: option '\${option}': \${reason}") }
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == [iterations: null, tolerance: null, random_vectors: null, seed: 7, save_memory: false] },
+            )
+        }
+    }
+}

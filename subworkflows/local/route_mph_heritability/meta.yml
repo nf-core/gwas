@@ -1,0 +1,79 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
+name: "route_mph_heritability"
+description: Pipeline route for MPH REML and REML-LDMS heritability on native MPH relatedness matrices
+keywords:
+  - mph
+  - minque for partitioning heritability
+  - heritability
+  - reml
+  - variance components
+  - route
+components:
+  - fit_mph_reml
+input:
+  - ch_mph_dense_matrices:
+      description: |
+        One-component MPH matrices fanned to their unary consumers, with the matrix identity in a tuple
+        position rather than in metadata: a unary analysis row never carries a matrix key.
+      structure: [map meta, map matrix_identity, list grm_files]
+      pattern: "*.grm.{bin,iid}"
+      ontologies:
+        - edam: "http://edamontology.org/format_2330"
+  - ch_mph_ldms_matrices:
+      description: LD-by-MAF-stratified MPH matrix families with their prefixes in component order.
+      structure: [map meta, map matrix_identity, list grm_files, list grm_prefixes]
+      pattern: "*.grm.{bin,iid}"
+      ontologies:
+        - edam: "http://edamontology.org/format_2330"
+  - ch_plink1_genotypes:
+      description: |
+        The cohort's PLINK 1 bundle for every unary analysis. Only its FAM is consumed, to prove the matrix and
+        the genotypes are the same view and to resolve each IID's FID.
+      structure: [map meta, path bed, path bim, path fam]
+      pattern: "*.{bed,bim,fam}"
+      ontologies:
+        - edam: "http://edamontology.org/format_3003"
+        - edam: "http://edamontology.org/format_2330"
+  - ch_headerless_phenotypes:
+      description: |
+        The shared headerless phenotype seam. Its covariate members are unused here: MPH's covariate interface
+        is name-keyed, so this route reads the headered tables instead.
+      structure: [map meta, path phenotype, path quant_covariates, path cat_covariates]
+      pattern: "*.{pheno,qcovar,catcovar}"
+      ontologies:
+        - edam: "http://edamontology.org/format_3475"
+  - ch_covariate_tables:
+      description: The headered prepared covariate tables, `[]` for each that the analysis did not declare.
+      structure: [map meta, path quant_covariates, path cat_covariates]
+      pattern: "*.{qcovar,catcovar}"
+      ontologies:
+        - edam: "http://edamontology.org/format_3475"
+output:
+  - mph_results:
+      description: Native variance-component result, one per analysis and selected MPH method.
+      structure: [map meta, path variance_components]
+      pattern: "*.mq.vc.csv"
+      ontologies:
+        - edam: "http://edamontology.org/format_3752"
+  - mph_fixed:
+      description: Native best linear unbiased estimates of the fitted covariates.
+      structure: [map meta, path fixed_effects]
+      pattern: "*.mq.blue.csv"
+      ontologies:
+        - edam: "http://edamontology.org/format_3752"
+  - mph_iterations:
+      description: Native solver trace.
+      structure: [map meta, path iterations]
+      pattern: "*.mq.iter.csv"
+      ontologies:
+        - edam: "http://edamontology.org/format_3752"
+  - mph_log:
+      description: Native standard output of the fit.
+      structure: [map meta, path log]
+      pattern: "*.log"
+      ontologies: []
+
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"

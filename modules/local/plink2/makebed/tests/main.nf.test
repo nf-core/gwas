@@ -1,0 +1,114 @@
+nextflow_process {
+
+    name "Test Process PLINK2_MAKEBED"
+    script "../main.nf"
+    process "PLINK2_MAKEBED"
+    config "./nextflow.config"
+
+    tag "modules"
+    tag "modules_nfcore"
+    tag "plink2"
+    tag "plink2/makebed"
+
+    def fixtures = { project_dir -> "${FIXTURES.base(project_dir)}results/fixtures/genotypes/" }
+
+    test("example_all - the hard-call projection of the shipped PGEN reproduces the shipped BED byte for byte") {
+
+        when {
+            process {
+                """
+                input[0] = [
+                    [ id:'example_all_projected' ],
+                    file('${fixtures.call(projectDir)}example_all.pgen', checkIfExists: true),
+                    file('${fixtures.call(projectDir)}example_all.psam', checkIfExists: true),
+                    file('${fixtures.call(projectDir)}example_all.pvar', checkIfExists: true),
+                ]
+                """
+            }
+        }
+
+        then {
+            // Asserted relationally against the bundle the test actually staged rather than against a
+            // written-down digest, so a fixture that changes shape fails loudly instead of silently
+            // disagreeing with a stale constant.
+            def suppliedBed = path("${fixtures.call(projectDir)}example_all.bed")
+            def suppliedBim = path("${fixtures.call(projectDir)}example_all.bim")
+            def suppliedFam = path("${fixtures.call(projectDir)}example_all.fam")
+            def command = path(process.out.bed.get(0).get(1)).parent.resolve('.command.sh').text
+            assertAll(
+                { assert process.success },
+                // The projection is an encoding change and nothing else: a native BED and the hard-call
+                // projection of the same PGEN are the same bytes, which is why a passthrough-versus-derivative
+                // test has to assert on trace counts rather than on content.
+                { assert path(process.out.bed.get(0).get(1)).md5 == suppliedBed.md5 },
+                { assert path(process.out.bed.get(0).get(2)).md5 == suppliedBim.md5 },
+                { assert path(process.out.bed.get(0).get(3)).md5 == suppliedFam.md5 },
+                // The projection policy reaches the command from this module's own test config, not from the
+                // pipeline-level one, which adds nothing for this process.
+                { assert command.contains('--hard-call-threshold 0.1') },
+                { assert process.out.versions_plink2.get(0).get(1) == 'plink2' },
+            )
+        }
+    }
+
+    test("multiallelic - plink2 refuses to write a PLINK 1 fileset from a multiallelic source") {
+
+        setup {
+            run("PLINK2_VCF") {
+                script "../../vcf/main.nf"
+                process {
+                    """
+                    input[0] = [
+                        [ id:'multiallelic' ],
+                        file('${RELATIONAL.multiallelicVcf(outputDir, 'multiallelic.vcf')}', checkIfExists: true),
+                    ]
+                    """
+                }
+            }
+        }
+
+        when {
+            process {
+                """
+                input[0] = PLINK2_VCF.out.pgen
+                """
+            }
+        }
+
+        then {
+            // PLINK 2 owns the multiallelic input contract for a PLINK 1 projection.
+            assertAll(
+                { assert !process.success },
+                { assert process.stdout.join('\n').contains('cannot contain multiallelic variants') ||
+                    process.errorReport.contains('cannot contain multiallelic variants') },
+            )
+        }
+    }
+
+    test("example_all - stub") {
+
+        options "-stub"
+
+        when {
+            process {
+                """
+                input[0] = [
+                    [ id:'example_all_projected' ],
+                    file('${fixtures.call(projectDir)}example_all.pgen', checkIfExists: true),
+                    file('${fixtures.call(projectDir)}example_all.psam', checkIfExists: true),
+                    file('${fixtures.call(projectDir)}example_all.pvar', checkIfExists: true),
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.bed.get(0).get(1).endsWith('example_all_projected.bed') },
+                { assert process.out.bed.get(0).get(2).endsWith('example_all_projected.bim') },
+                { assert process.out.bed.get(0).get(3).endsWith('example_all_projected.fam') },
+            )
+        }
+    }
+}

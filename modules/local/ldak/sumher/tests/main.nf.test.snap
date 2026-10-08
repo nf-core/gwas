@@ -1,0 +1,247 @@
+{
+    "official compact fixture - stub with liability outputs": {
+        "content": [
+            {
+                "categories": [
+                    [
+                        {
+                            "id": "trait1_stub"
+                        },
+                        "trait1_stub.cats:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "categories_liability": [
+                    [
+                        {
+                            "id": "trait1_stub"
+                        },
+                        "trait1_stub.cats.liab:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "cross": [
+                    [
+                        {
+                            "id": "trait1_stub"
+                        },
+                        "trait1_stub.cross:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "enrichments": [
+                    [
+                        {
+                            "id": "trait1_stub"
+                        },
+                        "trait1_stub.enrich:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "extra": [
+                    [
+                        {
+                            "id": "trait1_stub"
+                        },
+                        "trait1_stub.extra:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "hers": [
+                    [
+                        {
+                            "id": "trait1_stub"
+                        },
+                        "trait1_stub.hers:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "hers_liability": [
+                    [
+                        {
+                            "id": "trait1_stub"
+                        },
+                        "trait1_stub.hers.liab:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "labels": [
+                    [
+                        {
+                            "id": "trait1_stub"
+                        },
+                        "trait1_stub.labels:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "liability_factor": [
+                    [
+                        {
+                            "id": "trait1_stub"
+                        },
+                        "trait1_stub.factor:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "trait1_stub"
+                        },
+                        "trait1_stub.log"
+                    ]
+                ],
+                "overlap": [
+                    [
+                        {
+                            "id": "trait1_stub"
+                        },
+                        "trait1_stub.overlap:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "progress": [
+                    [
+                        {
+                            "id": "trait1_stub"
+                        },
+                        "trait1_stub.progress:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "shares": [
+                    [
+                        {
+                            "id": "trait1_stub"
+                        },
+                        "trait1_stub.share:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "taus": [
+                    [
+                        {
+                            "id": "trait1_stub"
+                        },
+                        "trait1_stub.taus:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "versions_ldak": [
+                    [
+                        "LDAK_SUMHER",
+                        "ldak",
+                        "6.3"
+                    ]
+                ]
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-24T03:46:06.320310483"
+    },
+    "official compact fixture - quantitative trait": {
+        "content": [
+            {
+                "categories": [
+                    [
+                        {
+                            "id": "trait1"
+                        },
+                        "trait1.cats:md5,eaebf1e7885da6666cea4e3438a258b1"
+                    ]
+                ],
+                "categories_liability": [
+
+                ],
+                "cross": [
+                    [
+                        {
+                            "id": "trait1"
+                        },
+                        "trait1.cross:md5,69549abdbdf7908444504b0d12a4fe42"
+                    ]
+                ],
+                "enrichments": [
+                    [
+                        {
+                            "id": "trait1"
+                        },
+                        "trait1.enrich:md5,ec43b2dd89c567b73ff35237973b9096"
+                    ]
+                ],
+                "extra": [
+                    [
+                        {
+                            "id": "trait1"
+                        },
+                        "trait1.extra:md5,9506b384866260117b564b7cbb7a9327"
+                    ]
+                ],
+                "hers": [
+                    [
+                        {
+                            "id": "trait1"
+                        },
+                        "trait1.hers:md5,c2dab793b850a8089a6d09483fb57001"
+                    ]
+                ],
+                "hers_liability": [
+
+                ],
+                "labels": [
+                    [
+                        {
+                            "id": "trait1"
+                        },
+                        "trait1.labels:md5,558e9e4a5ebfcc7cd35b3091b6369023"
+                    ]
+                ],
+                "liability_factor": [
+
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "trait1"
+                        },
+                        "trait1.log"
+                    ]
+                ],
+                "overlap": [
+                    [
+                        {
+                            "id": "trait1"
+                        },
+                        "trait1.overlap:md5,ab6ac56b9ac3e307eba1b9f55eb8a06b"
+                    ]
+                ],
+                "progress": [
+                    [
+                        {
+                            "id": "trait1"
+                        },
+                        "trait1.progress:md5,baa3cb32a3aef1fe28777e224f73ae65"
+                    ]
+                ],
+                "shares": [
+                    [
+                        {
+                            "id": "trait1"
+                        },
+                        "trait1.share:md5,0c77513db1b607f6d0e1724c26632640"
+                    ]
+                ],
+                "taus": [
+                    [
+                        {
+                            "id": "trait1"
+                        },
+                        "trait1.taus:md5,5703b017401acb1767099c744440ad63"
+                    ]
+                ],
+                "versions_ldak": [
+                    [
+                        "LDAK_SUMHER",
+                        "ldak",
+                        "6.3"
+                    ]
+                ]
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-24T03:45:58.620060475"
+    }
+}

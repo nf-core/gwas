@@ -1,0 +1,74 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
+name: route_mph_bivariate_relationships
+description: Route declared individual-level relationship requests from the shared prepared pair through MPH bivariate REML on native MPH relatedness matrices
+keywords:
+  - mph
+  - minque for partitioning heritability
+  - bivariate reml
+  - genetic correlation
+  - ldms
+  - relationship
+components:
+  - fit_mph_reml
+input:
+  - ch_relationships:
+      description: Validated relationship requests, one row per selected method
+      structure: "[map meta, [ path genotype_file, ... ], path pair_quant_covariates|[], path pair_cat_covariates|[]]"
+      pattern: "*.{bed,bim,fam,pgen,psam,pvar,vcf,vcf.gz,tsv,txt}"
+      ontologies: []
+  - ch_prepared_pairs:
+      description: The shared prepared pair, one record per relationship, with headerless covariates
+      structure: "[map relationship_meta, path phenotype, path quant_covariates|[], path cat_covariates|[]]"
+      pattern: "*.{pheno,noheader.qcovar,noheader.catcovar}"
+      ontologies: []
+  - ch_named_covariates:
+      description: The same normalized pair covariates with their validated header, one record per relationship
+      structure: "[map relationship_meta, path quant_covariates|[], path cat_covariates|[]]"
+      pattern: "*.{qcovar,catcovar}"
+      ontologies: []
+  - ch_plink1_genotypes:
+      description: Relationship-scoped PLINK 1 cohort bundles, whose FAM proves the matrix and the genotypes are one view
+      structure: "[map meta, path bed, path bim, path fam]"
+      pattern: "*.{bed,bim,fam}"
+      ontologies: []
+  - ch_mph_dense_matrices:
+      description: One-component native MPH relatedness matrices with their reuse identity, fanned out per request
+      structure: "[map meta, map matrix_identity, [ path grm_file, ... ]]"
+      pattern: "*.grm.{bin,iid}"
+      ontologies: []
+  - ch_mph_ldms_matrices:
+      description: LD- and MAF-stratified native MPH matrix families with their reuse identity and explicit stratum prefix order, fanned out per request
+      structure: "[map meta, map matrix_identity, [ path grm_file, ... ], [ string grm_prefix, ... ]]"
+      pattern: "*.grm.{bin,iid}"
+      ontologies: []
+output:
+  - bivariate_results:
+      description: Native variance-component result, one row per component per trait pair block with the full sampling covariance
+      structure: "[map meta, path variance_components]"
+      pattern: "*.mq.vc.csv"
+      ontologies: []
+  - bivariate_correlations:
+      description: Native per-component, residual and genome-wide correlations with their standard errors
+      structure: "[map meta, path correlations]"
+      pattern: "*.mq.cor.csv"
+      ontologies: []
+  - bivariate_fixed:
+      description: Native per-trait fixed-effect estimates and their covariance
+      structure: "[map meta, path fixed_effects]"
+      pattern: "*.mq.blue.csv"
+      ontologies: []
+  - bivariate_iterations:
+      description: Native solver trace
+      structure: "[map meta, path iterations]"
+      pattern: "*.mq.iter.csv"
+      ontologies: []
+  - bivariate_log:
+      description: Native standard output, the only place MPH states its quality warnings and analysis-set size
+      structure: "[map meta, path log]"
+      pattern: "*.log"
+      ontologies: []
+
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"

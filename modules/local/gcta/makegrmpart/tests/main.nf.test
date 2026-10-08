@@ -1,0 +1,126 @@
+nextflow_process {
+    name "Test GCTA row-part native interface"
+    script "../main.nf"
+    process "GCTA_MAKEGRMPART"
+    config "./nextflow.config"
+    tag "modules"
+    tag "modules_nfcore"
+    tag "gcta"
+    tag "gcta/makegrmpart"
+
+    def inputCode = { genotype, variant, sample, selectionCode, parts, part ->
+        """
+        def root = params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.'
+        def manifest = file('genotypes.txt')
+        manifest.text = 'plink_simulated\\n'
+        ${selectionCode}
+        input[0] = [[id: 'focal'], manifest, [file(root + '${genotype}')], [file(root + '${variant}')], [file(root + '${sample}')], ${parts}, ${part}]
+        input[1] = [[id: 'selection'], selected]
+        """
+    }
+    def selectionCode = """
+        def selected = file('selected.txt')
+        selected.text = file(root + 'bim').readLines().take(10).collect { row -> row.split(/\\s+/)[1] }.join('\\n') + '\\n'
+    """
+
+    test("bed selected=false - real") {
+        when {
+            process {
+                inputCode('bed', 'bim', 'fam', 'def selected = []', 2, 1)
+            }
+        }
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.grm_files[0][0] == [id: 'focal'] },
+                { assert process.out.grm_files[0][2..3] == [2, 1] },
+                { assert snapshot(sanitizeOutput(process.out, unstableKeys: ['log'])).match() }
+            )
+        }
+    }
+
+    test("pgen selected=false - real") {
+        when {
+            process {
+                inputCode('pgen', 'pvar', 'psam', 'def selected = []', 2, 1)
+            }
+        }
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.grm_files[0][0] == [id: 'focal'] },
+                { assert process.out.grm_files[0][2..3] == [2, 1] },
+                { assert snapshot(sanitizeOutput(process.out, unstableKeys: ['log'])).match() }
+            )
+        }
+    }
+
+    test("bed selected=true - real") {
+        when {
+            process {
+                inputCode('bed', 'bim', 'fam', selectionCode, 2, 1)
+            }
+        }
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.grm_files[0][0] == [id: 'focal'] },
+                { assert process.out.grm_files[0][2..3] == [2, 1] },
+                { assert snapshot(sanitizeOutput(process.out, unstableKeys: ['log'])).match() }
+            )
+        }
+    }
+
+    // GCTA zero-pads the part index once the requested part count reaches two digits, so a twelve-part request
+    // writes `.part_12_01.grm.*` rather than `.part_12_1.grm.*`. Both routes are covered because the real glob
+    // and the stub's literal names have to agree on the same name.
+    test("bed parts=12 - real") {
+        when {
+            process {
+                inputCode('bed', 'bim', 'fam', 'def selected = []', 12, 1)
+            }
+        }
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.grm_files[0][2..3] == [12, 1] },
+                { assert process.out.grm_files[0][1].collect { entry -> file(entry).name }.every { name -> name.startsWith('focal.part_12_01.grm.') } },
+                { assert snapshot(sanitizeOutput(process.out, unstableKeys: ['log'])).match() }
+            )
+        }
+    }
+
+    test("bed selected=false - stub") {
+        options "-stub"
+        when {
+            process {
+                inputCode('bed', 'bim', 'fam', 'def selected = []', 2, 1)
+            }
+        }
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.grm_files[0][0] == [id: 'focal'] },
+                { assert process.out.grm_files[0][2..3] == [2, 1] },
+                { assert snapshot(sanitizeOutput(process.out, unstableKeys: ['log'])).match() }
+            )
+        }
+    }
+
+    test("bed parts=12 - stub") {
+        options "-stub"
+        when {
+            process {
+                inputCode('bed', 'bim', 'fam', 'def selected = []', 12, 1)
+            }
+        }
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.grm_files[0][2..3] == [12, 1] },
+                { assert process.out.grm_files[0][1].collect { entry -> file(entry).name }.every { name -> name.startsWith('focal.part_12_01.grm.') } },
+                { assert snapshot(sanitizeOutput(process.out, unstableKeys: ['log'])).match() }
+            )
+        }
+    }
+}

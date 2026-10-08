@@ -1,0 +1,116 @@
+nextflow_workflow {
+    name "Test Subworkflow FIT_MPH_REML"
+    script "../main.nf"
+    workflow "FIT_MPH_REML"
+    config "./nextflow.config"
+
+    tag "subworkflows"
+    tag "subworkflows_local"
+    tag "fit_mph_reml"
+    tag "subworkflows/fit_mph_reml"
+    tag "mph/reml"
+    tag "mph/makegrm"
+    tag "prepare_mph_inputs"
+    tag "mph"
+
+    setup {
+        run("MPH_MAKEGRM", alias: "MPH_MAKEGRM_DENSE") {
+            script "../../../../modules/local/mph/makegrm/main.nf"
+            process {
+                """
+                input[0] = [
+                    [ id:'dense' ],
+                    file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bed', checkIfExists: true),
+                    file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bim', checkIfExists: true),
+                    file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.fam', checkIfExists: true)
+                ]
+                def variants = file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bim').readLines().collect { line -> line.tokenize()[1] }
+                file('dense.snp_info.csv').text = 'SNP,all\\n' + variants.collect { variant -> "\${variant},1" }.join('\\n') + '\\n'
+                input[1] = [[id: 'dense'], file('dense.snp_info.csv'), 'all']
+                """
+            }
+        }
+
+        run("MPH_MAKEGRM", alias: "MPH_MAKEGRM_SPLIT") {
+            script "../../../../modules/local/mph/makegrm/main.nf"
+            process {
+                """
+                input[0] = channel.of('ld01', 'ld02').map { column ->
+                    [
+                        [ id: column ],
+                        file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bed', checkIfExists: true),
+                        file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bim', checkIfExists: true),
+                        file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.fam', checkIfExists: true)
+                    ]
+                }
+                def split_variants = file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bim').readLines().collect { line -> line.tokenize()[1] }
+                file('split.snp_info.csv').text = 'SNP,ld01,ld02\\n' + split_variants.withIndex().collect { variant, index ->
+                    [variant, index < split_variants.size().intdiv(2) ? 1 : 0, index < split_variants.size().intdiv(2) ? 0 : 1].join(',')
+                }.join('\\n') + '\\n'
+                input[1] = channel.of('ld01', 'ld02').map { column -> [[id: 'split'], file('split.snp_info.csv'), column] }
+                """
+            }
+        }
+    }
+
+    def scenarios = [
+        [name: 'one trait without covariates', traits: ['QT'], covariates: false, groups: 1, stub: false],
+        [name: 'two traits with quantitative and categorical covariates', traits: ['QT', 'QT2'], covariates: true, groups: 1, stub: false],
+        [name: 'two ordered GRMs with a covariate design', traits: ['QT'], covariates: true, groups: 2, stub: false],
+        [name: 'multi-trait stub without covariates', traits: ['QT', 'QT2'], covariates: false, groups: 2, stub: true],
+    ]
+    scenarios.each { scenario ->
+        test("${scenario.name}") {
+            if (scenario.stub) {
+                options "-stub"
+            }
+            when {
+                workflow {
+                    """
+                    def fam = file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.fam', checkIfExists: true)
+                    def identities = fam.readLines().collect { line -> line.tokenize().take(2) }
+                    file('traits.tsv').text = identities.withIndex().collect { identity, index ->
+                        def values = [Math.sin(index * 0.7d) * 2.0d + index * 0.01d, Math.sin(index * 0.7d) * 1.2d + Math.cos(index * 0.23d) * 1.5d]
+                        (identity + values.take(${scenario.traits.size()})).join('\\t')
+                    }.join('\\n') + '\\n'
+                    file('quant.tsv').text = 'FID\\tIID\\tAGE\\n' + identities.withIndex().collect { identity, index -> (identity + [index % 7]).join('\\t') }.join('\\n') + '\\n'
+                    file('cat.tsv').text = 'FID\\tIID\\tBATCH\\n' + identities.withIndex().collect { identity, index -> (identity + [index % 2 ? 'B' : 'A']).join('\\t') }.join('\\n') + '\\n'
+                    def ch_grms = ${scenario.groups == 1 ? 'MPH_MAKEGRM_DENSE' : 'MPH_MAKEGRM_SPLIT'}.out.grm_files
+                        .map { _meta, files -> files }.collect()
+                        .map { files -> files.flatten().sort { left, right -> right.name <=> left.name } }
+                    input[0] = ch_grms.map { grms ->
+                        [[id: 'fit'], grms, file('traits.tsv'), ${scenario.covariates ? "file('quant.tsv'), file('cat.tsv')" : '[], []'}, fam, ${scenario.traits.inspect()}, ['']]
+                    }
+                    """
+                }
+            }
+            then {
+                assert workflow.success
+                def expected = ['variance_components':'.mq.vc.csv', fixed_effects:'.mq.blue.csv', iterations:'.mq.iter.csv', projected_phenotypes:'.mq.py.csv', native_log:'.log']
+                expected.each { output, suffix ->
+                    assert workflow.out[output].size() == 1
+                    assert workflow.out[output][0][0] == [id: 'fit']
+                    assert file(workflow.out[output][0][1]).name == "fit${suffix}"
+                }
+                assert workflow.out.correlations.size() == (scenario.traits.size() > 1 ? 1 : 0)
+                assert workflow.out.covariates.size() == (scenario.covariates ? 1 : 0)
+                assert path(workflow.out.phenotype[0][1]).readLines().first() == 'IID,' + scenario.traits.join(',')
+                if (scenario.stub) {
+                    assert snapshot(workflow.out).match()
+                }
+                if (!scenario.stub) {
+                    // The declared order is the row order of the native result. The bundle is handed over in
+                    // descending name order, so a composition that sorted it would report ld01 first here.
+                    // A multi-trait fit repeats the component block once per trait pair, hence `unique`.
+                    def variance = path(workflow.out.variance_components[0][1])
+                    def rows = variance.readLines().findAll { line -> line.trim() }.collect { line -> line.split(',', -1).collect { field -> field.trim() } }
+                    def labels = rows.tail().collect { row -> row[rows.first().indexOf('vc_name')] }
+                    assert labels.unique(false) == (scenario.groups == 1 ? ['dense', 'err'] : ['ld02', 'ld01', 'err'])
+                    if (scenario.covariates) {
+                        assert path(workflow.out.covariates[0][1]).readLines().first() == 'IID,intercept,AGE,BATCH_B'
+                    }
+                }
+            }
+        }
+    }
+}

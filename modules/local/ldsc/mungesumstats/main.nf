@@ -1,0 +1,53 @@
+process LDSC_MUNGESUMSTATS {
+    tag "${meta.id}"
+    label 'process_single'
+
+    conda "${moduleDir}/environment.yml"
+
+    container "${workflow.containerEngine in ['singularity', 'apptainer'] && !task.ext.singularity_pull_docker_container
+        ? 'docker://ghcr.io/lyh970817/gwas/ldsc@sha256:77fbb697c16a559c3fe75204b1e7ab6a0202afcf10b8a8629bcc98592b0e412b'
+        : 'ghcr.io/lyh970817/gwas/ldsc:3.0.2-cbiit-6c67395@sha256:77fbb697c16a559c3fe75204b1e7ab6a0202afcf10b8a8629bcc98592b0e412b'}"
+
+    input:
+    tuple val(meta), path(sumstats)
+    tuple val(meta2), path(merge_alleles)
+
+    output:
+    tuple val(meta), path("${prefix}.sumstats.gz"), emit: munged_sumstats
+    tuple val(meta), path("${prefix}.log"), emit: log
+    tuple val("${task.process}"), val("ldsc"), eval("python -c 'import importlib.metadata; print(importlib.metadata.version(\"ldsc\"))'"), emit: versions_ldsc, topic: versions
+    tuple val("${task.process}"), val("python"), eval("python --version 2>&1 | sed 's/^Python //'"), emit: versions_python, topic: versions
+
+    when:
+    task.ext.when == null || task.ext.when
+
+    script:
+    def args = task.ext.args ?: ''
+    prefix = task.ext.prefix ?: meta.id
+    def merge_alleles_arg = merge_alleles ? "--merge-alleles \"${merge_alleles}\"" : ''
+    """
+    export PYTHONUNBUFFERED=1
+
+    # The pinned munge_sumstats.py cannot read gzip input: read_header calls bytes.rstrip with a
+    # string. Decompression lets the native programme consume valid compressed summary tables.
+    # Retire this pinned-version adaptation when the source implements a text-mode gzip reader.
+    sumstats_input="${sumstats}"
+    if [[ "${sumstats}" == *.gz ]]; then
+        gzip --decompress --stdout "${sumstats}" > ldsc_munge_input.tsv
+        sumstats_input=ldsc_munge_input.tsv
+    fi
+
+    munge_sumstats.py \
+        --sumstats "\${sumstats_input}" \
+        ${merge_alleles_arg} \
+        --out "${prefix}" \
+        ${args}
+    """
+
+    stub:
+    prefix = task.ext.prefix ?: meta.id
+    """
+    printf 'SNP\tA1\tA2\tN\tZ\n' | gzip -c > "${prefix}.sumstats.gz"
+    printf 'LDSC munging stub\n' > "${prefix}.log"
+    """
+}

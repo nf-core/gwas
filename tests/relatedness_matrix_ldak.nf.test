@@ -1,0 +1,332 @@
+nextflow_pipeline {
+
+    name "Test LDAK relatedness matrix build and reuse"
+    script "../main.nf"
+    tag "pipeline"
+    tag "relatedness"
+    tag "ldak"
+
+    def value = { file, name ->
+        new File(file.toString())
+            .readLines()
+            .find { line -> line.startsWith("${name} ") }
+            .tokenize()[1]
+    }
+
+    def calckinsCommands = { output ->
+        def commands = []
+        def work = new File(new File(output.toString()).parentFile, 'work')
+        work.eachFileRecurse { candidate ->
+            if (candidate.name == '.command.sh' && candidate.text.contains('--calc-kins-direct')) {
+                commands << candidate.text.replaceAll(/\s+/, ' ')
+            }
+        }
+        return commands
+    }
+
+    def inputs = { output_dir, project_dir, String scenario ->
+        def definitions = [
+            ldak_relatedness_shared: [
+                ids: ['example_pgen_bt_all', 'example_pgen_bt_unrelated'],
+                ldak: [
+                    example_pgen_bt_all: [model: 'custom', power: -0.5, relatedness_filter: false],
+                    example_pgen_bt_unrelated: [model: 'custom', power: -0.5, relatedness_filter: true],
+                ],
+            ],
+            ldak_relatedness_distinct: [
+                ids: ['example_pgen_bt_human', 'example_pgen_bt_custom_model', 'example_pgen_bt_custom_power'],
+                ldak: [
+                    example_pgen_bt_human: [model: 'human_default', power: -0.25, relatedness_filter: false],
+                    example_pgen_bt_custom_model: [model: 'custom', power: -0.25, relatedness_filter: false],
+                    example_pgen_bt_custom_power: [model: 'custom', power: -0.5, relatedness_filter: false],
+                ],
+            ],
+            ldak_relatedness_same_weights: [
+                ids: ['example_pgen_bt_first', 'example_pgen_bt_second'],
+                weight_values: [1, 1],
+            ],
+            ldak_relatedness_different_weights: [
+                ids: ['example_pgen_bt_first', 'example_pgen_bt_second'],
+                weight_values: [1, 2],
+            ],
+        ]
+        def definition = definitions[scenario]
+        def analyses = RELATIONAL.analyses(project_dir, output_dir, scenario, { rows ->
+            rows.clear()
+            definition.ids.each { id ->
+                def row = RELATIONAL.analysis(project_dir, 'example_pgen_bt')
+                row.analysis_id = id
+                row.association_methods = ''
+                row.heritability_methods = 'ldak_reml'
+                row.population_prevalence = '0.3'
+                rows << row
+            }
+        })
+        def options = definition.ids.withIndex().collectEntries { id, index ->
+            def ldak = definition.ldak
+                ? new LinkedHashMap(definition.ldak[id])
+                : [model: 'custom', power: -0.5, relatedness_filter: false, weights_policy: 'provided']
+            if (definition.weight_values) {
+                def directory = "${scenario}-${index}"
+                ldak.weights = RELATIONAL.weights(project_dir, output_dir, "${directory}/example_all.pvar", definition.weight_values[index])
+            }
+            [(id): [ldak: ldak]]
+        }
+        return [
+            cohort: RELATIONAL.cohorts(project_dir, output_dir, scenario),
+            analysis: analyses,
+            options: RELATIONAL.methodOptions(output_dir, scenario, options),
+        ]
+    }
+
+    // Each focused identity scenario builds its linked inputs locally and loads only deterministic
+    // publication/resource settings from its test config.
+    //
+    // Each scenario had a stub twin that pinned the keys a stub run publishes. Those are not the keys a real
+    // run publishes — every key is a function of the cohort's view identity, a digest computed in a task, and
+    // a stubbed task writes a stub digest — so the twins proved nothing about identity that the real keys
+    // below do not. What they did carry alone were the conversion, phenotype-preparation and report counts,
+    // which hold in real mode and are folded into each real case here.
+    test("filtered and unfiltered analyses select one LDAK base and one subset child") {
+
+        config "../conf/test_ldak_relatedness_shared.config"
+        tag "ldak_relatedness_shared"
+
+        when {
+            params {
+                outdir = "$outputDir"
+                def linked = inputs(outputDir, projectDir, 'ldak_relatedness_shared')
+                cohort_manifest = linked.cohort
+                analysis_manifest = linked.analysis
+                method_options = linked.options
+            }
+        }
+
+        then {
+            def matrices = new File("${params.outdir}/quality_control/relatedness_matrices")
+            def heritability = new File("${params.outdir}/heritability/individual/ldak_reml")
+            def unrestricted = new File(heritability, 'example_pgen_bt_all/example_pgen_bt_all.ldak_reml.reml')
+            def restricted = new File(heritability, 'example_pgen_bt_unrelated/example_pgen_bt_unrelated.ldak_reml.reml')
+            def commands = calckinsCommands(params.outdir)
+            def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
+            def stable_name_matrices = getAllFilesFromDir(
+                matrices.toString(),
+                relative: true,
+                includeDir: true,
+            ).findAll { path -> path.toString() }
+            def stable_path_matrices = getAllFilesFromDir(
+                matrices.toString(),
+                ignoreFile: 'tests/.nftignore',
+            )
+            def stable_name_heritability = getAllFilesFromDir(
+                heritability.toString(),
+                relative: true,
+                includeDir: true,
+            ).findAll { path -> path.toString() }
+            def stable_path_heritability = getAllFilesFromDir(
+                heritability.toString(),
+                ignoreFile: 'tests/.nftignore',
+            )
+            assertAll(
+                { assert workflow.success },
+                // Folded from the deleted stub twin, which carried these three counts alone.
+                { assert TRACE.count(workflow, 'PLINK2_MAKEBED') == 1 },
+                { assert TRACE.count(workflow, 'PREPARE_PHENOTYPE_INPUTS') == 2 },
+                { assert TRACE.count(workflow, 'MULTIQC') == 1 },
+                // Filtering defines only a child: unrestricted and subset consumers share construction.
+                { assert TRACE.count(workflow, 'LDAK_CALCKINS') == 1 },
+                { assert TRACE.count(workflow, 'LDAK_FILTER') == 1 },
+                { assert TRACE.count(workflow, 'LDAK_SUBGRM') == 1 },
+                { assert TRACE.count(workflow, 'LDAK_REML') == 2 },
+                { assert matrices.list().toList().sort() == ['a1beef52e69d', 'd4b8e1441edb'] },
+                { assert new File(matrices, 'd4b8e1441edb').list().toList().sort() == [
+                    'ldak_kinship.d4b8e1441edb.grm.adjust',
+                    'ldak_kinship.d4b8e1441edb.grm.bin',
+                    'ldak_kinship.d4b8e1441edb.grm.details',
+                    'ldak_kinship.d4b8e1441edb.grm.id',
+                ] },
+                { assert new File(matrices, 'a1beef52e69d').list().toList().sort() == [
+                    'ldak_subset.a1beef52e69d.grm.adjust',
+                    'ldak_subset.a1beef52e69d.grm.bin',
+                    'ldak_subset.a1beef52e69d.grm.details',
+                    'ldak_subset.a1beef52e69d.grm.id',
+                ] },
+                { assert heritability.list().toList().sort() == ['example_pgen_bt_all', 'example_pgen_bt_unrelated'] },
+                { assert value(unrestricted, 'Total_Samples') == '200' },
+                { assert value(restricted, 'Total_Samples') == '194' },
+                { assert commands.size() == 1 },
+                { assert commands.every { command -> !command.contains('--ignore-weights YES') } },
+                { assert commands.every { command -> !command.contains('--weights ') } },
+                { assert snapshot(removeNextflowVersion(versions.toString())).match('versions') },
+            )
+        }
+    }
+
+    test("changing either LDAK model or power forks the matrix key") {
+
+        config "../conf/test_ldak_relatedness_distinct.config"
+        tag "ldak_relatedness_distinct"
+
+        when {
+            params {
+                outdir = "$outputDir"
+                def linked = inputs(outputDir, projectDir, 'ldak_relatedness_distinct')
+                cohort_manifest = linked.cohort
+                analysis_manifest = linked.analysis
+                method_options = linked.options
+            }
+        }
+
+        then {
+            def matrices = new File("${params.outdir}/quality_control/relatedness_matrices")
+            def heritability = new File("${params.outdir}/heritability/individual/ldak_reml")
+            def stable_name_matrices = getAllFilesFromDir(
+                matrices.toString(),
+                relative: true,
+                includeDir: true,
+            ).findAll { path -> path.toString() }
+            def stable_path_matrices = getAllFilesFromDir(
+                matrices.toString(),
+                ignoreFile: 'tests/.nftignore',
+            )
+            def stable_name_heritability = getAllFilesFromDir(
+                heritability.toString(),
+                relative: true,
+                includeDir: true,
+            ).findAll { path -> path.toString() }
+            def stable_path_heritability = getAllFilesFromDir(
+                heritability.toString(),
+                ignoreFile: 'tests/.nftignore',
+            )
+            assertAll(
+                { assert workflow.success },
+                // Folded from the deleted stub twin, which carried these three counts alone.
+                { assert TRACE.count(workflow, 'PLINK2_MAKEBED') == 1 },
+                { assert TRACE.count(workflow, 'PREPARE_PHENOTYPE_INPUTS') == 3 },
+                { assert TRACE.count(workflow, 'MULTIQC') == 1 },
+                { assert TRACE.count(workflow, 'LDAK_CALCKINS') == 3 },
+                { assert TRACE.count(workflow, 'LDAK_FILTER') == 0 },
+                { assert TRACE.count(workflow, 'LDAK_SUBGRM') == 0 },
+                // Every matrix key is a function of the cohort's PLINK 1 view identity — a digest of
+                // the supplied bytes — and the three declared LDAK settings, so three distinct
+                // parameterisations of one cohort are three published directories.
+                { assert matrices.list().toList().sort() == ['06c8f6195c7a', '333d2a9f19df', 'd4b8e1441edb'] },
+                { assert TRACE.count(workflow, 'LDAK_REML') == 3 },
+                { assert snapshot(stable_name_matrices, stable_path_matrices).match('distinct-relatedness-matrices') },
+                { assert snapshot(stable_name_heritability, stable_path_heritability).match('distinct-heritability') },
+            )
+        }
+    }
+
+    test("identical weight bytes at different paths share one matrix") {
+
+        config "../conf/test_ldak_relatedness_same_weights.config"
+        tag "ldak_relatedness_same_weights"
+
+        when {
+            params {
+                outdir = "$outputDir"
+                def linked = inputs(outputDir, projectDir, 'ldak_relatedness_same_weights')
+                cohort_manifest = linked.cohort
+                analysis_manifest = linked.analysis
+                method_options = linked.options
+            }
+        }
+
+        then {
+            def matrices = new File("${params.outdir}/quality_control/relatedness_matrices")
+            def heritability = new File("${params.outdir}/heritability/individual/ldak_reml")
+            def commands = calckinsCommands(params.outdir)
+            def stable_name_matrices = getAllFilesFromDir(
+                matrices.toString(),
+                relative: true,
+                includeDir: true,
+            ).findAll { path -> path.toString() }
+            def stable_path_matrices = getAllFilesFromDir(
+                matrices.toString(),
+                ignoreFile: 'tests/.nftignore',
+            )
+            def stable_name_heritability = getAllFilesFromDir(
+                heritability.toString(),
+                relative: true,
+                includeDir: true,
+            ).findAll { path -> path.toString() }
+            def stable_path_heritability = getAllFilesFromDir(
+                heritability.toString(),
+                ignoreFile: 'tests/.nftignore',
+            )
+            assertAll(
+                { assert workflow.success },
+                // Folded from the deleted stub twin, which carried these three counts alone.
+                { assert TRACE.count(workflow, 'PLINK2_MAKEBED') == 1 },
+                { assert TRACE.count(workflow, 'PREPARE_PHENOTYPE_INPUTS') == 2 },
+                { assert TRACE.count(workflow, 'MULTIQC') == 1 },
+                { assert TRACE.count(workflow, 'LDAK_CALCKINS') == 1 },
+                { assert TRACE.count(workflow, 'LDAK_REML') == 2 },
+                // Independently derived from the generated weight bytes and canonical settings string.
+                { assert matrices.list().toList() == ['f03a7469f909'] },
+                { assert commands.size() == 1 },
+                { assert commands.first().contains('--weights "example_all.pvar"') },
+                { assert !commands.first().contains('--ignore-weights YES') },
+                { assert snapshot(stable_name_matrices, stable_path_matrices).match('same-weights-relatedness-matrices') },
+                { assert snapshot(stable_name_heritability, stable_path_heritability).match('same-weights-heritability') },
+            )
+        }
+    }
+
+    test("different weight bytes with the same basename fork matrices") {
+
+        config "../conf/test_ldak_relatedness_different_weights.config"
+        tag "ldak_relatedness_different_weights"
+
+        when {
+            params {
+                outdir = "$outputDir"
+                def linked = inputs(outputDir, projectDir, 'ldak_relatedness_different_weights')
+                cohort_manifest = linked.cohort
+                analysis_manifest = linked.analysis
+                method_options = linked.options
+            }
+        }
+
+        then {
+            def matrices = new File("${params.outdir}/quality_control/relatedness_matrices")
+            def heritability = new File("${params.outdir}/heritability/individual/ldak_reml")
+            def commands = calckinsCommands(params.outdir)
+            def stable_name_matrices = getAllFilesFromDir(
+                matrices.toString(),
+                relative: true,
+                includeDir: true,
+            ).findAll { path -> path.toString() }
+            def stable_path_matrices = getAllFilesFromDir(
+                matrices.toString(),
+                ignoreFile: 'tests/.nftignore',
+            )
+            def stable_name_heritability = getAllFilesFromDir(
+                heritability.toString(),
+                relative: true,
+                includeDir: true,
+            ).findAll { path -> path.toString() }
+            def stable_path_heritability = getAllFilesFromDir(
+                heritability.toString(),
+                ignoreFile: 'tests/.nftignore',
+            )
+            assertAll(
+                { assert workflow.success },
+                // Folded from the deleted stub twin, which carried these three counts alone.
+                { assert TRACE.count(workflow, 'PLINK2_MAKEBED') == 1 },
+                { assert TRACE.count(workflow, 'PREPARE_PHENOTYPE_INPUTS') == 2 },
+                { assert TRACE.count(workflow, 'MULTIQC') == 1 },
+                { assert TRACE.count(workflow, 'LDAK_CALCKINS') == 2 },
+                { assert TRACE.count(workflow, 'LDAK_REML') == 2 },
+                // Same basename, different content digests, therefore two independently derived keys.
+                { assert matrices.list().toList().sort() == ['7e13947be844', 'f03a7469f909'] },
+                { assert commands.size() == 2 },
+                { assert commands.every { command -> command.contains('--weights "example_all.pvar"') } },
+                { assert commands.every { command -> !command.contains('--ignore-weights YES') } },
+                { assert snapshot(stable_name_matrices, stable_path_matrices).match('different-weights-relatedness-matrices') },
+                { assert snapshot(stable_name_heritability, stable_path_heritability).match('different-weights-heritability') },
+            )
+        }
+    }
+}

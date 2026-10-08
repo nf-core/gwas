@@ -1,0 +1,4 @@
+summary_statistics_id,trait_id,trait_type,source,source_format,producer_analysis_id,producer_association_method,genome_build,ancestry,source_method,source_release,heritability_methods,population_prevalence,sample_prevalence,access_constraints,source_summary_statistics_ids,meta_analysis_models,min_studies
+meta_study_1,META_EXAMPLE,quantitative,assets/examples/relational/meta_study_1.tsv,gwaslab,,,GRCh37,EUR,example,,,,,,,,
+meta_study_2,META_EXAMPLE,quantitative,assets/examples/relational/meta_study_2.tsv,gwaslab,,,GRCh37,EUR,example,,,,,,,,
+combined_eur,,,,,,,,,,,,,,,"meta_study_2,meta_study_1","fixed,random,re2",2

@@ -1,0 +1,242 @@
+{
+    "homo_sapiens popgen - quantitative plink1 with covariates": {
+        "content": [
+            [
+                [
+                    {
+                        "id": "plink_simulated"
+                    },
+                    "plink_simulated.plink_simulated_QuantitativeTrait.regenie.gz:md5,3e9b4602f1eb532df0765115fc942cc6"
+                ]
+            ],
+            [
+                [
+                    {
+                        "id": "plink_simulated"
+                    },
+                    "plink_simulated.plink_simulated.log"
+                ]
+            ],
+            {
+                "versions_regenie": [
+                    [
+                        "REGENIE_STEP2",
+                        "regenie",
+                        "4.1.2"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T22:43:09.88800071",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "homo_sapiens popgen - complete multi-trait prediction bundle": {
+        "content": [
+            [
+                [
+                    {
+                        "id": "association"
+                    },
+                    [
+                        "association.plink_simulated_QuantitativeTrait.regenie.gz:md5,2150e5d9acba84c8a803ec52857f5d74",
+                        "association.plink_simulated_QuantitativeTrait2.regenie.gz:md5,248e32f7e128ec5dcf4492ed33eb5dba"
+                    ]
+                ]
+            ],
+            [
+                [
+                    {
+                        "id": "association"
+                    },
+                    "association.plink_simulated.log"
+                ]
+            ],
+            [
+                [
+                    "REGENIE_STEP2",
+                    "regenie",
+                    "4.1.2"
+                ]
+            ]
+        ],
+        "timestamp": "2026-09-18T20:34:05.998165645",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "homo_sapiens popgen - complete multi-trait prediction bundle - stub": {
+        "content": [
+            [
+                [
+                    {
+                        "id": "association"
+                    },
+                    [
+                        "association.plink_simulated_QuantitativeTrait.regenie.gz:md5,68b329da9893e34099c7d8ad5cb9c940",
+                        "association.plink_simulated_QuantitativeTrait2.regenie.gz:md5,68b329da9893e34099c7d8ad5cb9c940"
+                    ]
+                ]
+            ],
+            [
+                [
+                    {
+                        "id": "association"
+                    },
+                    "association.plink_simulated.log"
+                ]
+            ],
+            [
+                [
+                    "REGENIE_STEP2",
+                    "regenie",
+                    "4.1.2"
+                ]
+            ]
+        ],
+        "timestamp": "2026-09-18T20:34:19.220775083",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "homo_sapiens popgen - quantitative plink1 without covariates": {
+        "content": [
+            [
+                [
+                    {
+                        "id": "plink_simulated"
+                    },
+                    "plink_simulated.plink_simulated_QuantitativeTrait.regenie.gz:md5,2150e5d9acba84c8a803ec52857f5d74"
+                ]
+            ],
+            [
+                [
+                    {
+                        "id": "plink_simulated"
+                    },
+                    "plink_simulated.plink_simulated.log"
+                ]
+            ],
+            {
+                "versions_regenie": [
+                    [
+                        "REGENIE_STEP2",
+                        "regenie",
+                        "4.1.2"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T22:43:48.918083317",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "homo_sapiens popgen - meta id output prefix - stub": {
+        "content": [
+            [
+                [
+                    {
+                        "id": "cohort_alias"
+                    },
+                    "cohort_alias.plink_simulated_QuantitativeTrait.regenie.gz:md5,68b329da9893e34099c7d8ad5cb9c940"
+                ]
+            ],
+            [
+                [
+                    {
+                        "id": "cohort_alias"
+                    },
+                    "cohort_alias.plink_simulated.log"
+                ]
+            ],
+            {
+                "versions_regenie": [
+                    [
+                        "REGENIE_STEP2",
+                        "regenie",
+                        "4.1.2"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T22:44:24.04190398",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "homo_sapiens popgen - quantitative plink2 with covariates": {
+        "content": [
+            [
+                [
+                    {
+                        "id": "plink_simulated"
+                    },
+                    "plink_simulated.plink_simulated_QuantitativeTrait.regenie.gz:md5,3e9b4602f1eb532df0765115fc942cc6"
+                ]
+            ],
+            [
+                [
+                    {
+                        "id": "plink_simulated"
+                    },
+                    "plink_simulated.plink_simulated.log"
+                ]
+            ],
+            {
+                "versions_regenie": [
+                    [
+                        "REGENIE_STEP2",
+                        "regenie",
+                        "4.1.2"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T22:44:06.693681655",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "homo_sapiens popgen - binary plink1 with covariates": {
+        "content": [
+            [
+                [
+                    {
+                        "id": "plink_simulated"
+                    },
+                    "plink_simulated.plink_simulated_BinaryTrait.regenie.gz:md5,236867892afdae58cf3ed10873ad10a3"
+                ]
+            ],
+            [
+                [
+                    {
+                        "id": "plink_simulated"
+                    },
+                    "plink_simulated.plink_simulated.log"
+                ]
+            ],
+            {
+                "versions_regenie": [
+                    [
+                        "REGENIE_STEP2",
+                        "regenie",
+                        "4.1.2"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T22:43:30.262615995",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

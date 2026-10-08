@@ -1,0 +1,387 @@
+nextflow_pipeline {
+
+    name "Test MPH REML and REML-LDMS heritability routes"
+    script "../main.nf"
+    tag "pipeline"
+    tag "heritability"
+    tag "mph"
+
+    def commands = { outputDir ->
+        def scripts = []
+        new File(new File(outputDir.toString()).parentFile, 'work').eachFileRecurse { entry ->
+            if (entry.isFile() && entry.name == '.command.sh') {
+                scripts << entry.text.replaceAll(/\\\s+/, ' ').replaceAll(/\s+/, ' ')
+            }
+        }
+        return scripts
+    }
+
+    test("one analysis selecting both MPH tokens builds one plan, three matrices and two independent results") {
+
+        tag "mph_reml"
+
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, 'mph_reml')
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, 'mph_reml', { rows ->
+                    rows[0].association_methods = ''
+                    rows[0].heritability_methods = 'mph_reml,mph_reml_ldms'
+                })
+                method_options = RELATIONAL.methodOptions(outputDir, 'mph_reml', [analyses: [
+                    example_pgen_qt: [
+                        gcta: [ld_score_region_kb: 50, ld_bins: 2, ldms_maf_edges: [0.0, 0.5]],
+                        mph: [seed: 7],
+                    ],
+                ]])
+                gcta_grm_parts = 1
+                save_relatedness_matrices = true
+            }
+        }
+
+        then {
+            def individual = new File("${params.outdir}/heritability/individual")
+            def matrices = new File("${params.outdir}/quality_control/relatedness_matrices")
+            def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
+            assertAll(
+                { assert workflow.success },
+                // The cohort is converted to PLINK 1 once and the component plan is built once, then two
+                // matrix families are built from it: one dense and one two-component stratified family.
+                // No GCTA matrix and no LDAK kinship is built at all, because no selector asked for one.
+                { assert TRACE.count(workflow, 'PLINK2_MAKEBED') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 1 },
+                { assert TRACE.count(workflow, 'CUSTOM_GCTASTRATIFYLDSCORES') == 1 },
+                { assert TRACE.count(workflow, 'CUSTOM_MPHSNPINFO') == 2 },
+                { assert TRACE.count(workflow, 'MPH_MAKEGRM') == 3 },
+                { assert TRACE.count(workflow, 'PREPARE_MPH_INPUTS') == 2 },
+                { assert TRACE.count(workflow, 'MPH_REML') == 2 },
+                { assert TRACE.count(workflow, 'GCTA_MAKEGRMPART') == 0 },
+                { assert TRACE.count(workflow, 'LDAK_CALCKINS') == 0 },
+                { assert individual.list().toList().sort() == ['mph_reml', 'mph_reml_ldms'] },
+                // Both estimates publish under their own token and their own prefix, so neither can
+                // overwrite the other. The projected-phenotype file and matrix list stay in the work directory.
+                { assert new File(individual, 'mph_reml/example_pgen_qt').list().toList().sort() == [
+                    'example_pgen_qt.mph_reml.log',
+                    'example_pgen_qt.mph_reml.mq.blue.csv',
+                    'example_pgen_qt.mph_reml.mq.iter.csv',
+                    'example_pgen_qt.mph_reml.mq.vc.csv',
+                ] },
+                { assert new File(individual, 'mph_reml_ldms/example_pgen_qt').list().toList().sort() == [
+                    'example_pgen_qt.mph_reml_ldms.log',
+                    'example_pgen_qt.mph_reml_ldms.mq.blue.csv',
+                    'example_pgen_qt.mph_reml_ldms.mq.iter.csv',
+                    'example_pgen_qt.mph_reml_ldms.mq.vc.csv',
+                ] },
+                // Two matrix families, published under two keys by two different selectors: the dense one
+                // by its own configured selector and the stratified family through the pipeline's output
+                // block. The dense pair is asserted by name because that selector has no other test.
+                { assert matrices.list().toList().size() == 2 },
+                { assert matrices.listFiles().collect { directory -> directory.list().toList().sort() }.find { names -> names.size() == 2 } ==~ /\[mph_dense\..*\.grm\.bin, mph_dense\..*\.grm\.iid\]/ },
+                { assert matrices.listFiles().collect { directory -> directory.list().toList().sort() }.find { names -> names.size() == 4 }.every { name -> name.startsWith('mph_ldms.') } },
+            )
+            def runCommands = commands(params.outdir)
+            def remlCommands = runCommands.findAll { command -> command.contains('mph --reml') }
+
+            def stratifiedResult = new File(individual, 'mph_reml_ldms/example_pgen_qt/example_pgen_qt.mph_reml_ldms.mq.vc.csv').readLines()
+            def stratifiedHeader = stratifiedResult.first().split(',').toList()
+            def stratifiedRows = stratifiedResult.tail().collect { row -> [stratifiedHeader, row.split(',').toList()].transpose().collectEntries() }
+            def stratifiedLog = new File(individual, 'mph_reml_ldms/example_pgen_qt/example_pgen_qt.mph_reml_ldms.log').text
+            def iterations = new File(individual, 'mph_reml_ldms/example_pgen_qt/example_pgen_qt.mph_reml_ldms.mq.iter.csv').readLines()
+            def iterationHeader = iterations.first().split(',').toList()
+            def lastIteration = [iterationHeader, iterations.last().split(',').toList()].transpose().collectEntries()
+            // The ignore globs are relativised to the scanned directory, so they are written
+            // scan-root-independently and proved here rather than assumed: nothing whose content is
+            // thread-sensitive or timestamped may survive into the content-hashed listing.
+            def stableName = getAllFilesFromDir(individual.toString(), relative: true, includeDir: true).findAll { path -> path.toString() }
+            def stablePath = getAllFilesFromDir(individual.toString(), ignoreFile: 'tests/.nftignore')
+            assertAll(
+                // Both fits render the curated seed and neither renders anything else: MPH's remaining
+                // controls were left null, so their native defaults stand and no flag is emitted.
+                { assert remlCommands.size() == 2 },
+                { assert remlCommands.every { command -> command.contains('--seed 7') } },
+                { assert remlCommands.every { command -> !command.contains('--num_random_vectors') } },
+                { assert remlCommands.every { command -> !command.contains('--save_memory') } },
+                { assert remlCommands.every { command -> command.contains('--trait_names "QT"') } },
+                // The covariate column list is the encoded design, not the researcher's raw columns:
+                // `SEX` became the treatment-coded `SEX_2`, and `intercept` is explicit because MPH
+                // synthesises one only when no covariate is named.
+                { assert remlCommands.every { command -> command.contains('--covariate_names "intercept,AGE,Q1,Q2,Q3,SEX_2"') } },
+                // Two components in manifest ordinal order, then the residual, each naming its own
+                // stratum because the staged matrix prefix carries the stratum key.
+                { assert stratifiedRows.collect { row -> row.vc_name }.takeRight(1) == ['err'] },
+                { assert stratifiedRows[0].vc_name.endsWith('ld01_maf01') },
+                { assert stratifiedRows[1].vc_name.endsWith('ld02_maf01') },
+                { assert lastIteration.sample_size as int == 200 },
+                { assert stratifiedLog.contains('Non-missing analysis set contains 200 individuals') },
+                // Neither the container-local timestamp in a log nor a thread-sensitive estimate is
+                // allowed to reach a content hash.
+                { assert !stablePath.any { path -> path.toString().endsWith('.log') || path.toString().contains('.mq.') } },
+                { assert snapshot(removeNextflowVersion(versions.toString())).match('versions') },
+                { assert snapshot(stableName, stablePath).match('heritability') },
+            )
+        }
+    }
+
+    test("two analyses declaring the same settings share one plan, one matrix family and one construction") {
+
+        tag "mph_reuse"
+
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, 'mph_reuse')
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, 'mph_reuse', { rows ->
+                    rows.clear()
+                    ['mph_first', 'mph_second'].each { analysis_id ->
+                        def row = RELATIONAL.analysis(projectDir, 'example_pgen_qt')
+                        row.analysis_id = analysis_id
+                        row.association_methods = ''
+                        row.heritability_methods = 'mph_reml_ldms'
+                        rows << row
+                    }
+                })
+                method_options = RELATIONAL.methodOptions(outputDir, 'mph_reuse', [analyses: [
+                    mph_first: [gcta: [ld_score_region_kb: 50, ld_bins: 2, ldms_maf_edges: [0.0, 0.5]], mph: [seed: 7]],
+                    mph_second: [gcta: [ld_score_region_kb: 50, ld_bins: 2, ldms_maf_edges: [0.0, 0.5]], mph: [seed: 7]],
+                ]])
+                gcta_grm_parts = 1
+                save_relatedness_matrices = true
+            }
+        }
+
+        then {
+            def matrices = new File("${params.outdir}/quality_control/relatedness_matrices")
+            def plans = new File("${params.outdir}/quality_control/ldms_component_plans")
+            assertAll(
+                { assert workflow.success },
+                // Two analyses, one plan, one two-component family, two independent fits. The reuse claim is
+                // the whole point of keying the plan separately from the matrices it feeds.
+                { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 1 },
+                { assert TRACE.count(workflow, 'CUSTOM_GCTASTRATIFYLDSCORES') == 1 },
+                { assert TRACE.count(workflow, 'CUSTOM_MPHSNPINFO') == 1 },
+                { assert TRACE.count(workflow, 'MPH_MAKEGRM') == 2 },
+                { assert TRACE.count(workflow, 'MPH_REML') == 2 },
+                { assert plans.list().toList().size() == 1 },
+                { assert matrices.list().toList().size() == 1 },
+                // The plan publishes its LD scores, its ordered manifest and one group file per component.
+                { assert plans.listFiles().first().list().toList().sort().size() == 4 },
+                { assert plans.listFiles().first().list().toList().count { name -> name.contains('_snp_group_') } == 2 },
+                { assert matrices.listFiles().first().list().toList().sort().size() == 4 },
+                { assert matrices.listFiles().first().list().toList().count { name -> name.endsWith('.grm.bin') } == 2 },
+            )
+        }
+    }
+
+    test("two analyses declaring different plan settings get two plans and two matrix families") {
+
+        tag "mph_reuse"
+
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, 'mph_distinct')
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, 'mph_distinct', { rows ->
+                    rows.clear()
+                    ['mph_two_bins', 'mph_four_bins'].each { analysis_id ->
+                        def row = RELATIONAL.analysis(projectDir, 'example_pgen_qt')
+                        row.analysis_id = analysis_id
+                        row.association_methods = ''
+                        row.heritability_methods = 'mph_reml_ldms'
+                        rows << row
+                    }
+                })
+                method_options = RELATIONAL.methodOptions(outputDir, 'mph_distinct', [analyses: [
+                    mph_two_bins: [gcta: [ld_score_region_kb: 50, ld_bins: 2, ldms_maf_edges: [0.0, 0.5]], mph: [seed: 7]],
+                    mph_four_bins: [gcta: [ld_score_region_kb: 50, ld_bins: 4, ldms_maf_edges: [0.0, 0.5]], mph: [seed: 7]],
+                ]])
+                gcta_grm_parts = 1
+                save_relatedness_matrices = true
+            }
+        }
+
+        then {
+            def individual = new File("${params.outdir}/heritability/individual/mph_reml_ldms")
+            def matrices = new File("${params.outdir}/quality_control/relatedness_matrices")
+            def plans = new File("${params.outdir}/quality_control/ldms_component_plans")
+
+            assertAll(
+                { assert workflow.success },
+                // The counterpart of the reuse case above. Two declarations that differ only in `ld_bins` must
+                // not collapse onto one family: dropping the plan key from the stratified MPH identity would
+                // publish one matrix directory here and fit both analyses against whichever family won.
+                { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 2 },
+                { assert TRACE.count(workflow, 'CUSTOM_MPHSNPINFO') == 2 },
+                { assert TRACE.count(workflow, 'MPH_MAKEGRM') == 6 },
+                { assert plans.list().toList().size() == 2 },
+                { assert matrices.list().toList().size() == 2 },
+            )
+        }
+    }
+
+    test("a GCTA and an MPH stratified selector on one row share the plan and the SNP membership set") {
+
+        tag "mph_parity"
+
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, 'mph_parity')
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, 'mph_parity', { rows ->
+                    rows[0].association_methods = ''
+                    rows[0].heritability_methods = 'gcta_greml_ldms,mph_reml_ldms'
+                })
+                method_options = RELATIONAL.methodOptions(outputDir, 'mph_parity', [analyses: [
+                    example_pgen_qt: [
+                        gcta: [ld_score_region_kb: 50, ld_bins: 2, ldms_maf_edges: [0.0, 0.5], reml_no_constrain: true],
+                        mph: [seed: 7],
+                    ],
+                ]])
+                gcta_grm_parts = 1
+                save_relatedness_matrices = true
+            }
+        }
+
+        then {
+            def individual = new File("${params.outdir}/heritability/individual")
+            def plans = new File("${params.outdir}/quality_control/ldms_component_plans")
+            def matrices = new File("${params.outdir}/quality_control/relatedness_matrices")
+
+            def manifest = plans.listFiles().first().listFiles().find { entry -> entry.name.endsWith('.strata.tsv') }.readLines()
+            def manifestHeader = manifest.first().split('\t').toList()
+            def manifestRows = manifest.tail().collect { row -> [manifestHeader, row.split('\t').toList()].transpose().collectEntries() }
+            // GCTA's own per-partition log, not the task's `.command.log`/`.command.out` copies of it, which
+            // would count every component three times.
+            def gctaLogs = []
+            new File(new File(params.outdir.toString()).parentFile, 'work').eachFileRecurse { entry ->
+                if (entry.isFile() && entry.name ==~ /.*\.part_\d+_\d+\.log/) {
+                    gctaLogs << entry.text
+                }
+            }
+            def mphResult = new File(individual, 'mph_reml_ldms/example_pgen_qt/example_pgen_qt.mph_reml_ldms.mq.vc.csv').readLines()
+            def mphHeader = mphResult.first().split(',').toList()
+            def mphRows = mphResult.tail().collect { row -> [mphHeader, row.split(',').toList()].transpose().collectEntries() }
+            def gctaUsedCounts = gctaLogs
+                .collect { text -> (text =~ /Used (\d+) valid SNPs/).collect { match -> match[1] as int } }
+                .flatten()
+                .sort()
+            assertAll(
+                { assert workflow.success },
+                // One plan feeds both engines: one LD-score pass, one stratifier, then two matrix families of
+                // the same cardinality built from the same group files.
+                { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 1 },
+                { assert TRACE.count(workflow, 'CUSTOM_GCTASTRATIFYLDSCORES') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_MAKEGRMPART') == 2 },
+                { assert TRACE.count(workflow, 'MPH_MAKEGRM') == 2 },
+                { assert plans.list().toList().size() == 1 },
+                // One GCTA family and one MPH family, each published under its own key.
+                { assert matrices.list().toList().size() == 2 },
+                { assert individual.list().toList().sort() == ['gcta_greml_ldms', 'mph_reml_ldms'] },
+                // Retained-variant parity, not merely input parity: both tools apply their own quality
+                // control at exit 0, so identical group files are not proof of identical retained sets. This
+                // is what "one identical component plan and SNP membership set" has to mean.
+                { assert manifestRows.size() == 2 },
+                { assert mphRows.findAll { row -> row.vc_name != 'err' }.collect { row -> row.m as int }
+                    == manifestRows.collect { row -> row.predictor_count as int } },
+                { assert gctaUsedCounts == manifestRows.collect { row -> row.predictor_count as int }.sort() },
+            )
+        }
+    }
+
+    test("changing the seed reruns the fit while the plan and the matrices stay cached") {
+
+        tag "mph_resume"
+
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, 'mph_resume')
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, 'mph_resume', { rows ->
+                    rows[0].association_methods = ''
+                    rows[0].heritability_methods = 'mph_reml_ldms'
+                })
+                method_options = RELATIONAL.methodOptions(outputDir, 'mph_resume', [analyses: [
+                    example_pgen_qt: [gcta: [ld_score_region_kb: 50, ld_bins: 2, ldms_maf_edges: [0.0, 0.5]], mph: [seed: 7]],
+                ]])
+                gcta_grm_parts = 1
+            }
+        }
+
+        then {
+            def baselineResults = new File("${params.outdir}/heritability/individual/mph_reml_ldms/example_pgen_qt/example_pgen_qt.mph_reml_ldms.mq.vc.csv").readLines()
+            def unchanged = RESUME.rerun(outputDir, [:])
+            assertAll(
+                { assert RESUME.statuses(unchanged, 'MPH_REML') == ['CACHED'] },
+                { assert RESUME.statuses(unchanged, 'PREPARE_MPH_INPUTS') == ['CACHED'] },
+                { assert new File("${params.outdir}/heritability/individual/mph_reml_ldms/example_pgen_qt/example_pgen_qt.mph_reml_ldms.mq.vc.csv").readLines() == baselineResults },
+            )
+            def rerun = RESUME.rerun(outputDir, [
+                method_options: RELATIONAL.methodOptions(outputDir, 'mph_resume_reseeded', [analyses: [
+                    example_pgen_qt: [gcta: [ld_score_region_kb: 50, ld_bins: 2, ldms_maf_edges: [0.0, 0.5]], mph: [seed: 8]],
+                ]]),
+            ])
+            assertAll(
+                { assert workflow.success },
+                // The seed reaches the fit and nothing above it, so a reseeded run reuses the plan and the
+                // matrices and recomputes the estimate.
+                { assert RESUME.statuses(rerun, 'GCTA_CALCULATELDSCORES') == ['CACHED'] },
+                { assert RESUME.statuses(rerun, 'CUSTOM_GCTASTRATIFYLDSCORES') == ['CACHED'] },
+                { assert RESUME.statuses(rerun, 'CUSTOM_MPHSNPINFO') == ['CACHED'] },
+                { assert RESUME.statuses(rerun, 'MPH_MAKEGRM').unique() == ['CACHED'] },
+                { assert RESUME.statuses(rerun, 'MPH_REML') == ['COMPLETED'] },
+                // Seed changes preserve the native result's row count and component order.
+                { assert new File("${params.outdir}/heritability/individual/mph_reml_ldms/example_pgen_qt/example_pgen_qt.mph_reml_ldms.mq.vc.csv").readLines().collect { line -> line.split(',').take(3) }
+                    == baselineResults.collect { line -> line.split(',').take(3) } },
+                // The serializer reruns too, because the route metadata carries the effective settings in its task
+                // identity; the CSVs it writes are byte-identical either way.
+                { assert RESUME.statuses(rerun, 'PREPARE_MPH_INPUTS') == ['COMPLETED'] },
+            )
+        }
+    }
+
+    // The pipeline-level sentinel for the MPH option family. Every other rule the deleted cases covered is
+    // asserted, message and attribution included, by method_options.function.nf.test and
+    // subworkflows/local/validate_gwas_input/tests/method_options_mph.function.nf.test; this one is kept
+    // because it proves that manifest method selection gates the `mph` namespace and that the refusal
+    // precedes any MPH work.
+    def invalidOptions = [
+        [
+            name: 'an MPH option on a row selecting no MPH method',
+            heritabilityMethod: 'gcta_greml',
+            options: [example_pgen_qt: [mph: [seed: 7]]],
+            expected: ["option 'mph.seed'", 'analysis does not select an MPH method'],
+        ],
+    ]
+
+    invalidOptions.each { scenario ->
+        test("method-options rejects ${scenario.name} before any MPH work") {
+
+            tag "mph_rejections"
+
+            when {
+                params {
+                    outdir = "$outputDir"
+                    def scenario_name = scenario.name.replaceAll(/\W+/, '_')
+                    cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, "mph_options_${scenario_name}")
+                    analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, "mph_options_${scenario_name}", { rows ->
+                        rows[0].association_methods = ''
+                        rows[0].heritability_methods = scenario.heritabilityMethod
+                    })
+                    method_options = RELATIONAL.methodOptions(outputDir, "mph_options_${scenario_name}", scenario.options)
+                    gcta_grm_parts = 1
+                }
+            }
+
+            then {
+                def report = VALIDATION.report(outputDir, workflow.stdout)
+                assertAll(
+                    { assert !workflow.success },
+                    { assert scenario.expected.every { fragment -> report.contains(fragment) } },
+                    { assert TRACE.count(workflow, 'MPH_MAKEGRM') == 0 },
+                    // Stronger than the named zero-count above: nothing at all was submitted.
+                    { assert workflow.trace.tasks().isEmpty() },
+                )
+            }
+        }
+    }
+
+}

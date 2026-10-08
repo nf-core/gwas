@@ -1,0 +1,99 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
+name: plink_association_regenie
+description: Fit explicit REGENIE prediction producers and test independently supplied PLINK genotype bundles
+keywords:
+  - genome-wide association study
+  - regenie
+  - plink
+  - leave-one-chromosome-out prediction
+components:
+  - plink_fit_regenie
+  - regenie/step2
+input:
+  - ch_fits:
+      description: |
+        Unique caller-declared producer references F, with fit metadata and training inputs.
+        Genotype bundles use BED/BIM/FAM or PGEN/PVAR/PSAM semantic order and matching basenames.
+        Covariates are optional ([]); bsize is required; mode is standard or chunked, with jobs []
+        for standard or a positive requested L0 split count for chunked. Optional native flags are
+        configured on the nested REGENIE processes through task.ext.args. The caller must transplant
+        the --use-relative-path selector this component's nextflow.config declares, because every
+        staged bundle is read from a Step 2 work directory rather than from the fit work directory.
+      structure:
+        [
+          string fit_id,
+          map meta,
+          path genotype,
+          path variants,
+          path samples,
+          path pheno,
+          path covar,
+          integer bsize,
+          string mode,
+          integer jobs,
+        ]
+      pattern: "*.{bed,pgen}, *.{bim,pvar}, *.{fam,psam}, *.{phe,pheno,txt,tsv}, *.{covar,cov,txt,tsv}"
+      ontologies:
+        - edam: "http://edamontology.org/format_3003" # BED
+        - edam: "http://edamontology.org/format_3475" # TSV
+  - ch_predictions:
+      description: |
+        Optional supplied prediction producers, disjoint from ch_fits. Supply a prediction list and
+        every LOCO file referenced by that list, retaining the native companion names. An empty channel
+        requests no supplied producers. The complete bundle stages in every consuming Step 2 task, so a
+        supplied list must address its companions by their staged names.
+      structure: [string fit_id, map meta, path predictions, path loco]
+      pattern: "*_pred.list, *.loco.gz"
+      optional: true
+      ontologies:
+        - edam: "http://edamontology.org/format_2330" # Text
+        - edam: "http://edamontology.org/format_3987" # GZIP
+  - ch_tests:
+      description: |
+        One testing genotype bundle per item, with an explicit producer reference Fref and focal
+        analysis metadata A. Multiple analyses and chromosome bundles may reference one F. Testing
+        genotypes may differ from training genotypes. Covariates are optional ([]), and bsize is required.
+        Chromosome identity stays in the genotype basename; default output prefixes combine A.id and
+        that basename. Optional native flags are configured with REGENIE_STEP2 task.ext.args.
+      structure:
+        [string fit_id, map meta, path genotype, path variants, path samples, path pheno, path covar, integer bsize]
+      pattern: "*.{bed,pgen}, *.{bim,pvar}, *.{fam,psam}, *.{phe,pheno,txt,tsv}, *.{covar,cov,txt,tsv}"
+      ontologies:
+        - edam: "http://edamontology.org/format_3003" # BED
+        - edam: "http://edamontology.org/format_3475" # TSV
+output:
+  - predictions:
+      description: |
+        The complete native prediction artifact, once per produced or supplied F. Caller fit metadata
+        is preserved. The temporary nested-fitter metadata identifier does not escape this boundary.
+      structure: [string fit_id, map meta, path predictions, path loco]
+      pattern: "*_pred.list, *.loco.gz"
+      ontologies:
+        - edam: "http://edamontology.org/format_2330" # Text
+        - edam: "http://edamontology.org/format_3987" # GZIP
+  - results:
+      description: |
+        Native compressed REGENIE result files per testing event, retaining unchanged focal A metadata.
+        No chromosome concatenation or publication is performed.
+      structure: [map meta, path results]
+      pattern: "*.regenie.gz"
+      ontologies:
+        - edam: "http://edamontology.org/format_3987" # GZIP
+  - logs:
+      description: Native Step 2 logs with unchanged focal A metadata.
+      structure: [map meta, path log]
+      pattern: "*.log"
+      ontologies:
+        - edam: "http://edamontology.org/format_2330" # Text
+  - fit_logs:
+      description: |
+        Native logs of every fit stage this call ran, once per stage and producer, carrying the caller's
+        producer reference and fit metadata. Empty for a supplied prediction bundle.
+      structure: [string fit_id, map meta, path log]
+      pattern: "*.log"
+      ontologies:
+        - edam: "http://edamontology.org/format_2330" # Text
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"

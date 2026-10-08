@@ -2,7 +2,9 @@ name: ldak_adjustgrm
 description: Adjust a precomputed linkage disequilibrium-adjusted kinship (LDAK) genomic relationship matrix (GRM) for covariates to produce `.grm.root` for Haseman-Elston (HE) or phenotype correlation-genotype correlation (PCGC) analyses
 keywords:
   - ldak
+  - linkage disequilibrium adjusted kinship
   - grm
+  - genetic relationship matrix
   - heritability
 tools:
   - ldak6:
@@ -16,59 +18,56 @@ input:
           Groovy Map containing GRM context.
           Expected keys:
             - id (string): Output prefix for adjusted GRM files.
-    - combined_grm_bin:
+    - grm_files:
         type: file
-        description: Input GRM binary matrix (`.grm.bin`)
-    - combined_grm_id:
-        type: file
-        description: Input GRM sample identifiers (`.grm.id`)
-    - combined_grm_details:
-        type: file
-        description: Input GRM details (`.grm.details`)
-    - combined_grm_adjust:
-        type: file
-        description: Input GRM adjustment factors (`.grm.adjust`)
+        description: Input GRM bundle containing binary matrix, sample identifiers,
+          details, and adjustment factors files
+        pattern: "*.{grm.bin,grm.id,grm.details,grm.adjust}"
+        ontologies: []
   - - meta2:
         type: map
         description: |
           Groovy Map containing phenotype metadata.
           Expected keys:
-            - id (string): Phenotype identifier propagated in outputs.
+            - id (string): Phenotype resource identifier.
     - phenotype_file:
         type: file
-        description: Headerless phenotype file passed to `--pheno`
-    - mpheno:
-        type: integer
-        description: Optional phenotype column index passed to `--mpheno`; pass [] to use fallback `1`
+        optional: true
+        description: Optional phenotype file passed to `--pheno` to select samples with nonmissing phenotypes; pass [] when absent
+        ontologies: []
   - - meta3:
         type: map
-        description: Metadata map paired with quantitative covariates input.
-    - quant_covariates_file:
+        description: Metadata map paired with optional keep input.
+    - keep_file:
         type: file
-        description: Optional quantitative covariates file passed to `--covar`; pass [] when absent
+        optional: true
+        description: Optional keep file for sample filtering passed to `--keep`; supply the same subset that the downstream Haseman-Elston or PCGC analysis will use, or provide `[]` when absent
+        ontologies: []
+  - - meta4:
+        type: map
+        description: Metadata map paired with matrix-adjustment covariates input.
+    - adjustment_covariates_file:
+        type: file
+        description: Required numerical design passed to `--covar`
+        ontologies: []
 output:
   adjusted_grm:
     - - meta:
           type: map
           description: GRM metadata map propagated from input
-      - meta2:
+      - "${prefix}.grm.{bin,id,details,adjust,root}":
+          type: file
+          description: Adjusted matrix with its sample identifiers, details, adjustment factors and root sidecar, consumed as one bundle
+          pattern: "*.grm.{bin,id,details,adjust,root}"
+          ontologies: []
+  log:
+    - - meta:
           type: map
-          description: Phenotype metadata map propagated from input
-      - "${prefix}.grm.bin":
+          description: Metadata map propagated from input
+      - "${prefix}.log":
           type: file
-          description: Adjusted GRM binary matrix
-      - "${prefix}.grm.id":
-          type: file
-          description: Adjusted GRM sample identifiers
-      - "${prefix}.grm.details":
-          type: file
-          description: Adjusted GRM details
-      - "${prefix}.grm.adjust":
-          type: file
-          description: Adjusted GRM adjustment factors
-      - "${prefix}.grm.root":
-          type: file
-          description: Adjusted GRM root file required by LDAK HE and PCGC
+          description: LDAK GRM adjustment log file (`<prefix>.log`)
+          ontologies: []
   versions_ldak6:
     - - ${task.process}:
           type: string
@@ -90,6 +89,20 @@ topics:
       - ldak6 --version 2>&1 | grep -oP '(?<=^Version )[0-9.]+':
           type: eval
           description: The expression used to obtain the version of the tool
+containers:
+  conda:
+    linux/amd64:
+      lock_file: "modules/local/ldak/adjustgrm/.conda-lock/linux_amd64-bd-452828f72b3c9129_1.txt"
+  docker:
+    linux/amd64:
+      build_id: "bd-452828f72b3c9129_1"
+      name: "community.wave.seqera.io/library/ldak6_r-base:452828f72b3c9129"
+      scan_id: "sc-65cc7b1c1a9a20b6_1"
+  singularity:
+    linux/amd64:
+      build_id: "bd-e8012f1be139af77_1"
+      name: "oras://community.wave.seqera.io/library/ldak6_r-base:e8012f1be139af77"
+      https: "https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/c9/c94e5424f08cbd7e0856ab3c3a9992b4080944a5d0c497ce0abcceb413db4a3e/data"
 authors:
   - "@lyh970817"
 maintainers:

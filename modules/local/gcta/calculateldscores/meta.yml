@@ -1,0 +1,106 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/modules/meta-schema.json
+name: "gcta_calculateldscores"
+description: Calculate native individual-SNP and regional LD scores with GCTA
+keywords:
+  - gcta
+  - genome-wide complex trait analysis
+  - ld score
+  - linkage disequilibrium score
+  - genetics
+tools:
+  - "gcta":
+      description: "GCTA is a tool for genome-wide complex trait analysis."
+      homepage: "https://yanglab.westlake.edu.cn/software/gcta/"
+      documentation: "https://yanglab.westlake.edu.cn/software/gcta/static/gcta_doc_latest.pdf"
+      tool_dev_url: "https://github.com/jianyangqt/gcta"
+      licence: ["GPL-3.0-only"]
+      identifier: "biotools:gcta"
+input:
+  - - meta:
+        type: map
+        description: |
+          Groovy Map containing PLINK1 genotype metadata
+          e.g. `[ id:'plink_simulated' ]`
+    - bed:
+        type: file
+        description: PLINK1 genotype primary file
+        pattern: "*.{bed}"
+        ontologies:
+          - edam: "http://edamontology.org/format_3003"
+    - bim:
+        type: file
+        description: PLINK1 variant metadata file
+        pattern: "*.{bim}"
+        ontologies: []
+    - fam:
+        type: file
+        description: PLINK1 sample metadata file
+        pattern: "*.{fam}"
+        ontologies: []
+    - ld_score_region:
+        type: integer
+        description: Required LD-score region width in kilobases passed to --ld-score-region.
+output:
+  ld_scores:
+    - - meta:
+          type: map
+          description: |
+            Groovy Map containing PLINK1 genotype metadata
+            e.g. `[ id:'plink_simulated' ]`
+      - "*_gcta_ld.score.ld":
+          type: file
+          description: Native GCTA LD-score table containing allele frequency, individual-SNP LD score and regional LD score
+          pattern: "*_gcta_ld.score.ld"
+          ontologies:
+            - edam: "http://edamontology.org/format_2330"
+  log:
+    - - meta:
+          type: map
+          description: |
+            Groovy Map containing the unchanged PLINK1 genotype metadata
+            e.g. `[ id:'plink_simulated' ]`
+      - "*_gcta_ld.log":
+          type: file
+          description: GCTA LD-score calculation log file
+          pattern: "*_gcta_ld.log"
+          ontologies:
+            - edam: "http://edamontology.org/format_2330"
+  versions_gcta:
+    - - "${task.process}":
+          type: string
+          description: The process the versions were collected from
+      - "gcta":
+          type: string
+          description: The tool name
+      - "gcta --version | sed -En 's/^[*] version v([0-9.]*).*/\\1/p'":
+          type: eval
+          description: The command used to generate the version of the tool
+topics:
+  versions:
+    - - ${task.process}:
+          type: string
+          description: The process the versions were collected from
+      - gcta:
+          type: string
+          description: The tool name
+      - "gcta --version | sed -En 's/^[*] version v([0-9.]*).*/\\1/p'":
+          type: eval
+          description: The command used to generate the version of the tool
+containers:
+  conda:
+    linux/amd64:
+      lock_file: "modules/local/gcta/calculateldscores/.conda-lock/linux_amd64-bd-9bc35dc424fcf6e9_1.txt"
+  docker:
+    linux/amd64:
+      build_id: "bd-9bc35dc424fcf6e9_1"
+      name: "community.wave.seqera.io/library/gcta:1.94.1--9bc35dc424fcf6e9"
+      scan_id: "sc-3daff72fa868d5d0_1"
+  singularity:
+    linux/amd64:
+      build_id: "bd-abf1bf6c8de03d90_1"
+      name: "oras://community.wave.seqera.io/library/gcta:1.94.1--abf1bf6c8de03d90"
+      https: "https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/46/46b0d05f0daa47561d87d2a9cac5e51edc2c78e26f1bbab439c688386241a274/data"
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"

@@ -1,0 +1,70 @@
+{
+    "native LD scores - real": {
+        "content": [
+            {
+                "ld_scores": [
+                    [
+                        {
+                            "id": "focal"
+                        },
+                        "focal_gcta_ld.score.ld:md5,5a4859a8538b2468ce58d798856889ce"
+                    ]
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "focal"
+                        },
+                        "focal_gcta_ld.log"
+                    ]
+                ],
+                "versions_gcta": [
+                    [
+                        "GCTA_CALCULATELDSCORES",
+                        "gcta",
+                        "1.94.1"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T18:40:29.700392879",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "native LD scores - stub": {
+        "content": [
+            {
+                "ld_scores": [
+                    [
+                        {
+                            "id": "focal"
+                        },
+                        "focal_gcta_ld.score.ld:md5,4c8bdfaec662d9f299756105e212f067"
+                    ]
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "focal"
+                        },
+                        "focal_gcta_ld.log"
+                    ]
+                ],
+                "versions_gcta": [
+                    [
+                        "GCTA_CALCULATELDSCORES",
+                        "gcta",
+                        "1.94.1"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T18:40:35.125526562",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

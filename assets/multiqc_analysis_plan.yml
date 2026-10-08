@@ -1,0 +1,33 @@
+id: "nf-core-gwas-analysis-plan"
+section_name: "Analysis plan"
+description: >
+  One row per validated analysis unit, showing the cohort, trait and methods requested for this run.
+  This table describes the run plan, not per-method completion or scientific results.
+plot_type: "table"
+pconfig:
+  id: "nf-core-gwas-analysis-plan-table"
+  title: "Analysis plan"
+  namespace: "nf-core/gwas"
+  col1_header: "Analysis ID"
+headers:
+  cohort:
+    title: "Cohort"
+    description: "Cohort identifier joined from the linked manifests."
+  trait:
+    title: "Trait"
+    description: "Trait identifier declared for this analysis."
+  trait_type:
+    title: "Trait type"
+    description: "Declared trait type: quantitative or binary."
+  genome_build:
+    title: "Genome build"
+    description: "Genome build declared for the cohort genotypes."
+  ancestry:
+    title: "Ancestry"
+    description: "Cohort ancestry provenance label supplied by the user."
+  association_methods:
+    title: "Association methods"
+    description: "Association routes requested for this analysis."
+  heritability_methods:
+    title: "Heritability methods"
+    description: "Heritability routes requested for this analysis."

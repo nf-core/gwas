@@ -1,0 +1,123 @@
+nextflow_pipeline {
+
+    name "Test standalone LDSC production routes"
+    script "../main.nf"
+    tag "pipeline"
+    tag "summary_statistics"
+    tag "ldsc"
+
+    def inputs = { projectDir, outputDir, name ->
+        def resources = RELATIONAL.ldscResources(outputDir, name)
+        def summaries = RELATIONAL.summaryStatistics(projectDir, outputDir, name, { rows ->
+            rows[0].source = resources.quantitative
+            rows[0].heritability_methods = 'ldsc_h2'
+            def binary = RELATIONAL.summary(outputDir, 'external_bt')
+            binary.source = resources.binary
+            binary.heritability_methods = 'ldsc_h2'
+            rows << binary
+        })
+        def relationships = RELATIONAL.summaryRelationships(projectDir, outputDir, name, { rows ->
+            rows[0].relationship_methods = 'ldsc_rg'
+        })
+        def options = RELATIONAL.methodOptions(outputDir, name, [
+            unary_requests: [
+                'ldsc_h2--external_qt': [reference_bundle_id: 'ldsc_eur', native_args: ['--n-blocks', '20']],
+                'ldsc_h2--external_bt': [reference_bundle_id: 'ldsc_eur', native_args: ['--n-blocks', '20']],
+            ],
+            pair_requests: [
+                'ldsc_rg--external_pair': [reference_bundle_id: 'ldsc_eur', native_args: ['--n-blocks', '20']],
+            ],
+        ])
+        [summary: summaries, relationship: relationships, catalog: resources.catalog, options: options]
+    }
+
+    def stableLdscLog = { entry ->
+        entry.text
+            .replaceAll(/(?m)^Beginning analysis at .+$/, 'Beginning analysis at <NORMALIZED>')
+            .replaceAll(/(?m)^Analysis finished at .+$/, 'Analysis finished at <NORMALIZED>')
+            .replaceAll(/(?m)^Total time elapsed: .+$/, 'Total time elapsed: <NORMALIZED>')
+    }
+
+    test("run H2 and RG with shared content-addressed munging") {
+        when {
+            def manifests = inputs(projectDir, outputDir, 'ldsc_real')
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = null
+                analysis_manifest = null
+                summary_statistics_manifest = manifests.summary
+                relationship_manifest = manifests.relationship
+                reference_catalog = manifests.catalog
+                method_options = manifests.options
+            }
+        }
+
+        then {
+            def h2QtRequest = new File("${params.outdir}/requests/ldsc_h2/ldsc_h2--external_qt")
+            def h2BtRequest = new File("${params.outdir}/requests/ldsc_h2/ldsc_h2--external_bt")
+            def rgRequest = new File("${params.outdir}/requests/ldsc_rg/ldsc_rg--external_pair")
+            def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'LDSC_MUNGESUMSTATS') == 2 },
+                { assert TRACE.count(workflow, 'LDSC_H2') == 2 },
+                { assert TRACE.count(workflow, 'LDSC_RG') == 1 },
+                { assert h2QtRequest.listFiles()*.name == ['native.log'] },
+                { assert h2BtRequest.listFiles()*.name == ['native.log'] },
+                { assert rgRequest.listFiles()*.name == ['native.log'] },
+                { assert new File(h2QtRequest, 'native.log').text.contains('Total Observed scale h2:') },
+                { assert !new File(h2QtRequest, 'native.log').text.contains('--samp-prev') },
+                { assert new File(h2BtRequest, 'native.log').text.contains('Total Liability scale h2:') },
+                { assert new File(h2BtRequest, 'native.log').text.contains('--samp-prev 0.2') },
+                { assert new File(h2BtRequest, 'native.log').text.contains('--pop-prev 0.1') },
+                { assert new File(rgRequest, 'native.log').text.contains('--samp-prev nan,0.2') },
+                { assert new File(rgRequest, 'native.log').text.contains('--pop-prev nan,0.1') },
+                // The munged intermediates are content-addressed working state, not a published result, so
+                // the shared munging step publishes nothing of its own on either execution mode.
+                { assert !new File("${params.outdir}/intermediates/ldsc").exists() },
+                { assert snapshot(
+                    RELATIONAL.gzipTextHashes("${params.outdir}/summary_statistics"),
+                    stableLdscLog(new File(h2QtRequest, 'native.log')),
+                    stableLdscLog(new File(h2BtRequest, 'native.log')),
+                    stableLdscLog(new File(rgRequest, 'native.log')),
+                    removeNextflowVersion(versions.toString()),
+                ).match() },
+            )
+        }
+    }
+
+    test("reject request-owned prevalence flags before task submission") {
+        when {
+            def manifests = inputs(projectDir, outputDir, 'ldsc_firewall')
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = null
+                analysis_manifest = null
+                summary_statistics_manifest = manifests.summary
+                relationship_manifest = manifests.relationship
+                reference_catalog = manifests.catalog
+                method_options = RELATIONAL.methodOptions(outputDir, 'ldsc_firewall', [
+                    unary_requests: [
+                        'ldsc_h2--external_qt': [reference_bundle_id: 'ldsc_eur', native_args: ['--samp-prev', '0.2']],
+                        'ldsc_h2--external_bt': [reference_bundle_id: 'ldsc_eur'],
+                    ],
+                    pair_requests: [
+                        'ldsc_rg--external_pair': [reference_bundle_id: 'ldsc_eur'],
+                    ],
+                ])
+            }
+        }
+
+        then {
+            def report = VALIDATION.report(outputDir, workflow.stdout)
+            assertAll(
+                { assert workflow.failed },
+                { assert report.contains("request_id 'ldsc_h2--external_qt'") },
+                { assert report.contains("token 1 '--samp-prev' conflicts with wrapper-owned invocation mechanics") },
+                // "Before task submission" as the direct claim rather than as one named zero-count.
+                { assert workflow.trace.tasks().isEmpty() },
+                { assert TRACE.count(workflow, 'LDSC_MUNGESUMSTATS') == 0 },
+            )
+        }
+    }
+}

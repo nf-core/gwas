@@ -1,0 +1,122 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/modules/meta-schema.json
+name: "ldsc_h2"
+description: Estimate SNP heritability from munged summary statistics with LD Score Regression
+keywords:
+  - ld score regression
+  - linkage disequilibrium score regression
+  - snp heritability
+  - summary statistics
+  - genome-wide association study
+tools:
+  - "ldsc":
+      description: LD Score Regression distinguishes confounding from polygenicity and estimates SNP heritability and genetic correlation from summary statistics
+      homepage: "https://github.com/CBIIT/ldsc"
+      documentation: "https://github.com/bulik/ldsc/wiki"
+      tool_dev_url: "https://github.com/CBIIT/ldsc"
+      licence: ["GPL-3.0-only"]
+      identifier: "biotools:ldsc"
+input:
+  - - meta:
+        type: map
+        description: |
+          Groovy map containing summary-statistics metadata.
+          `meta.id` is required and provides the default output prefix.
+    - sumstats:
+        type: file
+        description: Gzip-compressed munged LDSC summary statistics
+        pattern: "*.sumstats.gz"
+        ontologies: []
+  - - meta2:
+        type: map
+        description: Groovy map containing reference LD-score metadata
+    - reference_ld_scores:
+        type: directory
+        description: Directory containing chromosome-split reference LD scores and matching M files
+        pattern: "*"
+        ontologies: []
+    - reference_prefix:
+        type: string
+        description: |
+          File-name prefix completing the `--ref-ld-chr` stem inside the staged directory, so that LDSC reads
+          `<reference_prefix><chr>.l2.ldscore.gz` and `<reference_prefix><chr>.l2.M_5_50`. Empty string when
+          the files are named `<chr>.l2.ldscore.gz`.
+  - - meta3:
+        type: map
+        description: Groovy map containing regression-weight metadata
+    - regression_weights:
+        type: directory
+        description: Directory containing chromosome-split regression-weight LD scores
+        pattern: "*"
+        ontologies: []
+    - weights_prefix:
+        type: string
+        description: |
+          File-name prefix completing the `--w-ld-chr` stem inside the staged directory, so that LDSC reads
+          `<weights_prefix><chr>.l2.ldscore.gz`. Empty string when the files are named `<chr>.l2.ldscore.gz`.
+output:
+  log:
+    - - meta:
+          type: map
+          description: Groovy map propagated from the summary-statistics input
+      - "${prefix}.log":
+          type: file
+          description: Native LDSC heritability log containing the estimates and regression diagnostics
+          pattern: "*.log"
+          ontologies: []
+  versions_ldsc:
+    - - "${task.process}":
+          type: string
+          description: The name of the process
+      - ldsc:
+          type: string
+          description: The tool name
+      - 'python -c ''import importlib.metadata; print(importlib.metadata.version("ldsc"))''':
+          type: eval
+          description: The expression used to obtain the installed LDSC distribution version
+  versions_python:
+    - - "${task.process}":
+          type: string
+          description: The name of the process
+      - python:
+          type: string
+          description: The interpreter name
+      - "python --version 2>&1 | sed 's/^Python //'":
+          type: eval
+          description: The expression used to obtain the Python version
+topics:
+  versions:
+    - - "${task.process}":
+          type: string
+          description: The name of the process
+      - ldsc:
+          type: string
+          description: The tool name
+      - 'python -c ''import importlib.metadata; print(importlib.metadata.version("ldsc"))''':
+          type: eval
+          description: The expression used to obtain the installed LDSC distribution version
+    - - "${task.process}":
+          type: string
+          description: The name of the process
+      - python:
+          type: string
+          description: The interpreter name
+      - "python --version 2>&1 | sed 's/^Python //'":
+          type: eval
+          description: The expression used to obtain the Python version
+notes: |
+  The runtime pins the CBIIT/ldsc `ldsc39` revision `6c673952cee74bd5c57aef1555a03b1c015399a0`.
+  The installed distribution version is emitted on the versions topic.
+  Both reference inputs are staged directories passed to `--ref-ld-chr` and `--w-ld-chr` with an
+  empty chromosome prefix, so each must hold per-chromosome files named `<chr>.l2.ldscore.gz`
+  (with `<chr>.l2.M_5_50` for the reference set) at its top level. A reference set whose files
+  carry a filename prefix must be staged under that contract by the caller.
+  This pinned `ldsc39` revision writes the complete native analysis log to stdout and leaves the
+  file it opens at `--out` empty, so the module always publishes the stdout transcript as
+  `${prefix}.log` and discards the native `--out` log. A pin whose `--out` log carries the
+  estimates retires that adaptation.
+  Optional non-file arguments use `task.ext.args`; callers must not duplicate the
+  module-owned `--h2`, `--ref-ld-chr`, `--w-ld-chr`, or `--out` options.
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"

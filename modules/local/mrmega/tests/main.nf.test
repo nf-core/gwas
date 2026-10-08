@@ -1,0 +1,128 @@
+nextflow_process {
+
+    name "Test Process MRMEGA"
+    script "../main.nf"
+    process "MRMEGA"
+    config "./nextflow.config"
+
+    tag "modules"
+    tag "modules_nfcore"
+    tag "mrmega"
+
+    def fixture = { directory, label, binary ->
+        def root = new File(directory.toString(), "${label}_studies")
+        root.mkdirs()
+        def files = []
+        (0..<5).each { study ->
+            def header = binary
+                ? 'MARKERNAME\tEA\tNEA\tEAF\tOR\tOR_95L\tOR_95U\tN\tCHROMOSOME\tPOSITION'
+                : 'MARKERNAME\tEA\tNEA\tEAF\tBETA\tSE\tN\tCHROMOSOME\tPOSITION'
+            def lines = [header]
+            (1..30).each { marker ->
+                def frequency = 0.20d + study * 0.08d + marker * 0.001d
+                def effect = 0.01d * (study + 1)
+                def error = 0.02d
+                def model = binary
+                    ? [Math.exp(effect), Math.exp(effect - 1.959963984540054d * error), Math.exp(effect + 1.959963984540054d * error)]
+                    : [effect, error]
+                lines << (["1:${marker * 1000000}:A:G", 'A', 'G', frequency] + model + [4000, 1, marker * 1000000]).join('\t')
+            }
+            def target = new File(root, "${(study + 1).toString().padLeft(2, '0')}_STUDY_${study + 1}.txt.gz")
+            target.withOutputStream { output ->
+                def gzip = new java.util.zip.GZIPOutputStream(output)
+                gzip.write((lines.join('\n') + '\n').bytes)
+                gzip.close()
+            }
+            files << target
+        }
+        def filelist = new File(root, "${label}.filelist.txt")
+        filelist.text = files.collect { file -> file.toString() }.join('\n') + '\n'
+        [files: files, filelist: filelist]
+    }
+
+    def staged = { files -> files.collect { file -> "file('${file}', checkIfExists: true)" }.join(', ') }
+
+    test("one genome-wide quantitative invocation emits native result and log") {
+        when {
+            params { module_args = '--pc 1' }
+            def data = fixture(outputDir, 'quantitative', false)
+            process {
+                """
+                input[0] = [[id: 'quantitative'], [${staged(data.files)}], file('${data.filelist}', checkIfExists: true), 'quantitative']
+                """
+            }
+        }
+
+        then {
+            def result = new File(process.out.result.get(0)[1].toString()).readLines()
+            def log = new File(process.out.log.get(0)[1].toString()).text
+            def command = new File(process.out.result.get(0)[1].toString()).parentFile.toPath().resolve('.command.sh').text
+            def header = result[0].split('\t')
+            def first = result[1].split('\t')
+            def versions = new File(process.out.versions.get(0).toString()).text
+            assertAll(
+                { assert process.success },
+                { assert result.size() == 31 },
+                { assert result[0].contains('P-value_association') },
+                { assert log.contains('Quantitative trait analysis') },
+                { assert command.contains('--qt') },
+                { assert !command.contains('--precalculated') },
+                { assert command.count('-i "quantitative.mrmega.in"') == 1 },
+                // The native P value is fixed by the sha-pinned MR-MEGA image and this deterministic fixture.
+                { assert first[header.findIndexOf { column -> column == 'P-value_association' }] == '0.0010333' },
+                { assert versions == '"MRMEGA":\n    mrmega: 0.2\n' },
+            )
+        }
+    }
+
+    test("trait type explicitly selects the binary route") {
+        when {
+            params { module_args = '--pc 1' }
+            def data = fixture(outputDir, 'binary', true)
+            process {
+                """
+                input[0] = [[id: 'binary'], [${staged(data.files)}], file('${data.filelist}', checkIfExists: true), 'binary']
+                """
+            }
+        }
+
+        then {
+            def result = new File(process.out.result.get(0)[1].toString()).readLines()
+            def log = new File(process.out.log.get(0)[1].toString()).text
+            def command = new File(process.out.result.get(0)[1].toString()).parentFile.toPath().resolve('.command.sh').text
+            def header = result[0].split('\t')
+            def first = result[1].split('\t')
+            assertAll(
+                { assert process.success },
+                { assert log.contains('Binary trait analysis') },
+                { assert !command.contains('--qt') },
+                // The native P value is fixed by the sha-pinned MR-MEGA image and this deterministic fixture.
+                { assert first[header.findIndexOf { column -> column == 'P-value_association' }] == '0.00103304' },
+            )
+        }
+    }
+
+    test("native output contract - stub") {
+        options "-stub"
+
+        when {
+            def data = fixture(outputDir, 'stub', false)
+            process {
+                """
+                input[0] = [[id: 'stub'], [${staged(data.files)}], file('${data.filelist}', checkIfExists: true), 'quantitative']
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.result.size() == 1 },
+                { assert process.out.log.size() == 1 },
+                // Nine leading columns, four coefficient pairs for MR-MEGA's documented --pc default of 3, and eleven trailing columns.
+                { assert new File(process.out.result.get(0)[1].toString()).readLines()[0].split('\t').size() == 28 },
+                { assert new File(process.out.versions.get(0).toString()).text == '"MRMEGA":\n    mrmega: 0.2\n' },
+            )
+        }
+    }
+}

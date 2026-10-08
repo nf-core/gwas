@@ -1,0 +1,295 @@
+nextflow_process {
+    name "Test Process GCTA_BIVARIATEHEREG"
+    script "../main.nf"
+    process "GCTA_BIVARIATEHEREG"
+
+    tag "modules"
+    tag "modules_nfcore"
+    tag "gcta"
+    tag "gcta/bivariatehereg"
+    tag "gcta/makegrm"
+    tag "gawk"
+    config "./nextflow.config"
+
+    setup {
+        run("GAWK", alias: "GAWK_BIVARIATE_PHENO") {
+            script "../../../../nf-core/gawk/main.nf"
+            process {
+                """
+                input[0] = [
+                    [ id:'Trait1__Trait2' ],
+                    [
+                        file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated_quantitative_phenoname.phe', checkIfExists: true),
+                        file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated_covariates.txt', checkIfExists: true)
+                    ]
+                ]
+                input[1] = Channel.of('FNR == NR { if (FNR == 1) next; trait1[\$2] = \$3; next } FNR == 1 { next } { print \$1, \$2, trait1[\$2], \$4 }').collectFile(name:'bivariate_phenotype.awk')
+                input[2] = false
+                """
+            }
+        }
+
+        run("GAWK", alias: "GAWK_PARTIAL_OVERLAP_PHENO") {
+            script "../../../../nf-core/gawk/main.nf"
+            process {
+                """
+                input[0] = [
+                    [ id:'Trait1__Trait2_partial' ],
+                    [
+                        file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated_quantitative_phenoname.phe', checkIfExists: true),
+                        file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated_covariates.txt', checkIfExists: true)
+                    ]
+                ]
+                input[1] = Channel.of('FNR == NR { if (FNR == 1) next; trait1[\$2] = \$3; next } FNR == 1 { next } { print \$1, \$2, (FNR % 5 == 0 ? "NA" : trait1[\$2]), (FNR % 7 == 0 ? "NA" : \$4) }').collectFile(name:'partial_overlap_phenotype.awk')
+                input[2] = false
+                """
+            }
+        }
+
+        run("GCTA_MAKEGRM", alias: "GCTA_MAKEGRM_DENSE") {
+            script "../../../../nf-core/gcta/makegrm/main.nf"
+            process {
+                """
+                file('plink_simulated.mbfile').text = 'plink_simulated\\n'
+
+                input[0] = [
+                    [ id:'plink_simulated_dense' ],
+                    file('plink_simulated.mbfile'),
+                    [
+                        file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bed', checkIfExists: true)
+                    ],
+                    [
+                        file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bim', checkIfExists: true)
+                    ],
+                    [
+                        file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.fam', checkIfExists: true)
+                    ]
+                ]
+                """
+            }
+        }
+    }
+
+    test("homo_sapiens popgen - bivariate quantitative phenotype with dense GRM") {
+        when {
+            process {
+                """
+                input[0] = GCTA_MAKEGRM_DENSE.out.grm_files
+                input[1] = GAWK_BIVARIATE_PHENO.out.output.map { _meta, phenotype_file -> [[ id:'plink_simulated_dense' ], phenotype_file, 1, 2] }
+                """
+            }
+        }
+
+        then {
+            def resultFile = file(process.out.hereg_results.get(0).get(1))
+            def command = path(process.out.log.get(0).get(1)).parent.resolve(".command.sh").text.replaceAll(/\s+/, " ")
+            // `.HEreg` is padded fixed width and the longest coefficient labels fill their field, so a
+            // whitespace split cannot recover them: enumerate the coefficient names instead.
+            def valueBySource = resultFile.readLines()
+                .collect { line -> (line =~ /^(Coefficient|Intercept_tr\d+|Sum of [VC]\(G\)\/Vp_tr\d+|[VC]\(G\d*\)\/Vp_tr\d+|Total rG|rG\d*|N_tr\d+)\s+(\S.*?)\s*$/) }
+                .findAll { matcher -> matcher.matches() }
+                .collectEntries { matcher -> [(matcher.group(1)): matcher.group(2).split(/\s+/) as List] }
+            assertAll(
+                { assert process.success },
+                { assert process.out.hereg_results.size() == 1 },
+                { assert process.out.log.size() == 1 },
+                { assert process.out.hereg_results.get(0).get(0).id == "plink_simulated_dense" },
+                { assert resultFile.name == "plink_simulated_dense.HEreg" },
+                { assert file(process.out.log.get(0).get(1)).name == "plink_simulated_dense.log" },
+                { assert command.contains("--HEreg-bivar 1 2") },
+                { assert command.contains('--grm "plink_simulated_dense"') },
+                { assert process.out.versions_gcta.get(0).get(1) == "gcta" },
+                { assert process.out.versions_gcta.get(0).get(2) == "1.94.1" },
+                // The single-component contract: one `rG` row, no per-component or total rows.
+                { assert valueBySource.keySet().containsAll(["V(G)/Vp_tr1", "V(G)/Vp_tr2", "C(G)/Vp_tr12", "rG", "N_tr1", "N_tr2"]) },
+                { assert !valueBySource.containsKey("Total rG") },
+                { assert valueBySource["N_tr1"] == ["200"] },
+                { assert valueBySource["N_tr2"] == ["200"] },
+                // `rG` carries an OLS and a jackknife standard error and no p-value.
+                { assert valueBySource["rG"].size() == 3 },
+                // The jackknife sampling variance/covariance matrix reaches the log, never the table.
+                { assert file(process.out.log.get(0).get(1)).text.contains("Jackknife sampling variance/covariance") },
+                { assert !resultFile.text.contains("Jackknife sampling variance/covariance") },
+                { assert snapshot(sanitizeOutput(process.out, unstableKeys: ["log"])).match() }
+            )
+        }
+    }
+
+    test("homo_sapiens popgen - the one-component coefficients reproduce a direct Haseman-Elston regression") {
+        when {
+            process {
+                """
+                input[0] = GCTA_MAKEGRM_DENSE.out.grm_files
+                input[1] = GAWK_BIVARIATE_PHENO.out.output.map { _meta, phenotype_file -> [[ id:'plink_simulated_dense' ], phenotype_file, 1, 2] }
+                """
+            }
+        }
+
+        then {
+            // HE-CP regresses the off-diagonal cross-products of the standardised trait on the off-diagonal
+            // genetic relationships. Recompute that regression here from the staged GRM and phenotype so the
+            // published heritability coefficients are checked against the estimator's definition rather than
+            // against a previous run of the same code.
+            def taskDir = path(process.out.log.get(0).get(1)).parent
+            def sampleIds = new File(taskDir.resolve('plink_simulated_dense.grm.id').toString())
+                .readLines()
+                .findAll { line -> line.trim() }
+                .collect { line -> line.split(/\s+/)[1] }
+            def sampleCount = sampleIds.size()
+            def buffer = java.nio.ByteBuffer
+                .wrap(new File(taskDir.resolve('plink_simulated_dense.grm.bin').toString()).bytes)
+                .order(java.nio.ByteOrder.LITTLE_ENDIAN)
+            def relatedness = new double[sampleCount][sampleCount]
+            for (int i = 0; i < sampleCount; i++) {
+                for (int j = 0; j <= i; j++) {
+                    def value = buffer.getFloat()
+                    relatedness[i][j] = value
+                    relatedness[j][i] = value
+                }
+            }
+            def phenotypeByIid = [:]
+            new File(taskDir.resolve('Trait1__Trait2.phe').toString()).readLines().each { line ->
+                def cells = line.trim().split(/\s+/)
+                if (cells.size() >= 4) {
+                    phenotypeByIid[cells[1]] = [cells[2] as double, cells[3] as double]
+                }
+            }
+            def standardise = { List<Double> values ->
+                def mean = values.sum() / values.size()
+                def variance = values.collect { value -> (value - mean) ** 2 }.sum() / (values.size() - 1)
+                def sd = Math.sqrt(variance)
+                return values.collect { value -> (value - mean) / sd }
+            }
+            def slope = { List<Double> trait ->
+                def predictors = []
+                def responses = []
+                for (int i = 0; i < sampleCount; i++) {
+                    for (int j = 0; j < i; j++) {
+                        predictors << relatedness[i][j]
+                        responses << trait[i] * trait[j]
+                    }
+                }
+                def meanX = predictors.sum() / predictors.size()
+                def meanY = responses.sum() / responses.size()
+                def covariance = 0.0d
+                def spread = 0.0d
+                for (int k = 0; k < predictors.size(); k++) {
+                    covariance += (predictors[k] - meanX) * (responses[k] - meanY)
+                    spread += (predictors[k] - meanX) ** 2
+                }
+                return covariance / spread
+            }
+            def left = standardise(sampleIds.collect { iid -> phenotypeByIid[iid][0] })
+            def right = standardise(sampleIds.collect { iid -> phenotypeByIid[iid][1] })
+            def valueBySource = file(process.out.hereg_results.get(0).get(1)).readLines()
+                .collect { line -> (line =~ /^(Coefficient|Intercept_tr\d+|Sum of [VC]\(G\)\/Vp_tr\d+|[VC]\(G\d*\)\/Vp_tr\d+|Total rG|rG\d*|N_tr\d+)\s+(\S.*?)\s*$/) }
+                .findAll { matcher -> matcher.matches() }
+                .collectEntries { matcher -> [(matcher.group(1)): matcher.group(2).split(/\s+/) as List] }
+            assertAll(
+                { assert process.success },
+                { assert phenotypeByIid.size() == sampleCount },
+                { assert Math.abs((valueBySource["V(G)/Vp_tr1"][0] as double) - slope(left)) < 1e-5 },
+                { assert Math.abs((valueBySource["V(G)/Vp_tr2"][0] as double) - slope(right)) < 1e-5 },
+                { assert Math.abs((valueBySource["Intercept_tr1"][0] as double)) < 1e-2 },
+            )
+        }
+    }
+
+    test("homo_sapiens popgen - partially overlapping traits report their own sample counts") {
+        when {
+            process {
+                """
+                input[0] = GCTA_MAKEGRM_DENSE.out.grm_files
+                input[1] = GAWK_PARTIAL_OVERLAP_PHENO.out.output.map { _meta, phenotype_file -> [[ id:'plink_simulated_dense' ], phenotype_file, '', ''] }
+                """
+            }
+        }
+
+        then {
+            def resultFile = file(process.out.hereg_results.get(0).get(1))
+            def command = path(process.out.log.get(0).get(1)).parent.resolve(".command.sh").text.replaceAll(/\s+/, " ")
+            def valueBySource = resultFile.readLines()
+                .collect { line -> (line =~ /^(Coefficient|Intercept_tr\d+|Sum of [VC]\(G\)\/Vp_tr\d+|[VC]\(G\d*\)\/Vp_tr\d+|Total rG|rG\d*|N_tr\d+)\s+(\S.*?)\s*$/) }
+                .findAll { matcher -> matcher.matches() }
+                .collectEntries { matcher -> [(matcher.group(1)): matcher.group(2).split(/\s+/) as List] }
+            assertAll(
+                { assert process.success },
+                // Omitting both trait indices selects the native default of traits 1 and 2.
+                { assert command.contains("--HEreg-bivar") },
+                { assert !command.contains("--HEreg-bivar 1 2") },
+                // Each trait keeps its own non-missing count; the cross-product term uses their product.
+                { assert valueBySource["N_tr1"] == ["160"] },
+                { assert valueBySource["N_tr2"] == ["172"] },
+                { assert snapshot(sanitizeOutput(process.out, unstableKeys: ["log"])).match() }
+            )
+        }
+    }
+
+    test("homo_sapiens popgen - missing trait column fails") {
+        when {
+            process {
+                """
+                input[0] = GCTA_MAKEGRM_DENSE.out.grm_files
+                input[1] = GAWK_BIVARIATE_PHENO.out.output.map { _meta, phenotype_file -> [[ id:'plink_simulated_dense' ], phenotype_file, 1, 7] }
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert !process.success },
+                { assert process.exitStatus != 0 }
+            )
+        }
+    }
+
+    test("homo_sapiens popgen - request identity differs from dense GRM basename") {
+        when {
+            process {
+                """
+                request_dense_grm = GCTA_MAKEGRM_DENSE.out.grm_files.map { _meta, grm_files ->
+                    [[ id:'gcta_bivariate_he--trait1_trait2' ], grm_files]
+                }
+
+                input[0] = request_dense_grm
+                input[1] = GAWK_BIVARIATE_PHENO.out.output.map { _meta, phenotype_file -> [[ id:'gcta_bivariate_he--trait1_trait2' ], phenotype_file, 1, 2] }
+                """
+            }
+        }
+
+        then {
+            def command = path(process.out.log.get(0).get(1)).parent.resolve(".command.sh").text.replaceAll(/\s+/, " ")
+            assertAll(
+                { assert process.success },
+                { assert process.out.hereg_results.get(0).get(0).id == 'gcta_bivariate_he--trait1_trait2' },
+                { assert file(process.out.hereg_results.get(0).get(1)).name == 'gcta_bivariate_he--trait1_trait2.HEreg' },
+                { assert file(process.out.log.get(0).get(1)).name == 'gcta_bivariate_he--trait1_trait2.log' },
+                { assert command.contains('--grm "plink_simulated_dense"') },
+                { assert command.contains('--out "gcta_bivariate_he--trait1_trait2"') },
+            )
+        }
+    }
+
+    test("homo_sapiens popgen - bivariate quantitative phenotype with dense GRM - stub") {
+        options "-stub"
+
+        when {
+            process {
+                """
+                input[0] = GCTA_MAKEGRM_DENSE.out.grm_files
+                input[1] = GAWK_BIVARIATE_PHENO.out.output.map { _meta, phenotype_file -> [[ id:'plink_simulated_dense' ], phenotype_file, 1, 2] }
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.hereg_results.get(0).get(0).id == "plink_simulated_dense" },
+                { assert file(process.out.hereg_results.get(0).get(1)).name == "plink_simulated_dense.HEreg" },
+                { assert file(process.out.log.get(0).get(1)).name == "plink_simulated_dense.log" },
+                { assert snapshot(sanitizeOutput(process.out, unstableKeys: ["log"])).match() }
+            )
+        }
+    }
+}

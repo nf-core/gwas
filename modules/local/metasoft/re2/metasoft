@@ -1,0 +1,39 @@
+#!/bin/sh
+# Thin launcher for METASOFT 2.0.1.
+#
+# It does exactly three things and nothing else:
+#   1. `metasoft --version` / `-version` prints "2.0.1" (the jar itself has NO
+#      version flag and prints no version string anywhere, so a module that
+#      needs versions.yml has to get it from here).
+#   2. If no -pvalue_table argument was given, it appends one pointing at the
+#      baked-in table. METASOFT's own default is the bare relative path
+#      "HanEskinPvalueTable.txt", resolved against the *current working
+#      directory*, which fails with exit 255 in any task directory that does not
+#      happen to contain a copy.
+#   3. Otherwise it execs `java -jar` with the arguments untouched.
+#
+# Pass -pvalue_table explicitly and this wrapper changes nothing at all.
+set -eu
+
+METASOFT_JAR="${METASOFT_JAR:-/opt/metasoft/Metasoft.jar}"
+METASOFT_PVALUE_TABLE="${METASOFT_PVALUE_TABLE:-/opt/metasoft/HanEskinPvalueTable.txt}"
+
+case "${1:-}" in
+    --version|-version|--metasoft-version)
+        cat /opt/metasoft/VERSION
+        exit 0
+        ;;
+esac
+
+have_table=0
+for arg in "$@"; do
+    case "$arg" in
+        -pvalue_table|--pvalue_table) have_table=1 ;;
+    esac
+done
+
+if [ "$have_table" -eq 0 ]; then
+    exec java -jar "$METASOFT_JAR" "$@" -pvalue_table "$METASOFT_PVALUE_TABLE"
+fi
+
+exec java -jar "$METASOFT_JAR" "$@"

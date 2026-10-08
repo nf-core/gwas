@@ -1,0 +1,129 @@
+nextflow_workflow {
+    name "Test ordered common-variant meta-analysis routing"
+    script "../main.nf"
+    workflow "ROUTE_META_ANALYSIS"
+    config "./nextflow.config"
+    tag "subworkflows"
+    tag "subworkflows_local"
+    tag "meta_analysis"
+
+    def parents = { directory ->
+        (0..<5).collect { study ->
+            def path = new File(directory.toString(), "study${study}.tsv")
+            def lines = ['SNPID\tCHR\tPOS\tEA\tNEA\tSTATUS\tEAF\tBETA\tSE\tP\tN']
+            (1..30).each { marker ->
+                lines << ["rs${marker}", 1, marker * 1000000, 'A', 'G', 9999999,
+                    0.20d + study * 0.08d + marker * 0.001d, 0.01d * (study + 1), 0.02, 0.5, 4000].join('\t')
+            }
+            path.text = lines.join('\n') + '\n'
+            path
+        }
+    }
+    def setup = { files, specifications ->
+        def requests = specifications.collect { spec ->
+            def ids = (0..<spec.count).collect { "study${it}" }.reverse()
+            def models = groovy.json.JsonOutput.toJson(spec.models)
+            def sources = groovy.json.JsonOutput.toJson(ids)
+            "[[id: '${spec.id}', request_id: '${spec.id}', summary_statistics_id: '${spec.id}', " +
+                "source_summary_statistics_ids: ${sources}, meta_analysis_models: ${models}, min_studies: 2, " +
+                "axes: ${spec.models.contains('mrmega') ? 1 : 'null'}, build: 'GRCh37', trait_type: 'quantitative'], ${sources}]"
+        }.join(', ')
+        def sources = files.withIndex().collect { path, study ->
+            "[[id: 'study${study}', summary_statistics_id: 'study${study}'], file('${path}', checkIfExists: true)]"
+        }.join(', ')
+        """
+        input[0] = Channel.of(${requests})
+        input[1] = Channel.of(${sources})
+        """
+    }
+    def table = { path ->
+        def lines = new java.util.zip.GZIPInputStream(new FileInputStream(path.toString()))
+            .withReader('UTF-8') { reader -> reader.readLines() }
+        def header = lines.first().split('\t').toList()
+        lines.tail().collect { line -> [header, line.split('\t', -1).toList()].transpose().collectEntries() }
+    }
+
+    test("all four models share ordered parents and retain fixed canonical statistics") {
+        tag "meta_all_models"
+        when {
+            def files = parents(outputDir)
+            workflow {
+                setup(files, [[id: 'all_models', count: 5, models: ['fixed', 'random', 're2', 'mrmega']]])
+            }
+        }
+        then {
+            assert workflow.success
+            def rows = table(workflow.out.summary_statistics[0][1])
+            def re2File = new File(workflow.out.metasoft_result[0][1].toString())
+            def nativeRe2 = re2File.readLines()[1].split('\\t')
+            def mrmegaLines = new File(workflow.out.mrmega_result[0][1].toString()).readLines()
+            def mrmegaHeader = mrmegaLines[0].split('\\t').toList()
+            def nativeMrmega = mrmegaLines[1].split('\\t')
+            // The aligned matrix is not re-emitted by the composition; read it where METASOFT_RE2 staged it.
+            def matrix = new File(re2File.parentFile, 'all_models.metasoft.input.txt').readLines()[0].split(' ')
+            assertAll(
+                { assert workflow.success },
+                { assert rows.size() == 30 },
+                { assert Math.abs(rows[0].BETA.toDouble() - 0.03d) < 1e-10 },
+                { assert Math.abs(rows[0].SE.toDouble() - 0.02d / Math.sqrt(5d)) < 1e-10 },
+                { assert rows[0].N_STUDIES.toInteger() == 5 },
+                { assert rows[0].containsKey('BETA_RANDOM') },
+                { assert rows[0].P_RE2 == nativeRe2[8] },
+                { assert rows[0].RE2_MEAN_COMPONENT == nativeRe2[9] },
+                { assert [1, 3, 5, 7, 9].collect { index -> matrix[index].toDouble() } == [0.05d, 0.04d, 0.03d, 0.02d, 0.01d] },
+                { assert rows[0].MRMEGA_P_ASSOC == nativeMrmega[mrmegaHeader.indexOf('P-value_association')] },
+                { assert rows[0].MRMEGA_P_ASSOC != 'NA' },
+                { assert workflow.out.metasoft_result.size() == 1 },
+                { assert workflow.out.mrmega_result.size() == 1 },
+                { assert workflow.out.gwaslab_log.size() == 1 },
+                { assert workflow.out.summary_statistics[0][0].source_summary_statistics_ids == ['study4', 'study3', 'study2', 'study1', 'study0'] },
+            )
+        }
+    }
+
+    test("shared parents feed requests with different optional model slots") {
+        when {
+            def files = parents(outputDir)
+            workflow {
+                setup(files, [
+                    [id: 'fixed_only', count: 2, models: ['fixed']],
+                    [id: 'random_only', count: 3, models: ['fixed', 'random']],
+                ])
+            }
+        }
+        then {
+            assert workflow.success
+            def outputs = workflow.out.summary_statistics.collectEntries { meta, path -> [meta.id, table(path)] }
+            assertAll(
+                { assert workflow.success },
+                { assert outputs.keySet() == ['fixed_only', 'random_only'].toSet() },
+                { assert Math.abs(outputs.fixed_only[0].BETA.toDouble() - 0.015d) < 1e-10 },
+                { assert Math.abs(outputs.random_only[0].BETA.toDouble() - 0.02d) < 1e-10 },
+                { assert !outputs.fixed_only[0].containsKey('BETA_RANDOM') },
+                { assert outputs.random_only[0].containsKey('BETA_RANDOM') },
+                { assert workflow.out.metasoft_result.empty },
+                { assert workflow.out.mrmega_result.empty },
+            )
+        }
+    }
+
+    test("stub preserves selected model and derived output cardinality") {
+        options "-stub"
+        when {
+            def files = parents(outputDir)
+            workflow {
+                setup(files, [[id: 'stub_all', count: 5, models: ['fixed', 'random', 're2', 'mrmega']]])
+            }
+        }
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert workflow.out.summary_statistics.size() == 1 },
+                { assert workflow.out.fixed.size() == 1 },
+                { assert workflow.out.random_effects.size() == 1 },
+                { assert workflow.out.metasoft_result.size() == 1 },
+                { assert workflow.out.mrmega_result.size() == 1 },
+            )
+        }
+    }
+}

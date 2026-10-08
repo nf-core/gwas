@@ -1,0 +1,213 @@
+nextflow_workflow {
+    name "Test Workflow PLINK_ASSOCIATION_LDAK_KVIK"
+    script "../main.nf"
+    workflow "PLINK_ASSOCIATION_LDAK_KVIK"
+    config "./nextflow.config"
+    tag "subworkflows"
+    tag "subworkflows_nfcore"
+    tag "plink_association_ldak_kvik"
+    tag "subworkflows/plink_association_ldak_kvik"
+    tag "ldak/kvikstep1"
+    tag "ldak/kvikstep2"
+    tag "ldak/thincommon"
+
+    // Reuse the established public simulated fixture, distributing its markers over two chromosomes.
+    // Slice SNP-major BED records with the same marker indexes to create genuine distinct testing bundles.
+    def fixture_code = '''
+        def base = params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/'
+        def source_bed = file(base + 'plink_simulated.bed', checkIfExists: true)
+        def source_bim = file(base + 'plink_simulated.bim', checkIfExists: true)
+        def source_fam = file(base + 'plink_simulated.fam', checkIfExists: true)
+        def rows = source_bim.readLines()
+        def split = (rows.size() + 1).intdiv(2)
+        def multichr = rows.withIndex().collect { row, index ->
+            def fields = row.tokenize()
+            fields[0] = index < split ? '21' : '22'
+            fields.join('\\t')
+        }
+        def bed = file('training.bed'); bed.bytes = source_bed.bytes
+        def bim = file('training.bim'); bim.text = multichr.join('\\n') + '\\n'
+        def fam = file('training.fam'); fam.bytes = source_fam.bytes
+        def bytes_per_variant = (source_fam.readLines().size() + 3).intdiv(4)
+        def chromosomes = [21, 22].collect { chr ->
+            def first = chr == 21 ? 0 : split
+            def last = chr == 21 ? split : rows.size()
+            def records = source_bed.bytes
+            assert records[2] == 1 : 'the fixture BED must be SNP-major for this slicing to select whole variants'
+            def chr_bed = file("testing_chr${chr}.bed")
+            chr_bed.withOutputStream { stream ->
+                stream.write(records, 0, 3)
+                stream.write(records, 3 + first * bytes_per_variant, (last - first) * bytes_per_variant)
+            }
+            def chr_bim = file("testing_chr${chr}.bim"); chr_bim.text = multichr[first..<last].join('\\n') + '\\n'
+            def chr_fam = file("testing_chr${chr}.fam"); chr_fam.bytes = source_fam.bytes
+            [chr_bed, chr_bim, chr_fam]
+        }
+        def phenotype = file(base + 'plink_simulated_quantitative_phenoname.phe', checkIfExists: true)
+        def qcovar = file(base + 'plink_simulated_covariates.txt', checkIfExists: true)
+        def extract = file('predictors.in'); extract.text = rows.collect { row -> row.tokenize()[1] }.join('\\n') + '\\n'
+    '''
+
+    setup {
+        run("LDAK_KVIKSTEP1") {
+            script "../../../../modules/local/ldak/kvikstep1/main.nf"
+            process {
+                """
+                ${fixture_code}
+                input[0] = [[id:'supplied_fit'], bed, bim, fam]
+                input[1] = [[id:'phenotype'], phenotype]
+                input[2] = [[:], []]
+                input[3] = [[:], []]
+                input[4] = [[:], []]
+                """
+            }
+        }
+    }
+
+    test("supplied native predictions bypass production") {
+        when {
+            workflow {
+                """
+                input[0] = channel.empty()
+                input[1] = LDAK_KVIKSTEP1.out.predictions.map { meta, root, details, prs -> ['external_F', meta, root, details, prs] }
+                input[2] = channel.of(['external_F', [id:'analysis'], bed, bim, fam, phenotype, [], [], []])
+                """
+            }
+        }
+        then {
+            assert workflow.success
+            assert workflow.out.fit_log.size() == 0
+            assert workflow.out.predictors.size() == 0
+            assert workflow.out.predictions[0][0] == 'external_F'
+            assert workflow.out.results[0][0] == [id:'analysis']
+            assert path(workflow.out.results[0][1]).fileName.toString() == 'supplied_fit.step2.assoc'
+        }
+    }
+
+    test("one explicit fit feeds two analyses and distinct chromosome bundles") {
+        when {
+            workflow {
+                """
+                input[0] = channel.of(['F', [id:'fit'], bed, bim, fam, phenotype, qcovar, [], [], false])
+                input[1] = channel.empty()
+                input[2] = channel.of(
+                    ['F', [id:'analysis_a']] + chromosomes[0] + [phenotype, qcovar, [], []],
+                    ['F', [id:'analysis_a']] + chromosomes[1] + [phenotype, qcovar, [], []],
+                    ['F', [id:'analysis_b']] + chromosomes[0] + [phenotype, qcovar, [], []]
+                )
+                """
+            }
+        }
+        then {
+            assert workflow.success
+            assert workflow.out.predictions.size() == 1
+            assert workflow.out.predictions[0][0] == 'F'
+            assert workflow.out.predictions[0][1] == [id:'fit']
+            assert workflow.out.fit_log.size() == 1
+            assert workflow.out.predictors.size() == 0
+            assert workflow.out.results.collect { row -> row[0].id }.sort() == ['analysis_a','analysis_a','analysis_b']
+            assert workflow.out.results.every { row -> path(row[1]).readLines().size() > 1 }
+            assert workflow.out.summaries.size() == 3
+            assert workflow.out.test_log.size() == 3
+            assert snapshot(
+                workflow.out.results.collect { row -> [row[0], path(row[1]).fileName.toString()] }.sort(),
+                workflow.out.predictions.collect { row -> [row[0], row[1], row.drop(2).collect { prediction -> path(prediction).fileName.toString() }] },
+                workflow.out.summaries.collect { row -> [row[0], path(row[1]).fileName.toString()] }.sort()
+            ).match()
+            assert workflow.out.test_log.every { row ->
+                def command = path(row[1]).parent.resolve('.command.sh').text
+                command.contains('--kvik-step2 "F"') && command.contains('--bfile "testing_chr')
+            }
+        }
+    }
+
+    test("provided predictors bypass thinning") {
+        when {
+            workflow {
+                """
+                input[0] = channel.of(
+                    ['F', [id:'fit'], bed, bim, fam, phenotype, [], [], extract, false],
+                    ['F2', [id:'fit'], bed, bim, fam, phenotype, [], [], extract, false]
+                )
+                input[1] = channel.empty()
+                input[2] = channel.of(
+                    ['F', [id:'analysis'], bed, bim, fam, phenotype, [], [], []],
+                    ['F2', [id:'analysis2'], bed, bim, fam, phenotype, [], [], []]
+                )
+                """
+            }
+        }
+        then {
+            assert workflow.success
+            assert workflow.out.predictors.size() == 0
+            assert workflow.out.predictions.size() == 2
+            assert workflow.out.results.size() == 2
+            assert workflow.out.predictions.collect { row -> row[0] }.sort() == ['F', 'F2']
+            assert workflow.out.predictions.every { row -> row[1] == [id:'fit'] }
+            assert path(workflow.out.fit_log[0][2]).parent.resolve('.command.sh').text.contains('--extract "predictors.in"')
+        }
+    }
+
+    test("optional common thinning feeds the fit") {
+        when {
+            workflow {
+                """
+                input[0] = channel.of(['F', [id:'fit'], bed, bim, fam, phenotype, [], [], [], true])
+                input[1] = channel.empty()
+                input[2] = channel.of(['F', [id:'analysis'], bed, bim, fam, phenotype, [], [], []])
+                """
+            }
+        }
+        then {
+            assert workflow.success
+            assert workflow.out.predictors.size() == 1
+            assert workflow.out.predictions.size() == 1
+            assert workflow.out.results.size() == 1
+            assert path(workflow.out.fit_log[0][2]).parent.resolve('.command.sh').text.contains('--extract "F.in"')
+        }
+    }
+
+    test("supplied prediction bundle bypasses fitting and retains analysis identities - stub") {
+        options "-stub"
+        when {
+            workflow {
+                """
+                def root = file('supplied.step1.root'); root.text = ''
+                def details = file('supplied.step1.loco.details'); details.text = ''
+                def prs = file('supplied.step1.loco.prs'); prs.text = ''
+                input[0] = channel.empty()
+                input[1] = channel.of(['supplied_F', [id:'supplied'], root, details, prs])
+                input[2] = channel.of(
+                    ['supplied_F', [id:'analysis_a']] + chromosomes[0] + [phenotype, [], [], []],
+                    ['supplied_F', [id:'analysis_b']] + chromosomes[1] + [phenotype, [], [], []]
+                )
+                """
+            }
+        }
+        then {
+            assert workflow.success
+            assert workflow.out.fit_log.size() == 0
+            assert workflow.out.predictors.size() == 0
+            assert workflow.out.predictions.size() == 1
+            assert workflow.out.results.collect { row -> row[0].id }.sort() == ['analysis_a','analysis_b']
+            assert workflow.out.results.every { row -> path(row[1]).fileName.toString() == 'supplied.step2.assoc' }
+        }
+    }
+
+    test("empty requests remain empty - stub") {
+        options "-stub"
+        when {
+            workflow {
+                """
+                input[0] = channel.empty()
+                input[1] = channel.empty()
+                input[2] = channel.empty()
+                """
+            }
+        }
+        then {
+            assert workflow.success
+            assert workflow.out.every { name, records -> records.size() == 0 }
+        }
+    }
+}

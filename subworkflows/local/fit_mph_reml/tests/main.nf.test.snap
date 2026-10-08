@@ -1,0 +1,131 @@
+{
+    "multi-trait stub without covariates": {
+        "content": [
+            {
+                "0": [
+                    [
+                        {
+                            "id": "fit"
+                        },
+                        "fit.mph.pheno.csv:md5,b0f365dc82293309e30a22a5d02cb27e"
+                    ]
+                ],
+                "1": [
+                    
+                ],
+                "2": [
+                    [
+                        {
+                            "id": "fit"
+                        },
+                        "fit.mq.vc.csv:md5,344b9beb2928ad82ddc5824b1d8dec6d"
+                    ]
+                ],
+                "3": [
+                    [
+                        {
+                            "id": "fit"
+                        },
+                        "fit.mq.blue.csv:md5,a431b1004f1fead3ec81508f51f1fa1a"
+                    ]
+                ],
+                "4": [
+                    [
+                        {
+                            "id": "fit"
+                        },
+                        "fit.mq.iter.csv:md5,ddf40046579bc9d5ca1a343bd4e740fb"
+                    ]
+                ],
+                "5": [
+                    [
+                        {
+                            "id": "fit"
+                        },
+                        "fit.mq.py.csv:md5,bc57b093d296d4d89e15dc5e92a20404"
+                    ]
+                ],
+                "6": [
+                    [
+                        {
+                            "id": "fit"
+                        },
+                        "fit.mq.cor.csv:md5,d68016e516e47825b708b62c5f44c9fb"
+                    ]
+                ],
+                "7": [
+                    [
+                        {
+                            "id": "fit"
+                        },
+                        "fit.log:md5,f50b84b1db4b83ba62ec1deacc69c260"
+                    ]
+                ],
+                "correlations": [
+                    [
+                        {
+                            "id": "fit"
+                        },
+                        "fit.mq.cor.csv:md5,d68016e516e47825b708b62c5f44c9fb"
+                    ]
+                ],
+                "covariates": [
+                    
+                ],
+                "fixed_effects": [
+                    [
+                        {
+                            "id": "fit"
+                        },
+                        "fit.mq.blue.csv:md5,a431b1004f1fead3ec81508f51f1fa1a"
+                    ]
+                ],
+                "iterations": [
+                    [
+                        {
+                            "id": "fit"
+                        },
+                        "fit.mq.iter.csv:md5,ddf40046579bc9d5ca1a343bd4e740fb"
+                    ]
+                ],
+                "native_log": [
+                    [
+                        {
+                            "id": "fit"
+                        },
+                        "fit.log:md5,f50b84b1db4b83ba62ec1deacc69c260"
+                    ]
+                ],
+                "phenotype": [
+                    [
+                        {
+                            "id": "fit"
+                        },
+                        "fit.mph.pheno.csv:md5,b0f365dc82293309e30a22a5d02cb27e"
+                    ]
+                ],
+                "projected_phenotypes": [
+                    [
+                        {
+                            "id": "fit"
+                        },
+                        "fit.mq.py.csv:md5,bc57b093d296d4d89e15dc5e92a20404"
+                    ]
+                ],
+                "variance_components": [
+                    [
+                        {
+                            "id": "fit"
+                        },
+                        "fit.mq.vc.csv:md5,344b9beb2928ad82ddc5824b1d8dec6d"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T23:23:20.118593458",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

@@ -1,0 +1,91 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/modules/meta-schema.json
+name: "custom_gctamergegrmparts"
+description: |
+  Concatenate explicitly ordered row-partitioned GCTA dense GRM files into one bundle. `cat` joins three
+  corresponding ordered lists -- GRM values (`.grm.bin`), per-pair marker counts (`.grm.N.bin`) and sample
+  identifiers (`.grm.id`) -- in the order the caller supplies, which is the numeric part order of one GCTA
+  `--make-grm-part` operation and need not be the lexical order of the file names. The module performs no
+  SNP-group planning, cohort selection, normalisation or scientific recomputation, and preserves the
+  incoming metadata. GNU coreutils is the executable owner and version provider; no helper package is
+  required.
+keywords:
+  - gcta
+  - genome-wide complex trait analysis
+  - grm
+  - genetic relationship matrix
+  - merge
+tools:
+  - "coreutils":
+      description: "GNU cat concatenates row-partitioned files in the supplied order."
+      homepage: "https://www.gnu.org/software/coreutils/"
+      documentation: "https://yanglab.westlake.edu.cn/software/gcta/#MakingaGRM"
+      licence: ["GPL-3.0-or-later"]
+      identifier: ""
+input:
+  - - meta:
+        type: map
+        description: Groovy map containing GRM identity
+    - grm_bin_parts:
+        type: file
+        description: GRM binary row parts in numeric part order; ordering is supplied by the caller.
+        pattern: "*.grm.bin"
+        ontologies: []
+    - grm_n_bin_parts:
+        type: file
+        description: Matching per-pair marker-count row parts in the same order.
+        pattern: "*.grm.N.bin"
+        ontologies: []
+    - grm_id_parts:
+        type: file
+        description: Matching sample-identity row parts in the same order.
+        pattern: "*.grm.id"
+        ontologies: []
+output:
+  grm_files:
+    - - meta:
+          type: map
+          description: Groovy map containing GRM identity
+      - "${prefix}.grm.*":
+          type: file
+          description: Concatenated GCTA dense-GRM bundle in explicit numeric part order
+          pattern: "*.grm.*"
+          ontologies: []
+  versions_coreutils:
+    - - ${task.process}:
+          type: string
+          description: Process name
+      - coreutils:
+          type: string
+          description: Executable provider
+      - "cat --version | head -n 1 | cut -d ' ' -f 4":
+          type: eval
+          description: GNU coreutils version
+topics:
+  versions:
+    - - ${task.process}:
+          type: string
+          description: Process name
+      - coreutils:
+          type: string
+          description: Executable provider
+      - "cat --version | head -n 1 | cut -d ' ' -f 4":
+          type: eval
+          description: GNU coreutils version
+containers:
+  conda:
+    linux/amd64:
+      lock_file: "modules/local/custom/gctamergegrmparts/.conda-lock/linux_amd64-bd-838ba80435a629f8_1.txt"
+  docker:
+    linux/amd64:
+      build_id: "bd-838ba80435a629f8_1"
+      name: "community.wave.seqera.io/library/coreutils_grep_gzip_lbzip2_pruned:838ba80435a629f8"
+      scan_id: "sc-2b1453b6febde61b_1"
+  singularity:
+    linux/amd64:
+      build_id: "bd-2f90c612c8e49f19_1"
+      name: "oras://community.wave.seqera.io/library/coreutils_grep_gzip_lbzip2_pruned:2f90c612c8e49f19"
+      https: "https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/52/52ccce28d2ab928ab862e25aae26314d69c8e38bd41ca9431c67ef05221348aa/data"
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"

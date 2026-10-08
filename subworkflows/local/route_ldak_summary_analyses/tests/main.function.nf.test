@@ -1,0 +1,232 @@
+nextflow_function {
+
+    name "Test summary-scale LDAK native argument policy"
+    script "../main.nf"
+    tag "function"
+    tag "ldak"
+    tag "ldak_sumher"
+    tag "ldak_sumcors"
+
+    test("a request declaring no cutoff receives the pipeline default rare-variant cutoff") {
+        function "getLdakSummaryArguments"
+
+        when {
+            function {
+                """
+                input[0] = [method: 'ldak_sumher', native_args: [], is_binary: false]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == ['--cutoff', '0.01'] },
+            )
+        }
+    }
+
+    test("a request declaring its own cutoff or truncation keeps it and gains no default") {
+        function "getLdakSummaryArguments"
+
+        when {
+            function {
+                """
+                input[0] = [method: 'ldak_sumher', native_args: ['--cutoff', '0.05'], is_binary: false]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == ['--cutoff', '0.05'] },
+            )
+        }
+    }
+
+    test("the attached-value option form is recognised, so no duplicate default is appended") {
+        function "getLdakSummaryArguments"
+
+        when {
+            function {
+                """
+                input[0] = [method: 'ldak_sumher', native_args: ['--truncate=0.1'], is_binary: false]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == ['--truncate=0.1'] },
+            )
+        }
+    }
+
+    test("a binary SumHer endpoint declaring both prevalences requests liability conversion") {
+        function "getLdakSummaryArguments"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    method: 'ldak_sumher',
+                    native_args: ['--check-sums', 'NO'],
+                    is_binary: true,
+                    population_prevalence: 0.1,
+                    sample_prevalence: 0.4,
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == ['--check-sums', 'NO', '--cutoff', '0.01', '--prevalence', '0.1', '--ascertainment', '0.4'] },
+            )
+        }
+    }
+
+    test("an incomplete or non-binary SumHer prevalence declaration requests no conversion") {
+        function "getLdakSummaryArguments"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    method: 'ldak_sumher',
+                    native_args: [],
+                    is_binary: true,
+                    population_prevalence: 0.1,
+                    sample_prevalence: null,
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == ['--cutoff', '0.01'] },
+            )
+        }
+    }
+
+    test("a quantitative SumHer endpoint carrying prevalence values still requests no conversion") {
+        function "getLdakSummaryArguments"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    method: 'ldak_sumher',
+                    native_args: [],
+                    is_binary: false,
+                    population_prevalence: 0.1,
+                    sample_prevalence: 0.4,
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == ['--cutoff', '0.01'] },
+            )
+        }
+    }
+
+    test("a fully declared binary SumCors pair emits the four prevalence values in declared left-then-right order") {
+        function "getLdakSummaryArguments"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    method: 'ldak_sumcors',
+                    native_args: [],
+                    left_is_binary: true,
+                    right_is_binary: true,
+                    left_population_prevalence: 0.1,
+                    left_sample_prevalence: 0.4,
+                    right_population_prevalence: 0.2,
+                    right_sample_prevalence: 0.5,
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == [
+                    '--cutoff', '0.01',
+                    '--prevalence', '0.1',
+                    '--ascertainment', '0.4',
+                    '--prevalence2', '0.2',
+                    '--ascertainment2', '0.5',
+                ] },
+            )
+        }
+    }
+
+    test("a SumCors pair with one quantitative endpoint requests no conversion") {
+        function "getLdakSummaryArguments"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    method: 'ldak_sumcors',
+                    native_args: [],
+                    left_is_binary: true,
+                    right_is_binary: false,
+                    left_population_prevalence: 0.1,
+                    left_sample_prevalence: 0.4,
+                    right_population_prevalence: 0.2,
+                    right_sample_prevalence: 0.5,
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == ['--cutoff', '0.01'] },
+            )
+        }
+    }
+
+    test("a binary SumCors pair missing one of the four prevalence values requests no conversion") {
+        function "getLdakSummaryArguments"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    method: 'ldak_sumcors',
+                    native_args: [],
+                    left_is_binary: true,
+                    right_is_binary: true,
+                    left_population_prevalence: 0.1,
+                    left_sample_prevalence: 0.4,
+                    right_population_prevalence: 0.2,
+                    right_sample_prevalence: null,
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == ['--cutoff', '0.01'] },
+            )
+        }
+    }
+
+}

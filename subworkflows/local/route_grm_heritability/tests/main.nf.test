@@ -1,0 +1,358 @@
+nextflow_workflow {
+
+    name "Test individual-level GRM heritability route"
+    script "../main.nf"
+    workflow "ROUTE_GRM_HERITABILITY"
+    tag "subworkflow"
+    tag "subworkflows_local"
+    tag "heritability"
+    tag "gcta"
+    tag "ldak"
+
+    // Every case is stubbed, so the staged phenotypes, covariates and matrix families only have to exist.
+    // What is under test is the routing: that each estimator runs exactly for the analyses that selected it,
+    // that one analysis selecting two GCTA estimators is fanned against its single phenotype rather than
+    // refused, that the dense and LDMS families reach their own estimator with the right MGRM slot, that LDAK
+    // matrix adjustment happens only where an adjustment design exists and never for REML, that an absent
+    // optional file stays `[]`, and that the emitted record is still the focal analysis. The scientific
+    // content is covered end to end by `tests/heritability_*.nf.test` and `tests/relational_*.nf.test`.
+    def TESTS = { project_dir -> "${project_dir}/subworkflows/local/route_grm_heritability/tests" }
+    def RESOURCE = { project_dir, name -> "file('${TESTS(project_dir)}/${name}', checkIfExists: true)" }
+
+    // A validated unary analysis unit as `VALIDATE_GWAS_INPUT` hands it over. No `relationship_id`: the spine
+    // narrows the matrix streams to the unary rows before this controller sees them.
+    def analysisMeta = { analysis_id, heritability_methods, is_binary = false, population_prevalence = null ->
+        """[
+            id: '${analysis_id}',
+            cohort: 'cohort_a',
+            trait: 'TRAIT_${analysis_id}',
+            is_binary: ${is_binary},
+            population_prevalence: ${population_prevalence == null ? 'null' : population_prevalence},
+            sample_prevalence: null,
+            association_methods: [],
+            heritability_methods: [${heritability_methods.collect { method -> "'${method}'" }.join(', ')}],
+            method_options: [gcta: [reml_no_constrain: false], ldak: [:]],
+        ]"""
+    }
+
+    // `PREPARE_RELATEDNESS_MATRICES` emits a unary matrix under the requesting analysis's own meta, with no
+    // matrix reuse key injected — that injection happens only for relationship requests.
+    def denseMatrix = { project_dir, meta ->
+        """[
+            ${meta},
+            [
+                ${RESOURCE(project_dir, 'gcta_dense.grm.bin')},
+                ${RESOURCE(project_dir, 'gcta_dense.grm.N.bin')},
+                ${RESOURCE(project_dir, 'gcta_dense.grm.id')},
+            ],
+        ]"""
+    }
+
+    def ldmsMatrix = { project_dir, meta ->
+        """[
+            ${meta},
+            [
+                ${RESOURCE(project_dir, 'ldms_family_stratum1.grm.bin')},
+                ${RESOURCE(project_dir, 'ldms_family_stratum1.grm.N.bin')},
+                ${RESOURCE(project_dir, 'ldms_family_stratum1.grm.id')},
+                ${RESOURCE(project_dir, 'ldms_family_stratum2.grm.bin')},
+                ${RESOURCE(project_dir, 'ldms_family_stratum2.grm.N.bin')},
+                ${RESOURCE(project_dir, 'ldms_family_stratum2.grm.id')},
+            ],
+            ['ldms_family_stratum1', 'ldms_family_stratum2'],
+        ]"""
+    }
+
+    def kinshipMatrix = { project_dir, meta, keep = null, artifact_key = 'shared-parent-artifact' ->
+        """[
+            ${meta},
+            '${artifact_key}',
+            [
+                ${RESOURCE(project_dir, 'ldak_kinship.grm.bin')},
+                ${RESOURCE(project_dir, 'ldak_kinship.grm.id')},
+                ${RESOURCE(project_dir, 'ldak_kinship.grm.details')},
+                ${RESOURCE(project_dir, 'ldak_kinship.grm.adjust')},
+            ],
+            ${keep ? RESOURCE(project_dir, keep) : '[]'},
+        ]"""
+    }
+
+    // The headerless serialisation stream. An absent optional covariate is `[]`, never a placeholder file.
+    def phenotype = { project_dir, meta, source, quant_covariates = null, cat_covariates = null ->
+        """[
+            ${meta},
+            ${RESOURCE(project_dir, source)},
+            ${quant_covariates ? RESOURCE(project_dir, quant_covariates) : '[]'},
+            ${cat_covariates ? RESOURCE(project_dir, cat_covariates) : '[]'},
+        ]"""
+    }
+
+    test("one analysis selecting both GCTA estimators is fanned against its single phenotype") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                def alpha = ${analysisMeta('alpha', ['gcta_greml', 'gcta_greml_ldms'])}
+                def delta = ${analysisMeta('delta', ['gcta_greml'])}
+
+                input[0] = channel.of(
+                    ${denseMatrix(projectDir, "alpha")},
+                    ${denseMatrix(projectDir, "delta")},
+                )
+                input[1] = channel.of(${ldmsMatrix(projectDir, "alpha")})
+                input[2] = channel.empty()
+                input[3] = channel.of(
+                    ${phenotype(projectDir, "alpha", 'analysis_alpha.pheno', 'analysis.qcovar', 'analysis.covar')},
+                    ${phenotype(projectDir, "delta", 'analysis_delta.pheno')},
+                )
+                input[4] = channel.empty()
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                // The phenotype seam is a combining operator, not a strict join: `alpha` contributes two
+                // matrix records against one phenotype record and both are executed.
+                { assert TRACE.count(workflow, 'GCTA_REML') == 2 },
+                { assert TRACE.tags(workflow, 'GCTA_REML') == ['alpha_alpha', 'delta_delta'] },
+                { assert TRACE.count(workflow, 'GCTA_REMLLDMS') == 1 },
+                { assert TRACE.tags(workflow, 'GCTA_REMLLDMS') == ['alpha_alpha'] },
+                // Selecting a GCTA estimator never reaches the LDAK family.
+                { assert TRACE.count(workflow, 'LDAK_REML') == 0 },
+                { assert TRACE.count(workflow, 'LDAK_HE') == 0 },
+                { assert TRACE.count(workflow, 'LDAK_PCGC') == 0 },
+                { assert TRACE.count(workflow, 'LDAK_ADJUSTGRM') == 0 },
+                // Publication is analysis-addressed and estimator-keyed, and is unchanged by the controller
+                // scope: both `conf/modules/gcta.config` selectors are `.*:`-anchored on the composition.
+                { assert new File("${params.outdir}/heritability/individual/gcta_greml/alpha/alpha.gcta_greml.hsq").isFile() },
+                { assert new File("${params.outdir}/heritability/individual/gcta_greml/delta/delta.gcta_greml.hsq").isFile() },
+                { assert new File("${params.outdir}/heritability/individual/gcta_greml_ldms/alpha/alpha.gcta_greml_ldms.hsq").isFile() },
+                // The GCTA logs record container-local paths and are never published.
+                { assert new File("${params.outdir}/heritability/individual/gcta_greml/alpha").list().sort() == ['alpha.gcta_greml.hsq'] },
+                // One record per analysis per selected estimator, distinguished by the estimator identity the
+                // composition routes on. The focal analysis identity is untouched.
+                { assert workflow.out.gcta_heritability.size() == 3 },
+                { assert workflow.out.gcta_heritability.collect { meta, _hsq -> "${meta.id}/${meta.gcta_estimator}" }.sort() == ['alpha/greml', 'alpha/greml_ldms', 'delta/greml'] },
+                { assert workflow.out.gcta_heritability.every { meta, _hsq -> meta.cohort == 'cohort_a' && meta.trait == "TRAIT_${meta.id}" } },
+                { assert workflow.out.ldak_reml_results.size() == 0 },
+                { assert workflow.out.ldak_he_results.size() == 0 },
+                { assert workflow.out.ldak_pcgc_results.size() == 0 },
+            )
+        }
+    }
+
+    test("each LDAK estimator runs exactly for the analyses that selected it") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                def alpha = ${analysisMeta('alpha', ['ldak_reml'])}
+                def beta  = ${analysisMeta('beta', ['ldak_he', 'ldak_pcgc'], true, 0.1)}
+                def gamma = ${analysisMeta('gamma', ['ldak_reml', 'ldak_he', 'ldak_pcgc'], true, 0.2)}
+
+                input[0] = channel.empty()
+                input[1] = channel.empty()
+                input[2] = channel.of(
+                    ${kinshipMatrix(projectDir, "alpha")},
+                    ${kinshipMatrix(projectDir, "beta", 'unrelated.keep')},
+                    ${kinshipMatrix(projectDir, "gamma")},
+                )
+                input[3] = channel.of(
+                    ${phenotype(projectDir, "alpha", 'analysis_alpha.pheno', 'analysis.qcovar', 'analysis.covar')},
+                    ${phenotype(projectDir, "beta", 'analysis_beta.pheno')},
+                    ${phenotype(projectDir, "gamma", 'analysis_gamma.pheno', 'analysis.qcovar')},
+                )
+                input[4] = channel.empty()
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                // One alias per estimator, each selecting its own analyses out of the shared kinship stream.
+                { assert TRACE.count(workflow, 'LDAK_REML') == 2 },
+                { assert TRACE.tags(workflow, 'LDAK_REML') == ['alpha', 'gamma'] },
+                { assert TRACE.count(workflow, 'LDAK_HE') == 2 },
+                { assert TRACE.tags(workflow, 'LDAK_HE') == ['beta_beta', 'gamma_gamma'] },
+                { assert TRACE.count(workflow, 'LDAK_PCGC') == 2 },
+                { assert TRACE.tags(workflow, 'LDAK_PCGC') == ['beta', 'gamma'] },
+                // No analysis declared an adjustment design, so nothing is adjusted.
+                { assert TRACE.count(workflow, 'LDAK_ADJUSTGRM') == 0 },
+                { assert TRACE.count(workflow, 'GCTA_REML') == 0 },
+                { assert TRACE.count(workflow, 'GCTA_REMLLDMS') == 0 },
+                // Each estimator publishes under its own method directory with its own native filenames.
+                { assert new File("${params.outdir}/heritability/individual/ldak_reml/alpha/alpha.ldak_reml.reml").isFile() },
+                { assert new File("${params.outdir}/heritability/individual/ldak_he/beta/beta.ldak_he.he").isFile() },
+                { assert new File("${params.outdir}/heritability/individual/ldak_pcgc/beta/beta.ldak_pcgc.pcgc").isFile() },
+                { assert new File("${params.outdir}/heritability/individual/ldak_pcgc/gamma").list().sort() == ['gamma.ldak_pcgc.pcgc', 'gamma.ldak_pcgc.pcgc.marginal'] },
+                // The three native contracts stay separate; nothing is merged into one heritability table.
+                { assert workflow.out.ldak_reml_results.collect { meta, _reml -> meta.id }.sort() == ['alpha', 'gamma'] },
+                { assert workflow.out.ldak_he_results.collect { meta, _he -> meta.id }.sort() == ['beta', 'gamma'] },
+                { assert workflow.out.ldak_pcgc_results.collect { meta, _pcgc -> meta.id }.sort() == ['beta', 'gamma'] },
+                { assert workflow.out.gcta_heritability.size() == 0 },
+                // The stub mirrors LDAK's full output set, so the optional liability channel carries every
+                // routed record here and the route's own prevalence fragment stays untested in a stub run.
+                // `tests/heritability_ldak_reml.nf.test` covers the real prevalence-conditioned emission.
+                { assert workflow.out.ldak_reml_liability.collect { meta, _liab -> meta.id }.sort() == ['alpha', 'gamma'] },
+                { assert new File("${params.outdir}/heritability/individual/ldak_reml/gamma/gamma.ldak_reml.reml.liab").isFile() },
+            )
+        }
+    }
+
+    test("matrix adjustment applies only where an adjustment design exists and never to REML") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                def alpha = ${analysisMeta('alpha', ['ldak_reml', 'ldak_he', 'ldak_pcgc'], true, 0.1)}
+                def beta  = ${analysisMeta('beta', ['ldak_he', 'ldak_pcgc'], true, 0.1)}
+                def gamma = ${analysisMeta('gamma', ['gcta_greml'])}
+
+                input[0] = channel.empty()
+                input[1] = channel.empty()
+                input[2] = channel.of(
+                    ${kinshipMatrix(projectDir, "alpha")},
+                    ${kinshipMatrix(projectDir, "beta")},
+                )
+                input[3] = channel.of(
+                    ${phenotype(projectDir, "alpha", 'analysis_alpha.pheno', 'analysis.qcovar', 'analysis.covar')},
+                    ${phenotype(projectDir, "beta", 'analysis_beta.pheno', 'analysis.qcovar')},
+                )
+                // A non-LDAK analysis contributes covariates without an LDAK matrix. Its right-only
+                // remainder must be dropped while alpha's match and beta's left-only remainder survive.
+                input[4] = channel.of(
+                    [alpha, ${RESOURCE(projectDir, 'analysis.adjust.qcovar')}],
+                    [gamma, ${RESOURCE(projectDir, 'analysis.adjust.qcovar')}],
+                )
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                // The adjustment stream is folded on with a remainder join, so `beta`, which declared no
+                // adjustment design, still reaches both of its estimators — with `[]`, not a null path.
+                { assert TRACE.count(workflow, 'LDAK_HE') == 2 },
+                { assert TRACE.count(workflow, 'LDAK_PCGC') == 2 },
+                { assert TRACE.count(workflow, 'LDAK_REML') == 1 },
+                // HE and PCGC consume one child artifact derived from alpha's parent, effective subset and
+                // numerical design. Estimator identity and focal publication state do not fragment it.
+                { assert TRACE.count(workflow, 'LDAK_ADJUSTGRM') == 1 },
+                { assert TRACE.tags(workflow, 'LDAK_ADJUSTGRM').every { tag -> tag.startsWith('ldak_adjusted.') } },
+                // Artifact execution identity never becomes the focal identity of a result.
+                { assert workflow.out.ldak_he_results.collect { meta, _he -> meta.id }.sort() == ['alpha', 'beta'] },
+                { assert workflow.out.ldak_pcgc_results.collect { meta, _pcgc -> meta.id }.sort() == ['alpha', 'beta'] },
+                { assert workflow.out.ldak_reml_results.collect { meta, _reml -> meta.id } == ['alpha'] },
+                { assert new File("${params.outdir}/heritability/individual/ldak_he/alpha/alpha.ldak_he.he").isFile() },
+                { assert new File("${params.outdir}/heritability/individual/ldak_he/beta/beta.ldak_he.he").isFile() },
+            )
+        }
+    }
+
+    test("a run declaring no individual-level heritability method executes nothing and emits nothing") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                def alpha = ${analysisMeta('alpha', [])}
+
+                input[0] = channel.empty()
+                input[1] = channel.empty()
+                input[2] = channel.empty()
+                input[3] = channel.of(${phenotype(projectDir, "alpha", 'analysis_alpha.pheno')})
+                // Exercise an exclusively right-only remainder, where the join has no left record
+                // from which to infer tuple arity. It must not create an estimator invocation.
+                input[4] = channel.of([alpha, ${RESOURCE(projectDir, 'analysis.adjust.qcovar')}])
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'GCTA_REML') == 0 },
+                { assert TRACE.count(workflow, 'GCTA_REMLLDMS') == 0 },
+                { assert TRACE.count(workflow, 'LDAK_REML') == 0 },
+                { assert TRACE.count(workflow, 'LDAK_HE') == 0 },
+                { assert TRACE.count(workflow, 'LDAK_PCGC') == 0 },
+                { assert TRACE.count(workflow, 'LDAK_ADJUSTGRM') == 0 },
+                { assert workflow.out.gcta_heritability.size() == 0 },
+                { assert workflow.out.ldak_reml_results.size() == 0 },
+                { assert workflow.out.ldak_reml_liability.size() == 0 },
+                { assert workflow.out.ldak_he_results.size() == 0 },
+                { assert workflow.out.ldak_pcgc_results.size() == 0 },
+                { assert workflow.out.ldak_pcgc_marginal.size() == 0 },
+            )
+        }
+    }
+
+    test("one analysis selecting a GCTA and an LDAK estimator reaches both families without crossing them") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                def alpha = ${analysisMeta('alpha', ['gcta_greml', 'ldak_reml'])}
+                def beta  = ${analysisMeta('beta', ['gcta_greml_ldms'])}
+
+                input[0] = channel.of(${denseMatrix(projectDir, "alpha")})
+                input[1] = channel.of(${ldmsMatrix(projectDir, "beta")})
+                input[2] = channel.of(${kinshipMatrix(projectDir, "alpha")})
+                input[3] = channel.of(
+                    ${phenotype(projectDir, "alpha", 'analysis_alpha.pheno', 'analysis.qcovar')},
+                    ${phenotype(projectDir, "beta", 'analysis_beta.pheno')},
+                )
+                input[4] = channel.empty()
+                """
+            }
+        }
+
+        then {
+            // GCTA and LDAK are selected by different matrix streams, not by a shared branch, so one analysis
+            // asking for both gets exactly one execution in each family and the GCTA-only analysis never
+            // acquires an LDAK one. The two result contracts stay separate on the way out.
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.tags(workflow, 'GCTA_REML') == ['alpha_alpha'] },
+                { assert TRACE.tags(workflow, 'GCTA_REMLLDMS') == ['beta_beta'] },
+                { assert TRACE.tags(workflow, 'LDAK_REML') == ['alpha'] },
+                { assert TRACE.count(workflow, 'LDAK_HE') == 0 },
+                { assert TRACE.count(workflow, 'LDAK_PCGC') == 0 },
+                { assert workflow.out.gcta_heritability.collect { meta, _hsq -> "${meta.id}/${meta.gcta_estimator}" }.sort() == ['alpha/greml', 'beta/greml_ldms'] },
+                { assert workflow.out.ldak_reml_results.collect { meta, _reml -> meta.id } == ['alpha'] },
+                // The GCTA record carries no LDAK estimator identity and the LDAK record carries no GCTA one.
+                { assert workflow.out.ldak_reml_results.every { meta, _reml -> !meta.containsKey('gcta_estimator') } },
+                { assert new File("${params.outdir}/heritability/individual/gcta_greml/alpha/alpha.gcta_greml.hsq").isFile() },
+                { assert new File("${params.outdir}/heritability/individual/ldak_reml/alpha/alpha.ldak_reml.reml").isFile() },
+            )
+        }
+    }
+}

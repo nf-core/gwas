@@ -7,8 +7,8 @@ process LDAK_PCGC {
         : 'community.wave.seqera.io/library/ldak6_r-base:452828f72b3c9129'}"
 
     input:
-    tuple val(meta), path(phenotype_file), val(mpheno), val(prevalence)
-    tuple val(meta2), path(grm_bin), path(grm_id), path(grm_details), path(grm_adjust), path(grm_root)
+    tuple val(meta), path(phenotype_file), val(prevalence)
+    tuple val(meta2), path(grm_files)
     tuple val(meta3), path(keep_file)
     tuple val(meta4), path(quant_covariates_file)
     tuple val(meta5), path(cat_covariates_file)
@@ -21,6 +21,7 @@ process LDAK_PCGC {
     tuple val(meta), path("${prefix}.cross"), emit: cross, optional: true
     tuple val(meta), path("${prefix}.progress"), emit: progress, optional: true
     tuple val(meta), path("${prefix}.share"), emit: share, optional: true
+    tuple val(meta), path("${prefix}.log"), emit: log
     tuple val("${task.process}"), val("ldak6"), eval("ldak6 --version 2>&1 | grep -oP '(?<=^Version )[0-9.]+'"), emit: versions_ldak6, topic: versions
 
     when:
@@ -28,37 +29,35 @@ process LDAK_PCGC {
 
     script:
     def args = task.ext.args ?: ''
-    def grm_prefix = grm_bin.name.replaceFirst(/\.grm\.bin$/, '')
+    def grm_prefix = grm_files.find { grm_file -> grm_file.name.endsWith('.grm.bin') }.name.replaceFirst(/\.grm\.bin$/, '')
     prefix = task.ext.prefix ?: "${meta.id}"
-    def mpheno_arg = mpheno == null || (mpheno instanceof Collection && mpheno.isEmpty()) ? 1 : mpheno
-    def keep_arg = keep_file ? "--keep ${keep_file}" : ''
-    def quant_covar_arg = quant_covariates_file ? "--covar ${quant_covariates_file}" : ''
-    def cat_covar_arg = cat_covariates_file ? "--factors ${cat_covariates_file}" : ''
-    def prevalence_arg = prevalence ? "--prevalence ${prevalence}" : ''
+    def keep_arg = keep_file ? "--keep \"${keep_file}\"" : ''
+    def quant_covar_arg = quant_covariates_file ? "--covar \"${quant_covariates_file}\"" : ''
+    def cat_covar_arg = cat_covariates_file ? "--factors \"${cat_covariates_file}\"" : ''
 
     """
-
-    ldak6 --pcgc ${prefix} \\
-        --pheno ${phenotype_file} \\
-        --mpheno ${mpheno_arg} \\
-        --grm ${grm_prefix} \\
+    ldak6 --pcgc "${prefix}" \\
+        --pheno "${phenotype_file}" \\
+        --grm "${grm_prefix}" \\
         ${keep_arg} \\
         ${quant_covar_arg} \\
         ${cat_covar_arg} \\
-        ${prevalence_arg} \\
-        --max-threads ${task.cpus} \
-        ${args}
+        --prevalence "${prevalence}" \\
+        --max-threads "${task.cpus}" \\
+        ${args} \\
+        2>&1 | tee "${prefix}.log"
     """
 
     stub:
     prefix = task.ext.prefix ?: "${meta.id}"
     """
-    touch ${prefix}.pcgc
-    touch ${prefix}.pcgc.marginal
-    touch ${prefix}.coeff
-    touch ${prefix}.combined
-    touch ${prefix}.cross
-    touch ${prefix}.progress
-    touch ${prefix}.share
+    touch "${prefix}.pcgc"
+    touch "${prefix}.pcgc.marginal"
+    touch "${prefix}.coeff"
+    touch "${prefix}.combined"
+    touch "${prefix}.cross"
+    touch "${prefix}.progress"
+    touch "${prefix}.share"
+    touch "${prefix}.log"
     """
 }

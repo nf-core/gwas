@@ -1,0 +1,482 @@
+nextflow_pipeline {
+
+    name "Test linked-manifest cohort genotype representations"
+    script "../main.nf"
+    tag "pipeline"
+    tag "input"
+    tag "relational"
+    tag "genotypes"
+
+    // Supplied BED and PGEN representations are preserved. `regenie_flag`
+    // is the native flag REGENIE must derive from the primary member it was handed, which is what proves the
+    // cohort reached it in its own representation rather than through a conversion.
+    def encodings = [
+        plink2: [cohort: 'example_pgen', regenie_flag: '--pgen', native_format: 'plink2'],
+        plink1: [cohort: 'example_bfile', regenie_flag: '--bed', native_format: 'plink1'],
+    ]
+
+    // Every `.command.sh` a run wrote, so a native flag can be asserted against the command the task actually
+    // ran rather than against the tuple the test handed in.
+    def commands = { output_dir ->
+        def rendered = []
+        new File(new File(output_dir.toString()).parentFile, 'work').eachFileRecurse { entry ->
+            if (entry.isFile() && entry.name == '.command.sh') {
+                rendered << entry.text
+            }
+        }
+        return rendered
+    }
+
+    encodings.each { encoding, fixture ->
+        test("a ${encoding} cohort completes a REGENIE association through linked manifests") {
+
+            when {
+                params {
+                    outdir = "$outputDir"
+                    cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, "${encoding}_association", { rows ->
+                        rows[0] = RELATIONAL.cohort(fixture.cohort)
+                    })
+                    analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, "${encoding}_association", { rows ->
+                        rows[0].analysis_id = "${fixture.cohort}_relational_qt"
+                        rows[0].cohort_id = fixture.cohort
+                    })
+                }
+            }
+
+            then {
+                def analysisId = "${fixture.cohort}_relational_qt"
+                def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
+                def stable_name_association = getAllFilesFromDir(
+                    "${params.outdir}/association",
+                    relative: true,
+                    includeDir: true,
+                ).findAll { path -> path.toString() }
+                def stable_path_association = RELATIONAL.gzipTextHashes("${params.outdir}/association")
+                def record = new File("${params.outdir}/genotypes/${fixture.cohort}/${fixture.cohort}.genotype_view.json")
+                def view = new groovy.json.JsonSlurper().parse(record)
+                assertAll(
+                    { assert workflow.success },
+                    { assert TRACE.tags(workflow, 'PREPARE_PHENOTYPE_INPUTS') == [analysisId] },
+                    { assert TRACE.count(workflow, 'REGENIE_STEP2') == 1 },
+                    // No cohort is converted to reach REGENIE, and no cohort is projected: REGENIE reads
+                    // whatever representation it was given.
+                    { assert TRACE.count(workflow, 'PLINK2_MAKEBED') == 0 },
+                    { assert TRACE.count(workflow, 'PREPARE_GENOTYPE_SOURCE') == 1 },
+                    // REGENIE derives its own native flag from the primary member it was staged, so this is
+                    // the assertion that the representation survived the whole route.
+                    { assert commands(outputDir).any { command -> command.contains('regenie') && command.contains("${fixture.regenie_flag} ") } },
+                    { assert view.source.format == encoding },
+                    { assert view.source.identity.mode == 'sha256' },
+                    { assert view.native_view.format == fixture.native_format },
+                    { assert view.plink1 == null },
+                    { assert snapshot(stable_name_association, stable_path_association).match("${encoding}-association") },
+                    { assert snapshot(view).match("${encoding}-genotype-view") },
+                    { assert snapshot(removeNextflowVersion(versions.toString())).match("${encoding}-versions") },
+                )
+            }
+        }
+    }
+
+
+    test("a PLINK 2 cohort serves REGENIE natively and LDAK-KVIK from one shared projection") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, "coexistence", { rows ->
+                    rows[0] = RELATIONAL.cohort('example_pgen')
+                })
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, "coexistence", { rows ->
+                    rows[0].analysis_id = 'example_pgen_coexistence_qt'
+                    rows[0].association_methods = 'regenie,ldak_kvik'
+                })
+            }
+        }
+
+        then {
+            def record = new File("${params.outdir}/genotypes/example_pgen/example_pgen.genotype_view.json")
+            def view = new groovy.json.JsonSlurper().parse(record)
+            def rendered = commands(outputDir)
+            assertAll(
+                { assert workflow.success },
+                // The native PGEN and its PLINK 1 derivative feed two routes in the same run, and the
+                // derivative is built once for the whole cohort.
+                { assert TRACE.count(workflow, 'PLINK2_MAKEBED') == 1 },
+                { assert rendered.any { command -> command.contains('regenie') && command.contains('--pgen ') } },
+                { assert rendered.any { command -> command.contains('--bfile') && command.contains('example_pgen') } },
+                { assert view.plink1.origin == 'hard_call_projection' },
+                { assert view.plink1.parent_key == view.native_view.key },
+                { assert view.plink1.information_loss == ['dosage', 'phase'] },
+            )
+        }
+    }
+
+    test("a declared genotype view identity replaces the content digest") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, "declared_identity", { rows ->
+                    rows[0] = RELATIONAL.cohort('example_bfile')
+                    rows[0].genotype_view_id = 'biofuse:52d1d326413775cd'
+                })
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, "declared_identity", { rows ->
+                    rows[0].analysis_id = 'example_bfile_declared_qt'
+                    rows[0].cohort_id = 'example_bfile'
+                })
+            }
+        }
+
+        then {
+            def record = new File("${params.outdir}/genotypes/example_bfile/example_bfile.genotype_view.json")
+            def view = new groovy.json.JsonSlurper().parse(record)
+            assertAll(
+                { assert workflow.success },
+                // A declared identity is the contract a mounted view relies on: the pipeline never opens the
+                // files, so nothing about the route depends on them being ordinary local copies.
+                { assert TRACE.count(workflow, 'PREPARE_GENOTYPE_SOURCE') == 0 },
+                { assert view.source.identity == [mode: 'declared', value: 'biofuse:52d1d326413775cd'] },
+                { assert view.source.members == null },
+            )
+        }
+    }
+
+    test("a declared PLINK 1 view reaches LDAK-KVIK as supplied, with no PLINK 1 derivation") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, "declared_identity_kvik", { rows ->
+                    rows[0] = RELATIONAL.cohort('example_bfile')
+                    rows[0].genotype_view_id = 'biofuse:52d1d326413775cd'
+                })
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, "declared_identity_kvik", { rows ->
+                    rows[0].analysis_id = 'example_bfile_declared_kvik_qt'
+                    rows[0].cohort_id = 'example_bfile'
+                    rows[0].association_methods = 'ldak_kvik'
+                })
+            }
+        }
+
+        then {
+            def record = new File("${params.outdir}/genotypes/example_bfile/example_bfile.genotype_view.json")
+            def view = new groovy.json.JsonSlurper().parse(record)
+            def rendered = commands(outputDir)
+            assertAll(
+                { assert workflow.success },
+                // This is the cohort a mounted view (for example one served by the nf-biofuse plugin) hands the
+                // pipeline: a PLINK 1 trio under a declared identity. A PLINK 1 consumer reads it as supplied, so
+                // no task opens, digests or rewrites it.
+                { assert TRACE.count(workflow, 'PREPARE_GENOTYPE_SOURCE') == 0 },
+                { assert TRACE.count(workflow, 'PLINK2_MAKEBED') == 0 },
+                { assert TRACE.count(workflow, 'LDAK_KVIKSTEP2') == 1 },
+                { assert rendered.any { command -> command.contains('--kvik-step2') && command.contains('--bfile "example_all"') } },
+                { assert view.source.identity == [mode: 'declared', value: 'biofuse:52d1d326413775cd'] },
+                { assert view.native_view.format == 'plink1' },
+                // The PLINK 1 view LDAK-KVIK read is the supplied one, not a projection of it.
+                { assert view.plink1.origin == 'supplied' },
+                { assert view.plink1.key == view.native_view.key },
+                { assert view.plink1.information_loss == [] },
+            )
+        }
+    }
+
+    test("two cohort identifiers over identical genotypes share one relatedness matrix") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, "shared_identity", { rows ->
+                    rows[0] = RELATIONAL.cohort('example_bfile')
+                    def twin = RELATIONAL.cohort('example_bfile')
+                    twin.cohort_id = 'example_bfile_twin'
+                    rows << twin
+                })
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, "shared_identity", { rows ->
+                    def template = rows[0]
+                    rows.clear()
+                    ['example_bfile', 'example_bfile_twin'].each { cohort ->
+                        def analysis = new LinkedHashMap(template)
+                        analysis.analysis_id = "${cohort}_shared_qt"
+                        analysis.cohort_id = cohort
+                        analysis.association_methods = ''
+                        analysis.heritability_methods = 'ldak_reml'
+                        rows << analysis
+                    }
+                })
+            }
+        }
+
+        then {
+            def matrices = new File("${params.outdir}/quality_control/relatedness_matrices")
+            def leftRecord = new groovy.json.JsonSlurper().parse(new File("${params.outdir}/genotypes/example_bfile/example_bfile.genotype_view.json"))
+            def rightRecord = new groovy.json.JsonSlurper().parse(new File("${params.outdir}/genotypes/example_bfile_twin/example_bfile_twin.genotype_view.json"))
+            assertAll(
+                { assert workflow.success },
+                // Byte-identical genotypes are one view whatever the manifest calls the cohort, so the LDAK
+                // kinship matrix is built once and both analyses receive it.
+                { assert leftRecord.native_view.key == rightRecord.native_view.key },
+                { assert TRACE.count(workflow, 'LDAK_CALCKINS') == 1 },
+                { assert TRACE.count(workflow, 'PREPARE_GENOTYPE_SOURCE') == 2 },
+                { assert getAllFilesFromDir("${params.outdir}/heritability", relative: true, includeDir: true)
+                    .collect { path -> path.toString() }
+                    .any { path -> path.contains('example_bfile_twin_shared_qt') } },
+                { assert getAllFilesFromDir("${params.outdir}/heritability", relative: true, includeDir: true)
+                    .collect { path -> path.toString() }
+                    .any { path -> path.contains('example_bfile_shared_qt') } },
+            )
+        }
+    }
+
+
+    test("two PLINK 2 cohorts over the same bytes share one projected view and one matrix, deterministically") {
+        tag "resume"
+
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, "shared_projection", { rows ->
+                    rows[0] = RELATIONAL.cohort('example_pgen')
+                    def twin = RELATIONAL.cohort('example_pgen')
+                    twin.cohort_id = 'example_pgen_twin'
+                    rows << twin
+                })
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, "shared_projection", { rows ->
+                    def template = rows[0]
+                    rows.clear()
+                    ['example_pgen', 'example_pgen_twin'].each { cohort ->
+                        def analysis = new LinkedHashMap(template)
+                        analysis.analysis_id = "${cohort}_projected_qt"
+                        analysis.cohort_id = cohort
+                        analysis.association_methods = ''
+                        analysis.heritability_methods = 'ldak_reml'
+                        rows << analysis
+                    }
+                })
+            }
+        }
+
+        then {
+            // Unlike the PLINK 1 twin above, these two cohorts are PROJECTED: each is hard-call projected
+            // under its own cohort id, so the two bundles the shared view can be paired with are
+            // byte-identical files under different names, produced by two tasks racing in parallel. Nextflow
+            // hashes a path input by its source path, so a first-arrival reduction would give the shared
+            // matrix a task hash that depends on which projection finished first — and an unchanged resume
+            // would rebuild it. The two resumed runs are what prove the choice is deterministic.
+            def leftRecord = new groovy.json.JsonSlurper().parse(new File("${params.outdir}/genotypes/example_pgen/example_pgen.genotype_view.json"))
+            def rightRecord = new groovy.json.JsonSlurper().parse(new File("${params.outdir}/genotypes/example_pgen_twin/example_pgen_twin.genotype_view.json"))
+            def firstResume = RESUME.rerun(outputDir, [:])
+            def secondResume = RESUME.rerun(outputDir, [:])
+            assertAll(
+                { assert workflow.success },
+                { assert leftRecord.native_view.key == rightRecord.native_view.key },
+                { assert leftRecord.plink1.key == rightRecord.plink1.key },
+                // One shared matrix build, however many cohorts asked for it. The published directory is not
+                // asserted because `--save_relatedness_matrices` is off in this profile; the build count is
+                // the claim, and the key-addressed directory name is pinned by relatedness_matrix_ldak.
+                { assert TRACE.count(workflow, 'LDAK_CALCKINS') == 1 },
+                // The projection itself is still per cohort: the two bundles differ in name only, and
+                // collapsing them would need an identity-derived output name.
+                { assert TRACE.count(workflow, 'PLINK2_MAKEBED') == 2 },
+                // The shared matrix and everything downstream of it resume, twice over.
+                { assert RESUME.statuses(firstResume, 'LDAK_CALCKINS') == ['CACHED'] },
+                { assert RESUME.statuses(firstResume, 'LDAK_REML') == ['CACHED', 'CACHED'] },
+                { assert RESUME.statuses(secondResume, 'LDAK_CALCKINS') == ['CACHED'] },
+                { assert RESUME.hashes(secondResume, 'LDAK_CALCKINS') == RESUME.hashes(firstResume, 'LDAK_CALCKINS') },
+                { assert getAllFilesFromDir("${params.outdir}/heritability", relative: true, includeDir: true)
+                    .collect { path -> path.toString() }
+                    .any { path -> path.contains('example_pgen_twin_projected_qt') } },
+            )
+        }
+    }
+
+    test("the genotype cache boundary is the view identity, not the file names") {
+        tag "resume"
+
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, "identity_cache", { rows ->
+                    rows[0] = RELATIONAL.cohort('example_pgen')
+                    rows[0].cohort_id = 'identity_cache'
+                })
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, "identity_cache", { rows ->
+                    rows[0].analysis_id = 'identity_cache_qt'
+                    rows[0].cohort_id = 'identity_cache'
+                    rows[0].association_methods = 'regenie'
+                    rows[0].heritability_methods = 'ldak_reml'
+                })
+            }
+        }
+
+        then {
+            def viewKey = { -> new groovy.json.JsonSlurper()
+                .parse(new File("${params.outdir}/genotypes/identity_cache/identity_cache.genotype_view.json"))
+                .native_view.key }
+            def firstKey = viewKey()
+
+            // (1) Nothing changed. Every preparation task and both fitted artifacts are reused.
+            def unchanged = RESUME.rerun(outputDir, [:])
+
+            // (2) A copy of the bundle under different member names, byte for byte the same. Nextflow stages
+            // differently named files, so the tasks that stage them re-execute — but the view identity folds
+            // only the member roles and digests, so every published artifact key is unmoved and the run
+            // produces the same directories under the same names.
+            def source = "${FIXTURES.base(projectDir)}results/fixtures/genotypes"
+            def renamed = ['pgen', 'psam', 'pvar'].collectEntries { role ->
+                [(role): RELATIONAL.copyResource(outputDir, "renamed_bundle.${role}", "${source}/example_all.${role}")]
+            }
+            def renamedManifest = RELATIONAL.cohorts(projectDir, outputDir, "identity_cache_renamed", { rows ->
+                rows[0] = RELATIONAL.cohort('example_pgen')
+                rows[0].cohort_id = 'identity_cache'
+                rows[0].pgen = renamed.pgen
+                rows[0].psam = renamed.psam
+                rows[0].pvar = renamed.pvar
+            })
+            def renamedTrace = RESUME.rerun(outputDir, [cohort_manifest: renamedManifest])
+            def renamedKey = viewKey()
+
+            // (3) One edited byte in the variant file. The identity moves, so every conversion, projection and
+            // fitted artifact downstream of it re-executes.
+            def edited = ['pgen', 'psam'].collectEntries { role ->
+                [(role): RELATIONAL.copyResource(outputDir, "edited_bundle.${role}", "${source}/example_all.${role}")]
+            }
+            def editedPvarLines = new File("${source}/example_all.pvar").readLines()
+            def editedVariant = editedPvarLines.last().split('\t', -1)
+            editedVariant[2] = "${editedVariant[2]}_edited"
+            edited.pvar = RELATIONAL.resource(
+                outputDir,
+                'edited_bundle.pvar',
+                (editedPvarLines[0..-2] + [editedVariant.join('\t')]).join('\n') + '\n',
+            )
+            def editedManifest = RELATIONAL.cohorts(projectDir, outputDir, "identity_cache_edited", { rows ->
+                rows[0] = RELATIONAL.cohort('example_pgen')
+                rows[0].cohort_id = 'identity_cache'
+                rows[0].pgen = edited.pgen
+                rows[0].psam = edited.psam
+                rows[0].pvar = edited.pvar
+            })
+            def editedTrace = RESUME.rerun(outputDir, [cohort_manifest: editedManifest])
+            def editedKey = viewKey()
+
+            assertAll(
+                { assert workflow.success },
+                // (1) unchanged
+                { assert RESUME.statuses(unchanged, 'PREPARE_GENOTYPE_SOURCE') == ['CACHED'] },
+                { assert RESUME.statuses(unchanged, 'PLINK2_MAKEBED') == ['CACHED'] },
+                { assert RESUME.statuses(unchanged, 'REGENIE_STEP1') == ['CACHED'] },
+                { assert RESUME.statuses(unchanged, 'LDAK_CALCKINS') == ['CACHED'] },
+                { assert RESUME.tasks(unchanged, 'REGENIE_STEP2').size() == 1 },
+                // (2) renamed but byte-identical: the identity, and therefore every key, is unmoved
+                { assert renamedKey == firstKey },
+                { assert RESUME.tasks(renamedTrace, 'REGENIE_STEP2').size() == 1 },
+                { assert RESUME.tasks(renamedTrace, 'PLINK2_MAKEBED').size() == 1 },
+                // (3) one edited byte: the identity moves and the work is redone
+                { assert editedKey != firstKey },
+                { assert RESUME.statuses(editedTrace, 'PREPARE_GENOTYPE_SOURCE') == ['COMPLETED'] },
+                { assert RESUME.statuses(editedTrace, 'PLINK2_MAKEBED') == ['COMPLETED'] },
+                { assert RESUME.statuses(editedTrace, 'REGENIE_STEP1') == ['COMPLETED'] },
+                { assert RESUME.statuses(editedTrace, 'LDAK_CALCKINS') == ['COMPLETED'] },
+                { assert RESUME.tasks(editedTrace, 'REGENIE_STEP2').size() == 1 },
+            )
+        }
+    }
+
+    // Three refusals, kept at pipeline level for three different reasons. The stem mismatch is the sentinel for
+    // the cohort/genotype contract family: every other rule in it (an unpopulated group, a second group, an
+    // incomplete group, a duplicate cohort definition) is asserted with its full attribution by
+    // subworkflows/local/validate_gwas_input/tests/resolve_input.function.nf.test, and only a pipeline run can
+    // show that the refusal precedes PREPARE_GENOTYPE_SOURCE and PLINK2_MAKEBED. The other two are
+    // nf-schema keyword classes, which cannot be function-tested at all because `validateParameters` is a
+    // plugin entry point: one `pattern` on a `format: file-path` property with `exists`, and one `pattern` on a
+    // plain string property.
+    def invalidRepresentations = [
+        [
+            // The mismatched member is built here rather than named from the published bundle: the schema
+            // property carries `exists`, so the path must resolve, and the stem is the only thing that has
+            // to differ. A copy of the cohort's own `.pvar` under another stem is the minimal such file.
+            name: 'a genotype group whose members do not share one basename stem',
+            mutate: { rows, output_dir, project_dir -> rows[0].pvar = RELATIONAL.copyResource(output_dir, 'mismatched_stem.pvar', "${FIXTURES.base(project_dir)}results/fixtures/genotypes/example_all.pvar") },
+            fields: ['pgen', 'psam', 'pvar'],
+            message: 'do not share one basename stem',
+        ],
+        [
+            // The file is materialised rather than merely named: the schema property carries `exists` and the
+            // extension pattern under one `errorMessage`, so a path with nothing behind it would be refused
+            // by `exists` and this row would pass with the pattern reverted.
+            name: 'a Zstandard-compressed variant file',
+            mutate: { rows, output_dir, project_dir -> rows[0].pvar = RELATIONAL.copyResource(output_dir, 'invalid_example_all.pvar.zst', "${FIXTURES.base(project_dir)}results/fixtures/genotypes/example_all.pvar") },
+            fields: ['pvar'],
+            message: "must have extension '.pvar'",
+            // nf-schema rejects this at parameter validation, before the per-row resolver runs, so the
+            // message carries the field and the reason but not the resolver's row-and-cohort prefix.
+            schema_level: true,
+        ],
+        [
+            name: 'a genotype view identity that is not a hexadecimal digest',
+            mutate: { rows, output_dir, project_dir -> rows[0].genotype_view_id = '/mnt/views/example' },
+            fields: ['genotype_view_id'],
+            message: '16 to 64 lowercase hexadecimal characters',
+            schema_level: true,
+        ],
+    ]
+
+    invalidRepresentations.eachWithIndex { invalid, index ->
+        test("${invalid.name} is rejected before task submission") {
+
+            when {
+                params {
+                    outdir = "$outputDir"
+                    cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, "invalid_genotypes_${index}", { rows -> invalid.mutate(rows, outputDir, projectDir) })
+                    analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, "invalid_genotypes_${index}")
+                }
+            }
+
+            then {
+                def report = VALIDATION.report(outputDir, workflow.stdout)
+                assertAll(
+                    { assert !workflow.success },
+                    { assert report.contains(params.cohort_manifest.toString()) },
+                    { assert invalid.schema_level || report.contains("row 2 (cohort_id 'example_pgen')") },
+                    { invalid.fields.each { field -> assert report.contains("'${field}'") } },
+                    { assert report.contains(invalid.message) },
+                    { assert TRACE.count(workflow, 'PREPARE_PHENOTYPE_INPUTS') == 0 },
+                    { assert TRACE.count(workflow, 'PREPARE_GENOTYPE_SOURCE') == 0 },
+                    { assert TRACE.count(workflow, 'PLINK2_MAKEBED') == 0 },
+                    // Stronger than the three named zero-counts above: nothing at all was submitted.
+                    { assert workflow.trace.tasks().isEmpty() },
+                )
+            }
+        }
+    }
+
+    // The sentinel for the nf-schema samplesheet path: keyword class `additionalProperties: false`. The
+    // pipeline-level route through `validateParameters` is the one a user hits; the workflow-level twin through
+    // `samplesheetToList` only differs under `--validate_params false`.
+    test("an unknown cohort column is rejected by the schema") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.appendColumn(
+                    RELATIONAL.cohorts(projectDir, outputDir, "unexpected_vcf_index"),
+                    'vcf_index',
+                    'unused.vcf.gz.tbi',
+                )
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, "unexpected_vcf_index")
+            }
+        }
+
+        then {
+            def report = VALIDATION.report(outputDir, workflow.stdout)
+            assertAll(
+                { assert !workflow.success },
+                { assert report.contains(params.cohort_manifest.toString()) },
+                { assert report.contains("field 'vcf_index'") },
+                { assert report.contains('False schema always fails') },
+                { assert TRACE.count(workflow, 'PREPARE_PHENOTYPE_INPUTS') == 0 },
+                { assert workflow.trace.tasks().isEmpty() },
+            )
+        }
+    }
+}

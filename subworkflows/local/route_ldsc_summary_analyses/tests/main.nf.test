@@ -1,0 +1,306 @@
+nextflow_workflow {
+
+    name "Test LDSC summary-scale route"
+    script "../main.nf"
+    workflow "ROUTE_LDSC_SUMMARY_ANALYSES"
+    tag "subworkflow"
+    tag "subworkflows_local"
+    tag "ldsc"
+    tag "ldsc/h2"
+    tag "ldsc/rg"
+    tag "summary_statistics"
+
+    // Every case is stubbed, so the staged resources only have to exist. One GWASLab file is reused for
+    // several summary identities deliberately: munging reuse is keyed by `summary_statistics_id` plus the
+    // HapMap3 bytes, never by the summary bytes, and a shared file must not collapse two identities.
+    // `hapmap3_duplicate.snplist` holds the same bytes as `hapmap3_primary.snplist` under another name, and
+    // `hapmap3_alternate.snplist` holds different bytes; the key is derived from bytes, not from the path.
+    def TESTS = { project_dir -> "${project_dir}/subworkflows/local/route_ldsc_summary_analyses/tests" }
+    def SNPLIST = { project_dir, name -> "file('${TESTS(project_dir)}/${name}', checkIfExists: true)" }
+    def LD_SCORES = { project_dir -> "file('${TESTS(project_dir)}/reference_ld_scores', checkIfExists: true)" }
+    def WEIGHTS = { project_dir -> "file('${TESTS(project_dir)}/regression_weights', checkIfExists: true)" }
+    def GWASLAB = { project_dir -> "file('${TESTS(project_dir)}/canonical_summary_statistics.tsv', checkIfExists: true)" }
+
+    def gwaslabSummary = { project_dir, summary_id ->
+        """[
+            [
+                summary_statistics_id: '${summary_id}',
+                id: '${summary_id}',
+                trait_id: 'TRAIT_${summary_id}',
+                trait_type: 'quantitative',
+                ancestry: 'EUR',
+            ],
+            ${GWASLAB(project_dir)},
+        ]"""
+    }
+
+    def h2Request = { project_dir, request_suffix, summary_id, snplist = 'hapmap3_primary.snplist', overrides = '' ->
+        """[
+            [
+                request_id: 'ldsc_h2--${request_suffix}',
+                id: 'ldsc_h2--${request_suffix}',
+                method: 'ldsc_h2',
+                relationship_id: null,
+                summary_statistics_id: '${summary_id}',
+                reference_bundle_id: 'ldsc_eur',
+                native_args: [],
+                trait_id: 'TRAIT_${summary_id}',
+                trait_type: 'quantitative',
+                is_binary: false,
+                population_prevalence: null,
+                sample_prevalence: null,
+                ${overrides}
+            ],
+            ${SNPLIST(project_dir, snplist)},
+            ${LD_SCORES(project_dir)},
+            '',
+            ${WEIGHTS(project_dir)},
+            '',
+            [],
+        ]"""
+    }
+
+    def rgRequest = { project_dir, request_suffix, left_summary_id, right_summary_id, overrides = '' ->
+        """[
+            [
+                request_id: 'ldsc_rg--${request_suffix}',
+                id: 'ldsc_rg--${request_suffix}',
+                method: 'ldsc_rg',
+                relationship_id: '${request_suffix}',
+                left_summary_statistics_id: '${left_summary_id}',
+                right_summary_statistics_id: '${right_summary_id}',
+                reference_bundle_id: 'ldsc_eur',
+                native_args: [],
+                left_is_binary: false,
+                right_is_binary: false,
+                left_population_prevalence: null,
+                left_sample_prevalence: null,
+                right_population_prevalence: null,
+                right_sample_prevalence: null,
+                left_trait_id: 'TRAIT_${left_summary_id}',
+                left_trait_type: 'quantitative',
+                right_trait_id: 'TRAIT_${right_summary_id}',
+                right_trait_type: 'quantitative',
+                ${overrides}
+            ],
+            ${SNPLIST(project_dir, 'hapmap3_primary.snplist')},
+            ${LD_SCORES(project_dir)},
+            '',
+            ${WEIGHTS(project_dir)},
+            '',
+            [],
+        ]"""
+    }
+
+    test("munging runs once per distinct summary identity however many H2 and RG requests reference it") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                input[0] = channel.of(
+                    ${h2Request(projectDir, 'qt1', 'external_qt1')},
+                    ${h2Request(projectDir, 'qt2', 'external_qt2')},
+                )
+                input[1] = channel.of(
+                    ${rgRequest(projectDir, 'qt1_qt2', 'external_qt1', 'external_qt2')},
+                )
+                input[2] = channel.of(
+                    ${gwaslabSummary(projectDir, 'external_qt1')},
+                    ${gwaslabSummary(projectDir, 'external_qt2')},
+                    ${gwaslabSummary(projectDir, 'external_unreferenced')},
+                )
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                // Four endpoint references resolve to two distinct summary identities under one HapMap3
+                // list, so munging runs twice; the GWASLab summary no request named is never munged.
+                { assert TRACE.count(workflow, 'LDSC_MUNGESUMSTATS') == 2 },
+                { assert TRACE.tags(workflow, 'LDSC_MUNGESUMSTATS').unique().size() == 2 },
+                // Each request gets its own native invocation.
+                { assert TRACE.count(workflow, 'LDSC_H2') == 2 },
+                { assert TRACE.count(workflow, 'LDSC_RG') == 1 },
+                { assert workflow.out.h2_log.size() == 2 },
+                { assert workflow.out.rg_log.size() == 1 },
+                { assert workflow.out.h2_log.collect { meta, _log -> meta.request_id }.sort() == ['ldsc_h2--qt1', 'ldsc_h2--qt2'] },
+                { assert workflow.out.rg_log[0][0].request_id == 'ldsc_rg--qt1_qt2' },
+                { assert workflow.out.h2_log.every { meta, _log -> !meta.containsKey('munging_keys') } },
+                { assert new File("${params.outdir}/requests/ldsc_h2/ldsc_h2--qt1/native.log").isFile() },
+                { assert new File("${params.outdir}/requests/ldsc_rg/ldsc_rg--qt1_qt2/native.log").isFile() },
+                // Munged intermediates are never republished.
+                { assert !new File("${params.outdir}/intermediates").exists() },
+            )
+        }
+    }
+
+    test("the munging key follows the HapMap3 bytes, not the request or the file name") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                input[0] = channel.of(
+                    ${h2Request(projectDir, 'primary', 'external_qt1', 'hapmap3_primary.snplist')},
+                    ${h2Request(projectDir, 'duplicate_bytes', 'external_qt1', 'hapmap3_duplicate.snplist')},
+                    ${h2Request(projectDir, 'alternate_bytes', 'external_qt1', 'hapmap3_alternate.snplist')},
+                )
+                input[1] = channel.empty()
+                input[2] = channel.of(
+                    ${gwaslabSummary(projectDir, 'external_qt1')},
+                )
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                // Three requests over one summary: the two that select byte-identical SNP lists share one
+                // munging however they are named or identified, and the third one's bytes make a new key.
+                { assert TRACE.count(workflow, 'LDSC_MUNGESUMSTATS') == 2 },
+                { assert TRACE.tags(workflow, 'LDSC_MUNGESUMSTATS').unique().size() == 2 },
+                // Request identity never collapses: every request keeps its own native run.
+                { assert TRACE.count(workflow, 'LDSC_H2') == 3 },
+                { assert workflow.out.h2_log.collect { meta, _log -> meta.request_id }.sort() == ['ldsc_h2--alternate_bytes', 'ldsc_h2--duplicate_bytes', 'ldsc_h2--primary'] },
+                { assert new File("${params.outdir}/requests/ldsc_h2/ldsc_h2--duplicate_bytes/native.log").isFile() },
+                { assert new File("${params.outdir}/requests/ldsc_h2/ldsc_h2--alternate_bytes/native.log").isFile() },
+            )
+        }
+    }
+
+    test("each H2 request runs once with prevalence selecting its native scale") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                input[0] = channel.of(
+                    ${h2Request(projectDir, 'complete', 'external_bt1', 'hapmap3_primary.snplist', "is_binary: true, population_prevalence: 0.1, sample_prevalence: 0.4, trait_type: 'binary',")},
+                    ${h2Request(projectDir, 'incomplete', 'external_bt2', 'hapmap3_primary.snplist', "is_binary: true, population_prevalence: 0.1, trait_type: 'binary',")},
+                    ${h2Request(projectDir, 'quantitative', 'external_qt1', 'hapmap3_primary.snplist', "population_prevalence: 0.1, sample_prevalence: 0.4,")},
+                )
+                input[1] = channel.empty()
+                input[2] = channel.of(
+                    ${gwaslabSummary(projectDir, 'external_bt1')},
+                    ${gwaslabSummary(projectDir, 'external_bt2')},
+                    ${gwaslabSummary(projectDir, 'external_qt1')},
+                )
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'LDSC_MUNGESUMSTATS') == 3 },
+                // Every request runs once; only the complete binary declaration selects liability conversion.
+                { assert TRACE.count(workflow, 'LDSC_H2') == 3 },
+                // Nothing on the RG side is constructed when no pair request selects it.
+                { assert TRACE.count(workflow, 'LDSC_RG') == 0 },
+                { assert workflow.out.rg_log.size() == 0 },
+                { assert workflow.out.h2_log.size() == 3 },
+                { assert workflow.out.h2_log.collectEntries { meta, _log -> [(meta.request_id): meta.native_scale] } == ['ldsc_h2--complete': 'liability', 'ldsc_h2--incomplete': 'observed', 'ldsc_h2--quantitative': 'observed'] },
+                { assert workflow.out.h2_log.find { meta, _log -> meta.request_id == 'ldsc_h2--complete' }[0].effective_sample_prevalence == [0.4] },
+                { assert workflow.out.h2_log.find { meta, _log -> meta.request_id == 'ldsc_h2--complete' }[0].effective_population_prevalence == [0.1] },
+                { assert workflow.out.h2_log.findAll { meta, _log -> meta.native_scale == 'observed' }.every { meta, _log -> meta.effective_sample_prevalence == [] && meta.effective_population_prevalence == [] } },
+                { assert ['complete', 'incomplete', 'quantitative'].every { id -> new File("${params.outdir}/requests/ldsc_h2/ldsc_h2--${id}/native.log").isFile() } },
+            )
+        }
+    }
+
+    test("RG resolves both endpoints per request and applies the pairwise liability rule") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                input[0] = channel.empty()
+                input[1] = channel.of(
+                    ${rgRequest(projectDir, 'forward', 'external_qt1', 'external_qt2')},
+                    ${rgRequest(projectDir, 'reversed', 'external_qt2', 'external_qt1')},
+                    ${rgRequest(projectDir, 'mixed', 'external_bt1', 'external_qt1', "left_is_binary: true, left_population_prevalence: 0.1, left_sample_prevalence: 0.4, left_trait_type: 'binary',")},
+                    ${rgRequest(projectDir, 'partial', 'external_bt1', 'external_bt2', "left_is_binary: true, left_population_prevalence: 0.1, left_sample_prevalence: 0.4, left_trait_type: 'binary', right_is_binary: true, right_population_prevalence: 0.2, right_trait_type: 'binary',")},
+                )
+                input[2] = channel.of(
+                    ${gwaslabSummary(projectDir, 'external_qt1')},
+                    ${gwaslabSummary(projectDir, 'external_qt2')},
+                    ${gwaslabSummary(projectDir, 'external_bt1')},
+                    ${gwaslabSummary(projectDir, 'external_bt2')},
+                )
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                // Eight endpoint references over four summaries and one HapMap3 list: four mungings.
+                // The forward and reversed requests reuse the same two, so orientation is not an identity.
+                { assert TRACE.count(workflow, 'LDSC_MUNGESUMSTATS') == 4 },
+                { assert TRACE.count(workflow, 'LDSC_RG') == 4 },
+                // A pair is converted only when at least one endpoint is binary and every binary endpoint
+                // supplies both prevalences: 'mixed' qualifies, 'partial' and the two quantitative do not.
+                { assert TRACE.count(workflow, 'LDSC_H2') == 0 },
+                // Each request keeps its declared orientation in the native-result metadata.
+                { assert workflow.out.rg_log.size() == 4 },
+                { assert workflow.out.rg_log.collectEntries { meta, _log -> [(meta.request_id): meta.native_scale] } == ['ldsc_rg--mixed': 'liability', 'ldsc_rg--partial': 'observed', 'ldsc_rg--forward': 'observed', 'ldsc_rg--reversed': 'observed'] },
+                { assert workflow.out.rg_log.find { meta, _log -> meta.request_id == 'ldsc_rg--mixed' }[0].effective_sample_prevalence == [0.4, 'nan'] },
+                { assert workflow.out.rg_log.find { meta, _log -> meta.request_id == 'ldsc_rg--mixed' }[0].effective_population_prevalence == [0.1, 'nan'] },
+                { assert workflow.out.rg_log.findAll { meta, _log -> meta.native_scale == 'observed' }.every { meta, _log -> meta.effective_sample_prevalence == [] && meta.effective_population_prevalence == [] } },
+                { assert ['mixed', 'partial', 'forward', 'reversed'].every { id -> new File("${params.outdir}/requests/ldsc_rg/ldsc_rg--${id}/native.log").isFile() } },
+                { assert workflow.out.rg_log.collect { meta, _log -> [meta.left_summary_statistics_id, meta.right_summary_statistics_id] }.sort() == [['external_bt1', 'external_bt2'], ['external_bt1', 'external_qt1'], ['external_qt1', 'external_qt2'], ['external_qt2', 'external_qt1']].sort() },
+            )
+        }
+    }
+
+    test("a run selecting no LDSC method executes nothing and emits nothing") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                input[0] = channel.empty()
+                input[1] = channel.empty()
+                input[2] = channel.of(
+                    ${gwaslabSummary(projectDir, 'external_qt1')},
+                )
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'LDSC_MUNGESUMSTATS') == 0 },
+                { assert TRACE.count(workflow, 'LDSC_H2') == 0 },
+                { assert TRACE.count(workflow, 'LDSC_RG') == 0 },
+                { assert workflow.out.h2_log.size() == 0 },
+                { assert workflow.out.rg_log.size() == 0 },
+            )
+        }
+    }
+}

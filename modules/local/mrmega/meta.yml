@@ -1,0 +1,69 @@
+name: "mrmega"
+description: Run one genome-wide MR-MEGA meta-regression; optional native settings such as --pc use task.ext.args
+keywords:
+  - gwas
+  - genome-wide association study
+  - meta-analysis
+  - meta-regression
+  - MR-MEGA
+  - meta-regression of multi-ancestry genetic association studies
+tools:
+  - "mrmega":
+      description: Meta-regression of multi-ancestry genetic association studies
+      homepage: "https://genomics.ut.ee/en/tools"
+      documentation: "https://genomics.ut.ee/en/tools"
+      licence:
+        - "custom"
+input:
+  - - meta:
+        type: map
+        description: Groovy Map containing the meta-analysis request information
+    - study_files:
+        type: file
+        description: Native MR-MEGA study inputs
+        pattern: "*.txt.gz"
+        ontologies: []
+    - filelist:
+        type: file
+        description: Ordered list of study paths; basenames must identify the supplied study_files
+        pattern: "*.filelist.txt"
+        ontologies: []
+    - trait_type:
+        type: string
+        description: Native input-column mode; 'quantitative' selects --qt with BETA and SE, any other value selects MR-MEGA's default OR, OR_95L and OR_95U columns
+output:
+  result:
+    - - meta:
+          type: map
+          description: Groovy Map containing the meta-analysis request information
+      - "${prefix}.result":
+          type: file
+          description: Native MR-MEGA result with native P values preserved
+          pattern: "*.result"
+          ontologies: []
+  log:
+    - - meta:
+          type: map
+          description: Groovy Map containing the meta-analysis request information
+      - "${prefix}.log":
+          type: file
+          description: Native MR-MEGA log
+          pattern: "*.log"
+          ontologies: []
+  versions:
+    - "versions.yml":
+        type: file
+        description: File containing software versions
+        pattern: "versions.yml"
+        ontologies: []
+topics:
+  versions:
+    - "versions.yml":
+        type: file
+        description: File containing software versions
+        pattern: "versions.yml"
+        ontologies: []
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"

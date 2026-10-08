@@ -1,0 +1,218 @@
+nextflow_workflow {
+
+    name "Test the LD-by-MAF component plan builder"
+    script "../main.nf"
+    workflow "PLINK_PREPARE_LDMS_PLAN_GCTA"
+    config "./nextflow.config"
+    tag "subworkflows"
+    tag "subworkflows_nfcore"
+    tag "subworkflows/plink_prepare_ldms_plan_gcta"
+    tag "gcta/calculateldscores"
+    tag "custom/gctastratifyldscores"
+    tag "subworkflow"
+    tag "gcta"
+    tag "ldms"
+
+    // The shipped popgen trio is 200 samples by 220 variants on chromosome 1, with no monomorphic variant, so
+    // GCTA's LD-score pass retains every BIM row and the union of the groups can be asserted against the whole
+    // fixture rather than against a subset the composition itself chose.
+    def POPGEN = { member -> "file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.${member}', checkIfExists: true)" }
+    def genotypes = { meta -> "[${meta}, ${POPGEN('bed')}, ${POPGEN('bim')}, ${POPGEN('fam')}]" }
+
+    // Test-side compensation measured on the pinned image
+    // `community.wave.seqera.io/library/gcta:1.94.1--9bc35dc424fcf6e9`: GCTA 1.94.1 segmentation-faults in
+    // `--ld-score-region` whenever the bundle spans less than one region width, and the shipped popgen BIM
+    // puts all 220 variants inside 220 base pairs, so every region width crashes it on the fixture as shipped
+    // (measured: span 220 bp crashes at 50 kb and at 200 kb; the same genotypes at 1 kb spacing succeed at
+    // 50 kb and at 200 kb and crash again at 5000 kb, which is once more wider than the span). Only the map
+    // positions are rewritten here, so the genotypes, the allele frequencies and therefore the MAF axis of the
+    // plan are the fixture's own; the derived BIM is written beside `outputDir` rather than shipped, because
+    // it is a function of the fixture's own dimensions.
+    // Retire this rewrite once the pinned GCTA image moves to a release that no longer crashes on #38's
+    // reproducer; the shipped fixture can then be used unmodified.
+    def spacedGenotypes = { meta, directory ->
+        """channel.of(${genotypes(meta)})
+                    .map { record_meta, bed, bim, fam ->
+                        def spaced = new File('${directory}/plink_simulated.bim')
+                        spaced.parentFile.mkdirs()
+                        spaced.text = bim.readLines().collect { line ->
+                            def fields = line.split('\\t').toList()
+                            fields[3] = ((fields[3] as int) * 1000).toString()
+                            fields.join('\\t')
+                        }.join('\\n') + '\\n'
+                        tuple(record_meta, bed, file(spaced.absolutePath, checkIfExists: true), fam)
+                    }"""
+    }
+
+    // The emitted group-file member is a bare path when the plan has one stratum and a list when it has more,
+    // which is Nextflow's own `path("*")` shape rather than something this composition chose. Every case reads
+    // it through here so a one-row plan is not silently iterated character by character.
+    def stagedFiles = { member -> (member instanceof List ? member : [member]).collect { entry -> new File(entry.toString()) } }
+
+    // The manifest is the composition's public ordering contract, so every case reads it by header name, the
+    // way the consuming compositions do, rather than by column position.
+    def manifestRows = { manifest ->
+        def lines = new File(manifest.toString()).readLines().findAll { line -> line.trim() }
+        def header = lines.first().split('\t').toList()
+        return lines.drop(1).collect { row -> [header, row.split('\t').toList()].transpose().collectEntries() }
+    }
+
+    def groupsByName = { member ->
+        return stagedFiles(member).collectEntries { group_file ->
+            [group_file.name, group_file.readLines().findAll { line -> line.trim() }]
+        }
+    }
+
+    test("a two-bin plan partitions the retained LD-score variants into ordered disjoint groups") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                input[0] = ${spacedGenotypes("[id: 'popgen_plan']", "${new File(outputDir.toString()).parentFile}/inputs/spaced_two_bin")}
+                input[1] = channel.of([[id: 'popgen_plan'], 50])
+                input[2] = channel.of([[id: 'popgen_plan'], 2])
+                input[3] = channel.of([[id: 'popgen_plan'], [0, 0.5]])
+                """
+            }
+        }
+
+        then {
+            def plan = workflow.out.plan.first()
+            def rows = manifestRows(plan[1])
+            def groups = groupsByName(plan[2])
+            def scoredSnps = new File(workflow.out.ld_scores.first()[1].toString())
+                .readLines()
+                .findAll { line -> line.trim() }
+                .drop(1)
+                .collect { line -> line.trim().split(/\s+/).first() }
+            assertAll(
+                { assert workflow.success },
+                { assert workflow.trace.succeeded().count { it.name.contains('GCTA_CALCULATELDSCORES (') } == 1 },
+                { assert workflow.trace.succeeded().count { it.name.contains('CUSTOM_GCTASTRATIFYLDSCORES (') } == 1 },
+                // Two LD quantile bins across one MAF interval is exactly two non-empty strata here, and the
+                // row order is the LD-major, MAF-minor order every consumer of the plan relies on.
+                { assert rows.size() == 2 },
+                { assert rows*.stratum_key == ['ld01_maf01', 'ld02_maf01'] },
+                { assert rows*.model_key.unique() == ['ldms'] },
+                { assert stagedFiles(plan[2]).size() == 2 },
+                // The group files partition the LD-score table's SNP set: the union is equal to it, not merely
+                // contained in it, and no SNP appears twice. `sort()` on both sides is the only normalisation,
+                // because the within-group order is the LD-score table's and is not part of the contract.
+                { assert groups.values().flatten().sort() == scoredSnps.sort() },
+                { assert groups.values().flatten().size() == groups.values().flatten().unique().size() },
+                { assert scoredSnps.size() == 220 },
+                // `predictor_count` is the manifest's own claim about the group file it names, so it is checked
+                // against that file rather than against the arrival order of the staged paths.
+                { assert rows.collect { row -> groups[row.group_filename].size() } == rows*.predictor_count.collect { count -> count as int } },
+                { assert rows*.predictor_count.collect { count -> count as int }.sum() == 220 },
+                // The plan and the scores it was derived from both retain the focal identity untouched.
+                { assert workflow.out.plan.size() == 1 },
+                { assert workflow.out.ld_scores.size() == 1 },
+                { assert plan[0] == [id: 'popgen_plan'] },
+                { assert workflow.out.groups.first()[0] == plan[0] },
+                { assert manifestRows(workflow.out.groups.first()[1])*.group_id == rows*.stratum_key },
+                { assert manifestRows(workflow.out.groups.first()[1])*.group_filename == rows*.group_filename },
+                { assert groupsByName(workflow.out.groups.first()[2]) == groups },
+                { assert workflow.out.ld_scores.first()[0] == [id: 'popgen_plan'] },
+                // GCTA's LD-score pass is deterministic on a fixed bundle and region size, and the stratifier
+                // is a pure quantile split of its output, so the whole emission is content-stable.
+                { assert snapshot(workflow.out).match() },
+            )
+        }
+    }
+
+    test("a single-bin plan is one stratum covering every retained variant") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                input[0] = ${spacedGenotypes("[id: 'popgen_single']", "${new File(outputDir.toString()).parentFile}/inputs/spaced_single_bin")}
+                input[1] = channel.of([[id: 'popgen_single'], 50])
+                input[2] = channel.of([[id: 'popgen_single'], 1])
+                input[3] = channel.of([[id: 'popgen_single'], [0, 0.5]])
+                """
+            }
+        }
+
+        then {
+            def plan = workflow.out.plan.first()
+            def rows = manifestRows(plan[1])
+            def groups = groupsByName(plan[2])
+            assertAll(
+                { assert workflow.success },
+                { assert rows.size() == 1 },
+                { assert rows*.stratum_key == ['ld01_maf01'] },
+                // One group file, not one alongside an empty second: an empty stratum is omitted from the
+                // manifest and no file is written for it.
+                { assert stagedFiles(plan[2]).size() == 1 },
+                { assert groups.values().flatten().size() == 220 },
+                { assert rows.first().predictor_count as int == 220 },
+                { assert rows.first().group_filename == 'popgen_single_snp_group_ld01_maf01.txt' },
+            )
+        }
+    }
+
+    test("plan and generic groups preserve identity and row order - stub") {
+        options "-stub"
+        when {
+            workflow {
+                """
+                input[0] = channel.of(${genotypes("[id: 'stub_plan']")})
+                input[1] = channel.of([[id: 'stub_plan'], 50])
+                input[2] = channel.of([[id: 'stub_plan'], 2])
+                input[3] = channel.of([[id: 'stub_plan'], [0, 0.5]])
+                """
+            }
+        }
+        then {
+            assert workflow.success
+            def plan = workflow.out.plan.first()
+            def groups = workflow.out.groups.first()
+            assert groups[0] == [id: 'stub_plan']
+            assert manifestRows(groups[1])*.group_id == manifestRows(plan[1])*.stratum_key
+            assert groupsByName(groups[2]) == groupsByName(plan[2])
+            assert snapshot(workflow.out).match()
+        }
+    }
+
+    test("a settings record with no matching genotype bundle fails rather than being dropped") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                input[0] = channel.of(${genotypes("[id: 'present']")})
+                input[1] = channel.of([[id: 'present'], 200], [[id: 'absent'], 200])
+                input[2] = channel.of([[id: 'present'], 2], [[id: 'absent'], 2])
+                input[3] = channel.of([[id: 'present'], [0, 0.5]], [[id: 'absent'], [0, 0.5]])
+                """
+            }
+        }
+
+        then {
+            // The four-way join is guarded in both directions on purpose: a settings record with no bundle
+            // means the caller and this composition disagree about which plans exist, and silently building
+            // fewer plans than were requested would leave a stratified matrix family with no plan and nothing
+            // in the output to say so.
+            assertAll(
+                { assert !workflow.success },
+                // Named, so this case cannot be satisfied by any other failure of the stub run -- a broken
+                // stub script or a config parse error would also leave `workflow.success` false.
+                { assert workflow.stdout.join('\n').contains('Join mismatch') || workflow.errorReport.contains('Join mismatch') },
+                // And the failure is before any work, not after a plan was half built.
+                { assert workflow.trace.succeeded().count { it.name.contains('GCTA_CALCULATELDSCORES (') } == 0 },
+                { assert workflow.trace.succeeded().count { it.name.contains('CUSTOM_GCTASTRATIFYLDSCORES (') } == 0 },
+            )
+        }
+    }
+}

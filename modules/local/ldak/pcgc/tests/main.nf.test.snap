@@ -1,13 +1,13 @@
 {
-    "homo_sapiens popgen - fallback mpheno 1": {
+    "explicit sample subset": {
         "content": [
             {
                 "coeff": [
                     [
                         {
-                            "id": "pcgc_binary_fallback"
+                            "id": "pcgc_analysis"
                         },
-                        "pcgc_binary_fallback.coeff:md5,d1f5160facbd79e01488d2da5f90a231"
+                        "pcgc_analysis.coeff:md5,7383f02b5982523c7aadba62a568ca9d"
                     ]
                 ],
                 "combined": [
@@ -16,41 +16,49 @@
                 "cross": [
                     [
                         {
-                            "id": "pcgc_binary_fallback"
+                            "id": "pcgc_analysis"
                         },
-                        "pcgc_binary_fallback.cross"
+                        "pcgc_analysis.cross:md5,c63289c74c8e4ac101f6c3be8c9e2b94"
+                    ]
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "pcgc_analysis"
+                        },
+                        "pcgc_analysis.log"
                     ]
                 ],
                 "pcgc_marginal": [
                     [
                         {
-                            "id": "pcgc_binary_fallback"
+                            "id": "pcgc_analysis"
                         },
-                        "pcgc_binary_fallback.pcgc.marginal"
+                        "pcgc_analysis.pcgc.marginal:md5,168c0430aedfdc08b2fc34e706bc4a3e"
                     ]
                 ],
                 "pcgc_results": [
                     [
                         {
-                            "id": "pcgc_binary_fallback"
+                            "id": "pcgc_analysis"
                         },
-                        "pcgc_binary_fallback.pcgc"
+                        "pcgc_analysis.pcgc:md5,168c0430aedfdc08b2fc34e706bc4a3e"
                     ]
                 ],
                 "progress": [
                     [
                         {
-                            "id": "pcgc_binary_fallback"
+                            "id": "pcgc_analysis"
                         },
-                        "pcgc_binary_fallback.progress:md5,251cc747fb88a183c52f844bab5122f3"
+                        "pcgc_analysis.progress:md5,3578b71626739b03e03eb2bb047a561a"
                     ]
                 ],
                 "share": [
                     [
                         {
-                            "id": "pcgc_binary_fallback"
+                            "id": "pcgc_analysis"
                         },
-                        "pcgc_binary_fallback.share:md5,01b0b07a8fc56e5ad02a43b20beafe6d"
+                        "pcgc_analysis.share:md5,01b0b07a8fc56e5ad02a43b20beafe6d"
                     ]
                 ],
                 "versions_ldak6": [
@@ -62,95 +70,21 @@
                 ]
             }
         ],
+        "timestamp": "2026-09-19T00:43:39.512595577",
         "meta": {
-            "nf-test": "0.9.3",
-            "nextflow": "25.10.4"
-        },
-        "timestamp": "2026-07-08T13:13:39.990365514"
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
     },
-    "homo_sapiens popgen - stub": {
+    "native operation": {
         "content": [
             {
                 "coeff": [
                     [
                         {
-                            "id": "pcgc_stub"
+                            "id": "pcgc_analysis"
                         },
-                        "pcgc_stub.coeff:md5,d41d8cd98f00b204e9800998ecf8427e"
-                    ]
-                ],
-                "combined": [
-                    [
-                        {
-                            "id": "pcgc_stub"
-                        },
-                        "pcgc_stub.combined:md5,d41d8cd98f00b204e9800998ecf8427e"
-                    ]
-                ],
-                "cross": [
-                    [
-                        {
-                            "id": "pcgc_stub"
-                        },
-                        "pcgc_stub.cross"
-                    ]
-                ],
-                "pcgc_marginal": [
-                    [
-                        {
-                            "id": "pcgc_stub"
-                        },
-                        "pcgc_stub.pcgc.marginal"
-                    ]
-                ],
-                "pcgc_results": [
-                    [
-                        {
-                            "id": "pcgc_stub"
-                        },
-                        "pcgc_stub.pcgc"
-                    ]
-                ],
-                "progress": [
-                    [
-                        {
-                            "id": "pcgc_stub"
-                        },
-                        "pcgc_stub.progress:md5,d41d8cd98f00b204e9800998ecf8427e"
-                    ]
-                ],
-                "share": [
-                    [
-                        {
-                            "id": "pcgc_stub"
-                        },
-                        "pcgc_stub.share:md5,d41d8cd98f00b204e9800998ecf8427e"
-                    ]
-                ],
-                "versions_ldak6": [
-                    [
-                        "LDAK_PCGC",
-                        "ldak6",
-                        "6"
-                    ]
-                ]
-            }
-        ],
-        "meta": {
-            "nf-test": "0.9.3",
-            "nextflow": "25.10.4"
-        },
-        "timestamp": "2026-07-08T13:14:09.301028337"
-    },
-    "homo_sapiens popgen - explicit mpheno 1": {
-        "content": [
-            {
-                "coeff": [
-                    [
-                        {
-                            "id": "pcgc_binary"
-                        },
-                        "pcgc_binary.coeff:md5,d1f5160facbd79e01488d2da5f90a231"
+                        "pcgc_analysis.coeff:md5,477805e1392c66fba314949d4f152acb"
                     ]
                 ],
                 "combined": [
@@ -159,41 +93,49 @@
                 "cross": [
                     [
                         {
-                            "id": "pcgc_binary"
+                            "id": "pcgc_analysis"
                         },
-                        "pcgc_binary.cross"
+                        "pcgc_analysis.cross:md5,e4f672aa0abfd6dddc38dc372cd6da5c"
+                    ]
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "pcgc_analysis"
+                        },
+                        "pcgc_analysis.log"
                     ]
                 ],
                 "pcgc_marginal": [
                     [
                         {
-                            "id": "pcgc_binary"
+                            "id": "pcgc_analysis"
                         },
-                        "pcgc_binary.pcgc.marginal"
+                        "pcgc_analysis.pcgc.marginal:md5,d16f81a58c135a1e25de9f37f4392243"
                     ]
                 ],
                 "pcgc_results": [
                     [
                         {
-                            "id": "pcgc_binary"
+                            "id": "pcgc_analysis"
                         },
-                        "pcgc_binary.pcgc"
+                        "pcgc_analysis.pcgc:md5,d16f81a58c135a1e25de9f37f4392243"
                     ]
                 ],
                 "progress": [
                     [
                         {
-                            "id": "pcgc_binary"
+                            "id": "pcgc_analysis"
                         },
-                        "pcgc_binary.progress:md5,251cc747fb88a183c52f844bab5122f3"
+                        "pcgc_analysis.progress:md5,251cc747fb88a183c52f844bab5122f3"
                     ]
                 ],
                 "share": [
                     [
                         {
-                            "id": "pcgc_binary"
+                            "id": "pcgc_analysis"
                         },
-                        "pcgc_binary.share:md5,01b0b07a8fc56e5ad02a43b20beafe6d"
+                        "pcgc_analysis.share:md5,01b0b07a8fc56e5ad02a43b20beafe6d"
                     ]
                 ],
                 "versions_ldak6": [
@@ -205,10 +147,92 @@
                 ]
             }
         ],
+        "timestamp": "2026-09-19T00:43:31.616129555",
         "meta": {
-            "nf-test": "0.9.3",
-            "nextflow": "25.10.4"
-        },
-        "timestamp": "2026-07-08T13:13:13.555749944"
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "native operation - stub": {
+        "content": [
+            {
+                "coeff": [
+                    [
+                        {
+                            "id": "pcgc_analysis"
+                        },
+                        "pcgc_analysis.coeff:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "combined": [
+                    [
+                        {
+                            "id": "pcgc_analysis"
+                        },
+                        "pcgc_analysis.combined:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "cross": [
+                    [
+                        {
+                            "id": "pcgc_analysis"
+                        },
+                        "pcgc_analysis.cross:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "pcgc_analysis"
+                        },
+                        "pcgc_analysis.log"
+                    ]
+                ],
+                "pcgc_marginal": [
+                    [
+                        {
+                            "id": "pcgc_analysis"
+                        },
+                        "pcgc_analysis.pcgc.marginal:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "pcgc_results": [
+                    [
+                        {
+                            "id": "pcgc_analysis"
+                        },
+                        "pcgc_analysis.pcgc:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "progress": [
+                    [
+                        {
+                            "id": "pcgc_analysis"
+                        },
+                        "pcgc_analysis.progress:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "share": [
+                    [
+                        {
+                            "id": "pcgc_analysis"
+                        },
+                        "pcgc_analysis.share:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "versions_ldak6": [
+                    [
+                        "LDAK_PCGC",
+                        "ldak6",
+                        "6"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-19T00:43:47.449314269",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
     }
 }

@@ -1,0 +1,240 @@
+{
+    "homo_sapiens gsmr - quantitative phenotype with ldms mgrm and no covariates": {
+        "content": [
+            {
+                "log": [
+                    [
+                        {
+                            "id": "plink_simulated_ldms"
+                        },
+                        "plink_simulated_ldms.log"
+                    ]
+                ],
+                "reml_results": [
+                    [
+                        {
+                            "id": "plink_simulated_ldms"
+                        },
+                        "plink_simulated_ldms.hsq:md5,51c1328c8feb6d53f3984cd58324fed7"
+                    ]
+                ],
+                "versions_gcta": [
+                    [
+                        "GCTA_REMLLDMS",
+                        "gcta",
+                        "1.94.1"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-19T00:40:05.082652104",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "homo_sapiens gsmr - quantitative phenotype with ldms mgrm - stub": {
+        "content": [
+            {
+                "log": [
+                    [
+                        {
+                            "id": "plink_simulated_ldms"
+                        },
+                        "plink_simulated_ldms.log"
+                    ]
+                ],
+                "reml_results": [
+                    [
+                        {
+                            "id": "plink_simulated_ldms"
+                        },
+                        "plink_simulated_ldms.hsq:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "versions_gcta": [
+                    [
+                        "GCTA_REMLLDMS",
+                        "gcta",
+                        "1.94.1"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-19T00:40:52.234305843",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "homo_sapiens gsmr - ldms mgrm with mpheno selection": {
+        "content": [
+            {
+                "log": [
+                    [
+                        {
+                            "id": "plink_simulated_ldms"
+                        },
+                        "plink_simulated_ldms.log"
+                    ]
+                ],
+                "reml_results": [
+                    [
+                        {
+                            "id": "plink_simulated_ldms"
+                        },
+                        "plink_simulated_ldms.hsq:md5,0a29048e72305f462889481b2dfb94db"
+                    ]
+                ],
+                "versions_gcta": [
+                    [
+                        "GCTA_REMLLDMS",
+                        "gcta",
+                        "1.94.1"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-19T00:39:42.829523522",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "homo_sapiens gsmr - ldms mgrm defaults to first phenotype": {
+        "content": [
+            {
+                "log": [
+                    [
+                        {
+                            "id": "plink_simulated_ldms"
+                        },
+                        "plink_simulated_ldms.log"
+                    ]
+                ],
+                "reml_results": [
+                    [
+                        {
+                            "id": "plink_simulated_ldms"
+                        },
+                        "plink_simulated_ldms.hsq:md5,17d5e79e461b582b0aaba2a40666c8f7"
+                    ]
+                ],
+                "versions_gcta": [
+                    [
+                        "GCTA_REMLLDMS",
+                        "gcta",
+                        "1.94.1"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-19T00:40:27.781248275",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "homo_sapiens gsmr - a two-component mgrm keeps the declared component order": {
+        "content": [
+            {
+                "log": [
+                    [
+                        {
+                            "id": "plink_simulated_ldms_family"
+                        },
+                        "plink_simulated_ldms_family.log"
+                    ]
+                ],
+                "reml_results": [
+                    [
+                        {
+                            "id": "plink_simulated_ldms_family"
+                        },
+                        "plink_simulated_ldms_family.hsq:md5,5775bf12d0243735e6a05823a9c620c4"
+                    ]
+                ],
+                "versions_gcta": [
+                    [
+                        "GCTA_REMLLDMS",
+                        "gcta",
+                        "1.94.1"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-19T00:40:39.602701202",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "homo_sapiens gsmr - quantitative phenotype with ldms mgrm and covariates": {
+        "content": [
+            {
+                "log": [
+                    [
+                        {
+                            "id": "plink_simulated_ldms"
+                        },
+                        "plink_simulated_ldms.log"
+                    ]
+                ],
+                "reml_results": [
+                    [
+                        {
+                            "id": "plink_simulated_ldms"
+                        },
+                        "plink_simulated_ldms.hsq:md5,17d5e79e461b582b0aaba2a40666c8f7"
+                    ]
+                ],
+                "versions_gcta": [
+                    [
+                        "GCTA_REMLLDMS",
+                        "gcta",
+                        "1.94.1"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-19T00:39:54.03560603",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "homo_sapiens gsmr - binary phenotype with ldms mgrm and prevalence": {
+        "content": [
+            {
+                "log": [
+                    [
+                        {
+                            "id": "plink_simulated_ldms"
+                        },
+                        "plink_simulated_ldms.log"
+                    ]
+                ],
+                "reml_results": [
+                    [
+                        {
+                            "id": "plink_simulated_ldms"
+                        },
+                        "plink_simulated_ldms.hsq:md5,86672f6a0b3c49b2347d402cb03b8606"
+                    ]
+                ],
+                "versions_gcta": [
+                    [
+                        "GCTA_REMLLDMS",
+                        "gcta",
+                        "1.94.1"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-19T00:40:15.916738514",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

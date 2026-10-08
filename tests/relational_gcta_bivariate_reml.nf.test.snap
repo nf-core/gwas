@@ -1,0 +1,48 @@
+{
+    "versions": {
+        "content": [
+            {
+                "CUSTOM_GCTAMERGEGRMPARTS": {
+                    "coreutils": 9.5
+                },
+                "GCTA_BIVARIATEREML": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_MAKEGRMPART": {
+                    "gcta": "1.94.1"
+                },
+                "PREPARE_BIVARIATE_TRAITS": {
+                    "python": "3.14.5"
+                },
+                "PREPARE_GENOTYPE_SOURCE": {
+                    "python": "3.14.5"
+                },
+                "PREPARE_PHENOTYPE_INPUTS": {
+                    "python": "3.14.5"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "timestamp": "2026-09-10T06:05:03.981617131",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "results": {
+        "content": [
+            [
+                "native.hsq",
+                "native.log"
+            ],
+            "Source\tVariance\tSE\nV(G)_tr1\t0.020143\t0.129282\nV(G)_tr2\t0.019367\t0.038739\nC(G)_tr12\t-0.019751\t0.052604\nV(e)_tr1\t0.688726\t0.147072\nV(e)_tr2\t0.214329\t0.043773\nC(e)_tr12\t0.085266\t0.059089\nVp_tr1\t0.708869\t0.071516\nVp_tr2\t0.233696\t0.023665\nV(G)/Vp_tr1\t0.028416\t0.182369\nV(G)/Vp_tr2\t0.082874\t0.165318\nrG\t-1.000000\t5.298639\nlogL\t-58.817\nn\t400\n"
+        ],
+        "timestamp": "2026-08-30T22:00:15.428014245",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

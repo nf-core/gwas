@@ -1,0 +1,60 @@
+{
+    "versions": {
+        "content": [
+            {
+                "LDAK_CALCKINS": {
+                    "ldak6": 6
+                },
+                "LDAK_FILTER": {
+                    "ldak6": 6
+                },
+                "LDAK_REML": {
+                    "ldak6": 6
+                },
+                "LDAK_SUBGRM": {
+                    "ldak6": 6
+                },
+                "PLINK2_MAKEBED": {
+                    "plink2": "2.0.0-a.6.9LM"
+                },
+                "PREPARE_GENOTYPE_SOURCE": {
+                    "python": "3.14.5"
+                },
+                "PREPARE_PHENOTYPE_INPUTS": {
+                    "python": "3.14.5"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "timestamp": "2026-09-10T05:59:04.025122967",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "heritability": {
+        "content": [
+            [
+                "individual",
+                "individual/ldak_reml",
+                "individual/ldak_reml/example_pgen_bt",
+                "individual/ldak_reml/example_pgen_bt/example_pgen_bt.ldak_reml.reml",
+                "individual/ldak_reml/example_pgen_bt/example_pgen_bt.ldak_reml.reml.liab",
+                "individual/ldak_reml/example_pgen_qt",
+                "individual/ldak_reml/example_pgen_qt/example_pgen_qt.ldak_reml.reml"
+            ],
+            [
+                "example_pgen_bt.ldak_reml.reml:md5,ce7dd94b4ab9da8b9681aa34d1ccd092",
+                "example_pgen_bt.ldak_reml.reml.liab:md5,718dc678b6da7644dfdeaedf8f976eb2",
+                "example_pgen_qt.ldak_reml.reml:md5,5ad47d3301856c0cd821140d8dcd1825"
+            ]
+        ],
+        "timestamp": "2026-08-12T21:13:58.482422833",
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        }
+    }
+}

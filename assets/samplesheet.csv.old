@@ -1,2 +1,0 @@
-id,vcf,pheno,cov
-test,https://raw.githubusercontent.com/nf-core/test-datasets/gwas/data/data_shrink_combined_4500/chr1_to_22_and_X.vcf.bgz,https://raw.githubusercontent.com/nf-core/test-datasets/refs/heads/gwas/data/data_phenotypes_and_covariates/example1.pheno,https://raw.githubusercontent.com/nf-core/test-datasets/refs/heads/gwas/data/data_phenotypes_and_covariates/example1.covar

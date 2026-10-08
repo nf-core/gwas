@@ -1,0 +1,685 @@
+nextflow_function {
+
+    name "Test relatedness artifact identity functions"
+    script "../main.nf"
+    tag "function"
+    tag "relatedness"
+
+    test("scientific values canonicalise equivalent numeric spellings") {
+        function "canonicaliseDeclaredValue"
+
+        when {
+            function {
+                """
+                input[0] = [4, 4.0, '4.00', '4e0', -0.25, '-.2500', [power: '-0.25', model: 'human_default']]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == '[4,4,4,4,-0.25,-0.25,{model=human_default,power=-0.25}]' },
+            )
+        }
+    }
+
+    test("scientific identifiers preserve numeric spelling") {
+        function "canonicaliseIdentifier"
+
+        when {
+            function {
+                """
+                input[0] = ['01', '1', '7.0', '+7', '1e3', '1000']
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == '[01,1,7.0,+7,1e3,1000]' },
+            )
+        }
+    }
+
+    // The view-compatibility key is now an argument rather than something this file derives from staged
+    // names. `c40da0aa7623` is the value the deleted seam produced for the fixture PLINK 2 cohort, and it is
+    // reused verbatim below so that every base, plan and derived key pinned in this file keeps testing the
+    // formula rather than the seam that fed it.
+    def view_key = 'c40da0aa7623'
+
+    test("heritability and association selectors retain their native matrix families") {
+        function "getRelatednessMatrixKinds"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    association_methods: ['gcta_fastgwa'],
+                    heritability_methods: ['gcta_greml', 'gcta_greml_ldms', 'ldak_reml', 'ldak_he', 'ldak_pcgc'],
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == ['gcta_dense', 'gcta_ldms', 'gcta_sparse', 'ldak_kinship'] },
+            )
+        }
+    }
+
+    test("a pairwise request retains only its selected native matrix family") {
+        function "getRelatednessMatrixKinds"
+
+        when {
+            function {
+                """
+                input[0] = [relationship_id: 'qt_bt', method: 'gcta_bivariate_reml_ldms']
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == ['gcta_ldms'] },
+            )
+        }
+    }
+
+    test("an absent method resource retains the all-input identity") {
+        function "getMethodResourceIdentity"
+
+        when {
+            function {
+                """
+                input[0] = []
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == [mode: 'all'] },
+            )
+        }
+    }
+
+    ['method-resource-a.txt', 'renamed-method-resource.txt'].each { resource_name ->
+        test("resource identity uses bytes rather than path: ${resource_name}") {
+            function "getMethodResourceIdentity"
+
+            when {
+                function {
+                    """
+                    input[0] = file('${RELATIONAL.resource(outputDir, resource_name, 'rs1\nrs2\n')}', checkIfExists: true)
+                    """
+                }
+            }
+
+            then {
+                assertAll(
+                    { assert function.success },
+                    { assert function.result == [mode: 'file', sha256: '3f11acf34ac2ee2c8a8005373a55b7f08cd39014cef30511a4213081f221add3'] },
+                    { assert !function.result.toString().contains(resource_name) },
+                )
+            }
+        }
+    }
+
+    test("a sparse request owns cutoff only in its child identity") {
+        function "buildRelatednessArtifactRequest"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    cohort: 'example_pgen',
+                    genotype_format: 'plink2',
+                    method_options: [gcta: [sparse_cutoff: 0.025]],
+                ]
+                input[1] = '${view_key}'
+                input[2] = 'gcta_sparse'
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result.base.layer == 'base' },
+                { assert function.result.base.type == 'gcta_dense' },
+                { assert function.result.base.key == 'aadb7d038da8' },
+                { assert function.result.base.settings == [:] },
+                { assert function.result.derived.layer == 'derived' },
+                { assert function.result.derived.type == 'gcta_sparse' },
+                { assert function.result.derived.parent_key == function.result.base.key },
+                { assert function.result.derived.settings == [cutoff: 0.025] },
+                { assert function.result.selected_key == function.result.derived.key },
+                { assert !function.result.base.toString().contains('0.025') },
+            )
+        }
+    }
+
+    test("a compatible dense request selects the same base as sparse construction") {
+        function "buildRelatednessArtifactRequest"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    cohort: 'example_pgen',
+                    genotype_format: 'plink2',
+                    method_options: [gcta: [grm_maf: null, grm_extract: []]],
+                ]
+                input[1] = '${view_key}'
+                input[2] = 'gcta_dense'
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result.base.key == 'aadb7d038da8' },
+                { assert function.result.selected_key == function.result.base.key },
+                { assert function.result.derived == [:] },
+            )
+        }
+    }
+
+    test("a sparse request inherits the selected dense construction settings") {
+        function "buildRelatednessArtifactRequest"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    cohort: 'example_pgen',
+                    genotype_format: 'plink2',
+                    method_options: [gcta: [grm_maf: 0.01, sparse_cutoff: 0.025]],
+                ]
+                input[1] = '${view_key}'
+                input[2] = 'gcta_sparse'
+                input[3] = [mode: 'equal']
+                input[4] = [mode: 'file', sha256: '3f11acf34ac2ee2c8a8005373a55b7f08cd39014cef30511a4213081f221add3']
+                input[5] = file('${RELATIONAL.resource(outputDir, 'combined-gcta-extract.txt', 'rs1\nrs2\n')}', checkIfExists: true)
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result.base.settings == [
+                    maf: 0.01,
+                    extract: [mode: 'file', sha256: '3f11acf34ac2ee2c8a8005373a55b7f08cd39014cef30511a4213081f221add3'],
+                ] },
+                { assert new File(function.result.base.gcta_extract.toString()).name == 'combined-gcta-extract.txt' },
+                { assert function.result.base.key != 'aadb7d038da8' },
+                { assert function.result.derived.parent_key == function.result.base.key },
+                { assert function.result.derived.settings == [cutoff: 0.025] },
+                { assert !function.result.base.settings.toString().contains('0.025') },
+            )
+        }
+    }
+
+    test("a dense scientific setting belongs to the base identity") {
+        function "buildRelatednessArtifactRequest"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    cohort: 'example_pgen',
+                    genotype_format: 'plink2',
+                    method_options: [gcta: [grm_maf: 0.01, grm_extract: []]],
+                ]
+                input[1] = '${view_key}'
+                input[2] = 'gcta_dense'
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result.base.settings == [maf: 0.01] },
+                { assert function.result.base.key != 'aadb7d038da8' },
+                { assert !function.result.toString().contains('parts') },
+            )
+        }
+    }
+
+    test("an unrestricted LDAK request selects only its base artifact") {
+        function "buildRelatednessArtifactRequest"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    cohort: 'example_pgen',
+                    genotype_format: 'plink2',
+                    method_options: [ldak: [model: 'human_default', power: -0.25, relatedness_filter: false]],
+                ]
+                input[1] = '${view_key}'
+                input[2] = 'ldak_kinship'
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result.base.settings == [model: 'human_default', power: -0.25, weights: [mode: 'equal']] },
+                { assert function.result.derived == [:] },
+                { assert function.result.selected_key == function.result.base.key },
+            )
+        }
+    }
+
+    test("LDAK relatedness filtering belongs only to a subset child") {
+        function "buildRelatednessArtifactRequest"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    cohort: 'example_pgen',
+                    genotype_format: 'plink2',
+                    method_options: [ldak: [model: 'human_default', power: '-.2500', relatedness_filter: true]],
+                ]
+                input[1] = '${view_key}'
+                input[2] = 'ldak_kinship'
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result.base.settings == [model: 'human_default', power: '-.2500', weights: [mode: 'equal']] },
+                { assert !function.result.base.toString().contains('relatedness_filter') },
+                { assert function.result.derived.type == 'ldak_subset' },
+                { assert function.result.derived.parent_key == function.result.base.key },
+                { assert function.result.derived.settings == [relatedness_filter: true] },
+                { assert function.result.selected_key == function.result.derived.key },
+            )
+        }
+    }
+
+    test("LDAK weight content belongs to the base scientific settings") {
+        function "buildRelatednessArtifactRequest"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    cohort: 'example_pgen',
+                    genotype_format: 'plink2',
+                    method_options: [ldak: [model: 'custom', power: -0.5, relatedness_filter: false]],
+                ]
+                input[1] = '${view_key}'
+                input[2] = 'ldak_kinship'
+                input[3] = [mode: 'provided', sha256: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef']
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result.base.settings.weights == [mode: 'provided', sha256: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'] },
+                { assert !function.result.base.toString().contains('weights.txt') },
+            )
+        }
+    }
+
+    def mphKinds = [
+        [
+            name: 'both MPH families beside no other selector',
+            methods: ['mph_reml', 'mph_reml_ldms'],
+            expected: ['mph_dense', 'mph_ldms'],
+        ],
+        [
+            name: 'one stratified family per engine from one row',
+            methods: ['gcta_greml_ldms', 'mph_reml_ldms'],
+            expected: ['gcta_ldms', 'mph_ldms'],
+        ],
+        [
+            name: 'no matrix at all for a direct-genotype selector beside an MPH one',
+            methods: ['ldak_fast_he', 'mph_reml'],
+            expected: ['mph_dense'],
+        ],
+    ]
+
+    mphKinds.each { scenario ->
+        test("the requested matrix kinds are ${scenario.name}") {
+            function "getRelatednessMatrixKinds"
+
+            when {
+                function {
+                    """
+                    input[0] = [association_methods: [], heritability_methods: ${scenario.methods.inspect()}]
+                    """
+                }
+            }
+
+            then {
+                assertAll(
+                    { assert function.success },
+                    // The answer is the matrix-kind contract's own iteration order, not the row's selector
+                    // order, so a request order stays stable however a researcher spells the selector list.
+                    { assert function.result == scenario.expected },
+                )
+            }
+        }
+    }
+
+    test("the stratified GCTA base keeps its own settings and gains a separately keyed plan") {
+        function "buildRelatednessArtifactRequest"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    cohort: 'example_pgen',
+                    genotype_format: 'plink2',
+                    method_options: [gcta: [ld_score_region_kb: 50, ld_bins: 2, ldms_maf_edges: [0, 0.5]]],
+                ]
+                input[1] = '${view_key}'
+                input[2] = 'gcta_ldms'
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                // The published GCTA key formula is untouched by the plan extraction: its identity is still
+                // the cohort view plus exactly these three settings, with no plan key and no format in it.
+                //
+                // The key VALUE is anchored here, as a literal, and this is the only place it is anchored: the
+                // relational GREML-LDMS snapshot pins `.hsq` digests and versions, which prove the matrix
+                // bytes and the stratum order did not move but say nothing about the directory the family
+                // publishes under. A digest is used against the design's preference because nf-test runs one
+                // function per test, so the formula cannot be recomputed from `buildScientificArtifactKey`
+                // and compared inside the same case. Both literals below are functions of the view key
+                // supplied as `input[1]`, which the caller now chooses per matrix kind from the cohort's
+                // native or PLINK 1 view identity.
+                //
+                // A change to either literal ALONE means the plan extraction or the MPH work moved a
+                // published GCTA key, which is the thing this test exists to catch.
+                { assert function.result.base.type == 'gcta_ldms' },
+                { assert function.result.base.view_compatibility_key == view_key },
+                { assert function.result.base.key == 'd4339b608fb2' },
+                { assert function.result.base.plan.key == 'f0c92f5c26dd' },
+                { assert function.result.base.settings == [ld_score_region_kb: 50, ld_bins: 2, maf_edges: [0, 0.5]] },
+                { assert function.result.derived == [:] },
+                { assert function.result.selected_key == function.result.base.key },
+                // The plan is its own artifact, keyed on the same cohort view and the same three settings, so
+                // a GCTA request and an MPH request that declare them identically resolve to one plan.
+                { assert function.result.base.plan.layer == 'plan' },
+                { assert function.result.base.plan.type == 'ldms_component_plan' },
+                { assert function.result.base.plan.settings == function.result.base.settings },
+                { assert function.result.base.plan.view_compatibility_key == function.result.base.view_compatibility_key },
+                { assert function.result.base.plan_key == function.result.base.plan.key },
+                { assert function.result.base.plan.key != function.result.base.key },
+            )
+        }
+    }
+
+    test("a stratified MPH request resolves the same plan key a GCTA request does from the same declaration") {
+        function "buildRelatednessArtifactRequest"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    cohort: 'example_pgen',
+                    genotype_format: 'plink2',
+                    method_options: [gcta: [ld_score_region_kb: 50, ld_bins: 2, ldms_maf_edges: [0, 0.5]]],
+                ]
+                input[1] = '${view_key}'
+                input[2] = 'mph_ldms'
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                // The same literal the GCTA case above pins. One declaration, one plan, two matrix families:
+                // if these two ever diverge the two engines partition the same variants twice and the parity
+                // the stratified routes exist to offer is gone.
+                { assert function.result.base.plan.key == 'f0c92f5c26dd' },
+                { assert function.result.base.plan_key == function.result.base.plan.key },
+                // The MPH base is a different artifact from the GCTA base built off that same plan.
+                { assert function.result.base.key != 'd4339b608fb2' },
+            )
+        }
+    }
+
+    test("the stratified MPH base names only its format and depends on the plan through the plan key") {
+        function "buildRelatednessArtifactRequest"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    cohort: 'example_pgen',
+                    genotype_format: 'plink2',
+                    method_options: [gcta: [ld_score_region_kb: 50, ld_bins: 2, ldms_maf_edges: [0, 0.5]]],
+                ]
+                input[1] = '${view_key}'
+                input[2] = 'mph_ldms'
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result.base.type == 'mph_ldms' },
+                // MPH's matrix construction takes no scientific option at all -- no MAF filter, no extract
+                // list, no scaling exponent -- so its own settings name only the on-disk format. Everything
+                // that varies the bytes varies the plan, and the plan reaches this key through the plan key.
+                { assert function.result.base.settings == [format: 'mph_grm'] },
+                { assert function.result.base.plan_key == function.result.base.plan.key },
+                { assert function.result.base.plan.settings == [ld_score_region_kb: 50, ld_bins: 2, maf_edges: [0, 0.5]] },
+                { assert function.result.derived == [:] },
+                { assert function.result.selected_key == function.result.base.key },
+                // Pinned so the four-bin case below can compare against it: nf-test runs one function per
+                // test, so two requests cannot be built in one case and the comparison has to go through a
+                // literal. Dropping `plan_key` from the identity map collapses every stratified MPH family of
+                // a cohort onto one key, and that is what these two literals together detect.
+                { assert function.result.base.key == '7b77e5236d74' },
+            )
+        }
+    }
+
+    test("a stratified MPH base with different plan settings is a different artifact") {
+        function "buildRelatednessArtifactRequest"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    cohort: 'example_pgen',
+                    genotype_format: 'plink2',
+                    method_options: [gcta: [ld_score_region_kb: 50, ld_bins: 4, ldms_maf_edges: [0, 0.5]]],
+                ]
+                input[1] = '${view_key}'
+                input[2] = 'mph_ldms'
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                // Its own settings are identical to the two-bin request above, so the only thing that can
+                // separate the two matrix families is the plan key -- which is exactly the dependency this
+                // key shape exists to express. Both literals are the two-bin request's, pinned there.
+                { assert function.result.base.settings == [format: 'mph_grm'] },
+                { assert function.result.base.plan.settings.ld_bins == 4 },
+                { assert function.result.base.plan_key == function.result.base.plan.key },
+                // Both keys are pinned, not merely asserted to differ from the two-bin ones. Inequality alone
+                // is satisfied by any change that moves both families together -- dropping `plan_key` from the
+                // identity gives every stratified MPH family of a cohort one new shared key, which passes an
+                // inequality check against a stale literal and is exactly the collapse this pair exists to
+                // catch. Pinning both means such a change reddens at least one of them.
+                { assert function.result.base.key == '6df57fd4c01f' },
+                { assert function.result.base.plan.key == 'bafcc987d807' },
+                { assert function.result.base.key != '7b77e5236d74' },
+                { assert function.result.base.plan.key != 'f0c92f5c26dd' },
+            )
+        }
+    }
+
+    test("a stratified MPH key is a property of the cohort view and the plan, not of the analysis that asked") {
+        function "buildRelatednessArtifactRequest"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    id: 'some_other_analysis',
+                    trait: 'BMI',
+                    heritability_methods: ['gcta_greml_ldms', 'mph_reml_ldms'],
+                    cohort: 'example_pgen',
+                    genotype_format: 'plink2',
+                    method_options: [gcta: [ld_score_region_kb: 50, ld_bins: 2, ldms_maf_edges: [0, 0.5]]],
+                ]
+                input[1] = '${view_key}'
+                input[2] = 'mph_ldms'
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                // Same cohort view and same three plan settings as the two-bin case, but a different analysis
+                // identifier, a different trait and a different selector list. The key is unchanged, which is
+                // what makes one matrix family serve every compatible analysis instead of one per row.
+                { assert function.result.base.key == '7b77e5236d74' },
+                { assert function.result.base.plan.key == 'f0c92f5c26dd' },
+            )
+        }
+    }
+
+    test("the one-component MPH base declares its variant universe symbolically and plans nothing") {
+        function "buildRelatednessArtifactRequest"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    cohort: 'example_pgen',
+                    genotype_format: 'plink2',
+                    method_options: [gcta: [grm_maf: null, grm_extract: []]],
+                ]
+                input[1] = '${view_key}'
+                input[2] = 'mph_dense'
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                // The universe is in the key by name rather than by number, so a later change of what
+                // "autosomes" means cannot reuse today's bytes under today's key.
+                { assert function.result.base.settings == [format: 'mph_grm', variant_universe: 'autosomes'] },
+                { assert !function.result.base.containsKey('plan') },
+                { assert !function.result.base.containsKey('plan_key') },
+                { assert function.result.selected_key == function.result.base.key },
+                // A GCTA dense option must never reach an MPH key. Validation refuses that combination
+                // outright; this is the second line of defence.
+                { assert !function.result.base.settings.containsKey('maf') },
+            )
+        }
+    }
+
+    test("the plan artifact metadata names the plan rather than any matrix that consumes it") {
+        function "buildLdmsPlanMeta"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    layer: 'plan',
+                    type: 'ldms_component_plan',
+                    key: 'f0c92f5c26dd',
+                    settings: [ld_score_region_kb: 50, ld_bins: 2, maf_edges: [0, 0.5]],
+                    view_compatibility_key: 'c40da0aa7623',
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == [
+                    id: 'ldms_component_plan.f0c92f5c26dd',
+                    key: 'f0c92f5c26dd',
+                    layer: 'plan',
+                    artifact_type: 'ldms_component_plan',
+                    settings: [ld_score_region_kb: 50, ld_bins: 2, maf_edges: [0, 0.5]],
+                    view_compatibility_key: 'c40da0aa7623',
+                ] },
+            )
+        }
+    }
+
+    test("the declared predictor counts are read from the file the builder emitted beside its matrices") {
+        function "readMphPredictorCounts"
+
+        when {
+            function {
+                """
+                input[0] = file('${RELATIONAL.resource(outputDir, 'mph_family.snp_info.counts.tsv', 'group_id\tpredictor_count\nld01_maf01\t1100\nld02_maf01\t900\n__unassigned__\t200\n__bim_rows__\t2200\n')}', checkIfExists: true)
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                // The ordinal is the column order the SNP-information file was written in, which is the
+                // manifest order, which is the order the matrices are built and listed in.
+                { assert function.result.components == [
+                    [ordinal: 1, name: 'ld01_maf01', plan_predictor_count: 1100],
+                    [ordinal: 2, name: 'ld02_maf01', plan_predictor_count: 900],
+                ] },
+                { assert function.result.variant_counts == [bim_rows: 2200, assigned: 2000, unassigned: 200] },
+                // The two reserved rows are accounting, never components, and the three numbers reconcile.
+                { assert function.result.variant_counts.assigned + function.result.variant_counts.unassigned == function.result.variant_counts.bim_rows },
+            )
+        }
+    }
+    test("the caller selects autosomal SNPs for an explicit dense MPH group") {
+        function "selectAutosomalSnps"
+        when {
+            function {
+                """
+                input[0] = file('${RELATIONAL.resource(outputDir, 'mixed_chromosomes.bim', '1 rs1 0 1 A G\n22 rs22 0 2 A G\n23 rs23 0 3 A G\nX rsX 0 4 A G\n0 rs0 0 5 A G\n')}', checkIfExists: true)
+                input[1] = 22
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == ['rs1', 'rs22'] },
+            )
+        }
+    }
+
+}
