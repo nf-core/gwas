@@ -58,6 +58,22 @@ nextflow_process {
         }
     }
 
+    // LDAK 6.1 links Intel MKL, which takes a different code path on Intel and non-Intel CPUs, so the float32
+    // adjusted matrix differs between CPU vendors by up to 2.4e-7 per entry. `.grm.bin` is snapshotted by name,
+    // and its content as its entry count and its sum and sum of squares rounded to 1e-3, about a thousand times
+    // their measured cross-vendor difference (lyh970817/gwas#131). The other matrix members stay exact.
+    def grmContent = { grm_files ->
+        def bin = new File(grm_files.find { grm_file -> grm_file.toString().endsWith('.grm.bin') }.toString())
+        def entries = java.nio.ByteBuffer.wrap(bin.bytes).order(java.nio.ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
+        def values = (0..<entries.limit()).collect { index -> entries.get(index) as double }
+        def rounded = { value -> new BigDecimal(value).setScale(3, java.math.RoundingMode.HALF_EVEN) }
+        return [
+            entries: values.size(),
+            sum: rounded(values.sum()),
+            sum_of_squares: rounded(values.sum { value -> value * value }),
+        ]
+    }
+
     test("phenotype-selected sample set") {
 
         when {
@@ -74,7 +90,7 @@ nextflow_process {
         then {
             assertAll(
                 { assert process.success },
-                { assert snapshot(sanitizeOutput(process.out, unstableKeys: ['log'])).match() }
+                { assert snapshot(sanitizeOutput(process.out, unstableKeys: ['log'], unstablePatterns: ['**/*.grm.bin']), grmContent(process.out.adjusted_grm[0][1])).match() }
             )
         }
     }
@@ -95,7 +111,7 @@ nextflow_process {
         then {
             assertAll(
                 { assert process.success },
-                { assert snapshot(sanitizeOutput(process.out, unstableKeys: ['log'])).match() }
+                { assert snapshot(sanitizeOutput(process.out, unstableKeys: ['log'], unstablePatterns: ['**/*.grm.bin']), grmContent(process.out.adjusted_grm[0][1])).match() }
             )
         }
     }
