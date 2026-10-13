@@ -123,11 +123,11 @@
                 ]
             }
         ],
+        "timestamp": "2026-08-24T03:46:06.320310483",
         "meta": {
             "nf-test": "0.9.3",
             "nextflow": "25.10.4"
-        },
-        "timestamp": "2026-08-24T03:46:06.320310483"
+        }
     },
     "official compact fixture - quantitative trait": {
         "content": [
@@ -141,7 +141,7 @@
                     ]
                 ],
                 "categories_liability": [
-
+                    
                 ],
                 "cross": [
                     [
@@ -156,7 +156,7 @@
                         {
                             "id": "trait1"
                         },
-                        "trait1.enrich:md5,ec43b2dd89c567b73ff35237973b9096"
+                        "trait1.enrich"
                     ]
                 ],
                 "extra": [
@@ -176,7 +176,7 @@
                     ]
                 ],
                 "hers_liability": [
-
+                    
                 ],
                 "labels": [
                     [
@@ -187,7 +187,7 @@
                     ]
                 ],
                 "liability_factor": [
-
+                    
                 ],
                 "log": [
                     [
@@ -236,12 +236,30 @@
                         "6.3"
                     ]
                 ]
-            }
+            },
+            [
+                [
+                    "Component",
+                    "Share",
+                    "SE",
+                    "Expected",
+                    "Enrichment",
+                    "SE"
+                ],
+                [
+                    "Enrich_Base",
+                    "1.000000",
+                    "0.000000",
+                    "1.000000",
+                    "1.000000",
+                    "0.000000"
+                ]
+            ]
         ],
+        "timestamp": "2026-10-13T04:13:47.497332551",
         "meta": {
-            "nf-test": "0.9.3",
-            "nextflow": "25.10.4"
-        },
-        "timestamp": "2026-08-24T03:45:58.620060475"
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
     }
 }

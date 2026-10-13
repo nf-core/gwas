@@ -32,6 +32,11 @@ nextflow_process {
 
         then {
             def command = path(process.out.hers.get(0)[1]).parent.resolve(".command.sh").text.replaceAll(/\s+/, " ")
+            // The fixture's tagging file has one category, so the enrichment Z, (Enrichment - 1) / SE, is 0 / 0.
+            // LDAK's bundled Intel MKL reaches that SE by a different route on Intel and non-Intel CPUs, so Z is
+            // printed as `NA` on one and `-0.000000` on the other. The Z column is left out; the rest of the
+            // table is snapshotted exactly.
+            def enrichmentsWithoutZ = path(process.out.enrichments.get(0)[1]).readLines().collect { line -> line.tokenize().dropRight(1) }
             assertAll(
                 { assert process.success },
                 { assert process.out.hers.size() == 1 },
@@ -53,7 +58,7 @@ nextflow_process {
                 { assert command.contains('--tagfile "tagging/test.tagging"') },
                 { assert command.contains("--cutoff 0.01") },
                 { assert path(process.out.hers.get(0)[1]).text.contains("Her_All") },
-                { assert snapshot(sanitizeOutput(process.out, unstableKeys: ["log"])).match() }
+                { assert snapshot(sanitizeOutput(process.out, unstableKeys: ["log", "enrichments"]), enrichmentsWithoutZ).match() }
             )
         }
     }
