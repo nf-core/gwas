@@ -7,7 +7,7 @@
                         {
                             "id": "focal"
                         },
-                        "focal_gcta_ld.score.ld:md5,5a4859a8538b2468ce58d798856889ce"
+                        "focal_gcta_ld.score.ld"
                     ]
                 ],
                 "log": [
@@ -25,9 +25,26 @@
                         "1.94.1"
                     ]
                 ]
+            },
+            {
+                "header": [
+                    "SNP",
+                    "chr",
+                    "bp",
+                    "freq",
+                    "mean_rsq",
+                    "snp_num",
+                    "max_rsq",
+                    "ldscore_SNP",
+                    "ldscore_region"
+                ],
+                "stable_columns": "90dc1c53862939b5651b05e3e35f12d9",
+                "sum_mean_rsq": 72.37,
+                "sum_max_rsq": 127.63,
+                "sum_ldscore_SNP": 16068
             }
         ],
-        "timestamp": "2026-09-18T18:40:29.700392879",
+        "timestamp": "2026-10-13T04:13:01.935494867",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.6"

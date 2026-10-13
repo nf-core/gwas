@@ -118,8 +118,16 @@ nextflow_workflow {
                 { assert groupsByName(workflow.out.groups.first()[2]) == groups },
                 { assert workflow.out.ld_scores.first()[0] == [id: 'popgen_plan'] },
                 // GCTA's LD-score pass is deterministic on a fixed bundle and region size, and the stratifier
-                // is a pure quantile split of its output, so the whole emission is content-stable.
-                { assert snapshot(workflow.out).match() },
+                // is a pure quantile split of its output, so the emission is content-stable on one CPU. GCTA
+                // links Intel MKL, though, which takes a different code path on Intel and non-Intel CPUs and
+                // moves the LD scores in their last printed digit (lyh970817/gwas#131). The LD-score table is
+                // therefore snapshotted by name, its content being the GCTA module test's, and the plan's LD
+                // edges, which are quantiles of those scores, are rounded to 0.1, about a thousand times their
+                // measured cross-vendor difference. Group membership and every other column stay exact.
+                { assert snapshot(
+                    sanitizeOutput(workflow.out, unstablePatterns: ['**/*.score.ld', '**/*.strata.tsv']),
+                    rows.collect { row -> row.collectEntries { name, value -> [name, name in ['ld_lower', 'ld_upper'] ? (value as BigDecimal).setScale(1, java.math.RoundingMode.HALF_EVEN) : value] } },
+                ).match() },
             )
         }
     }

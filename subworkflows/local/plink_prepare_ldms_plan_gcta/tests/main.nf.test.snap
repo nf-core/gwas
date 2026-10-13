@@ -77,38 +77,6 @@
     "a two-bin plan partitions the retained LD-score variants into ordered disjoint groups": {
         "content": [
             {
-                "0": [
-                    [
-                        {
-                            "id": "popgen_plan"
-                        },
-                        "popgen_plan.strata.tsv:md5,892d4b533cc784a3d36b72734c488bc1",
-                        [
-                            "popgen_plan_snp_group_ld01_maf01.txt:md5,50003a8a14579d958a46bb747d998c21",
-                            "popgen_plan_snp_group_ld02_maf01.txt:md5,16b353ad5bc56ac1deaf551083ddaf62"
-                        ]
-                    ]
-                ],
-                "1": [
-                    [
-                        {
-                            "id": "popgen_plan"
-                        },
-                        "popgen_plan.groups.tsv:md5,0904ec64ede1c3bf8609b67a4d487c8f",
-                        [
-                            "popgen_plan_snp_group_ld01_maf01.txt:md5,50003a8a14579d958a46bb747d998c21",
-                            "popgen_plan_snp_group_ld02_maf01.txt:md5,16b353ad5bc56ac1deaf551083ddaf62"
-                        ]
-                    ]
-                ],
-                "2": [
-                    [
-                        {
-                            "id": "popgen_plan"
-                        },
-                        "popgen_plan_gcta_ld.score.ld:md5,5a4859a8538b2468ce58d798856889ce"
-                    ]
-                ],
                 "groups": [
                     [
                         {
@@ -126,7 +94,7 @@
                         {
                             "id": "popgen_plan"
                         },
-                        "popgen_plan_gcta_ld.score.ld:md5,5a4859a8538b2468ce58d798856889ce"
+                        "popgen_plan_gcta_ld.score.ld"
                     ]
                 ],
                 "plan": [
@@ -134,16 +102,38 @@
                         {
                             "id": "popgen_plan"
                         },
-                        "popgen_plan.strata.tsv:md5,892d4b533cc784a3d36b72734c488bc1",
+                        "popgen_plan.strata.tsv",
                         [
                             "popgen_plan_snp_group_ld01_maf01.txt:md5,50003a8a14579d958a46bb747d998c21",
                             "popgen_plan_snp_group_ld02_maf01.txt:md5,16b353ad5bc56ac1deaf551083ddaf62"
                         ]
                     ]
                 ]
-            }
+            },
+            [
+                {
+                    "model_key": "ldms",
+                    "stratum_key": "ld01_maf01",
+                    "ld_lower": 1.6,
+                    "ld_upper": 81.0,
+                    "maf_lower": "0",
+                    "maf_upper": "0.5",
+                    "predictor_count": "110",
+                    "group_filename": "popgen_plan_snp_group_ld01_maf01.txt"
+                },
+                {
+                    "model_key": "ldms",
+                    "stratum_key": "ld02_maf01",
+                    "ld_lower": 81.0,
+                    "ld_upper": 124.6,
+                    "maf_lower": "0",
+                    "maf_upper": "0.5",
+                    "predictor_count": "110",
+                    "group_filename": "popgen_plan_snp_group_ld02_maf01.txt"
+                }
+            ]
         ],
-        "timestamp": "2026-09-18T18:51:18.247374465",
+        "timestamp": "2026-10-13T04:15:59.84359356",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.6"
