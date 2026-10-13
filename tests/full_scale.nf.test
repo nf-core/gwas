@@ -45,6 +45,7 @@ nextflow_pipeline {
             )
             def stable_path_heritability = getAllFilesFromDir(
                 heritability.toString(),
+                ignore: LDAK.HERITABILITY_TABLES,
                 ignoreFile: 'tests/.nftignore',
             )
             def stable_path_summary_statistics = RELATIONAL.gzipTextHashes(summary_statistics.toString())
@@ -100,7 +101,7 @@ nextflow_pipeline {
                 { assert !new File("${params.outdir}/quality_control/relatedness_matrices").exists() },
                 { assert snapshot(removeNextflowVersion(versions.toString())).match('versions') },
                 { assert snapshot(stable_name_association, stable_path_association).match('association') },
-                { assert snapshot(stable_name_heritability, stable_path_heritability).match('heritability') },
+                { assert snapshot(stable_name_heritability, stable_path_heritability, LDAK.heritabilityTables(heritability)).match('heritability') },
                 { assert snapshot(stable_name_summary_statistics, stable_path_summary_statistics).match('summary_statistics') },
             )
         }

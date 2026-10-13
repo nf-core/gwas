@@ -45,6 +45,7 @@ nextflow_pipeline {
             ).findAll { path -> path.toString() }
             def stablePathHeritability = getAllFilesFromDir(
                 "${params.outdir}/heritability/individual",
+                ignore: LDAK.HERITABILITY_TABLES,
                 ignoreFile: 'tests/.nftignore',
             )
             def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
@@ -60,7 +61,7 @@ nextflow_pipeline {
                 { assert pcgc.list().toList() == ['binary_all_estimators'] },
                 { assert new File(he, 'binary_all_estimators/binary_all_estimators.ldak_he.he.liab').isFile() },
                 { assert !new File(he, 'binary_without_prevalence/binary_without_prevalence.ldak_he.he.liab').exists() },
-                { assert snapshot(stableNameHeritability, stablePathHeritability).match('heritability') },
+                { assert snapshot(stableNameHeritability, stablePathHeritability, LDAK.heritabilityTables("${params.outdir}/heritability/individual")).match('heritability') },
                 { assert snapshot(removeNextflowVersion(versions.toString())).match('versions') },
             )
         }

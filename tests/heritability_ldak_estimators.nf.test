@@ -99,6 +99,7 @@ nextflow_pipeline {
             ).findAll { path -> path.toString() }
             def stablePath = getAllFilesFromDir(
                 individual.toString(),
+                ignore: LDAK.HERITABILITY_TABLES,
                 ignoreFile: 'tests/.nftignore',
             )
             assertAll(
@@ -117,7 +118,7 @@ nextflow_pipeline {
                 { assert heCommands.count { command -> command.contains('ldak6 --he "ldak_all_covariates.ldak_he"') && command.contains('--prevalence 0.3') } == 1 },
                 { assert heCommands.count { command -> command.contains('ldak6 --he "ldak_he_plain.ldak_he"') && !command.contains('--prevalence') } == 1 },
                 { assert snapshot(removeNextflowVersion(versions.toString())).match('versions') },
-                { assert snapshot(stableName, stablePath).match('heritability') },
+                { assert snapshot(stableName, stablePath, LDAK.heritabilityTables(individual)).match('heritability') },
             )
         }
     }
