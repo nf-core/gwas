@@ -31,11 +31,19 @@ nextflow_pipeline {
         [summary: summaries, relationship: relationships, catalog: resources.catalog, options: options]
     }
 
+    // The fixture carries no heritability signal, so LDSC's h2, genetic covariance and several standard errors
+    // are an exact zero computed in floating point. Their printed values are residues around 1e-15 whose
+    // digits and sign follow the BLAS kernels numpy's OpenBLAS selects for the CPU, and they differ between
+    // Intel and AMD runners (lyh970817/gwas#131). Every number below 1e-10 in magnitude is therefore written
+    // as 0, which still fails the snapshot if any of these estimates leaves zero; the rest of the log is exact.
     def stableLdscLog = { entry ->
         entry.text
             .replaceAll(/(?m)^Beginning analysis at .+$/, 'Beginning analysis at <NORMALIZED>')
             .replaceAll(/(?m)^Analysis finished at .+$/, 'Analysis finished at <NORMALIZED>')
             .replaceAll(/(?m)^Total time elapsed: .+$/, 'Total time elapsed: <NORMALIZED>')
+            .replaceAll(/(?<![\w.])-?\d+(?:\.\d*)?(?:[eE][-+]?\d+)?(?![\w.])/) { number ->
+                Math.abs(number as double) < 1e-10 ? '0' : number
+            }
     }
 
     test("run H2 and RG with shared content-addressed munging") {
