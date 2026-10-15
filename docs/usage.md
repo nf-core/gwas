@@ -50,7 +50,7 @@ The supplied representation is preserved. A PLINK 1 or PLINK 2 cohort is used ex
 
 ### Mounted VCZ cohorts
 
-A cohort stored as [VCF Zarr](https://github.com/sgkit-dev/vcf-zarr-spec) can be served to the pipeline as an ordinary PLINK 1 BED/BIM/FAM trio by [BioFuse](https://github.com/sgkit-dev/biofuse), which mounts the store as virtual files without writing a copy to disk. The recommended way to do this is the `nf-biofuse` Nextflow plugin, which is planned but not yet published. The pipeline itself knows nothing about the mount: list the mounted `bed`, `bim` and `fam` in the cohort manifest like any other PLINK 1 files.
+A cohort stored as [VCF Zarr](https://github.com/sgkit-dev/vcf-zarr-spec) can be served to the pipeline as an ordinary PLINK 1 BED/BIM/FAM trio by [BioFuse](https://github.com/sgkit-dev/biofuse), which mounts the store as virtual files without writing a copy to disk. The recommended way to do this is the [`nf-biofuse`](https://github.com/lyh970817/nf-biofuse) Nextflow plugin, which mounts the store for the length of a run and writes the cohort manifest for it. The pipeline itself knows nothing about the mount: list the mounted `bed`, `bim` and `fam` in the cohort manifest like any other PLINK 1 files.
 
 Optionally declare `genotype_view_id` for the mounted cohort. The pipeline then skips hashing the genotype bytes, which through a mount costs a full decode of the store.
 
