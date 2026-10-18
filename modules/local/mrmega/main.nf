@@ -1,6 +1,6 @@
 process MRMEGA {
     tag "${meta.id}"
-    label 'process_medium'
+    label 'process_low'
 
     container "${workflow.containerEngine in ['singularity', 'apptainer'] && !task.ext.singularity_pull_docker_container
         ? 'docker://quay.io/loukas_moutsianas/mrmega@sha256:1143b7f016f00f0f32cbc6ad72b4a571e2f824e440a0b7fecf4ec4c8334ae1e8'

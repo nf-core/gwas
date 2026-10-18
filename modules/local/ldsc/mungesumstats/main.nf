@@ -1,6 +1,6 @@
 process LDSC_MUNGESUMSTATS {
     tag "${meta.id}"
-    label 'process_single'
+    label 'process_low'
 
     conda "${moduleDir}/environment.yml"
 

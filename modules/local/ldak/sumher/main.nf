@@ -1,6 +1,6 @@
 process LDAK_SUMHER {
     tag "${meta.id}"
-    label 'process_medium'
+    label 'process_low'
 
     container "${workflow.containerEngine in ['singularity', 'apptainer'] && !task.ext.singularity_pull_docker_container
         ? 'docker://ghcr.io/lyh970817/gwas/ldak@sha256:a0699bb7637ef2ba20c37fc6ef46b9533c78e68a022d770478a2fbb938e10a00'

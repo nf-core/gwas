@@ -1,6 +1,6 @@
 process LDAK_ADJUSTGRM {
     tag "${meta.id}_${meta2.id}"
-    label 'process_medium'
+    label 'process_high'
     conda "${moduleDir}/environment.yml"
     container "${workflow.containerEngine in ['singularity', 'apptainer'] && !task.ext.singularity_pull_docker_container
         ? 'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/c9/c94e5424f08cbd7e0856ab3c3a9992b4080944a5d0c497ce0abcceb413db4a3e/data'

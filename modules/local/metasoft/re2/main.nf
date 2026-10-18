@@ -1,6 +1,6 @@
 process METASOFT_RE2 {
     tag "${meta.id}"
-    label 'process_medium'
+    label 'process_low'
 
     container "${workflow.containerEngine in ['singularity', 'apptainer'] && !task.ext.singularity_pull_docker_container
         ? 'docker://ghcr.io/lyh970817/gwas/metasoft@sha256:13c0275d393111daf53ba8e6bfa787627eec6facc7c3b8e4879784497745f073'

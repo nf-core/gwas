@@ -1,6 +1,6 @@
 process GCTA_MAKEGRMPART {
     tag "${meta.id}: part ${part} of ${nparts}"
-    label 'process_medium'
+    label 'process_high'
     conda "${moduleDir}/environment.yml"
     container "${workflow.containerEngine in ['singularity', 'apptainer'] && !task.ext.singularity_pull_docker_container
         ? 'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/46/46b0d05f0daa47561d87d2a9cac5e51edc2c78e26f1bbab439c688386241a274/data'

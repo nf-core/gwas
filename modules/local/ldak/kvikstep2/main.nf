@@ -1,6 +1,6 @@
 process LDAK_KVIKSTEP2 {
     tag "${meta.id}:${meta2.id}"
-    label "process_medium"
+    label 'process_medium'
 
     conda "${moduleDir}/environment.yml"
     container "${workflow.containerEngine in ['singularity', 'apptainer'] && !task.ext.singularity_pull_docker_container
