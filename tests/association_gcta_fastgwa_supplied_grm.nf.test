@@ -1,0 +1,103 @@
+nextflow_pipeline {
+
+    name "Test GCTA fastGWA-MLM association with a supplied sparse relatedness matrix"
+    script "../main.nf"
+    tag "pipeline"
+    tag "association"
+    tag "gcta"
+    tag "gcta_fastgwa"
+    config "../conf/test_gcta_fastgwa.config"
+
+    // `assets/examples/relational/resources/gcta_sparse_grm.grm.{id,sp}` is the sparse matrix this pipeline
+    // builds itself from the shipped `example_pgen` cohort at the default cutoff 0.05: the
+    // `GCTA_MAKEBKSPARSE` output published by `--save_relatedness_matrices`, renamed. Supplying it therefore
+    // has to reproduce the built route's fastGWA table byte for byte while running no matrix construction.
+    def inputs = { output_dir, project_dir, sparse_grm ->
+        def analyses = RELATIONAL.analyses(project_dir, output_dir, "gcta_fastgwa_supplied_${new File(sparse_grm).name}", { rows ->
+            rows.clear()
+            def row = RELATIONAL.analysis(project_dir, 'example_pgen_qt')
+            row.analysis_id = 'fastgwa_supplied'
+            row.association_methods = 'gcta_fastgwa'
+            rows << row
+        })
+        return [
+            cohort: RELATIONAL.cohorts(project_dir, output_dir, "gcta_fastgwa_supplied_${new File(sparse_grm).name}"),
+            analysis: analyses,
+            options: RELATIONAL.methodOptions(output_dir, "gcta_fastgwa_supplied_${new File(sparse_grm).name}", [
+                fastgwa_supplied: [gcta: [sparse_grm: sparse_grm]],
+            ]),
+        ]
+    }
+
+    def shipped_prefix = { project_dir -> "${project_dir}/assets/examples/relational/resources/gcta_sparse_grm".toString() }
+
+    test("a supplied sparse GRM replaces matrix construction for fastGWA") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+                def linked = inputs(outputDir, projectDir, shipped_prefix(projectDir))
+                cohort_manifest = linked.cohort
+                analysis_manifest = linked.analysis
+                method_options = linked.options
+                save_relatedness_matrices = true
+            }
+        }
+
+        then {
+            def native_result = new File("${params.outdir}/association/gcta_fastgwa/fastgwa_supplied/fastgwa_supplied.gcta_fastgwa.fastGWA")
+            def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
+            def command = new File(new File(outputDir.toString()).parentFile, 'work').listFiles()
+                .collectMany { stage -> stage.listFiles()?.toList() ?: [] }
+                .collect { task -> new File(task, '.command.sh') }
+                .find { script -> script.isFile() && script.text.contains('--fastGWA-mlm') }
+            assertAll(
+                { assert workflow.success },
+                // No dense build, no merge and no sparse derivation: the supplied matrix is consumed as is.
+                { assert TRACE.count(workflow, 'GCTA_MAKEGRMPART') == 0 },
+                { assert TRACE.count(workflow, 'CUSTOM_GCTAMERGEGRMPARTS') == 0 },
+                { assert TRACE.count(workflow, 'GCTA_MAKEBKSPARSE') == 0 },
+                { assert TRACE.count(workflow, 'GCTA_FASTGWA') == 1 },
+                { assert command != null },
+                { assert command.text.contains('--grm-sparse "gcta_sparse_grm"') },
+                // A supplied matrix is an input, not a pipeline-built artifact, so the save control has
+                // nothing to publish for it.
+                { assert !new File("${params.outdir}/quality_control/relatedness_matrices").exists() },
+                { assert native_result.isFile() },
+                { assert snapshot(path(native_result.toString())).match('fastgwa_supplied') },
+                { assert snapshot(removeNextflowVersion(versions.toString())).match('versions') },
+            )
+        }
+    }
+
+    test("a supplied sparse GRM that misses an analysed sample is refused before fastGWA runs") {
+
+        when {
+            // The shipped matrix with its first sample's row removed from `.grm.id`. The `.grm.sp` is copied
+            // unchanged: the coverage check reads sample identity only, and GCTA never runs.
+            def source = shipped_prefix(projectDir)
+            def ids = new File("${source}.grm.id").readLines()
+            def truncated_id = RELATIONAL.resource(outputDir, 'uncovering/gcta_sparse_grm.grm.id', ids.tail().join('\n') + '\n')
+            RELATIONAL.resource(outputDir, 'uncovering/gcta_sparse_grm.grm.sp', new File("${source}.grm.sp").text)
+            params {
+                outdir = "$outputDir"
+                def linked = inputs(outputDir, projectDir, truncated_id - '.grm.id')
+                cohort_manifest = linked.cohort
+                analysis_manifest = linked.analysis
+                method_options = linked.options
+            }
+        }
+
+        then {
+            def report = VALIDATION.report(outputDir, workflow.stdout)
+            def dropped = new File("${shipped_prefix(projectDir)}.grm.id").readLines().first().tokenize().take(2).join(' ')
+            assertAll(
+                { assert workflow.failed },
+                { assert report.contains("analysis 'fastgwa_supplied', option 'gcta.sparse_grm': the supplied sparse GRM") },
+                { assert report.contains("does not cover 1 analysed sample(s) (first: ${dropped})") },
+                { assert TRACE.count(workflow, 'GCTA_FASTGWA') == 0 },
+                { assert TRACE.count(workflow, 'GCTA_MAKEGRMPART') == 0 },
+            )
+        }
+    }
+}
