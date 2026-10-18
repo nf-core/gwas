@@ -53,6 +53,30 @@ nextflow_pipeline {
         }
     }
 
+    test("a part count given as a string, as on the command line, builds the matrix in that many parts") {
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, 'gcta_greml_string_parts')
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, 'gcta_greml_string_parts', { rows ->
+                    rows.each { row ->
+                        row.association_methods = ''
+                        row.heritability_methods = 'gcta_greml'
+                    }
+                })
+                gcta_grm_parts = '2'
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'GCTA_MAKEGRMPART') == 2 },
+                { assert TRACE.count(workflow, 'CUSTOM_GCTAMERGEGRMPARTS') == 1 },
+            )
+        }
+    }
+
     test("analysis-specific matrix and estimator overrides have separate reuse identities") {
         when {
             params {

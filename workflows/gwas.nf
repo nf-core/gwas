@@ -155,7 +155,9 @@ workflow GWAS {
         PREPARE_COHORT_GENOTYPES.out.plink1_genotypes,
         PREPARE_COHORT_GENOTYPES.out.cohort_native_view_keys,
         PREPARE_COHORT_GENOTYPES.out.cohort_plink1_view_keys,
-        params.gcta_grm_parts,
+        // A command-line `--gcta_grm_parts 4` arrives as the string "4"; nf-schema validates it as an integer
+        // but leaves the value a string, and the part fan-out and its groupKey size need a number.
+        params.gcta_grm_parts as Integer,
     )
 
     //
