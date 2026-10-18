@@ -15,6 +15,7 @@ def getMethodOptionDefaults() {
             grm_extract: [],
             reml_no_constrain: false,
             sparse_cutoff: 0.05,
+            sparse_grm: [],
             ld_score_region_kb: 200,
             ld_bins: 4,
             ldms_maf_edges: [0, 0.01, 0.05, 0.2, 0.5],
@@ -87,6 +88,25 @@ def resolveMethodResource(analysis_id, family, option, options, fail) {
         fail.call(analysis_id, "${family}.${option}", "resource path '${declared}' does not exist")
     }
     return resolved
+}
+
+// A GCTA sparse relatedness matrix is addressed natively by one prefix that names two files, `<prefix>.grm.id`
+// and `<prefix>.grm.sp` (`--grm-sparse`), so it is declared as that prefix and resolved to both members here.
+// Returns [] when absent, like every other optional method resource.
+def resolveSparseGrmResource(analysis_id, options, fail) {
+    if (!options.containsKey('sparse_grm')) {
+        return []
+    }
+    def declared = options.sparse_grm
+    if (!(declared instanceof String) || !declared.trim()) {
+        fail.call(analysis_id, 'gcta.sparse_grm', 'expected a non-empty GCTA sparse-GRM prefix string')
+    }
+    def members = ['.grm.id', '.grm.sp'].collect { suffix -> file("${declared}${suffix}") }
+    def missing = members.findAll { member -> !member.exists() }
+    if (missing) {
+        fail.call(analysis_id, 'gcta.sparse_grm', "sparse-GRM prefix '${declared}' names no ${missing.collect { member -> "'${member.name}'" }.join(' or ')}; supply the prefix of a GCTA sparse GRM, both '<prefix>.grm.id' and '<prefix>.grm.sp'")
+    }
+    return members
 }
 
 def resolveRegenieMethodOptions(analysis_id, options, methods, defaults, fail) {
@@ -173,8 +193,15 @@ def resolveGctaMethodOptions(analysis_id, options, methods, defaults, fail) {
             fail.call(analysis_id, "gcta.${option}", "option restricts the GCTA dense predictor set only; the MPH matrices this analysis also selects (${selected_mph.join(', ')}) are built over the declared MPH variant universe, so the two estimates would be published side by side over different predictor sets. Remove the option or drop the MPH selector(s) from this row")
         }
     }
-    if (options.containsKey('sparse_cutoff') && !methods.association_methods.any { method -> method in gcta_sparse_association }) {
-        fail.call(analysis_id, 'gcta.sparse_cutoff', "option is consumed by 'gcta_fastgwa' only, which this analysis does not select")
+    ['sparse_cutoff', 'sparse_grm'].each { option ->
+        if (options.containsKey(option) && !methods.association_methods.any { method -> method in gcta_sparse_association }) {
+            fail.call(analysis_id, "gcta.${option}", "option is consumed by 'gcta_fastgwa' only, which this analysis does not select")
+        }
+    }
+    // The cutoff is a construction setting of the sparse matrix the pipeline builds. A supplied matrix is
+    // already sparse, so a row declaring both would publish a result the cutoff never touched.
+    if (options.containsKey('sparse_cutoff') && options.containsKey('sparse_grm')) {
+        fail.call(analysis_id, 'gcta.sparse_cutoff', "option configures the pipeline-built sparse matrix and is not applied to the supplied 'gcta.sparse_grm'; remove one of them")
     }
     ['ld_score_region_kb', 'ld_bins', 'ldms_maf_edges'].each { option ->
         if (options.containsKey(option) && !methods.heritability_methods.any { method -> method in gcta_ldms_heritability }) {
@@ -217,6 +244,7 @@ def resolveGctaMethodOptions(analysis_id, options, methods, defaults, fail) {
         grm_extract: resolveMethodResource(analysis_id, 'gcta', 'grm_extract', options, fail),
         reml_no_constrain: reml_no_constrain,
         sparse_cutoff: sparse_cutoff,
+        sparse_grm: resolveSparseGrmResource(analysis_id, options, fail),
         ld_score_region_kb: ld_score_region_kb,
         ld_bins: ld_bins,
         ldms_maf_edges: ldms_maf_edges,

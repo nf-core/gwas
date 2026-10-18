@@ -135,6 +135,13 @@ workflow ROUTE_ASSOCIATION_ANALYSES {
             failOnDuplicate: true,
             failOnMismatch: true,
         )
+        .map { analysis_id, genotypes, pheno, qcovar, covar, sparse_grm ->
+            def (meta, _primary, _variant_file, sample_file) = genotypes
+            if (meta.method_options?.gcta?.sparse_grm) {
+                validateSuppliedSparseGrmCoverage(meta, sample_file, pheno[1], sparse_grm[1])
+            }
+            [analysis_id, genotypes, pheno, qcovar, covar, sparse_grm]
+        }
         .multiMap { _analysis_id, genotypes, pheno, qcovar, covar, sparse_grm ->
             genotypes: genotypes
             pheno: pheno
@@ -173,4 +180,48 @@ workflow ROUTE_ASSOCIATION_ANALYSES {
 
     emit:
     association_results = ch_association_results // channel: [ val(meta), path(raw_summary_statistics) ], one per analysis unit per association method actually exercised, `meta.method` naming the producing route
+}
+
+/*
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    FUNCTIONS
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+*/
+
+// A sparse GRM supplied through `gcta.sparse_grm` is user input, so it is validated as such: it must cover
+// every analysed sample, meaning every sample with a non-missing trait in the prepared phenotype that the
+// cohort's genotype sample file also holds. The prepared headerless phenotype is `FID IID trait` with `NA`
+// for a missing trait. Genotype membership is read by IID, because a `.psam` may carry no FID column; the
+// coverage itself compares the FID/IID pair GCTA writes to `.grm.id`.
+def validateSuppliedSparseGrmCoverage(meta, sample_file, phenotype, sparse_grm_files) {
+    def grm_id = sparse_grm_files.find { grm_file -> grm_file.name.endsWith('.grm.id') }
+    // A `.fam` and a `#FID`-headed `.psam` hold IID in the second column; an `#IID`-headed `.psam` in the first.
+    def iid_column = 1
+    def genotyped = [] as Set
+    sample_file.eachLine { line ->
+        def fields = line.tokenize()
+        if (fields && fields[0].startsWith('#')) {
+            iid_column = fields[0] == '#IID' ? 0 : 1
+        }
+        else if (fields.size() > iid_column) {
+            genotyped << fields[iid_column]
+        }
+    }
+    def covered = [] as Set
+    grm_id.eachLine { line ->
+        def fields = line.tokenize()
+        if (fields.size() >= 2) {
+            covered << "${fields[0]}\t${fields[1]}".toString()
+        }
+    }
+    def uncovered = []
+    phenotype.eachLine { line ->
+        def fields = line.tokenize()
+        if (fields.size() >= 3 && fields[2] != 'NA' && fields[1] in genotyped && !covered.contains("${fields[0]}\t${fields[1]}".toString())) {
+            uncovered << "${fields[0]} ${fields[1]}"
+        }
+    }
+    if (uncovered) {
+        error("[nf-core/gwas] ERROR: analysis '${meta.id}', option 'gcta.sparse_grm': the supplied sparse GRM '${grm_id}' does not cover ${uncovered.size()} analysed sample(s) (first: ${uncovered.take(5).join(', ')}). Supply a sparse GRM built over every genotyped sample with a trait value, or omit 'gcta.sparse_grm' to let the pipeline build one")
+    }
 }

@@ -310,6 +310,14 @@ workflow PREPARE_RELATEDNESS_MATRICES {
         )
         .map { _selected_key, meta, grm_files -> [meta, grm_files] }
 
+    // An analysis that supplied its own sparse matrix requested no `gcta_sparse` kind, so it reaches no
+    // dense build, merge or sparse derivation above; its two files are fanned out to it unchanged. A supplied
+    // matrix is an input rather than an artifact this pipeline built, so it has no reuse key and is not
+    // published.
+    def ch_supplied_sparse = ch_analyses
+        .filter { meta, _genotype_files, _ldak_weights -> getSuppliedSparseGrm(meta) }
+        .map { meta, _genotype_files, _ldak_weights -> [meta, getSuppliedSparseGrm(meta)] }
+
     def ch_gcta_sparse = ch_requests
         .filter { _selected_key, _meta, request, _weights_file -> request.kind == 'gcta_sparse' }
         .map { selected_key, meta, _request, _weights_file -> [selected_key, meta] }
@@ -318,6 +326,7 @@ workflow PREPARE_RELATEDNESS_MATRICES {
             by: 0
         )
         .map { _selected_key, meta, sparse_grm_files -> [meta, sparse_grm_files] }
+        .mix(ch_supplied_sparse)
 
     def ch_gcta_ldms = ch_requests
         .filter { _selected_key, _meta, request, _weights_file -> request.kind == 'gcta_ldms' }
@@ -513,6 +522,13 @@ def getRelatednessMatrixKinds(meta) {
         .findAll { kind ->
             selected.any { method -> capabilities[method] && capabilities[method].matrix_kind == kind }
         }
+        .findAll { kind -> !(kind == 'gcta_sparse' && getSuppliedSparseGrm(meta)) }
+}
+
+// The validated `[<prefix>.grm.id, <prefix>.grm.sp]` pair an analysis supplied through `gcta.sparse_grm`, or
+// [] when it supplied none. A relationship-scoped request never carries one: fastGWA is a unary route.
+def getSuppliedSparseGrm(meta) {
+    return meta.relationship_id ? [] : (meta.method_options?.gcta?.sparse_grm ?: [])
 }
 
 def getLdakWeightsIdentity(weights_file, weights_policy = 'equal') {

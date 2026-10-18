@@ -42,6 +42,43 @@ nextflow_function {
             reason: "option is consumed by 'gcta_fastgwa' only, which this analysis does not select",
         ],
         [
+            name: 'a supplied sparse GRM on a row selecting no fastGWA method',
+            options: [example_pgen_qt: [gcta: [sparse_grm: '/definitely/missing/cohort_sp']]],
+            association: '',
+            heritability: 'gcta_greml',
+            analysis: 'example_pgen_qt',
+            option: 'gcta.sparse_grm',
+            reason: "option is consumed by 'gcta_fastgwa' only, which this analysis does not select",
+        ],
+        [
+            name: 'a non-string sparse GRM prefix',
+            options: [example_pgen_qt: [gcta: [sparse_grm: 3]]],
+            association: 'gcta_fastgwa',
+            heritability: '',
+            analysis: 'example_pgen_qt',
+            option: 'gcta.sparse_grm',
+            reason: 'expected a non-empty GCTA sparse-GRM prefix string',
+        ],
+        [
+            name: 'a sparse GRM prefix naming no files',
+            options: [example_pgen_qt: [gcta: [sparse_grm: '/definitely/missing/cohort_sp']]],
+            association: 'gcta_fastgwa',
+            heritability: '',
+            analysis: 'example_pgen_qt',
+            option: 'gcta.sparse_grm',
+            reason: "sparse-GRM prefix '/definitely/missing/cohort_sp' names no 'cohort_sp.grm.id' or 'cohort_sp.grm.sp'",
+        ],
+        [
+            // The cutoff configures only the matrix the pipeline builds, so it cannot accompany a supplied one.
+            name: 'a sparse cutoff beside a supplied sparse GRM',
+            options: [example_pgen_qt: [gcta: [sparse_cutoff: 0.05, sparse_grm: '/definitely/missing/cohort_sp']]],
+            association: 'gcta_fastgwa',
+            heritability: '',
+            analysis: 'example_pgen_qt',
+            option: 'gcta.sparse_cutoff',
+            reason: "option configures the pipeline-built sparse matrix and is not applied to the supplied 'gcta.sparse_grm'; remove one of them",
+        ],
+        [
             name: 'a non-positive LD-score region size',
             options: [example_pgen_qt: [gcta: [ld_score_region_kb: 0]]],
             association: '',
@@ -175,6 +212,31 @@ nextflow_function {
             reason: 'analysis does not select a GCTA method',
         ],
     ]
+
+    test("the GCTA family resolves a supplied sparse GRM prefix to its two native files") {
+        function "validateMethodOptions"
+
+        when {
+            function {
+                def grm_id = RELATIONAL.resource(outputDir, 'supplied/cohort_sp.grm.id', 'HG00096\tHG00096\n')
+                RELATIONAL.resource(outputDir, 'supplied/cohort_sp.grm.sp', '0\t0\t1\n')
+                def prefix = grm_id - '.grm.id'
+                """
+                input[0] = file('${RELATIONAL.methodOptions(outputDir, 'gcta_supplied_sparse_grm', [example_pgen_qt: [gcta: [sparse_grm: prefix]]])}', checkIfExists: true)
+                input[1] = [[[id: 'example_pgen_qt', association_methods: 'gcta_fastgwa', heritability_methods: '', trait_type: 'quantitative']]]
+                """
+            }
+        }
+
+        then {
+            def resolved = function.result.example_pgen_qt.gcta
+            assertAll(
+                { assert function.success },
+                { assert resolved.sparse_grm.collect { member -> new File(member.toString()).name } == ['cohort_sp.grm.id', 'cohort_sp.grm.sp'] },
+                { assert resolved.sparse_cutoff == 0.05 },
+            )
+        }
+    }
 
     invalidOptions.each { scenario ->
         test("the GCTA family rejects ${scenario.name}") {

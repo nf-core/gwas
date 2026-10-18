@@ -16,6 +16,7 @@ nextflow_function {
                     grm_extract: [],
                     reml_no_constrain: false,
                     sparse_cutoff: 0.05,
+                    sparse_grm: [],
                     ld_score_region_kb: 200,
                     ld_bins: 4,
                     ldms_maf_edges: [0, 0.01, 0.05, 0.2, 0.5],
