@@ -87,7 +87,7 @@ The published Step 2 file is native output with the fixed `_PHENO` token removed
 <details markdown="1">
 <summary>Output files</summary>
 
-[GCTA](https://yanglab.westlake.edu.cn/software/gcta/) runs `--fastGWA-mlm` for quantitative traits and `--fastGWA-mlm-binary` for binary traits. Plain fastGWA linear regression is not selectable. The method option `gcta.sparse_cutoff` defaults to `0.05`, following the official fastGWA example, and controls construction of its sparse relatedness matrix. The native table is passed unchanged to GWASLab.
+[GCTA](https://yanglab.westlake.edu.cn/software/gcta/) runs `--fastGWA-mlm` for quantitative traits and `--fastGWA-mlm-binary` for binary traits. Plain fastGWA linear regression is not selectable. The method option `gcta.sparse_cutoff` defaults to `0.05`, following the official fastGWA example, and controls construction of its sparse relatedness matrix; `gcta.sparse_grm` supplies a precomputed one instead, and no sparse matrix is then built or published for that analysis. The native table is passed unchanged to GWASLab.
 
 - `association/gcta_fastgwa/<analysis_id>/`
   - `<analysis_id>.gcta_fastgwa.fastGWA`: Native GCTA fastGWA-MLM result.

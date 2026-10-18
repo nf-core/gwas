@@ -451,9 +451,12 @@ The catalog may also declare a SHA-256 digest beside each role. Preflight checks
 | `grm_extract`        | Resource path or absent; absent       | Predictor list staged for dense `gcta_greml` matrix construction.                                       |
 | `reml_no_constrain`  | Boolean; `false`                      | `gcta_greml` and `gcta_greml_ldms`; disables variance-component constraints.                            |
 | `sparse_cutoff`      | Number; `0.05`                        | `gcta_fastgwa` only; `0` to `1` inclusive.                                                              |
+| `sparse_grm`         | Prefix string or absent; absent       | `gcta_fastgwa` only; a precomputed GCTA sparse GRM. Not combinable with `sparse_cutoff`.                |
 | `ld_score_region_kb` | Positive integer; `200`               | `gcta_greml_ldms` only; LD-score window in kilobases.                                                   |
 | `ld_bins`            | Positive integer; `4`                 | `gcta_greml_ldms` only; number of LD-score strata.                                                      |
 | `ldms_maf_edges`     | Number array; `[0,0.01,0.05,0.2,0.5]` | `gcta_greml_ldms` only; strictly increasing, at least two values, beginning at `0` and ending at `0.5`. |
+
+`sparse_grm` names a sparse GRM you already have, such as one built once for a biobank, by the prefix GCTA's `--grm-sparse` takes: `"sparse_grm": "/data/ukb/ukb_sp"` reads `/data/ukb/ukb_sp.grm.id` and `/data/ukb/ukb_sp.grm.sp`, and both must exist. The analysis then builds no matrix: the dense GRM, its merge and the sparse derivation are skipped, and the supplied files go to fastGWA unchanged. Before fastGWA runs, the pipeline checks that `.grm.id` lists every analysed sample, meaning every sample with a non-missing trait value that the cohort's genotype sample file also holds, and refuses the analysis with a count and the first missing IDs otherwise. A supplied matrix is an input rather than a pipeline-built artifact, so it has no reuse key and `--save_relatedness_matrices` does not republish it. The pipeline does not check how it was built; the SNP set and cutoff are yours to choose.
 
 The same three LDMS setting names are accepted under a `gcta_bivariate_reml_ldms--<relationship_id>`, `gcta_bivariate_he_ldms--<relationship_id>` or `mph_bivariate_reml_ldms--<relationship_id>` pair request. Their defaults are `200`, `4` and `[0,0.01,0.05,0.2,0.5]`. The resolved values become part of the matrix reuse key, so a unary and pair request reuse one matrix family only when cohort, genotype input and all three settings agree exactly — independent of which LDMS pair method token requested it.
 
@@ -642,7 +645,7 @@ Use `-c <file>` to load a Nextflow configuration file for infrastructure, execut
 
 ### Resource requests
 
-The pipeline assigns default CPU, memory and time requests by process label and retries selected resource-related failures with larger requests. Use [`--max_cpus`, `--max_memory` and `--max_time`](https://nf-co.re/docs/running/configuration/nextflow-for-your-system#set-max-resources) to cap requests, or use a custom configuration file to [customise individual processes](https://nf-co.re/docs/running/configuration/nextflow-for-your-system#customize-process-resources).
+The pipeline assigns default CPU, memory and time requests by process label and retries selected resource-related failures once, with doubled requests. Steps that hold a dense sample-by-sample matrix instead compute their memory from the number of samples; see [Large cohorts](#large-cohorts). Cap every request at what your machine or queue offers with `process.resourceLimits` in a custom configuration file, and [customise individual processes](https://nf-co.re/docs/running/configuration/nextflow-for-your-system#customize-process-resources) with `withName` selectors. A `withLabel` selector does not override the computed memory, because `withName` settings take precedence over `withLabel` ones in Nextflow.
 
 ### Custom containers
 
@@ -655,6 +658,38 @@ Use a custom configuration file to add supported process-specific arguments as d
 ### nf-core/configs
 
 If a configuration is useful across your institution, test it locally and consider contributing it to [nf-core/configs](https://github.com/nf-core/configs). Include the corresponding documentation and profile registration in that repository.
+
+## Large cohorts
+
+Every step that builds or fits a dense sample-by-sample matrix needs memory that grows with the square of the sample count N. The pipeline therefore computes their memory request from N, and from the number of components K for the stratified and multi-component fits, as `ceil(1 + 1.3 × c × N²)` GB, with c measured per step. N is read from the matrix's own sample list when the task starts. The steps are GCTA `--make-grm-part`, REML, REML-LDMS, bivariate REML and GRM addition; LDAK kinship construction, REML, HE, PCGC and `--adjust-grm`; and MPH matrix construction and REML. Every other step uses its label. The coefficients come from a scaling study on synthetic cohorts of 1,000 to 75,000 samples, so every biobank-scale figure below is an extrapolation.
+
+The table describes a UK Biobank-sized run, about 400,000 to 500,000 samples and 0.5M array variants. Figures are extrapolated.
+
+| Route                                                    | At N ≈ 400k–500k                                                                                     |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `regenie`, `ldak_kvik`, `ldak_fast_he`, `ldak_fast_pcgc` | Feasible: REGENIE Step 1 needs 6–8 GB, KVIK Step 1 38–48 GB and the randomised HE/PCGC 3–5 GB.       |
+| `gcta_fastgwa`                                           | Feasible only with a [supplied sparse GRM](#advanced-method-options) (`gcta.sparse_grm`); see below. |
+| LDSC, SumHer/SumCors and meta-analysis                   | Feasible: at most 41 GB at 10M variants.                                                             |
+| `gcta_greml`, `gcta_greml_ldms`, GCTA bivariate REML     | Subsample only: 5.8–80 TB of memory.                                                                 |
+| `ldak_reml`                                              | Subsample only: 1.2–1.9 TB and about 39–77 days.                                                     |
+| `mph_reml`, `mph_reml_ldms`, MPH bivariate REML          | Subsample only: 0.9–1.4 TB and 6–10 hours for unary dense REML; 2.7–4.1 TB for a pair.               |
+| `ldak_he`, `ldak_pcgc`                                   | Only on a node with about 1 TB, after kinship construction at 1.2–1.8 TB.                            |
+
+The largest subsample each dense REML route fits in a given node memory is:
+
+| Route                  | 200 GB node   | 900 GB node   |
+| ---------------------- | ------------- | ------------- |
+| `gcta_greml` (one GRM) | 73,000        | about 154,000 |
+| `ldak_reml`            | about 160,000 | about 340,000 |
+| `mph_reml` (dense)     | about 185,000 | about 400,000 |
+
+The figures beyond 75,000 samples are extrapolated. At these sizes the computed request includes a 30 % margin over the measured peak, so it can exceed your node: set `process.resourceLimits` to the node's real capacity and the request is trimmed to it rather than refused. Time is not computed. Dense REML time grows roughly as N³, so a subsample near those limits can run for days; raise `time` for the dense steps rather than relying on the label's 16 hours.
+
+Disk often runs out before memory. Each GCTA GRM takes about 8 × N² bytes of work directory, counting its `.grm.bin` and `.grm.N.bin` and the merged copy: about 20 GB at 50,000 samples and 1.3 TB at 400,000. LDAK and MPH need about 2 × N² bytes per matrix. Budget this for every GRM a run builds, including each LD-by-MAF component, and put the work directory on storage that can hold it.
+
+As wired by default, fastGWA builds its sparse GRM from a dense one, which at biobank scale needs 1.5–2.3 TB of memory and about 4.5–7 days in one part. Splitting the build with `--gcta_grm_parts` lowers the memory per part but not the total compute or the merged dense GRM on disk. Supply the sparse GRM instead: build it once outside the pipeline with GCTA on a node sized for it, or reuse one your group already maintains, and pass its prefix as `gcta.sparse_grm`. One sparse GRM serves every fastGWA analysis of the cohort.
+
+Run large cohorts with `-resume`, so a failed or capped step does not rebuild the matrices before it. [`docs/examples/large_cohort.config`](examples/large_cohort.config) is a starting point to pass with `-c`: it sets `resourceLimits`, longer times for the dense steps and more fastGWA memory for an imputed-scale variant count. LDAK-KVIK Step 1 also grows with samples times variants, to about 1 TB at 10M variants (extrapolated); thin its Step 1 predictors with `ldak.kvik_step1_subset` rather than raising its memory. Adjust its numbers to your cluster.
 
 ## Running in the background
 
