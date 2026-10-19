@@ -1,0 +1,28 @@
+{
+    "versions": {
+        "content": [
+            {
+                "GWASLAB_HARMONIZE": {
+                    "gwaslab": "4.1.9",
+                    "python": "3.12.13"
+                },
+                "LDSC_H2": {
+                    "ldsc": "3.0.2",
+                    "python": "3.9.13"
+                },
+                "LDSC_MUNGESUMSTATS": {
+                    "ldsc": "3.0.2",
+                    "python": "3.9.13"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "timestamp": "2026-09-19T19:28:37.562738775",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

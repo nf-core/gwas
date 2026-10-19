@@ -1,0 +1,75 @@
+{
+    "versions": {
+        "content": [
+            {
+                "LDAK_FASTHE": {
+                    "ldak6": 6
+                },
+                "LDAK_FASTPCGC": {
+                    "ldak6": 6
+                },
+                "PLINK2_MAKEBED": {
+                    "plink2": "2.0.0-a.6.9LM"
+                },
+                "PREPARE_GENOTYPE_SOURCE": {
+                    "python": "3.14.5"
+                },
+                "PREPARE_PHENOTYPE_INPUTS": {
+                    "python": "3.14.5"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "timestamp": "2026-09-10T05:55:55.954174774",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "heritability": {
+        "content": [
+            [
+                "",
+                "ldak_fast_he",
+                "ldak_fast_he/fast_qt",
+                "ldak_fast_he/fast_qt/fast_qt.ldak_fast_he.cats",
+                "ldak_fast_he/fast_qt/fast_qt.ldak_fast_he.coeff",
+                "ldak_fast_he/fast_qt/fast_qt.ldak_fast_he.cross",
+                "ldak_fast_he/fast_qt/fast_qt.ldak_fast_he.enrich",
+                "ldak_fast_he/fast_qt/fast_qt.ldak_fast_he.fasthe",
+                "ldak_fast_he/fast_qt/fast_qt.ldak_fast_he.share",
+                "ldak_fast_pcgc",
+                "ldak_fast_pcgc/fast_bt",
+                "ldak_fast_pcgc/fast_bt/fast_bt.ldak_fast_pcgc.cats",
+                "ldak_fast_pcgc/fast_bt/fast_bt.ldak_fast_pcgc.coeff",
+                "ldak_fast_pcgc/fast_bt/fast_bt.ldak_fast_pcgc.cross",
+                "ldak_fast_pcgc/fast_bt/fast_bt.ldak_fast_pcgc.enrich",
+                "ldak_fast_pcgc/fast_bt/fast_bt.ldak_fast_pcgc.fastpcgc",
+                "ldak_fast_pcgc/fast_bt/fast_bt.ldak_fast_pcgc.fastpcgc.marginal",
+                "ldak_fast_pcgc/fast_bt/fast_bt.ldak_fast_pcgc.share"
+            ],
+            [
+                "fast_qt.ldak_fast_he.cats:md5,6c58367ca989335537f42aaa362de48a",
+                "fast_qt.ldak_fast_he.coeff:md5,e173e95aca8fcce9e9d78cefbf28ec3a",
+                "fast_qt.ldak_fast_he.cross:md5,ac414990f03f77c4b48294e24bb682f4",
+                "fast_qt.ldak_fast_he.enrich:md5,df56367ff3328fc00acec0e70cb65daa",
+                "fast_qt.ldak_fast_he.fasthe:md5,a7d97db56a3ea0b33893b741ff60e23b",
+                "fast_qt.ldak_fast_he.share:md5,01b0b07a8fc56e5ad02a43b20beafe6d",
+                "fast_bt.ldak_fast_pcgc.cats:md5,b48d4d0a131f17b7fa353e2822ae2178",
+                "fast_bt.ldak_fast_pcgc.coeff:md5,d21e77d1a1f22919face3039bf1232fc",
+                "fast_bt.ldak_fast_pcgc.cross:md5,ce6849adc5191f9e42b0a7d436a303ab",
+                "fast_bt.ldak_fast_pcgc.enrich:md5,df56367ff3328fc00acec0e70cb65daa",
+                "fast_bt.ldak_fast_pcgc.fastpcgc:md5,a16f0ab30d28278a3d97836513c66aa6",
+                "fast_bt.ldak_fast_pcgc.fastpcgc.marginal:md5,0ee2e1f5b13f2c6b0087087ae7c0b244",
+                "fast_bt.ldak_fast_pcgc.share:md5,01b0b07a8fc56e5ad02a43b20beafe6d"
+            ]
+        ],
+        "timestamp": "2026-09-02T15:20:09.270041837",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

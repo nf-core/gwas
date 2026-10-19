@@ -1,0 +1,26 @@
+nextflow_function {
+    name "Restore declared MPH group order"
+    script "../main.nf"
+    tag "function"
+    tag "plink_prepare_grm_groups_mph"
+
+    test("out-of-order completion restores manifest ordinal order") {
+        function "orderSnpGroups"
+        when {
+            function {
+                """
+                input[0] = [3, 1, 2]
+                input[1] = [['third.bin', 'third.iid'], ['first.bin', 'first.iid'], ['second.bin', 'second.iid']]
+                """
+            }
+        }
+        then {
+            assert function.success
+            assert function.result == [
+                [1, ['first.bin', 'first.iid']],
+                [2, ['second.bin', 'second.iid']],
+                [3, ['third.bin', 'third.iid']],
+            ]
+        }
+    }
+}

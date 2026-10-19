@@ -1,0 +1,117 @@
+nextflow_function {
+
+    name "Test relationship definition identity"
+    script "../main.nf"
+    tag "function"
+    tag "relationship"
+    tag "bivariate"
+
+    // The preparation's `val(meta)` is part of its task hash, and the preparation is shared by every estimator
+    // that selects the relationship. So the map must describe the scientific pair and nothing else: if a
+    // request's seed or matrix settings leaked into it, changing one estimator's options would invalidate a
+    // table that estimator does not define, and the run would prepare the same pair twice.
+
+    // The scientific pair, as every request row of this relationship carries it.
+    def PAIR = [
+        relationship_id: 'qt_bt',
+        cohort: 'example_pgen',
+        build: 'GRCh38',
+        ancestry: 'EUR',
+        genotype_format: 'pgen',
+        left_analysis_id: 'example_pgen_qt',
+        right_analysis_id: 'example_pgen_bt',
+        left_trait_id: 'QT',
+        right_trait_id: 'BT',
+        left_trait_type: 'quantitative',
+        right_trait_type: 'binary',
+        left_is_binary: false,
+        right_is_binary: true,
+        left_genome_build: 'GRCh38',
+        right_genome_build: 'GRCh38',
+        left_ancestry: 'EUR',
+        right_ancestry: 'EUR',
+    ]
+
+    // The one definition both request rows must produce. Each row asserts equality against this same map, so
+    // "the two rows agree" is asserted rather than merely restated for each row in turn.
+    def DEFINITION = PAIR + [id: 'qt_bt', request_id: 'qt_bt']
+
+    // The estimator state a request row adds on top of the pair. Rendering the row from `PAIR` is what makes
+    // the two cases below differ in the request state and in nothing else.
+    def REQUEST_STATE_KEYS = ['method', 'native_args', 'matrix_kind', 'matrix_settings', 'request_options']
+
+    def requestRow = { request_state -> "input[0] = ${(PAIR + request_state).inspect()}" }
+
+    test("a REML request row yields the pair definition without its own estimator state") {
+        function "buildRelationshipMeta"
+
+        when {
+            function {
+                requestRow([
+                    method: 'gcta_bivariate_reml',
+                    native_args: ['--reml-maxit', '200'],
+                    matrix_kind: 'gcta_dense',
+                    matrix_settings: [maf: 0.01],
+                    request_options: [seed: 11],
+                ])
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                // The shared artifact is addressed by the relationship, not by the request that asked first.
+                { assert function.result.id == 'qt_bt' },
+                { assert function.result.request_id == 'qt_bt' },
+                { assert function.result.id == function.result.relationship_id },
+                { assert function.result.request_id == function.result.relationship_id },
+                // None of the estimator's own state survives into the preparation's identity.
+                { assert REQUEST_STATE_KEYS.every { key -> !function.result.containsKey(key) } },
+                { assert function.result == DEFINITION },
+            )
+        }
+    }
+
+    test("an MPH request row of the same relationship yields the identical definition") {
+        function "buildRelationshipMeta"
+
+        when {
+            function {
+                requestRow([
+                    method: 'mph_bivariate_reml',
+                    native_args: ['--num_threads', '4'],
+                    matrix_kind: 'mph_dense',
+                    matrix_settings: [maf: 0.05],
+                    request_options: [seed: 97],
+                ])
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result.id == 'qt_bt' },
+                { assert function.result.request_id == 'qt_bt' },
+                // A different estimator, different native arguments, a different matrix backend, different
+                // matrix settings and a different seed, and the same definition as the REML row above.
+                { assert REQUEST_STATE_KEYS.every { key -> !function.result.containsKey(key) } },
+                { assert function.result == DEFINITION },
+            )
+        }
+    }
+
+    test("the relationship definition keys name the scientific pair and no request state") {
+        function "getRelationshipDefinitionKeys"
+
+        then {
+            assertAll(
+                { assert function.success },
+                // The key list is the explicit contract the two rows above are measured against, so it is
+                // asserted whole rather than by membership. Its declaration order carries no meaning, so the
+                // comparison is on the set.
+                { assert (function.result as Set) == (PAIR.keySet() as Set) },
+                { assert REQUEST_STATE_KEYS.every { key -> !(key in function.result) } },
+            )
+        }
+    }
+}

@@ -1,0 +1,192 @@
+{
+    "ordered pairs reuse prepared endpoints": {
+        "content": [
+            {
+                "0": [
+                    [
+                        {
+                            "id": "producer_a"
+                        },
+                        "producer_a.sumstats.gz"
+                    ],
+                    [
+                        {
+                            "id": "producer_b"
+                        },
+                        "producer_b.sumstats.gz"
+                    ]
+                ],
+                "1": [
+                    [
+                        {
+                            "id": "producer_a"
+                        },
+                        "producer_a.log"
+                    ],
+                    [
+                        {
+                            "id": "producer_b"
+                        },
+                        "producer_b.log"
+                    ]
+                ],
+                "2": [
+                    [
+                        {
+                            "id": "forward"
+                        },
+                        "forward.log"
+                    ],
+                    [
+                        {
+                            "id": "reverse"
+                        },
+                        "reverse.log"
+                    ]
+                ],
+                "munged_sumstats": [
+                    [
+                        {
+                            "id": "producer_a"
+                        },
+                        "producer_a.sumstats.gz"
+                    ],
+                    [
+                        {
+                            "id": "producer_b"
+                        },
+                        "producer_b.sumstats.gz"
+                    ]
+                ],
+                "munging_log": [
+                    [
+                        {
+                            "id": "producer_a"
+                        },
+                        "producer_a.log"
+                    ],
+                    [
+                        {
+                            "id": "producer_b"
+                        },
+                        "producer_b.log"
+                    ]
+                ],
+                "rg_log": [
+                    [
+                        {
+                            "id": "forward"
+                        },
+                        "forward.log"
+                    ],
+                    [
+                        {
+                            "id": "reverse"
+                        },
+                        "reverse.log"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T22:52:27.514189858",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "ordered pairs reuse prepared endpoints - stub": {
+        "content": [
+            {
+                "0": [
+                    [
+                        {
+                            "id": "producer_a"
+                        },
+                        "producer_a.sumstats.gz"
+                    ],
+                    [
+                        {
+                            "id": "producer_b"
+                        },
+                        "producer_b.sumstats.gz"
+                    ]
+                ],
+                "1": [
+                    [
+                        {
+                            "id": "producer_a"
+                        },
+                        "producer_a.log"
+                    ],
+                    [
+                        {
+                            "id": "producer_b"
+                        },
+                        "producer_b.log"
+                    ]
+                ],
+                "2": [
+                    [
+                        {
+                            "id": "forward"
+                        },
+                        "forward.log"
+                    ],
+                    [
+                        {
+                            "id": "reverse"
+                        },
+                        "reverse.log"
+                    ]
+                ],
+                "munged_sumstats": [
+                    [
+                        {
+                            "id": "producer_a"
+                        },
+                        "producer_a.sumstats.gz"
+                    ],
+                    [
+                        {
+                            "id": "producer_b"
+                        },
+                        "producer_b.sumstats.gz"
+                    ]
+                ],
+                "munging_log": [
+                    [
+                        {
+                            "id": "producer_a"
+                        },
+                        "producer_a.log"
+                    ],
+                    [
+                        {
+                            "id": "producer_b"
+                        },
+                        "producer_b.log"
+                    ]
+                ],
+                "rg_log": [
+                    [
+                        {
+                            "id": "forward"
+                        },
+                        "forward.log"
+                    ],
+                    [
+                        {
+                            "id": "reverse"
+                        },
+                        "reverse.log"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T22:52:31.912876972",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

@@ -1,0 +1,206 @@
+{
+    "homo_sapiens popgen - quantitative phenotype with dense GRM - stub": {
+        "content": [
+            {
+                "log": [
+                    [
+                        {
+                            "id": "plink_simulated_dense"
+                        },
+                        "plink_simulated_dense.log"
+                    ]
+                ],
+                "reml_results": [
+                    [
+                        {
+                            "id": "plink_simulated_dense"
+                        },
+                        "plink_simulated_dense.hsq:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "versions_gcta": [
+                    [
+                        "GCTA_REML",
+                        "gcta",
+                        "1.94.1"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-19T00:39:30.34540682",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "homo_sapiens popgen - dense GRM defaults to first phenotype": {
+        "content": [
+            {
+                "log": [
+                    [
+                        {
+                            "id": "plink_simulated_dense"
+                        },
+                        "plink_simulated_dense.log"
+                    ]
+                ],
+                "reml_results": [
+                    [
+                        {
+                            "id": "plink_simulated_dense"
+                        },
+                        "plink_simulated_dense.hsq:md5,17d5e79e461b582b0aaba2a40666c8f7"
+                    ]
+                ],
+                "versions_gcta": [
+                    [
+                        "GCTA_REML",
+                        "gcta",
+                        "1.94.1"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-19T00:39:21.445468259",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "homo_sapiens popgen - quantitative phenotype with dense GRM and no covariates": {
+        "content": [
+            {
+                "log": [
+                    [
+                        {
+                            "id": "plink_simulated_dense"
+                        },
+                        "plink_simulated_dense.log"
+                    ]
+                ],
+                "reml_results": [
+                    [
+                        {
+                            "id": "plink_simulated_dense"
+                        },
+                        "plink_simulated_dense.hsq:md5,51c1328c8feb6d53f3984cd58324fed7"
+                    ]
+                ],
+                "versions_gcta": [
+                    [
+                        "GCTA_REML",
+                        "gcta",
+                        "1.94.1"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-19T00:39:02.59493172",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "homo_sapiens popgen - quantitative phenotype with dense GRM and covariates": {
+        "content": [
+            {
+                "log": [
+                    [
+                        {
+                            "id": "plink_simulated_dense"
+                        },
+                        "plink_simulated_dense.log"
+                    ]
+                ],
+                "reml_results": [
+                    [
+                        {
+                            "id": "plink_simulated_dense"
+                        },
+                        "plink_simulated_dense.hsq:md5,17d5e79e461b582b0aaba2a40666c8f7"
+                    ]
+                ],
+                "versions_gcta": [
+                    [
+                        "GCTA_REML",
+                        "gcta",
+                        "1.94.1"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-19T00:38:52.953405294",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "homo_sapiens popgen - dense GRM with mpheno selection": {
+        "content": [
+            {
+                "log": [
+                    [
+                        {
+                            "id": "plink_simulated_dense"
+                        },
+                        "plink_simulated_dense.log"
+                    ]
+                ],
+                "reml_results": [
+                    [
+                        {
+                            "id": "plink_simulated_dense"
+                        },
+                        "plink_simulated_dense.hsq:md5,0a29048e72305f462889481b2dfb94db"
+                    ]
+                ],
+                "versions_gcta": [
+                    [
+                        "GCTA_REML",
+                        "gcta",
+                        "1.94.1"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-19T00:38:43.555227052",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "homo_sapiens popgen - binary phenotype with dense GRM and prevalence": {
+        "content": [
+            {
+                "log": [
+                    [
+                        {
+                            "id": "plink_simulated_dense"
+                        },
+                        "plink_simulated_dense.log"
+                    ]
+                ],
+                "reml_results": [
+                    [
+                        {
+                            "id": "plink_simulated_dense"
+                        },
+                        "plink_simulated_dense.hsq:md5,86672f6a0b3c49b2347d402cb03b8606"
+                    ]
+                ],
+                "versions_gcta": [
+                    [
+                        "GCTA_REML",
+                        "gcta",
+                        "1.94.1"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-19T00:39:12.050451065",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

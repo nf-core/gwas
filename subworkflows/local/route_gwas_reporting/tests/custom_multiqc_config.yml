@@ -1,0 +1,12 @@
+report_comment: "ROUTE_GWAS_REPORTING custom configuration asset"
+report_section_order:
+  "nf-core-gwas-analysis-plan":
+    order: -999
+  "nf-core-gwas-methods-description":
+    order: -1000
+  software_versions:
+    order: -1001
+  "nf-core-gwas-summary":
+    order: -1002
+export_plots: false
+disable_version_detection: true

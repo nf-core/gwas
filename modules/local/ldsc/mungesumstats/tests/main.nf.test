@@ -1,0 +1,129 @@
+nextflow_process {
+
+    name "Test Process LDSC_MUNGESUMSTATS"
+    script "../main.nf"
+    process "LDSC_MUNGESUMSTATS"
+    config "./nextflow.config"
+
+    tag "modules"
+    tag "modules_nfcore"
+    tag "ldsc"
+    tag "ldsc/mungesumstats"
+
+    // The reference list is a proper subset of the scored variants, so the two munge cases cannot
+    // produce the same file. `--merge-alleles` writes the reference's own rows in the reference's
+    // own order, so the with-reference output is `referenceSize` rows and the bare one is every
+    // variant; a reference covering all 200 would make the two outputs identical and the optional
+    // input untested.
+    def variantCount = 200
+    def referenceSize = 120
+    def referenceSnps = (1..referenceSize).collect { index -> "rs${index}" }
+
+    def inputs = { outputDir, name ->
+        def root = new File(outputDir.toString(), "fixture_${name}")
+        root.mkdirs()
+        def sumstats = new File(root, "${name}.tsv.gz")
+        def mergeAlleles = new File(root, 'merge_alleles.tsv')
+        def variants = (1..variantCount).collect { index ->
+            def beta = ((index % 9) - 4) / 20.0
+            def pvalue = String.format(java.util.Locale.ROOT, '%.6g', 0.0001 + index / 1000000.0)
+            "rs${index}\tA\tG\t10000\t${beta}\t${pvalue}"
+        }
+        def body = "SNP\tA1\tA2\tN\tBETA\tP\n${variants.join('\n')}\n"
+        sumstats.withOutputStream { output ->
+            def gzip = new java.util.zip.GZIPOutputStream(output)
+            gzip.write(body.getBytes('UTF-8'))
+            gzip.close()
+        }
+        mergeAlleles.text = "SNP\tA1\tA2\n" + referenceSnps.collect { snp -> "${snp}\tA\tG" }.join('\n') + '\n'
+        [sumstats: sumstats, mergeAlleles: mergeAlleles]
+    }
+
+    test("munge summary statistics against an explicit allele set") {
+
+        when {
+            def fixture = inputs(outputDir, 'valid')
+            process {
+                """
+                input[0] = [[id: 'trait_a'], file('${fixture.sumstats}', checkIfExists: true)]
+                input[1] = [[id: 'hapmap3'], file('${fixture.mergeAlleles}', checkIfExists: true)]
+                """
+            }
+        }
+
+        then {
+            def munged = new File(process.out.munged_sumstats.get(0).get(1).toString())
+            def log = new File(process.out.log.get(0).get(1).toString())
+            def gzip = new java.util.zip.GZIPInputStream(new FileInputStream(munged))
+            def lines = gzip.getText('UTF-8').readLines()
+            gzip.close()
+            assertAll(
+                { assert process.success },
+                { assert munged.name == 'trait_a.sumstats.gz' },
+                { assert lines.first().split('\\s+') as List == ['SNP', 'A1', 'A2', 'N', 'Z'] },
+                // The reference selects the rows and fixes their order, so the output is shorter than
+                // the bare munge below and carries the reference's sequence rather than the input's.
+                { assert lines.size() == referenceSize + 1 },
+                { assert lines.size() < variantCount + 1 },
+                { assert lines.drop(1).collect { line -> line.split('\\s+').first() } == referenceSnps },
+                { assert log.text.contains("${referenceSize} SNPs remain") },
+                { assert process.out.versions_ldsc.get(0) == ['LDSC_MUNGESUMSTATS', 'ldsc', '3.0.2'] },
+                { assert process.out.versions_python.get(0) == ['LDSC_MUNGESUMSTATS', 'python', '3.9.13'] },
+                { assert snapshot([output: [munged.name, lines.first(), lines.size()], versions: process.out.findAll { name, value -> name.startsWith('versions_') }]).match() },
+            )
+        }
+    }
+
+    test("munge without an optional merge-alleles reference") {
+        when {
+            def fixture = inputs(outputDir, 'no_reference')
+            process {
+                """
+                input[0] = [[id: 'no_reference'], file('${fixture.sumstats}', checkIfExists: true)]
+                input[1] = [[id: 'absent'], []]
+                """
+            }
+        }
+        then {
+            assert process.success
+            def file = new File(process.out.munged_sumstats[0][1].toString())
+            def gzip = new java.util.zip.GZIPInputStream(new FileInputStream(file))
+            def lines = gzip.getText('UTF-8').readLines()
+            gzip.close()
+            // Without the reference nothing selects rows, so every scored variant survives and the
+            // file is longer than the one the reference produced above.
+            assert lines.size() == variantCount + 1
+            assert lines.size() > referenceSize + 1
+            assert lines.drop(1).collect { line -> line.split('\\s+').first() } == (1..variantCount).collect { index -> "rs${index}" }
+        }
+    }
+
+    test("emit a valid compressed stub") {
+
+        options "-stub"
+
+        when {
+            def fixture = inputs(outputDir, 'stub')
+            process {
+                """
+                input[0] = [[id: 'trait_stub'], file('${fixture.sumstats}', checkIfExists: true)]
+                input[1] = [[id: 'hapmap3'], file('${fixture.mergeAlleles}', checkIfExists: true)]
+                """
+            }
+        }
+
+        then {
+            def munged = new File(process.out.munged_sumstats.get(0).get(1).toString())
+            def gzip = new java.util.zip.GZIPInputStream(new FileInputStream(munged))
+            def text = gzip.getText('UTF-8')
+            gzip.close()
+            assertAll(
+                { assert process.success },
+                { assert text == 'SNP\tA1\tA2\tN\tZ\n' },
+                { assert new File(process.out.log.get(0).get(1).toString()).text == 'LDSC munging stub\n' },
+                { assert snapshot([output: [munged.name, text], versions: process.out.findAll { name, value -> name.startsWith('versions_') }]).match() },
+            )
+        }
+    }
+
+}

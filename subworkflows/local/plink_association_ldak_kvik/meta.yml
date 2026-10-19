@@ -1,0 +1,97 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
+name: plink_association_ldak_kvik
+description: Fit LDAK-KVIK with optional common-predictor thinning, or accept complete predictions, then test independently supplied genotype bundles by explicit fit reference
+keywords:
+  - association
+  - genome-wide association study
+  - linkage disequilibrium adjusted kinships
+  - ldak
+  - kvik
+components:
+  - ldak/thincommon
+  - ldak/kvikstep1
+  - ldak/kvikstep2
+input:
+  - ch_fits:
+      description: |
+        Declared fit producers. Each `fit_id` is unique and disjoint from the supplied producers in
+        `ch_predictions`; it privately names the native Step 1 basename. Optional `qcovar`, `covar` and
+        `extract` use []; `extract` is [] when `thin_common` is true. Native optional flags, `--binary YES`
+        among them, are caller-supplied through `task.ext.args`.
+      structure: "[string fit_id, map meta, path bed, path bim, path fam, path phenotype, path qcovar|[], path covar|[], path extract|[], boolean thin_common]"
+      pattern: "*.{bed,bim,fam}"
+      ontologies: []
+  - ch_predictions:
+      description: |
+        Complete Step 1 prediction bundles supplied by the caller, which bypass fitting. The root, LOCO
+        details and LOCO PRS share one native Step 1 basename, which Step 2 consumes unrenamed.
+      structure: "[string fit_id, map meta, path root, path details, path prs]"
+      pattern: "*.step1.{root,loco.details,loco.prs}"
+      optional: true
+      ontologies: []
+  - ch_tests:
+      description: |
+        Testing requests. Each `fit_id` references one declared or supplied producer, and repeated
+        references reuse its predictions without refitting; a reference that matches no producer yields no
+        result for that request. Fit and testing genotypes may differ. Optional `qcovar`, `covar` and `keep`
+        use [].
+      structure: "[string fit_id, map meta, path bed, path bim, path fam, path phenotype, path qcovar|[], path covar|[], path keep|[]]"
+      pattern: "*.{bed,bim,fam}"
+      ontologies: []
+output:
+  - predictions:
+      description: Every producer's complete native Step 1 prediction bundle, declared fits and supplied bundles alike, keyed by its producer reference
+      structure: "[string fit_id, map meta, path root, path details, path prs]"
+      pattern: "*.step1.{root,loco.details,loco.prs}"
+      ontologies: []
+  - predictors:
+      description: Generated common-predictor lists, one per thinned producer; a producer that supplied its own predictor list contributes nothing here
+      structure: "[string fit_id, map meta, path predictors]"
+      pattern: "*.in"
+      ontologies: []
+  - progress:
+      description: Native thinning progress, one per thinned producer
+      structure: "[string fit_id, map meta, path progress]"
+      pattern: "*.progress"
+      optional: true
+      ontologies: []
+  - results:
+      description: |
+        Native association tables, one set per testing request, carrying the request's own focal metadata.
+        LDAK names them from the fit basename and appends its own chromosome suffix when the tested bundle
+        covers a single chromosome, so per-chromosome bundles tested under one focal identity stay
+        distinguishable; whole-genome bundles tested under one focal identity do not.
+      structure: "[map meta, path results]"
+      pattern: "*.step2*.assoc"
+      ontologies: []
+  - summaries:
+      description: Native summary tables carrying `A1Freq` and `n`, one set per testing request
+      structure: "[map meta, path summaries]"
+      pattern: "*.step2*.summaries"
+      ontologies: []
+  - pvalues:
+      description: Native p-value tables, emitted when the native command produces them
+      structure: "[map meta, path pvalues]"
+      pattern: "*.step2*.pvalues"
+      optional: true
+      ontologies: []
+  - effects:
+      description: Native Step 1 effects, emitted when the native command produces them
+      structure: "[string fit_id, map meta, path effects]"
+      pattern: "*.step1.effects"
+      optional: true
+      ontologies: []
+  - fit_log:
+      description: Native Step 1 log, one per declared fit
+      structure: "[string fit_id, map meta, path fit_log]"
+      pattern: "*.step1.log"
+      ontologies: []
+  - test_log:
+      description: Native Step 2 log, one per testing request
+      structure: "[map meta, path test_log]"
+      pattern: "*.step2.log"
+      ontologies: []
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"

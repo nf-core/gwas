@@ -1,0 +1,54 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
+name: sumstats_heritability_ldsc
+description: Munge declared summary-statistics producers and estimate SNP heritability with LD Score Regression
+keywords:
+  - summary statistics
+  - linkage disequilibrium score regression
+  - heritability
+components:
+  - ldsc/mungesumstats
+  - ldsc/h2
+input:
+  - ch_producers:
+      description: |
+        Declared summary-statistics producers, each munged exactly once. Producer meta.id is unique
+        and referenced by at least one request, and producer metadata propagates unchanged to the
+        preparation outputs. sumstats is a native association summary table; meta2 identifies the
+        merge-allele resource, normally the HapMap3 `w_hm3.snplist`, which is optional per producer
+        and omitted by supplying [] as merge_alleles.
+      structure: "[map meta, path sumstats, map meta2, path merge_alleles|[]]"
+      pattern: "*.{txt,tsv,csv,txt.gz,tsv.gz,csv.gz}, *.{txt,tsv,snplist}"
+      ontologies: []
+  - ch_requests:
+      description: |
+        Heritability requests, one per focal fit. Focal request metadata is preserved unchanged on
+        the fitted log and producer_id references one producer meta.id. meta2 identifies the
+        reference LD-score directory and meta3 the separate regression-weight directory; each holds
+        per-chromosome `<prefix><chr>.l2.*` files at its top level, where reference_prefix and
+        weights_prefix complete the native `--ref-ld-chr` and `--w-ld-chr` stems and are the empty
+        string when the files are named `<chr>.l2.*`. Native optional fit arguments belong in
+        task.ext.args. The caller owns reference selection, prevalence, and publication policy.
+      structure: "[map meta, map meta2, path reference_ld_scores, string reference_prefix, map meta3,
+        path regression_weights, string weights_prefix, string producer_id]"
+      pattern: "*.l2.{ldscore.gz,M_5_50}"
+      ontologies: []
+output:
+  - munged_sumstats:
+      description: One LDSC summary-statistics product per declared producer, with producer metadata.
+      structure: [map meta, path sumstats]
+      pattern: "*.sumstats.gz"
+      ontologies: []
+  - munging_log:
+      description: Native preparation log per declared producer, with producer metadata.
+      structure: [map meta, path log]
+      pattern: "*.log"
+      ontologies: []
+  - h2_log:
+      description: Native heritability log per request, with the focal request metadata.
+      structure: [map meta, path log]
+      pattern: "*.log"
+      ontologies: []
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"

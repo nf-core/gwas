@@ -1,0 +1,50 @@
+nextflow_function {
+
+    name "Test LDAK-KVIK shared predictor identity"
+    script "../main.nf"
+    tag "function"
+    tag "ldak"
+    tag "kvik"
+    tag "prediction"
+
+    test("the thin-common key covers prepared view and effective native options") {
+        function "buildThinCommonKey"
+
+        when {
+            function {
+                """
+                input[0] = 'prepared_view_a'
+                input[1] = [window_kb: 1000, maf: 0.01]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == 'thin_common.ef9abca496e6' },
+            )
+        }
+    }
+
+    test("a scientific thinning-option change produces another thin-common key") {
+        function "buildThinCommonKey"
+
+        when {
+            function {
+                """
+                input[0] = 'prepared_view_a'
+                input[1] = [window_kb: 2000, maf: 0.01]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == 'thin_common.21eddcf7268e' },
+            )
+        }
+    }
+
+}

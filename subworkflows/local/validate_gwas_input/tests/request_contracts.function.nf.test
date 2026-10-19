@@ -1,0 +1,168 @@
+nextflow_function {
+
+    name "Test linked GWAS input contract functions"
+    script "../request_contracts.nf"
+    tag "function"
+    tag "input"
+
+    test("pair LDMS settings resolve independently of either endpoint analysis") {
+        function "resolvePairLdmsMatrixSettings"
+
+        when {
+            function {
+                """
+                input[0] = [ld_score_region_kb: 50, ld_bins: 1, ldms_maf_edges: [0, 0.5]]
+                input[1] = [ld_score_region_kb: 200, ld_bins: 4, maf_edges: [0, 0.01, 0.05, 0.2, 0.5]]
+                input[2] = { option, reason -> error("\${option}: \${reason}") }
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == [ld_score_region_kb: 50, ld_bins: 1, maf_edges: [0, 0.5]] },
+            )
+        }
+    }
+
+    def invalidPairLdmsSettings = [
+        [name: 'non-positive LD bins', options: [ld_bins: 0], expected: 'ld_bins: expected one positive integer'],
+        [name: 'non-increasing MAF boundaries', options: [ldms_maf_edges: [0, 0.05, 0.01, 0.5]], expected: 'ldms_maf_edges: boundaries must be strictly increasing'],
+    ]
+
+    invalidPairLdmsSettings.each { scenario ->
+        test("pair LDMS settings reject ${scenario.name}") {
+            function "resolvePairLdmsMatrixSettings"
+
+            when {
+                function {
+                    """
+                    input[0] = ${scenario.options.inspect()}
+                    input[1] = [ld_score_region_kb: 200, ld_bins: 4, maf_edges: [0, 0.01, 0.05, 0.2, 0.5]]
+                    input[2] = { option, reason -> error("\${option}: \${reason}") }
+                    """
+                }
+            }
+
+            then {
+                assertAll(
+                    { assert function.failed },
+                    { assert function.stdout.join('\n').contains(scenario.expected) },
+                )
+            }
+        }
+    }
+
+    def prevalenceCases = [
+        [
+            name: 'quantitative pair omits prevalence',
+            left: [is_binary: false, population_prevalence: null],
+            right: [is_binary: false, population_prevalence: null],
+            expected: [],
+        ],
+        [
+            name: 'binary left mixed pair retains the sole prevalence',
+            left: [is_binary: true, population_prevalence: 0.2],
+            right: [is_binary: false, population_prevalence: null],
+            expected: [0.2],
+        ],
+        [
+            name: 'binary right mixed pair retains the sole prevalence',
+            left: [is_binary: false, population_prevalence: null],
+            right: [is_binary: true, population_prevalence: 0.1],
+            expected: [0.1],
+        ],
+        [
+            name: 'complete binary pair retains ordered prevalences',
+            left: [is_binary: true, population_prevalence: 0.2],
+            right: [is_binary: true, population_prevalence: 0.1],
+            expected: [0.2, 0.1],
+        ],
+        [
+            name: 'incomplete binary pair omits native conversion',
+            left: [is_binary: true, population_prevalence: 0.2],
+            right: [is_binary: true, population_prevalence: null],
+            expected: [],
+        ],
+    ]
+
+    // The pair and unary namespaces are where a request's declared options meet the estimator's option family
+    // and the reference catalog, and where the request-shaped attribution -- namespace, request_id, option --
+    // is rendered. These scenarios call the namespace resolver itself, so the sentence they assert is the one
+    // a reader sees, rather than a bare option label a caller would still have to wrap.
+    def namespaceRefusals = [
+        [
+            name: 'a curated MPH option on a GCTA pair request',
+            namespace: 'pair_requests',
+            request: [request_id: 'gcta_bivariate_reml--qt_qt2', method: 'gcta_bivariate_reml', reference_family: null, meta: [:]],
+            options: [seed: 7],
+            bundles: [:],
+            expected: "namespace 'pair_requests', request_id 'gcta_bivariate_reml--qt_qt2', option 'seed': unknown option; accepted options are native_args, primary_request_id, request_name",
+        ],
+        [
+            name: 'a fractional seed on an MPH pair request',
+            namespace: 'pair_requests',
+            request: [request_id: 'mph_bivariate_reml--qt_qt2', method: 'mph_bivariate_reml', reference_family: null, meta: [:]],
+            options: [seed: 1.5],
+            bundles: [:],
+            expected: "request_id 'mph_bivariate_reml--qt_qt2', option 'seed': expected an integer or null",
+        ],
+        [
+            name: 'a SumCors request selecting a bundle whose model it does not support',
+            namespace: 'pair_requests',
+            request: [request_id: 'ldak_sumcors--external_pair', method: 'ldak_sumcors', reference_family: 'ldak', meta: [:]],
+            options: [reference_bundle_id: 'ldak_test'],
+            bundles: [ldak_test: [id: 'ldak_test', family: 'ldak', model: 'BLD-LDAK']],
+            expected: "first-release LDAK SumCors supports models 'LDAK-Thin', 'Uniform-GCTA' and 'Human-Default', but bundle 'ldak_test' declares 'BLD-LDAK'",
+        ],
+    ]
+
+    namespaceRefusals.each { scenario ->
+        test("the request namespace refuses ${scenario.name}") {
+            function "resolveRequestNamespace"
+
+            when {
+                function {
+                    """
+                    input[0] = 'method_options.json'
+                    input[1] = new groovy.json.JsonSlurper().parseText('${groovy.json.JsonOutput.toJson([(scenario.namespace): [(scenario.request.request_id): scenario.options]])}')
+                    input[2] = '${scenario.namespace}'
+                    input[3] = new groovy.json.JsonSlurper().parseText('${groovy.json.JsonOutput.toJson([scenario.request])}')
+                    input[4] = new groovy.json.JsonSlurper().parseText('${groovy.json.JsonOutput.toJson(scenario.bundles)}')
+                    """
+                }
+            }
+
+            then {
+                assertAll(
+                    { assert function.failed },
+                    { assert function.stdout.join('\n').contains(scenario.expected) },
+                )
+            }
+        }
+    }
+
+    prevalenceCases.each { scenario ->
+        test("${scenario.name}") {
+            function "getGctaBivariatePrevalence"
+
+            when {
+                function {
+                    """
+                    input[0] = new groovy.json.JsonSlurper().parseText('${groovy.json.JsonOutput.toJson(scenario.left)}')
+                    input[1] = new groovy.json.JsonSlurper().parseText('${groovy.json.JsonOutput.toJson(scenario.right)}')
+                    """
+                }
+            }
+
+            then {
+                assertAll(
+                    { assert function.success },
+                    { assert function.result == scenario.expected },
+                )
+            }
+        }
+    }
+
+}

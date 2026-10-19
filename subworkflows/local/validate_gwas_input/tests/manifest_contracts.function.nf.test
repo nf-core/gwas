@@ -1,0 +1,37 @@
+nextflow_function {
+
+    name "Test linked GWAS input contract functions"
+    script "../manifest_contracts.nf"
+    tag "function"
+    tag "input"
+
+    // nf-schema applies the schema contract but cannot distinguish repeated names once it has built a map, so
+    // the header is read as CSV solely to preserve that one piece of ingress information. The manifest here is
+    // written by the test rather than taken from a fixture: the rule reads the header row and nothing else.
+    test("a manifest header that repeats a column is refused before schema map conversion") {
+        function "validateUniqueSamplesheetHeaders"
+
+        when {
+            function {
+                """
+                input[0] = '${RELATIONAL.resource(
+                    outputDir,
+                    'repeated_headers/cohorts.csv',
+                    'cohort_id,genome_build,ancestry,pgen,psam,pvar,pgen\nexample_pgen,GRCh37,EUR,a.pgen,a.psam,a.pvar,b.pgen\n',
+                )}'
+                input[1] = 'Cohort manifest'
+                """
+            }
+        }
+
+        then {
+            def report = function.stdout.join('\n')
+            assertAll(
+                { assert function.failed },
+                { assert report.contains("Cohort manifest") },
+                { assert report.contains("header row 1 repeats column 'pgen'") },
+            )
+        }
+    }
+
+}

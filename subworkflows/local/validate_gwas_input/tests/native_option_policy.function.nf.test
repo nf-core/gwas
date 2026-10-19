@@ -1,0 +1,509 @@
+nextflow_function {
+
+    name "Test linked GWAS input contract functions"
+    script "../native_option_policy.nf"
+    tag "function"
+    tag "input"
+
+    test("the pair firewall permits non-file scientific GCTA arguments") {
+        function "validateGctaNativeArgumentTokens"
+
+        when {
+            function {
+                """
+                input[0] = 'method_options.json'
+                input[1] = 'gcta_bivariate_reml--example'
+                input[2] = ['--reml-maxit', '500', '--reml-bivar-nocove']
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == ['--reml-maxit', '500', '--reml-bivar-nocove'] },
+            )
+        }
+    }
+
+    // MPH and GCTA share no option spelling at all -- GCTA's are hyphenated and MPH's underscored -- so an
+    // individual-level pair request is firewalled against the namespace of the tool it actually runs. The MPH
+    // firewall is a positive allow-list rather than a list of things to keep out, because everything MPH
+    // understands except three sensitivity and verbosity knobs is rendered by the wrapper from validated
+    // request state.
+    def mphAllowed = [
+        [name: 'the minor-allele-frequency threshold', args: ['--min_maf', '0.01']],
+        [name: 'the Hardy-Weinberg threshold', args: ['--min_hwe_pval', '0.000001']],
+        [name: 'the verbosity flag', args: ['--verbose']],
+        [name: 'two allow-listed options together', args: ['--min_maf', '0.01', '--verbose']],
+    ]
+
+    mphAllowed.each { scenario ->
+        test("the MPH pair firewall permits ${scenario.name}") {
+            function "validateMphNativeArgumentTokens"
+            tag "mph_firewall"
+
+            when {
+                function {
+                    """
+                    input[0] = 'method_options.json'
+                    input[1] = 'mph_bivariate_reml--example'
+                    input[2] = ${groovy.json.JsonOutput.toJson(scenario.args)}
+                    """
+                }
+            }
+
+            then {
+                assertAll(
+                    { assert function.success },
+                    { assert function.result == scenario.args },
+                )
+            }
+        }
+    }
+
+    def mphRefusedCases = [
+        [name: 'the primary operation', args: ['--reml']],
+        [name: 'the alternate primary operation', args: ['--minque']],
+        [name: 'the matrix list', args: ['--grm_list', 'family']],
+        [name: 'the trait selection', args: ['--trait_names', 'QT,QT2']],
+        [name: 'the covariate name list', args: ['--covariate_names', 'intercept,AGE']],
+        [name: 'the output basename', args: ['--output_file', 'hijacked']],
+        [name: 'the thread count', args: ['--num_threads', '8']],
+        [name: 'a curated stochastic control', args: ['--seed', '3']],
+        [name: 'the curated memory mode', args: ['--save_memory']],
+        [name: 'a model flag the pipeline does not expose', args: ['--dominance']],
+        // An abbreviation is refused for the same reason a full spelling is: it is not on the allow-list. The
+        // allow-list therefore needs no knowledge of how MPH resolves a partial option name.
+        [name: 'an abbreviation of a curated control', args: ['--see', '3']],
+        [name: 'an abbreviation of a primary operation', args: ['--minqu']],
+        // A GCTA token on an MPH request is refused by the same rule rather than by a GCTA-shaped message,
+        // which is the whole point of dispatching the firewall on the option family.
+        [name: 'a GCTA option on an MPH request', args: ['--reml-bivar', '1', '2']],
+    ]
+
+    mphRefusedCases.each { scenario ->
+        test("the MPH pair firewall rejects ${scenario.name}") {
+            function "validateMphNativeArgumentTokens"
+            tag "mph_firewall"
+
+            when {
+                function {
+                    """
+                    input[0] = 'method_options.json'
+                    input[1] = 'mph_bivariate_reml--example'
+                    input[2] = ${groovy.json.JsonOutput.toJson(scenario.args)}
+                    """
+                }
+            }
+
+            then {
+                assertAll(
+                    { assert function.failed },
+                    { assert function.stdout.join('\n').contains('is not an accepted MPH native argument') },
+                    { assert function.stdout.join('\n').contains('--min_maf, --min_hwe_pval, --verbose') },
+                )
+            }
+        }
+    }
+
+    def dispatchCases = [
+        [name: 'a GCTA pair request keeps the GCTA firewall', method: 'gcta_bivariate_reml', args: ['--reml-maxit', '500'], succeeds: true],
+        [name: 'a GCTA pair request still refuses a wrapper-owned GCTA option', method: 'gcta_bivariate_reml', args: ['--out', 'hijacked'], succeeds: false, expected: 'wrapper-owned invocation mechanics'],
+        [name: 'an MPH pair request takes the MPH firewall', method: 'mph_bivariate_reml', args: ['--min_maf', '0.01'], succeeds: true],
+        [name: 'an MPH pair request refuses a GCTA option', method: 'mph_bivariate_reml_ldms', args: ['--reml-no-constrain'], succeeds: false, expected: 'is not an accepted MPH native argument'],
+    ]
+
+    dispatchCases.each { scenario ->
+        test("the pair firewall dispatch means ${scenario.name}") {
+            function "validateAnalysisPairNativeArgumentTokens"
+            tag "mph_firewall"
+
+            when {
+                function {
+                    """
+                    input[0] = 'method_options.json'
+                    input[1] = '${scenario.method}--example'
+                    input[2] = '${scenario.method}'
+                    input[3] = ${groovy.json.JsonOutput.toJson(scenario.args)}
+                    """
+                }
+            }
+
+            then {
+                assertAll(
+                    { assert scenario.succeeds ? function.success : function.failed },
+                    { assert scenario.succeeds ? function.result == scenario.args : function.stdout.join('\n').contains(scenario.expected) },
+                )
+            }
+        }
+    }
+
+    def firewallCases = [
+        [name: 'wrapper output', args: ['--out', 'hijacked'], expected: 'wrapper-owned invocation mechanics'],
+        [name: 'alternate operation', args: ['--pca', '10'], expected: 'different primary GCTA operation'],
+        [name: 'file-taking input', args: ['--keep', 'samples.txt'], expected: 'wrapper-owned invocation mechanics'],
+        [name: 'undeclared file-like value', args: ['--mystery', 'samples.txt'], expected: 'undeclared file input'],
+        [name: 'inline undeclared file-like value', args: ['--mystery=samples.txt'], expected: 'undeclared file input'],
+        [name: 'path separator', args: ['--mystery', '../samples'], expected: 'path separator'],
+        [name: 'environment assignment', args: ['--reml-maxit', 'KEY=value'], expected: 'environment assignment'],
+    ]
+
+    firewallCases.each { scenario ->
+        test("the pair firewall rejects ${scenario.name}") {
+            function "validateGctaNativeArgumentTokens"
+
+            when {
+                function {
+                    """
+                    input[0] = 'method_options.json'
+                    input[1] = 'gcta_bivariate_reml--example'
+                    input[2] = ${groovy.json.JsonOutput.toJson(scenario.args)}
+                    """
+                }
+            }
+
+            then {
+                assertAll(
+                    { assert function.failed },
+                    { assert function.stdout.join('\n').contains(scenario.expected) },
+                )
+            }
+        }
+    }
+
+    test("the summary firewall rejects inline undeclared files") {
+        function "validateSummaryNativeArgumentTokens"
+
+        when {
+            function {
+                """
+                input[0] = 'method_options.json'
+                input[1] = 'unary_requests'
+                input[2] = 'ldsc_h2--example'
+                input[3] = 'ldsc_h2'
+                input[4] = ['--mystery=samples.sumstats']
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.failed },
+                { assert function.stdout.join('\n').contains('undeclared file input') },
+            )
+        }
+    }
+
+    test("the summary firewall permits non-file LDSC scientific arguments") {
+        function "validateSummaryNativeArgumentTokens"
+
+        when {
+            function {
+                """
+                input[0] = 'method_options.json'
+                input[1] = 'pair_requests'
+                input[2] = 'ldsc_rg--example'
+                input[3] = 'ldsc_rg'
+                input[4] = ['--n-blocks', '20', '--intercept-gencov=0']
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == ['--n-blocks', '20', '--intercept-gencov=0'] },
+            )
+        }
+    }
+
+    // The wrapper-owned branch of the LDSC firewall, asserted on an exact protected token rather than on an
+    // abbreviation of one: `--samp-prev` is rendered by the wrapper from the request's declared prevalences,
+    // so a second value from a manifest would silently contradict the request.
+    test("the summary firewall rejects an exact wrapper-owned LDSC token") {
+        function "validateSummaryNativeArgumentTokens"
+
+        when {
+            function {
+                """
+                input[0] = 'method_options.json'
+                input[1] = 'unary_requests'
+                input[2] = 'ldsc_h2--external_qt'
+                input[3] = 'ldsc_h2'
+                input[4] = ['--samp-prev', '0.2']
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.failed },
+                { assert function.stdout.join('\n').contains("request_id 'ldsc_h2--external_qt'") },
+                { assert function.stdout.join('\n').contains("token 1 '--samp-prev' conflicts with wrapper-owned invocation mechanics") },
+            )
+        }
+    }
+
+    // The LDAK summary firewall is a deny-list rather than the LDSC prefix matcher.
+    def ldakSummaryRefusals = [
+        [
+            name: 'a wrapper-owned prevalence override',
+            args: ['--prevalence', '0.1'],
+            expected: "token 1 '--prevalence' conflicts with wrapper-owned invocation mechanics",
+        ],
+        [
+            name: 'an undeclared file-taking option',
+            args: ['--matrix', 'untyped_resource'],
+            expected: "token 1 '--matrix' requires a typed staged resource, but this request architecture declares no such file role",
+        ],
+    ]
+
+    ldakSummaryRefusals.each { scenario ->
+        test("the LDAK summary firewall rejects ${scenario.name}") {
+            function "validateSummaryNativeArgumentTokens"
+
+            when {
+                function {
+                    """
+                    input[0] = 'method_options.json'
+                    input[1] = 'pair_requests'
+                    input[2] = 'ldak_sumcors--external_pair'
+                    input[3] = 'ldak_sumcors'
+                    input[4] = ${groovy.json.JsonOutput.toJson(scenario.args)}
+                    """
+                }
+            }
+
+            then {
+                assertAll(
+                    { assert function.failed },
+                    { assert function.stdout.join('\n').contains("request_id 'ldak_sumcors--external_pair'") },
+                    { assert function.stdout.join('\n').contains(scenario.expected) },
+                )
+            }
+        }
+    }
+
+    def ldscFileOptions = [
+        '--annot',
+        '--bfile',
+        '--cts-bin',
+        '--extract',
+        '--frqfile',
+        '--frqfile-chr',
+        '--h2-cts',
+        '--keep',
+        '--print-snps',
+        '--ref-ld',
+        '--ref-ld-chr-cts',
+        '--w-ld',
+    ]
+    ['ldsc_h2', 'ldsc_rg'].each { method ->
+        ldscFileOptions.each { option ->
+            [
+                [name: 'bare', args: [option, 'opaque_resource']],
+                [name: 'inline', args: ["${option}=opaque_resource"]],
+            ].each { form ->
+                test("the ${method} firewall structurally rejects ${form.name} ${option}") {
+                    function "validateSummaryNativeArgumentTokens"
+
+                    when {
+                        function {
+                            """
+                            input[0] = 'method_options.json'
+                            input[1] = '${method == 'ldsc_h2' ? 'unary_requests' : 'pair_requests'}'
+                            input[2] = '${method}--example'
+                            input[3] = '${method}'
+                            input[4] = ${groovy.json.JsonOutput.toJson(form.args)}
+                            """
+                        }
+                    }
+
+                    then {
+                        assertAll(
+                            { assert function.failed },
+                            { assert function.stdout.join('\n').contains('requires a typed staged resource') },
+                        )
+                    }
+                }
+            }
+        }
+
+        test("the ${method} firewall rejects the alternate LD-score operation") {
+            function "validateSummaryNativeArgumentTokens"
+
+            when {
+                function {
+                    """
+                    input[0] = 'method_options.json'
+                    input[1] = '${method == 'ldsc_h2' ? 'unary_requests' : 'pair_requests'}'
+                    input[2] = '${method}--example'
+                    input[3] = '${method}'
+                    input[4] = ['--l2']
+                    """
+                }
+            }
+
+            then {
+                assertAll(
+                    { assert function.failed },
+                    { assert function.stdout.join('\n').contains("selects a different primary operation from wrapper-owned method '${method}'") },
+                )
+            }
+        }
+
+        test("the ${method} firewall rejects the other summary-statistics operation") {
+            function "validateSummaryNativeArgumentTokens"
+
+            when {
+                function {
+                    """
+                    input[0] = 'method_options.json'
+                    input[1] = '${method == 'ldsc_h2' ? 'unary_requests' : 'pair_requests'}'
+                    input[2] = '${method}--example'
+                    input[3] = '${method}'
+                    input[4] = ['${method == 'ldsc_h2' ? '--rg' : '--h2'}']
+                    """
+                }
+            }
+
+            then {
+                assertAll(
+                    { assert function.failed },
+                    { assert function.stdout.join('\n').contains("selects a different primary operation from wrapper-owned method '${method}'") },
+                )
+            }
+        }
+    }
+
+    def ldscProtectedOptions = [
+        ldsc_h2: [
+            '--h2',
+            '--ref-ld-chr',
+            '--w-ld-chr',
+            '--samp-prev',
+            '--pop-prev',
+            '--out',
+            '--annot',
+            '--bfile',
+            '--cts-bin',
+            '--extract',
+            '--frqfile',
+            '--frqfile-chr',
+            '--h2-cts',
+            '--keep',
+            '--print-snps',
+            '--ref-ld',
+            '--ref-ld-chr-cts',
+            '--w-ld',
+            '--l2',
+            '--rg',
+        ],
+        ldsc_rg: [
+            '--rg',
+            '--ref-ld-chr',
+            '--w-ld-chr',
+            '--samp-prev',
+            '--pop-prev',
+            '--out',
+            '--annot',
+            '--bfile',
+            '--cts-bin',
+            '--extract',
+            '--frqfile',
+            '--frqfile-chr',
+            '--h2-cts',
+            '--keep',
+            '--print-snps',
+            '--ref-ld',
+            '--ref-ld-chr-cts',
+            '--w-ld',
+            '--l2',
+            '--h2',
+        ],
+    ]
+    ldscProtectedOptions.each { method, protectedOptions ->
+        def protectedSet = protectedOptions.toSet()
+        def properPrefixes = protectedOptions
+            .collectMany { option -> (3..<option.size()).collect { prefixLength -> option.substring(0, prefixLength) } }
+            .findAll { prefix -> !(prefix in protectedSet) }
+            .toSet()
+            .sort()
+        def properPrefixArguments = properPrefixes
+            .collectMany { prefix -> [prefix, "${prefix}=opaque_value"] }
+            .sort()
+
+        test("the ${method} matcher covers bare and inline forms of every proper protected-option prefix") {
+            function "getLdscProtectedNativeArgumentMatches"
+            tag "ldsc_prefix_firewall"
+
+            when {
+                function {
+                    """
+                    input[0] = '${method}'
+                    input[1] = new groovy.json.JsonSlurper().parseText('${groovy.json.JsonOutput.toJson(properPrefixArguments)}')
+                    """
+                }
+            }
+
+            then {
+                assertAll(
+                    { assert function.success },
+                    { assert function.result.keySet().toSet() == properPrefixArguments.toSet() },
+                    { assert function.result.values().every { protection -> protection && !protection.exact } },
+                    { assert function.result.every { _argument, protection -> protection.matches.any { match -> match.option.startsWith(protection.option_name) } } },
+                )
+            }
+        }
+    }
+
+    def ldscAbbreviationExamples = [
+        [name: 'annotation file', option: '--ann'],
+        [name: 'binary genotype prefix', option: '--bfi'],
+        [name: 'ambiguous category-bin prefix', option: '--cts-b'],
+        [name: 'partitioned heritability input', option: '--h2-c'],
+        [name: 'regression-weight reference', option: '--w-ld-c'],
+        [name: 'ambiguous LD-score reference', option: '--ref-ld-c'],
+        [name: 'LD-score operation', option: '--l'],
+    ]
+    ['ldsc_h2', 'ldsc_rg'].each { method ->
+        def methodExamples = ldscAbbreviationExamples + [
+            [
+                name: method == 'ldsc_h2' ? 'ambiguous RG-operation/reference prefix' : 'alternate heritability-operation prefix',
+                option: method == 'ldsc_h2' ? '--r' : '--h',
+            ],
+        ]
+        methodExamples.each { scenario ->
+            [
+                [name: 'bare', token: scenario.option],
+                [name: 'inline', token: "${scenario.option}=opaque_value"],
+            ].each { form ->
+                test("the ${method} firewall rejects ${form.name} ${scenario.name} abbreviation ${scenario.option}") {
+                    function "validateSummaryNativeArgumentTokens"
+                    tag "ldsc_prefix_firewall"
+
+                    when {
+                        function {
+                            """
+                            input[0] = 'method_options.json'
+                            input[1] = '${method == 'ldsc_h2' ? 'unary_requests' : 'pair_requests'}'
+                            input[2] = '${method}--example'
+                            input[3] = '${method}'
+                            input[4] = ['${form.token}']
+                            """
+                        }
+                    }
+
+                    then {
+                        assertAll(
+                            { assert function.failed },
+                            { assert function.stdout.join('\n').contains('protected LDSC option abbreviation') },
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+}

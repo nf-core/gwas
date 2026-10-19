@@ -1,0 +1,70 @@
+{
+    "homo_sapiens popgen - bivariate quantitative phenotype with ldms mgrm - stub": {
+        "content": [
+            {
+                "hereg_results": [
+                    [
+                        {
+                            "id": "plink_simulated_ldms"
+                        },
+                        "plink_simulated_ldms.HEreg:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "plink_simulated_ldms"
+                        },
+                        "plink_simulated_ldms.log"
+                    ]
+                ],
+                "versions_gcta": [
+                    [
+                        "GCTA_BIVARIATEHEREGLDMS",
+                        "gcta",
+                        "1.94.1"
+                    ]
+                ]
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-26T06:40:20.651615786"
+    },
+    "homo_sapiens popgen - bivariate quantitative phenotype with ldms mgrm": {
+        "content": [
+            {
+                "hereg_results": [
+                    [
+                        {
+                            "id": "plink_simulated_ldms"
+                        },
+                        "plink_simulated_ldms.HEreg:md5,57e3b564a79648d1bd122434007ae4b7"
+                    ]
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "plink_simulated_ldms"
+                        },
+                        "plink_simulated_ldms.log"
+                    ]
+                ],
+                "versions_gcta": [
+                    [
+                        "GCTA_BIVARIATEHEREGLDMS",
+                        "gcta",
+                        "1.94.1"
+                    ]
+                ]
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        },
+        "timestamp": "2026-08-26T06:45:32.409445253"
+    }
+}

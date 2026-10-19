@@ -1,0 +1,41 @@
+name: prepare_ldak_summary_statistics
+description: Convert a GWASLab-standard summary-statistics table to LDAK's native summary format
+keywords:
+  - ldak
+  - summary statistics
+  - adapter
+tools:
+  - python:
+      description: Python standard-library runtime
+      homepage: https://www.python.org/
+      documentation: https://docs.python.org/3/
+input:
+  - - meta:
+        type: map
+        description: Summary-statistics identity metadata
+    - gwaslab_summary_statistics:
+        type: file
+        description: GWASLab-standard summary-statistics table
+        pattern: "*.gwaslab.tsv.gz"
+output:
+  summary_statistics:
+    - - meta:
+          type: map
+          description: Summary-statistics metadata propagated from input
+      - ${prefix}.summaries:
+          type: file
+          description: LDAK-native Predictor, allele, Z, sample-size and allele-frequency table
+          pattern: "*.summaries"
+  versions:
+    - versions.yml:
+        type: file
+        description: Software versions
+topics:
+  versions:
+    - versions.yml:
+        type: file
+        description: Software versions
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"

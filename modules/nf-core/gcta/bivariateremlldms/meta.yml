@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/modules/meta-schema.json
 name: "gcta_bivariateremlldms"
-description: Run bivariate REML-LDMS analysis with an MGRM manifest
+description: Run bivariate REML-LDMS analysis from an explicitly ordered GRM family
 keywords:
   - gcta
   - genome-wide complex trait analysis
@@ -24,26 +24,21 @@ input:
   - - meta:
         type: map
         description: |
-          Groovy map containing MGRM metadata
-          `meta.id` should match the MGRM manifest basename, for example
-          `plink_simulated_ldms` for `plink_simulated_ldms.mgrm`
-    - mgrm_file:
-        type: file
-        description: MGRM manifest file
-        pattern: "*.mgrm"
-        ontologies:
-          - edam: "http://edamontology.org/format_2330"
+          Groovy map containing GRM family metadata
+          `meta.id` supplies the overridable default output prefix
     - grm_files:
         type: file
-        description: GRM bundles referenced by `mgrm_file`; each manifest entry
-          should have matching `*.grm.{id,bin,N.bin}` files in this bundle
+        description: GRM bundles staged beside the task-local MGRM manifest
         pattern: "*.grm.*"
         ontologies: []
+    - grm_prefixes:
+        type: list
+        description: GRM basenames in the explicit component order written to the task-local MGRM manifest
   - - meta2:
         type: map
         description: |
           Groovy map containing phenotype file metadata for the same analysis
-          unit as the primary MGRM metadata
+          unit as the primary GRM-family metadata
           e.g. `[ id:'plink_simulated_ldms' ]`
     - phenotype_file:
         type: file
@@ -67,7 +62,7 @@ input:
         type: map
         description: |
           Groovy map containing quantitative covariate metadata for the same
-          analysis unit as the primary MGRM metadata
+          analysis unit as the primary GRM-family metadata
           e.g. `[ id:'plink_simulated_ldms' ]`
     - quant_covariates_file:
         type: file
@@ -79,7 +74,7 @@ input:
         type: map
         description: |
           Groovy map containing categorical covariate metadata for the same
-          analysis unit as the primary MGRM metadata
+          analysis unit as the primary GRM-family metadata
           e.g. `[ id:'plink_simulated_ldms' ]`
     - cat_covariates_file:
         type: file
@@ -92,7 +87,7 @@ output:
     - - meta:
           type: map
           description: |
-            Groovy map containing MGRM metadata
+            Groovy map containing GRM-family metadata
             `meta.id` is used as the default output prefix
       - "*.hsq":
           type: file
@@ -104,7 +99,7 @@ output:
     - - meta:
           type: map
           description: |
-            Groovy map containing MGRM metadata
+            Groovy map containing GRM-family metadata
             `meta.id` is used as the default output prefix
       - "*.log":
           type: file

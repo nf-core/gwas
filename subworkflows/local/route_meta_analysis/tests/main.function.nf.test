@@ -1,0 +1,46 @@
+nextflow_function {
+    name "Test meta-analysis parent ordering"
+    script "../main.nf"
+    tag "function"
+    tag "meta_analysis"
+
+    test("arrival order is restored to declared parent order") {
+        function "orderMetaAnalysisParents"
+        when {
+            function {
+                """
+                input[0] = [request_id: 'meta', source_summary_statistics_ids: ['second', 'first']]
+                input[1] = [1, 0]
+                input[2] = ['first', 'second']
+                input[3] = ['first.tsv', 'second.tsv']
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == [ids: ['second', 'first'], sources: ['second.tsv', 'first.tsv']] },
+            )
+        }
+    }
+
+    test("incomplete pipeline membership fails the owned gather boundary") {
+        function "orderMetaAnalysisParents"
+        when {
+            function {
+                """
+                input[0] = [request_id: 'meta', source_summary_statistics_ids: ['first', 'second']]
+                input[1] = [0]
+                input[2] = ['first']
+                input[3] = ['first.tsv']
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert !function.success },
+                { assert function.stdout.join('\n').contains('did not resolve exactly its declared ordered summary parents') },
+            )
+        }
+    }
+}

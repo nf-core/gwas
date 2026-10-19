@@ -1,0 +1,140 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
+name: route_ldak_summary_analyses
+description: Route summary-scale LDAK requests through one shared GWASLab-to-LDAK adapter into native SumHer and SumCors outputs
+keywords:
+  - ldak
+  - sumher
+  - sumcors
+  - summary statistics
+components:
+  - prepare/ldak/summary/statistics
+  - ldak/sumher
+  - ldak/sumcors
+input:
+  - ch_sumher_requests:
+      description: Validated SumHer requests with their request-owned tagging resource
+      structure: "[map meta, path hapmap3_snplist|[], path reference_ld_scores|[], string reference_prefix,
+        path regression_weights|[], string weights_prefix, path tagging_file]"
+      pattern: "*.{tagging,txt,tsv}"
+      ontologies: []
+  - ch_sumcors_requests:
+      description: Validated ordered SumCors requests with their request-owned tagging resource
+      structure: "[map meta, path hapmap3_snplist|[], path reference_ld_scores|[], string reference_prefix,
+        path regression_weights|[], string weights_prefix, path tagging_file]"
+      pattern: "*.{tagging,txt,tsv}"
+      ontologies: []
+  - ch_summary_statistics:
+      description: GWASLab-standard summary statistics, one per summary_statistics_id
+      structure: "[map meta, path summary_statistics]"
+      pattern: "*.gwaslab.tsv.gz"
+      ontologies: []
+output:
+  - sumher_hers:
+      description: Native SumHer heritability result
+      structure: "[map meta, path result]"
+      pattern: "*.hers"
+      ontologies: []
+  - sumher_categories:
+      description: Native SumHer category estimates
+      structure: "[map meta, path result]"
+      pattern: "*.cats"
+      ontologies: []
+  - sumher_shares:
+      description: Native SumHer category shares
+      structure: "[map meta, path result]"
+      pattern: "*.share"
+      ontologies: []
+  - sumher_enrichments:
+      description: Native SumHer enrichment estimates
+      structure: "[map meta, path result]"
+      pattern: "*.enrich"
+      ontologies: []
+  - sumher_extra:
+      description: Native SumHer additional estimates
+      structure: "[map meta, path result]"
+      pattern: "*.extra"
+      ontologies: []
+  - sumher_cross:
+      description: Native SumHer cross-category estimates
+      structure: "[map meta, path result]"
+      pattern: "*.cross"
+      ontologies: []
+  - sumher_taus:
+      description: Native SumHer category coefficients
+      structure: "[map meta, path result]"
+      pattern: "*.taus"
+      ontologies: []
+  - sumher_labels:
+      description: Native SumHer category labels
+      structure: "[map meta, path result]"
+      pattern: "*.labels"
+      ontologies: []
+  - sumher_progress:
+      description: Native SumHer solver progress
+      structure: "[map meta, path result]"
+      pattern: "*.progress"
+      ontologies: []
+  - sumher_overlap:
+      description: Native SumHer category-overlap information
+      structure: "[map meta, path result]"
+      pattern: "*.overlap"
+      ontologies: []
+  - sumher_hers_liability:
+      description: Optional native liability-scale SumHer heritability result
+      structure: "[map meta, path result]"
+      pattern: "*.hers.liab"
+      ontologies: []
+  - sumher_categories_liability:
+      description: Optional native liability-scale SumHer category estimates
+      structure: "[map meta, path result]"
+      pattern: "*.cats.liab"
+      ontologies: []
+  - sumher_liability_factor:
+      description: Optional native SumHer observed-to-liability conversion factor
+      structure: "[map meta, path result]"
+      pattern: "*.factor"
+      ontologies: []
+  - sumher_log:
+      description: Native SumHer log
+      structure: "[map meta, path log]"
+      pattern: "*.log"
+      ontologies: []
+  - sumcors_correlations:
+      description: Native SumCors correlation result
+      structure: "[map meta, map meta2, path result]"
+      pattern: "*.cors"
+      ontologies: []
+  - sumcors_correlations_full:
+      description: Native full SumCors estimates and uncertainties
+      structure: "[map meta, map meta2, path result]"
+      pattern: "*.cors.full"
+      ontologies: []
+  - sumcors_labels:
+      description: Native SumCors category labels
+      structure: "[map meta, map meta2, path result]"
+      pattern: "*.labels"
+      ontologies: []
+  - sumcors_progress:
+      description: Native SumCors solver progress
+      structure: "[map meta, map meta2, path result]"
+      pattern: "*.progress"
+      ontologies: []
+  - sumcors_overlap:
+      description: Native SumCors category-overlap information
+      structure: "[map meta, map meta2, path result]"
+      pattern: "*.overlap"
+      ontologies: []
+  - sumcors_correlations_liability:
+      description: Optional native liability-scale SumCors result
+      structure: "[map meta, map meta2, path result]"
+      pattern: "*.cors.liab"
+      ontologies: []
+  - sumcors_log:
+      description: Native SumCors log
+      structure: "[map meta, map meta2, path log]"
+      pattern: "*.log"
+      ontologies: []
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"

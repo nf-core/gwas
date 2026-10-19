@@ -1,0 +1,685 @@
+nextflow_function {
+
+    name "Test linked GWAS input contract functions"
+    script "../method_registry.nf"
+    tag "function"
+    tag "input"
+
+    test("quantitative fastGWA maps the native beta and sample-count columns") {
+        function "getAssociationColumnMappingJson"
+
+        when {
+            function {
+                """
+                input[0] = 'gcta_fastgwa'
+                input[1] = false
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert new groovy.json.JsonSlurper().parseText(function.result) == [
+                    snpid: 'SNP',
+                    chrom: 'CHR',
+                    pos: 'POS',
+                    ea: 'A1',
+                    nea: 'A2',
+                    eaf: 'AF1',
+                    n: 'N',
+                    beta: 'BETA',
+                    se: 'SE',
+                    p: 'P',
+                ] },
+            )
+        }
+    }
+
+    test("binary fastGWA retains the native beta mapping without inventing an odds-ratio column") {
+        function "getAssociationColumnMappingJson"
+
+        when {
+            function {
+                """
+                input[0] = 'gcta_fastgwa'
+                input[1] = true
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert new groovy.json.JsonSlurper().parseText(function.result) == [
+                    snpid: 'SNP',
+                    chrom: 'CHR',
+                    pos: 'POS',
+                    ea: 'A1',
+                    nea: 'A2',
+                    eaf: 'AF1',
+                    n: 'N',
+                    beta: 'BETA',
+                    se: 'SE',
+                    p: 'P',
+                ] },
+            )
+        }
+    }
+
+    test("quantitative KVIK maps its A1 frequency and effective analysis size without an extra Z field") {
+        function "getAssociationColumnMappingJson"
+        tag "kvik_mapping"
+
+        when {
+            function {
+                """
+                input[0] = 'ldak_kvik'
+                input[1] = false
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert new groovy.json.JsonSlurper().parseText(function.result) == [
+                    snpid: 'Predictor',
+                    chrom: 'Chromosome',
+                    pos: 'Basepair',
+                    ea: 'A1',
+                    nea: 'A2',
+                    eaf: 'EAF',
+                    neff: 'N',
+                    p: 'Wald_P',
+                    beta: 'Effect',
+                    se: 'SE',
+                ] },
+            )
+        }
+    }
+
+    test("the association mapping registry preserves its established public projection") {
+        function "getAssociationColumnMappings"
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result.keySet().toList() == ['regenie', 'gcta_fastgwa', 'ldak_kvik'] },
+                { assert function.result.values().every { mapping -> mapping.keySet().every { section -> section in ['common', 'quantitative', 'binary'] } } },
+                { assert function.result.regenie.keySet().toList() == ['common'] },
+                { assert function.result.ldak_kvik.keySet().toList() == ['common', 'quantitative', 'binary'] },
+            )
+        }
+    }
+
+    test("method capabilities retain selector, matrix, prevalence and citation knowledge") {
+        function "getMethodCapabilities"
+        tag "summary_capabilities"
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result.keySet().toList() == [
+                    'fixed', 'random', 're2', 'mrmega',
+                    'regenie',
+                    'gcta_fastgwa',
+                    'ldak_kvik',
+                    'gcta_greml',
+                    'gcta_greml_ldms',
+                    'gcta_bivariate_reml',
+                    'gcta_bivariate_reml_ldms',
+                    'gcta_bivariate_he',
+                    'gcta_bivariate_he_ldms',
+                    'ldak_sumher',
+                    'ldak_sumcors',
+                    'ldsc_h2',
+                    'ldsc_rg',
+                    'ldak_reml',
+                    'ldak_he',
+                    'ldak_pcgc',
+                    'ldak_fast_he',
+                    'ldak_fast_pcgc',
+                    'mph_reml',
+                    'mph_reml_ldms',
+                    'mph_bivariate_reml',
+                    'mph_bivariate_reml_ldms',
+                ] },
+                { assert function.result.gcta_fastgwa.matrix_kind == 'gcta_sparse' },
+                { assert function.result.gcta_greml.matrix_kind == 'gcta_dense' },
+                { assert function.result.gcta_greml_ldms.matrix_kind == 'gcta_ldms' },
+                { assert function.result.gcta_bivariate_reml.domain == 'pairwise' },
+                { assert function.result.gcta_bivariate_reml.matrix_kind == 'gcta_dense' },
+                { assert function.result.gcta_bivariate_reml_ldms.domain == 'pairwise' },
+                { assert function.result.gcta_bivariate_reml_ldms.matrix_kind == 'gcta_ldms' },
+                // Each Haseman-Elston selector consumes the same relatedness backend as its REML sibling,
+                // which is what makes selecting the two together cost one matrix construction. Both are
+                // quantitative-only and neither can honour a covariate file.
+                { assert function.result.gcta_bivariate_he.domain == 'pairwise' },
+                { assert function.result.gcta_bivariate_he.matrix_kind == 'gcta_dense' },
+                { assert function.result.gcta_bivariate_he.estimator_family == 'moment_he' },
+                { assert function.result.gcta_bivariate_he.trait_support == [quantitative: true, binary: false] },
+                { assert function.result.gcta_bivariate_he.supports_covariates == false },
+                { assert function.result.gcta_bivariate_he.prevalence.population == 'not_consumed' },
+                { assert function.result.gcta_bivariate_he_ldms.matrix_kind == 'gcta_ldms' },
+                { assert function.result.gcta_bivariate_he_ldms.citation_keys == ['gcta_hereg', 'gcta_greml_ldms'] },
+                { assert function.result.ldak_sumher.domain == 'summary_unary' },
+                { assert function.result.ldak_sumher.reference_family == 'ldak' },
+                { assert function.result.ldak_sumher.prevalence.population == 'consumed' },
+                { assert function.result.ldak_sumcors.endpoint_domain == 'summary_statistics' },
+                { assert function.result.ldak_sumcors.prevalence == [population: 'consumed', sample: 'consumed'] },
+                { assert function.result.ldsc_h2.reference_family == 'ldsc' },
+                { assert function.result.ldsc_h2.prevalence.sample == 'consumed' },
+                { assert function.result.ldsc_rg.endpoint_domain == 'summary_statistics' },
+                { assert function.result.ldsc_rg.prevalence == [population: 'consumed', sample: 'consumed'] },
+                { assert function.result.ldak_reml.matrix_kind == 'ldak_kinship' },
+                { assert function.result.ldak_pcgc.prevalence.population == 'required' },
+                { assert function.result.ldak_he.citation_keys == function.result.ldak_pcgc.citation_keys },
+                // The two direct-genotype LDAK estimators declare no matrix kind at all: they read the
+                // cohort's PLINK 1 derivative and build nothing reusable, which is what keeps
+                // `getRelatednessMatrixKinds` empty for a row that selects only them.
+                { assert !function.result.ldak_fast_he.containsKey('matrix_kind') },
+                { assert !function.result.ldak_fast_pcgc.containsKey('matrix_kind') },
+                { assert function.result.ldak_fast_he.input_backend == 'direct_plink1_genotypes' },
+                { assert function.result.ldak_fast_pcgc.input_backend == 'direct_plink1_genotypes' },
+                { assert function.result.ldak_fast_he.estimator_family == 'moment_he' },
+                { assert function.result.ldak_fast_pcgc.estimator_family == 'pcgc' },
+                { assert function.result.ldak_fast_he.trait_support == [quantitative: true, binary: true] },
+                { assert function.result.ldak_fast_pcgc.trait_support == [quantitative: false, binary: true] },
+                { assert function.result.ldak_fast_he.prevalence == [population: 'consumed', sample: 'not_consumed'] },
+                { assert function.result.ldak_he.prevalence == [population: 'consumed', sample: 'not_consumed'] },
+                { assert function.result.ldak_fast_pcgc.prevalence.population == 'required' },
+                { assert function.result.ldak_fast_he.citation_keys == ['ldak', 'rhe_mc'] },
+                { assert function.result.ldak_fast_pcgc.citation_keys == ['ldak', 'rhe_mc'] },
+                // MPH is the second tool to declare a reusable matrix kind of its own, and the pair is what
+                // makes `mph_grm`/`mph_grm_family` separate backends from GCTA's: the two on-disk layouts are
+                // mutually unreadable and neither tool rejects the other's. `mph_reml_ldms` shares
+                // `gcta_greml_ldms`'s component model without sharing its matrix kind, which is exactly what
+                // lets one component plan feed two matrix families.
+                { assert function.result.mph_reml.matrix_kind == 'mph_dense' },
+                { assert function.result.mph_reml.option_family == 'mph' },
+                { assert function.result.mph_reml.estimator_family == 'reml' },
+                { assert function.result.mph_reml.input_backend == 'mph_grm' },
+                { assert function.result.mph_reml.component_model == 'single' },
+                { assert function.result.mph_reml.trait_support == [quantitative: true, binary: false] },
+                { assert function.result.mph_reml.prevalence == [population: 'not_consumed', sample: 'not_consumed'] },
+                // MPH drops a sample whose covariate cell is blank rather than reading the blank as a value,
+                // which is why it is the first covariate-reading heritability estimator here that does not
+                // require complete cells.
+                { assert !function.result.mph_reml.requires_complete_covariates },
+                { assert !function.result.mph_reml_ldms.requires_complete_covariates },
+                { assert function.result.mph_reml.citation_keys == ['mph'] },
+                { assert function.result.mph_reml_ldms.matrix_kind == 'mph_ldms' },
+                { assert function.result.mph_reml_ldms.input_backend == 'mph_grm_family' },
+                { assert function.result.mph_reml_ldms.component_model == 'ld_maf_stratified' },
+                { assert function.result.mph_reml_ldms.component_model == function.result.gcta_greml_ldms.component_model },
+                { assert function.result.mph_reml_ldms.matrix_kind != function.result.gcta_greml_ldms.matrix_kind },
+                { assert function.result.mph_reml_ldms.citation_keys == ['mph', 'gcta_greml_ldms'] },
+                // The MPH pair entries declare the same matrix kinds and backends as their unary siblings,
+                // which is what lets one relationship request and one analysis row share a built matrix family
+                // rather than each causing its own. They are quantitative-only because MPH has no prevalence
+                // or liability-scale contract at all, and they carry no `supports_covariates` because MPH does
+                // fit the pair covariates and reports a BLUE per trait for each of them.
+                { assert function.result.mph_bivariate_reml.domain == 'pairwise' },
+                { assert function.result.mph_bivariate_reml.endpoint_domain == 'analysis' },
+                { assert function.result.mph_bivariate_reml.option_family == 'mph' },
+                { assert function.result.mph_bivariate_reml.matrix_kind == function.result.mph_reml.matrix_kind },
+                { assert function.result.mph_bivariate_reml.input_backend == function.result.mph_reml.input_backend },
+                { assert function.result.mph_bivariate_reml.component_model == 'single' },
+                { assert function.result.mph_bivariate_reml.estimator_family == 'reml' },
+                { assert function.result.mph_bivariate_reml.trait_support == [quantitative: true, binary: false] },
+                { assert function.result.mph_bivariate_reml.prevalence == [population: 'not_consumed', sample: 'not_consumed'] },
+                { assert !function.result.mph_bivariate_reml.containsKey('supports_covariates') },
+                { assert !function.result.mph_bivariate_reml.requires_complete_covariates },
+                { assert function.result.mph_bivariate_reml.citation_keys == ['mph'] },
+                { assert function.result.mph_bivariate_reml_ldms.domain == 'pairwise' },
+                { assert function.result.mph_bivariate_reml_ldms.matrix_kind == function.result.mph_reml_ldms.matrix_kind },
+                { assert function.result.mph_bivariate_reml_ldms.input_backend == function.result.mph_reml_ldms.input_backend },
+                { assert function.result.mph_bivariate_reml_ldms.component_model == 'ld_maf_stratified' },
+                { assert function.result.mph_bivariate_reml_ldms.component_model == function.result.gcta_bivariate_reml_ldms.component_model },
+                { assert function.result.mph_bivariate_reml_ldms.matrix_kind != function.result.gcta_bivariate_reml_ldms.matrix_kind },
+                { assert !function.result.mph_bivariate_reml_ldms.containsKey('supports_covariates') },
+                { assert function.result.mph_bivariate_reml_ldms.citation_keys == ['mph', 'gcta_greml_ldms'] },
+                // LDAK-KVIK reads BED/BIM/FAM natively, so it declares the PLINK 1 direct backend while
+                // REGENIE keeps the format-polymorphic one.
+                { assert function.result.ldak_kvik.input_backend == 'direct_plink1_genotypes' },
+                { assert function.result.regenie.input_backend == 'direct_plink_genotypes' },
+            )
+        }
+    }
+
+    test("the capability contract fixes one closed vocabulary per declared field") {
+        function "getMethodCapabilityContract"
+        tag "method_capabilities"
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result.required_fields == [
+                    'domain',
+                    'estimator_family',
+                    'input_backend',
+                    'component_model',
+                    'trait_support',
+                    'prevalence',
+                    'requires_complete_covariates',
+                    'citation_keys',
+                ] },
+                { assert function.result.queryable_fields == [
+                    'domain',
+                    'option_family',
+                    'matrix_kind',
+                    'endpoint_domain',
+                    'reference_family',
+                    'estimator_family',
+                    'input_backend',
+                    'component_model',
+                    'trait_support',
+                    'supports_covariates',
+                    'prevalence',
+                    'requires_complete_covariates',
+                    'citation_keys',
+                ] },
+                { assert function.result.estimator_families == [
+                    'whole_genome_regression',
+                    'mixed_linear_model',
+                    'reml',
+                    'moment_he',
+                    'pcgc',
+                    'ld_score_regression',
+                    'summary_tagging_regression',
+                    'meta_analysis',
+                    'meta_regression',
+                ] },
+                { assert function.result.input_backends == [
+                    'dense_grm',
+                    'ldms_grm_family',
+                    'ldak_kinship',
+                    'mph_grm',
+                    'mph_grm_family',
+                    'sparse_grm',
+                    'direct_plink_genotypes',
+                    'direct_plink1_genotypes',
+                    'summary_statistics',
+                ] },
+                { assert function.result.component_models == [
+                    'none',
+                    'single',
+                    'ld_maf_stratified',
+                    'tagging_bundle',
+                ] },
+                { assert function.result.genotype_bundles == ['plink', 'plink1'] },
+                // Cross-pinned against the direct-genotype contract test below: every backend named here with
+                // the `direct_` prefix must be a key there, or `getMethodGenotypeBundle` has no bundle to
+                // return for it. Adding a direct backend must break exactly these two assertions together.
+                { assert function.result.input_backends.findAll { backend -> backend.startsWith('direct_') } == ['direct_plink_genotypes', 'direct_plink1_genotypes'] },
+                { assert function.result.prevalence_requirements == ['not_consumed', 'consumed', 'required'] },
+                { assert function.result.trait_support_fields == ['quantitative', 'binary'] },
+            )
+        }
+    }
+
+    test("every registered method declares every capability field in the contract vocabulary") {
+        function "getMethodCapabilities"
+        tag "method_capabilities"
+
+        then {
+            def requiredFields = [
+                'domain',
+                'estimator_family',
+                'input_backend',
+                'component_model',
+                'trait_support',
+                'prevalence',
+                'requires_complete_covariates',
+                'citation_keys',
+            ]
+            def estimatorFamilies = [
+                'whole_genome_regression',
+                'mixed_linear_model',
+                'reml',
+                'moment_he',
+                'pcgc',
+                'ld_score_regression',
+                'summary_tagging_regression',
+                    'meta_analysis',
+                    'meta_regression',
+            ]
+            def inputBackends = [
+                'dense_grm',
+                'ldms_grm_family',
+                'ldak_kinship',
+                'mph_grm',
+                'mph_grm_family',
+                'sparse_grm',
+                'direct_plink_genotypes',
+                'direct_plink1_genotypes',
+                'summary_statistics',
+            ]
+            def componentModels = [
+                'none',
+                'single',
+                'ld_maf_stratified',
+                'tagging_bundle',
+            ]
+            def prevalenceRequirements = ['not_consumed', 'consumed', 'required']
+            assertAll(
+                { assert function.success },
+                { assert function.result.every { _token, details -> requiredFields.every { field -> details.containsKey(field) } } },
+                // Exact set equality in both directions, not membership: no registered method may declare a
+                // value outside the vocabulary, AND no vocabulary value may be left without a member. The
+                // removal of the `plink2` entry would otherwise have left `generalised_linear_model` declared
+                // and dead. Both literals are pinned to the contract itself by the closed-vocabulary test
+                // above, so neither this list nor the contract can drift alone.
+                { assert function.result.collect { _token, details -> details.estimator_family }.unique().sort() == estimatorFamilies.toSorted() },
+                { assert function.result.collect { _token, details -> details.input_backend }.unique().sort() == inputBackends.toSorted() },
+                { assert function.result.collect { _token, details -> details.component_model }.unique().sort() == componentModels.toSorted() },
+                { assert function.result.every { _token, details -> details.requires_complete_covariates instanceof Boolean } },
+                { assert function.result.every { _token, details -> details.prevalence.keySet().toList() == ['population', 'sample'] } },
+                { assert function.result.every { _token, details -> details.prevalence.values().every { requirement -> requirement in prevalenceRequirements } } },
+                { assert function.result.every { _token, details -> details.trait_support.keySet().toList() == ['quantitative', 'binary'] } },
+                { assert function.result.every { _token, details -> details.trait_support.quantitative || details.trait_support.binary } },
+                { assert function.result.every { _token, details -> details.citation_keys instanceof List && details.citation_keys } },
+            )
+        }
+    }
+
+    test("the retired plink2 association selector leaves no registry entry") {
+        function "getMethodCapabilities"
+        tag "method_capabilities"
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert !function.result.containsKey('plink2') },
+            )
+        }
+    }
+
+    test("the association selector vocabulary is exactly the three wired routes") {
+        function "getAssociationMethodTokens"
+        tag "method_capabilities"
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == ['regenie', 'gcta_fastgwa', 'ldak_kvik'] },
+            )
+        }
+    }
+
+    test("the retired generalised_linear_model estimator family is gone from the contract vocabulary") {
+        function "getMethodCapabilityContract"
+        tag "method_capabilities"
+
+        then {
+            // A targeted regression guard for this removal specifically: the `plink2` entry was the family's
+            // only member. The general rule that no declared family may be memberless is enforced by the exact
+            // set equality in "every registered method declares every capability field in the contract
+            // vocabulary", against the vocabulary pinned in "the capability contract fixes one closed
+            // vocabulary per declared field".
+            assertAll(
+                { assert function.success },
+                { assert !function.result.estimator_families.contains('generalised_linear_model') },
+            )
+        }
+    }
+
+    test("the registry contains only fields with active consumers") {
+        function "getMethodCapabilities"
+        tag "method_capabilities"
+
+        then {
+            // Each field named here has a live reader. `component_model` is read by the LDMS plan-setting
+            // acceptance in `resolveGctaMethodOptions`, `resolvePairRequests` and `resolveRelationships`;
+            // and `requires_complete_covariates` by the phenotype-preparation
+            // completeness rule, reached through the spine's preparation meta.
+            def activeFields = [
+                'domain',
+                'option_family',
+                'matrix_kind',
+                'endpoint_domain',
+                'reference_family',
+                'estimator_family',
+                'input_backend',
+                'component_model',
+                'trait_support',
+                'supports_covariates',
+                'prevalence',
+                'requires_complete_covariates',
+                'citation_keys',
+            ] as Set
+            assertAll(
+                { assert function.success },
+                { assert function.result.every { _token, details -> activeFields.containsAll(details.keySet()) } },
+            )
+        }
+    }
+
+    test("the PLINK 1 compatibility route is derived from declared backends, not a repeated method list") {
+        function "getPlink1GenotypeMethodTokens"
+        tag "method_capabilities"
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result.sort() == [
+                    'gcta_bivariate_he_ldms',
+                    'gcta_bivariate_reml_ldms',
+                    'gcta_greml_ldms',
+                    'ldak_fast_he',
+                    'ldak_fast_pcgc',
+                    'ldak_he',
+                    'ldak_kvik',
+                    'ldak_pcgc',
+                    'ldak_reml',
+                    'mph_bivariate_reml',
+                    'mph_bivariate_reml_ldms',
+                    'mph_reml',
+                    'mph_reml_ldms',
+                ] },
+            )
+        }
+    }
+
+    test("every declared matrix kind agrees with the backend its consumers declare") {
+        function "getMethodCapabilities"
+        tag "method_capabilities"
+
+        then {
+            // A `matrix_kind` names a reusable intermediate, so it must exist in the closed contract and
+            // must not disagree with the backend the estimator declares. And a direct-genotype estimator
+            // must never carry one: a fabricated matrix kind would make `getRelatednessMatrixKinds` request
+            // a matrix nothing reads.
+            // A function test can call one function, so the contract is restated here rather than read. The
+            // adjacent "matrix-kind contract keeps the established request order" test pins the real map
+            // exactly, so the two cannot drift apart without one of them failing.
+            def contract = [
+                gcta_dense: 'dense_grm',
+                gcta_ldms: 'ldms_grm_family',
+                gcta_sparse: 'sparse_grm',
+                ldak_kinship: 'ldak_kinship',
+                mph_dense: 'mph_grm',
+                mph_ldms: 'mph_grm_family',
+            ]
+            assertAll(
+                { assert function.success },
+                { assert function.result.findAll { _token, details -> details.matrix_kind }.every { _token, details -> details.matrix_kind in contract.keySet() } },
+                { assert function.result.findAll { _token, details -> details.matrix_kind }.every { _token, details -> contract[details.matrix_kind] == details.input_backend } },
+                { assert function.result.findAll { _token, details -> details.input_backend.startsWith('direct_') }.every { _token, details -> !details.containsKey('matrix_kind') } },
+                // The stratified component model is carried by two matrix kinds, one per tool, because both
+                // families consume the same component plan. The biconditional is what keeps a third kind from
+                // being added without deciding whether it is stratified.
+                { assert function.result.every { _token, details -> (details.component_model == 'ld_maf_stratified') == (details.matrix_kind in ['gcta_ldms', 'mph_ldms']) } },
+            )
+        }
+    }
+
+    test("the matrix-kind contract keeps the established request order") {
+        function "getMatrixKindContract"
+        tag "method_capabilities"
+
+        then {
+            // Iteration order is the order in which an analysis's matrix kinds are requested, so it is part
+            // of the contract rather than incidental map layout.
+            assertAll(
+                { assert function.success },
+                { assert function.result == [
+                    gcta_dense: [input_backend: 'dense_grm', genotype_bundle: 'plink'],
+                    gcta_ldms: [input_backend: 'ldms_grm_family', genotype_bundle: 'plink1'],
+                    gcta_sparse: [input_backend: 'sparse_grm', genotype_bundle: 'plink'],
+                    ldak_kinship: [input_backend: 'ldak_kinship', genotype_bundle: 'plink1'],
+                    mph_dense: [input_backend: 'mph_grm', genotype_bundle: 'plink1'],
+                    mph_ldms: [input_backend: 'mph_grm_family', genotype_bundle: 'plink1'],
+                ] },
+                { assert function.result.keySet().toList() == ['gcta_dense', 'gcta_ldms', 'gcta_sparse', 'ldak_kinship', 'mph_dense', 'mph_ldms'] },
+            )
+        }
+    }
+
+    test("the direct-genotype backend contract covers every declared direct backend") {
+        function "getDirectGenotypeBackendContract"
+        tag "method_capabilities"
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == [
+                    direct_plink_genotypes: [genotype_bundle: 'plink'],
+                    direct_plink1_genotypes: [genotype_bundle: 'plink1'],
+                ] },
+            )
+        }
+    }
+
+    def genotypeBundles = [
+        [name: 'no genotype representation for a summary estimator', method: 'ldsc_h2', expected: null],
+        [name: 'the format-polymorphic bundle for REGENIE', method: 'regenie', expected: 'plink'],
+        [name: 'the format-polymorphic bundle for a dense-GRM estimator', method: 'gcta_greml', expected: 'plink'],
+        [name: 'the PLINK 1 bundle for LDAK-KVIK', method: 'ldak_kvik', expected: 'plink1'],
+        [name: 'the PLINK 1 bundle for LDAK REML', method: 'ldak_reml', expected: 'plink1'],
+        [name: 'the PLINK 1 bundle for LDAK fast Haseman-Elston', method: 'ldak_fast_he', expected: 'plink1'],
+        [name: 'the PLINK 1 bundle for MPH REML', method: 'mph_reml', expected: 'plink1'],
+        [name: 'the PLINK 1 bundle for MPH REML-LDMS', method: 'mph_reml_ldms', expected: 'plink1'],
+        [name: 'the PLINK 1 bundle for MPH bivariate REML', method: 'mph_bivariate_reml', expected: 'plink1'],
+        [name: 'the PLINK 1 bundle for MPH bivariate REML-LDMS', method: 'mph_bivariate_reml_ldms', expected: 'plink1'],
+    ]
+
+    genotypeBundles.each { scenario ->
+        test("genotype-bundle resolution yields ${scenario.name}") {
+            function "getMethodGenotypeBundle"
+            tag "method_capabilities"
+
+            when {
+                function {
+                    """
+                    input[0] = '${scenario.method}'
+                    """
+                }
+            }
+
+            then {
+                assertAll(
+                    { assert function.success },
+                    { assert function.result == scenario.expected },
+                )
+            }
+        }
+    }
+
+    test("only analysis-row estimators whose covariate reader ignores a missing cell require complete cells") {
+        function "getMethodCapabilities"
+        tag "method_capabilities"
+
+        then {
+            // The flag is a statement about a measured tool behaviour, not about a family. LDAK reads a
+            // missing `--covar` cell as a numeric value and turns a missing `--factors` cell into an extra
+            // level. That is verified per tool, so the expected set below is the pin and each new token that
+            // declares the flag adds exactly one line to it. What generalises is only the shape: a token
+            // can require complete cells only if it reads an analysis row's covariates at all, which is why
+            // the summary-scale estimators -- `ldak_sumher` and `ldak_sumcors` read summary statistics and no
+            // covariate file -- can never carry it.
+            assertAll(
+                { assert function.success },
+                { assert function.result.every { _token, details ->
+                    !details.requires_complete_covariates || details.domain in ['association', 'heritability']
+                } },
+                { assert function.result.findAll { _token, details -> details.requires_complete_covariates }.keySet().toList().sort() == [
+                    'ldak_fast_he',
+                    'ldak_fast_pcgc',
+                    'ldak_he',
+                    'ldak_kvik',
+                    'ldak_pcgc',
+                    'ldak_reml',
+                ] },
+            )
+        }
+    }
+
+    def capabilitySelections = [
+        [name: 'the LDAK association estimator', required: [domain: 'association', option_family: 'ldak'], expected: ['ldak_kvik']],
+        [name: 'the sparse-matrix association estimator', required: [domain: 'association', input_backend: 'sparse_grm'], expected: ['gcta_fastgwa']],
+        [name: 'the GCTA GREML estimators', required: [domain: 'heritability', option_family: 'gcta', estimator_family: 'reml'], expected: ['gcta_greml', 'gcta_greml_ldms']],
+        [name: 'the dense-GRM GCTA heritability estimator', required: [domain: 'heritability', option_family: 'gcta', input_backend: 'dense_grm'], expected: ['gcta_greml']],
+        [name: 'the LDMS GCTA heritability estimator', required: [domain: 'heritability', input_backend: 'ldms_grm_family'], expected: ['gcta_greml_ldms']],
+        [name: 'the LDAK kinship heritability estimators', required: [domain: 'heritability', input_backend: 'ldak_kinship'], expected: ['ldak_reml', 'ldak_he', 'ldak_pcgc']],
+        [name: 'the direct-genotype LDAK heritability estimators', required: [domain: 'heritability', option_family: 'ldak', input_backend: 'direct_plink1_genotypes'], expected: ['ldak_fast_he', 'ldak_fast_pcgc']],
+        [name: 'the LDMS component estimators', required: [component_model: 'ld_maf_stratified'], expected: ['gcta_greml_ldms', 'gcta_bivariate_reml_ldms', 'gcta_bivariate_he_ldms', 'mph_reml_ldms', 'mph_bivariate_reml_ldms']],
+        [name: 'the meta-analysis models', required: [domain: 'summary_set'], expected: ['fixed', 'random', 're2', 'mrmega']],
+        [name: 'the LDSC estimators', required: [option_family: 'ldsc'], expected: ['ldsc_h2', 'ldsc_rg']],
+        [name: 'the LDAK summary estimators', required: [option_family: 'ldak', input_backend: 'summary_statistics'], expected: ['ldak_sumher', 'ldak_sumcors']],
+        [name: 'the LDAK summary pair estimator', required: [domain: 'pairwise', reference_family: 'ldak'], expected: ['ldak_sumcors']],
+        [name: 'every direct-genotype heritability estimator, whatever its option family', required: [domain: 'heritability', input_backend: 'direct_plink1_genotypes'], expected: ['ldak_fast_he', 'ldak_fast_pcgc']],
+        [name: 'the REGENIE association estimator', required: [domain: 'association', option_family: 'regenie'], expected: ['regenie']],
+        [name: 'the MPH heritability estimators', required: [domain: 'heritability', option_family: 'mph'], expected: ['mph_reml', 'mph_reml_ldms']],
+        [name: 'both MPH estimators over the stratified matrix family', required: [option_family: 'mph', matrix_kind: 'mph_ldms'], expected: ['mph_reml_ldms', 'mph_bivariate_reml_ldms']],
+        [name: 'the MPH dense heritability estimator', required: [domain: 'heritability', input_backend: 'mph_grm'], expected: ['mph_reml']],
+        // The pair controller selects its own requests by this query rather than by a token literal, so the
+        // answer is pinned here.
+        [name: 'the MPH individual-level pair estimators', required: [domain: 'pairwise', endpoint_domain: 'analysis', option_family: 'mph'], expected: ['mph_bivariate_reml', 'mph_bivariate_reml_ldms']],
+        [name: 'the MPH dense pair estimator', required: [domain: 'pairwise', input_backend: 'mph_grm'], expected: ['mph_bivariate_reml']],
+        [name: 'every individual-level pair estimator, whatever its option family', required: [domain: 'pairwise', endpoint_domain: 'analysis'], expected: ['gcta_bivariate_reml', 'gcta_bivariate_reml_ldms', 'gcta_bivariate_he', 'gcta_bivariate_he_ldms', 'mph_bivariate_reml', 'mph_bivariate_reml_ldms']],
+    ]
+
+    capabilitySelections.each { scenario ->
+        test("capability selection resolves ${scenario.name}") {
+            function "getMethodTokensWithCapabilities"
+            tag "method_capabilities"
+
+            when {
+                function {
+                    """
+                    input[0] = ${scenario.required.inspect()}
+                    """
+                }
+            }
+
+            then {
+                assertAll(
+                    { assert function.success },
+                    { assert function.result == scenario.expected },
+                )
+            }
+        }
+    }
+
+    test("capability selection refuses an unregistered field rather than silently matching nothing") {
+        function "getMethodTokensWithCapabilities"
+        tag "method_capabilities"
+
+        when {
+            function {
+                """
+                input[0] = [mystery_capability: true]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.failed },
+                { assert function.stdout.join('\n').contains("unregistered field 'mystery_capability'") },
+            )
+        }
+    }
+}

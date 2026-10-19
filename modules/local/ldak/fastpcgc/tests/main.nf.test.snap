@@ -1,0 +1,387 @@
+{
+    "homo_sapiens popgen - binary trait with quantitative and categorical covariates": {
+        "content": [
+            {
+                "cats": [
+                    [
+                        {
+                            "id": "fast_pcgc_covariates"
+                        },
+                        "fast_pcgc_covariates.cats:md5,c9ce6a8bc9a2951f4989bcfc4b27f7ce"
+                    ]
+                ],
+                "coeff": [
+                    [
+                        {
+                            "id": "fast_pcgc_covariates"
+                        },
+                        "fast_pcgc_covariates.coeff:md5,cfbb775ca5036c73eeb69d8e1cae6c51"
+                    ]
+                ],
+                "combined": [
+                    [
+                        {
+                            "id": "fast_pcgc_covariates"
+                        },
+                        "fast_pcgc_covariates.combined:md5,7258d4025535db5c703c399ec0482089"
+                    ]
+                ],
+                "cross": [
+                    [
+                        {
+                            "id": "fast_pcgc_covariates"
+                        },
+                        "fast_pcgc_covariates.cross:md5,c715a57b26f59a542ed9763b76e281b6"
+                    ]
+                ],
+                "enrich": [
+                    [
+                        {
+                            "id": "fast_pcgc_covariates"
+                        },
+                        "fast_pcgc_covariates.enrich:md5,df56367ff3328fc00acec0e70cb65daa"
+                    ]
+                ],
+                "fastpcgc_marginal": [
+                    [
+                        {
+                            "id": "fast_pcgc_covariates"
+                        },
+                        "fast_pcgc_covariates.fastpcgc.marginal:md5,e3d7899612c0ee3ed63beaa8485a77e4"
+                    ]
+                ],
+                "fastpcgc_results": [
+                    [
+                        {
+                            "id": "fast_pcgc_covariates"
+                        },
+                        "fast_pcgc_covariates.fastpcgc:md5,a1f682094cb6becc55a938d8e532b022"
+                    ]
+                ],
+                "ind_hers": [
+                    [
+                        {
+                            "id": "fast_pcgc_covariates"
+                        },
+                        "fast_pcgc_covariates.ind.hers:md5,b62665c923e137dd4ab2183f648773f4"
+                    ]
+                ],
+                "jackests": [
+                    [
+                        {
+                            "id": "fast_pcgc_covariates"
+                        },
+                        "fast_pcgc_covariates.jackests:md5,3d73c5f99317e99a1a5af4f167a6a200"
+                    ]
+                ],
+                "labels": [
+                    [
+                        {
+                            "id": "fast_pcgc_covariates"
+                        },
+                        "fast_pcgc_covariates.labels:md5,4718aa1c231787fa66d76835ac662b16"
+                    ]
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "fast_pcgc_covariates"
+                        },
+                        "fast_pcgc_covariates.log"
+                    ]
+                ],
+                "progress": [
+                    [
+                        {
+                            "id": "fast_pcgc_covariates"
+                        },
+                        "fast_pcgc_covariates.progress:md5,25db3d3bd54d8e5b7f43f49668822604"
+                    ]
+                ],
+                "repetitions": [
+                    [
+                        {
+                            "id": "fast_pcgc_covariates"
+                        },
+                        "fast_pcgc_covariates.repetitions:md5,1c29f4208eda57d954ed8676e4df91f9"
+                    ]
+                ],
+                "share": [
+                    [
+                        {
+                            "id": "fast_pcgc_covariates"
+                        },
+                        "fast_pcgc_covariates.share:md5,01b0b07a8fc56e5ad02a43b20beafe6d"
+                    ]
+                ],
+                "versions_ldak6": [
+                    [
+                        "LDAK_FASTPCGC",
+                        "ldak6",
+                        "6"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-02T15:09:26.853734704",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "homo_sapiens popgen - full-coverage weights with reduced repetitions and jackknife blocks": {
+        "content": [
+            {
+                "cats": [
+                    [
+                        {
+                            "id": "fast_pcgc_weights"
+                        },
+                        "fast_pcgc_weights.cats:md5,7ea168441c4d2d1d0dd65a2ec1809c81"
+                    ]
+                ],
+                "coeff": [
+                    [
+                        {
+                            "id": "fast_pcgc_weights"
+                        },
+                        "fast_pcgc_weights.coeff:md5,477805e1392c66fba314949d4f152acb"
+                    ]
+                ],
+                "combined": [
+                    
+                ],
+                "cross": [
+                    [
+                        {
+                            "id": "fast_pcgc_weights"
+                        },
+                        "fast_pcgc_weights.cross:md5,306206cc7399541b7372e26b147eb4ae"
+                    ]
+                ],
+                "enrich": [
+                    [
+                        {
+                            "id": "fast_pcgc_weights"
+                        },
+                        "fast_pcgc_weights.enrich:md5,df56367ff3328fc00acec0e70cb65daa"
+                    ]
+                ],
+                "fastpcgc_marginal": [
+                    [
+                        {
+                            "id": "fast_pcgc_weights"
+                        },
+                        "fast_pcgc_weights.fastpcgc.marginal:md5,3d75ec5eb1dfbb96fada396ab5e308ee"
+                    ]
+                ],
+                "fastpcgc_results": [
+                    [
+                        {
+                            "id": "fast_pcgc_weights"
+                        },
+                        "fast_pcgc_weights.fastpcgc:md5,3d75ec5eb1dfbb96fada396ab5e308ee"
+                    ]
+                ],
+                "ind_hers": [
+                    [
+                        {
+                            "id": "fast_pcgc_weights"
+                        },
+                        "fast_pcgc_weights.ind.hers:md5,32aec3c070bd0e1ffc58355377706f20"
+                    ]
+                ],
+                "jackests": [
+                    [
+                        {
+                            "id": "fast_pcgc_weights"
+                        },
+                        "fast_pcgc_weights.jackests:md5,b02a2827d1eeecf7d79bd478e38f6ebf"
+                    ]
+                ],
+                "labels": [
+                    [
+                        {
+                            "id": "fast_pcgc_weights"
+                        },
+                        "fast_pcgc_weights.labels:md5,4718aa1c231787fa66d76835ac662b16"
+                    ]
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "fast_pcgc_weights"
+                        },
+                        "fast_pcgc_weights.log"
+                    ]
+                ],
+                "progress": [
+                    [
+                        {
+                            "id": "fast_pcgc_weights"
+                        },
+                        "fast_pcgc_weights.progress:md5,a4f6ec814de9d27bdf039959e022ffd3"
+                    ]
+                ],
+                "repetitions": [
+                    [
+                        {
+                            "id": "fast_pcgc_weights"
+                        },
+                        "fast_pcgc_weights.repetitions:md5,25039d7965e2864f7d3cf8e475b0fe46"
+                    ]
+                ],
+                "share": [
+                    [
+                        {
+                            "id": "fast_pcgc_weights"
+                        },
+                        "fast_pcgc_weights.share:md5,01b0b07a8fc56e5ad02a43b20beafe6d"
+                    ]
+                ],
+                "versions_ldak6": [
+                    [
+                        "LDAK_FASTPCGC",
+                        "ldak6",
+                        "6"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-02T15:09:43.791194759",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "homo_sapiens popgen - binary trait with quantitative and categorical covariates - stub": {
+        "content": [
+            {
+                "cats": [
+                    [
+                        {
+                            "id": "fast_pcgc_stub"
+                        },
+                        "fast_pcgc_stub.cats:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "coeff": [
+                    [
+                        {
+                            "id": "fast_pcgc_stub"
+                        },
+                        "fast_pcgc_stub.coeff:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "combined": [
+                    [
+                        {
+                            "id": "fast_pcgc_stub"
+                        },
+                        "fast_pcgc_stub.combined:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "cross": [
+                    [
+                        {
+                            "id": "fast_pcgc_stub"
+                        },
+                        "fast_pcgc_stub.cross:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "enrich": [
+                    [
+                        {
+                            "id": "fast_pcgc_stub"
+                        },
+                        "fast_pcgc_stub.enrich:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "fastpcgc_marginal": [
+                    [
+                        {
+                            "id": "fast_pcgc_stub"
+                        },
+                        "fast_pcgc_stub.fastpcgc.marginal:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "fastpcgc_results": [
+                    [
+                        {
+                            "id": "fast_pcgc_stub"
+                        },
+                        "fast_pcgc_stub.fastpcgc:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "ind_hers": [
+                    [
+                        {
+                            "id": "fast_pcgc_stub"
+                        },
+                        "fast_pcgc_stub.ind.hers:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "jackests": [
+                    [
+                        {
+                            "id": "fast_pcgc_stub"
+                        },
+                        "fast_pcgc_stub.jackests:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "labels": [
+                    [
+                        {
+                            "id": "fast_pcgc_stub"
+                        },
+                        "fast_pcgc_stub.labels:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "fast_pcgc_stub"
+                        },
+                        "fast_pcgc_stub.log"
+                    ]
+                ],
+                "progress": [
+                    [
+                        {
+                            "id": "fast_pcgc_stub"
+                        },
+                        "fast_pcgc_stub.progress:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "repetitions": [
+                    [
+                        {
+                            "id": "fast_pcgc_stub"
+                        },
+                        "fast_pcgc_stub.repetitions:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "share": [
+                    [
+                        {
+                            "id": "fast_pcgc_stub"
+                        },
+                        "fast_pcgc_stub.share:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "versions_ldak6": [
+                    [
+                        "LDAK_FASTPCGC",
+                        "ldak6",
+                        "6"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-02T15:10:18.331196423",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

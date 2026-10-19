@@ -1,0 +1,69 @@
+name: prepare_ldak_kvik_harmonisation
+description: Join LDAK-KVIK's native effect-allele frequency and effective sample size onto its association table for GWASLab harmonisation
+keywords:
+  - ldak
+  - kvik
+  - gwas
+  - harmonisation
+  - summary statistics
+tools:
+  - python:
+      description: Python programming language runtime; the adapter uses the standard library only
+      homepage: https://www.python.org/
+      documentation: https://docs.python.org/3/
+input:
+  - - meta:
+        type: map
+        description: |
+          Groovy Map describing the analysis unit.
+          Expected keys:
+            - id (string): Analysis identifier.
+    - association_files:
+        type: file
+        description: |
+          One or more native LDAK-KVIK Step 2 association tables. Each table is paired with the summary table
+          of the same basename, which is how LDAK names the two products of one Step 2 run.
+        pattern: "*.assoc"
+        ontologies:
+          - edam: "http://edamontology.org/format_3475" # TSV
+    - summary_files:
+        type: file
+        description: |
+          The native LDAK-KVIK Step 2 summary tables carrying `A1Freq` and `n`. They are staged for the join
+          and matched to `association_files` by shared basename rather than by position.
+        pattern: "*.summaries"
+        ontologies:
+          - edam: "http://edamontology.org/format_3475" # TSV
+output:
+  harmonisation_input:
+    - - meta:
+          type: map
+          description: Metadata map propagated from input
+      - "*.harmonisation.tsv":
+          type: file
+          description: |
+            The association table with `EAF` and `N` appended from the summary table, and the two native
+            columns the GWASLab `ldak_kvik` mapping does not bind (`MAF`, `Wald_Stat`) left out. An
+            association key absent from the summary table carries empty `EAF` and `N`.
+          pattern: "*.harmonisation.tsv"
+          ontologies:
+            - edam: "http://edamontology.org/format_3475" # TSV
+  versions:
+    - versions.yml:
+        type: file
+        description: File containing software versions
+        pattern: "versions.yml"
+        ontologies:
+          - edam: "http://edamontology.org/format_3750"
+topics:
+  versions:
+    - versions.yml:
+        type: file
+        description: File containing software versions
+        pattern: "versions.yml"
+        ontologies:
+          - edam: "http://edamontology.org/format_3750"
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"

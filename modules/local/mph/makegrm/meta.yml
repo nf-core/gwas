@@ -1,0 +1,130 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/modules/meta-schema.json
+name: "mph_makegrm"
+description: Build one native MPH genetic relationship matrix from PLINK 1 genotypes and a named SNP weight column
+keywords:
+  - mph
+  - minque for partitioning heritability
+  - genome relationship matrix
+  - grm
+  - relatedness
+  - heritability
+tools:
+  - "mph":
+      description: |
+        MPH fits linear mixed models to partition genetic variance by MINQUE with stochastic trace estimation.
+        `--make_grm` builds one relationship matrix over the variants whose weight in the named
+        `--snp_info_file` column is non-zero.
+
+        The matrix layout is MPH's own and is not interchangeable with GCTA's in either direction. MPH writes
+        `.grm.bin` plus `.grm.iid` with no `.grm.N.bin`; the binary starts with an `int32` sample count and a
+        `float32` sum of the SNP weights and then holds the raw, unnormalised cross-product as a row-major
+        upper triangle, where GCTA writes an already-normalised row-major lower triangle beside `.grm.N.bin`
+        and `.grm.id`.
+
+        `.grm.iid` contains one identifier per line in the matrix's row order.
+
+        MPH itself is GPL-3.0-only. The runtime image is `linux/amd64` only: the binary is statically linked
+        against Intel oneMKL, which is redistributed under the Intel Simplified Software License, with
+        `libiomp5` under the Intel EULA for Developer Tools, so the image as a whole is labelled
+        `GPL-3.0-only AND LicenseRef-IntelSimplifiedSoftwareOct2022 AND LicenseRef-IntelEULADeveloperToolsOct2021`.
+        There is no Conda package and no fallback for another architecture.
+      homepage: "https://jiang18.github.io/mph/"
+      documentation: "https://jiang18.github.io/mph/"
+      tool_dev_url: "https://github.com/jiang18/mph"
+      doi: "10.1093/bioinformatics/btae298"
+      licence: ["GPL-3.0-only"]
+      identifier: ""
+input:
+  - - meta:
+        type: map
+        description: |
+          Groovy Map containing sample information, e.g. `[ id:'sample1' ]`
+    - bed:
+        type: file
+        description: PLINK 1 genotype file. The three bundle members must share one basename, which MPH reads as its `--bfile` prefix.
+        pattern: "*.bed"
+        ontologies:
+          - edam: "http://edamontology.org/format_3003"
+    - bim:
+        type: file
+        description: PLINK 1 variant file sharing the bundle basename.
+        pattern: "*.bim"
+        ontologies:
+          - edam: "http://edamontology.org/format_3475"
+    - fam:
+        type: file
+        description: PLINK 1 sample file sharing the bundle basename. Its IID column, in file order, becomes the emitted `.grm.iid`.
+        pattern: "*.fam"
+        ontologies:
+          - edam: "http://edamontology.org/format_3475"
+  - - meta2:
+        type: map
+        description: |
+          Groovy Map containing the SNP-information file's information, e.g. `[ id:'plan1' ]`
+    - snp_info:
+        type: file
+        description: |
+          Comma-separated SNP-information file whose first column is the variant name and whose remaining
+          columns are named weight columns. A variant weighted 0 is excluded exactly as an omitted variant is.
+        pattern: "*.csv"
+        ontologies:
+          - edam: "http://edamontology.org/format_3752"
+    - weight_name:
+        type: string
+        description: |
+          The weight column to build this matrix from. Mandatory: MPH exits 1 naming the column when it is not
+          in the file's header.
+output:
+  grm_files:
+    - - meta:
+          type: map
+          description: |
+            Groovy Map containing sample information, e.g. `[ id:'sample1' ]`
+      - "${prefix}.grm.{bin,iid}":
+          type: file
+          description: |
+            The complete MPH relationship matrix. The two members are never consumed apart, so they travel as
+            one collected path. Byte size is `8 + 4 * n * (n + 1) / 2`.
+          pattern: "*.grm.{bin,iid}"
+          ontologies:
+            - edam: "http://edamontology.org/format_2330"
+  log:
+    - - meta:
+          type: map
+          description: |
+            Groovy Map containing sample information, e.g. `[ id:'sample1' ]`
+      - "${prefix}.log":
+          type: file
+          description: |
+            Tee'd MPH standard output: the echoed option block, the variant and sample counts found and
+            retained, the post-quality-control variant count actually used, and any `Error:` line, which MPH
+            prints at exit 0.
+          pattern: "*.log"
+          ontologies: []
+  versions_mph:
+    - - "${task.process}":
+          type: string
+          description: The process the version was collected from
+      - mph:
+          type: string
+          description: The tool name
+      - "(mph 2>&1 || true) | sed -n 's/^[*] Version \\([0-9][0-9.]*\\).*/\\1/p'":
+          type: eval
+          description: |
+            The command used to retrieve the MPH version. MPH has neither `--version` nor `--help`: it prints
+            its banner and exits 1, which is why the invocation tolerates a non-zero status.
+topics:
+  versions:
+    - - "${task.process}":
+          type: string
+          description: The process the version was collected from
+      - mph:
+          type: string
+          description: The tool name
+      - "(mph 2>&1 || true) | sed -n 's/^[*] Version \\([0-9][0-9.]*\\).*/\\1/p'":
+          type: eval
+          description: The command used to retrieve the MPH version from its banner, which it prints at exit 1.
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"

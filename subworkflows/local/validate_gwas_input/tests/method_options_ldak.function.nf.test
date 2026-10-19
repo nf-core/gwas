@@ -1,0 +1,139 @@
+nextflow_function {
+
+    name "Test linked GWAS input contract functions"
+    script "../method_options.nf"
+    tag "function"
+    tag "input"
+
+    // The LDAK option rules, exercised through `validateMethodOptions`, which is the layer that renders the
+    // "Method-options document '<path>', analysis_id '<id>', option '<family>.<option>': <reason>" attribution
+    // the pipeline cases used to pin. The selecting row is chosen per rule: a value rule needs a row that
+    // reaches the value gate, and a relevance rule needs a row that does not select the consumer.
+    def invalidLdakOptions = [
+        [
+            name: 'an unsupported predictor-scaling model',
+            association: '',
+            heritability: 'ldak_reml',
+            options: [ldak: [model: 'animal']],
+            expected: "option 'ldak.model': expected 'human_default' or 'custom'",
+        ],
+        [
+            name: 'a custom power under the human model',
+            association: '',
+            heritability: 'ldak_reml',
+            options: [ldak: [power: -0.5]],
+            expected: "option 'ldak.power': model 'human_default' fixes power at -0.25; set model to 'custom' to supply another power",
+        ],
+        [
+            name: 'an unsupported weights policy',
+            association: '',
+            heritability: 'ldak_reml',
+            options: [ldak: [weights_policy: 'automatic']],
+            expected: "option 'ldak.weights_policy': expected 'equal' or 'provided'",
+        ],
+        [
+            // `equal` and `default` take the same path: the rule turns on the absence of a consumer, not on the
+            // value, so one scenario covers the pair the pipeline used to spend two cases on.
+            name: 'a weights policy on a KVIK-only row that consumes none',
+            association: 'ldak_kvik',
+            heritability: '',
+            options: [ldak: [weights_policy: 'equal']],
+            expected: "option 'ldak.weights_policy': option is consumed by LDAK kinship and direct-genotype heritability methods only, which this analysis does not select",
+        ],
+        [
+            name: "the provided weights policy with no resource",
+            association: '',
+            heritability: 'ldak_reml',
+            options: [ldak: [weights_policy: 'provided']],
+            expected: "option 'ldak.weights': weights_policy is 'provided' but no resource is supplied",
+        ],
+        [
+            // The resource is named but never opened: the policy gate refuses it before the path is resolved,
+            // which is why a path with nothing behind it still exercises the rule under test.
+            name: 'a weights resource without the provided weights policy',
+            association: '',
+            heritability: 'ldak_fast_he',
+            options: [ldak: [weights_policy: 'equal', weights: '/definitely/missing/weights.txt']],
+            expected: "option 'ldak.weights': resource is only accepted when weights_policy is 'provided', got 'equal'",
+        ],
+        [
+            name: 'a weights resource on a KVIK-only row that consumes none',
+            association: 'ldak_kvik',
+            heritability: '',
+            options: [ldak: [weights_policy: 'provided', weights: 'RESOURCE']],
+            expected: "option 'ldak.weights': resource is consumed by LDAK kinship and direct-genotype heritability methods only, which this analysis does not select",
+        ],
+        [
+            name: 'a predictor resource under the all-predictors policy',
+            association: 'ldak_kvik',
+            heritability: '',
+            options: [ldak: [kvik_step1_subset: 'all', predictor_extract: '/definitely/missing/predictors.in']],
+            expected: "option 'ldak.predictor_extract': resource is only accepted when kvik_step1_subset is 'provided', got 'all'",
+        ],
+        [
+            name: 'an unsupported predictor policy',
+            association: 'ldak_kvik',
+            heritability: '',
+            options: [ldak: [kvik_step1_subset: 'random']],
+            expected: "option 'ldak.kvik_step1_subset': expected 'all', 'thin_common' or 'provided'",
+        ],
+        [
+            name: 'operational tuning in the scientific document',
+            association: 'ldak_kvik',
+            heritability: '',
+            options: [ldak: [threads: 2]],
+            expected: "option 'ldak.threads': operational tuning must be supplied through run/profile configuration",
+        ],
+        [
+            // The function twin of the pipeline sentinel for this family, which additionally proves the refusal
+            // precedes LDAK_THINCOMMON, LDAK_KVIKSTEP1 and LDAK_CALCKINS.
+            name: 'the provided predictor policy with no resource',
+            association: 'ldak_kvik',
+            heritability: '',
+            options: [ldak: [kvik_step1_subset: 'provided']],
+            expected: "option 'ldak.predictor_extract': kvik_step1_subset is 'provided' but no resource is supplied",
+        ],
+        [
+            name: 'a declared predictor resource that does not exist',
+            association: 'ldak_kvik',
+            heritability: '',
+            options: [ldak: [kvik_step1_subset: 'provided', predictor_extract: '/definitely/missing/predictors.in']],
+            expected: "option 'ldak.predictor_extract': resource path '/definitely/missing/predictors.in' does not exist",
+        ],
+    ]
+
+    invalidLdakOptions.each { scenario ->
+        test("the LDAK family rejects ${scenario.name}") {
+            function "validateMethodOptions"
+
+            when {
+                function {
+                    """
+                    input[0] = file('${RELATIONAL.methodOptions(
+                        outputDir,
+                        "ldak_options_${scenario.name.replaceAll(/\W+/, '_')}",
+                        [example: scenario.options.collectEntries { family, options ->
+                            [(family): options.collectEntries { option, value ->
+                                [(option): value == 'RESOURCE'
+                                    ? RELATIONAL.resource(outputDir, "ldak_options_${scenario.name.replaceAll(/\W+/, '_')}/weights.txt", 'rs1 1\n')
+                                    : value]
+                            }]
+                        }],
+                    )}', checkIfExists: true)
+                    input[1] = [[[id: 'example', association_methods: '${scenario.association}', heritability_methods: '${scenario.heritability}', trait_type: 'quantitative']]]
+                    """
+                }
+            }
+
+            then {
+                def report = function.stdout.join('\n')
+                assertAll(
+                    { assert function.failed },
+                    { assert report.contains("analysis_id 'example'") },
+                    { assert report.contains(scenario.expected) },
+                )
+            }
+        }
+    }
+
+}

@@ -1,0 +1,37 @@
+nextflow_function {
+
+    name "Test GCTA GRM part ordering"
+    script "../main.nf"
+    tag "function"
+    tag "gcta"
+    tag "grm"
+
+    test("restore numeric part order after shuffled task completion with twelve parts") {
+        function "orderGrmPartRecords"
+
+        when {
+            function {
+                """
+                input[0] = [10, 2, 12, 1, 9, 4, 11, 7, 3, 8, 6, 5]
+                input[1] = input[0].collect { part ->
+                    [
+                        file("part_\${part}.grm.id"),
+                        file("part_\${part}.grm.N.bin"),
+                        file("part_\${part}.grm.bin"),
+                    ]
+                }
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result*.part == (1..12) },
+                { assert function.result*.bin.collect { value -> value.tokenize('/').last() } == (1..12).collect { part -> "part_${part}.grm.bin" } },
+                { assert function.result*.n_bin.collect { value -> value.tokenize('/').last() } == (1..12).collect { part -> "part_${part}.grm.N.bin" } },
+                { assert function.result*.id.collect { value -> value.tokenize('/').last() } == (1..12).collect { part -> "part_${part}.grm.id" } },
+            )
+        }
+    }
+}

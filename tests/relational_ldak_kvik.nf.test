@@ -1,0 +1,453 @@
+nextflow_pipeline {
+
+    name "Test relational LDAK-KVIK method configuration"
+    script "../main.nf"
+    tag "pipeline"
+    tag "relational"
+    tag "association"
+    tag "ldak"
+
+    def commands = { output_dir ->
+        def scripts = []
+        new File(new File(output_dir.toString()).parentFile, 'work').eachFileRecurse { entry ->
+            if (entry.isFile() && entry.name == '.command.sh') {
+                scripts << entry.text
+            }
+        }
+        return scripts
+    }
+
+
+    test("linked quantitative and binary analyses use KVIK defaults and retain output attribution") {
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, 'ldak_kvik_defaults', { rows ->
+                    def bundle = RELATIONAL.twoChromosomePlink1(projectDir, outputDir, 'ldak_kvik_defaults')
+                    rows[0].cohort_id = 'example_bfile'
+                    ['pgen', 'psam', 'pvar'].each { field -> rows[0][field] = '' }
+                    rows[0].bed = bundle.bed
+                    rows[0].bim = bundle.bim
+                    rows[0].fam = bundle.fam
+                })
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, 'ldak_kvik_defaults', { rows ->
+                    rows[0] = RELATIONAL.analysis(projectDir, 'example_bfile_qt')
+                    def binary = RELATIONAL.analysis(projectDir, 'example_pgen_bt')
+                    binary.cohort_id = rows[0].cohort_id
+                    rows << binary
+                    rows.each { row ->
+                        row.association_methods = 'ldak_kvik'
+                        row.heritability_methods = ''
+                    }
+                })
+            }
+        }
+
+        then {
+            def nativeRoot = new File("${params.outdir}/association/ldak_kvik")
+            def harmonisedRoot = new File("${params.outdir}/summary_statistics")
+            def stableNameAssociation = getAllFilesFromDir(
+                nativeRoot.toString(),
+                relative: true,
+                includeDir: true,
+            ).findAll { path -> path.toString() }
+            def stablePathAssociation = getAllFilesFromDir(
+                nativeRoot.toString(),
+                ignoreFile: 'tests/.nftignore',
+            )
+            def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'LDAK_KVIKSTEP1') == 2 },
+                { assert TRACE.count(workflow, 'LDAK_KVIKSTEP2') == 2 },
+                { assert TRACE.count(workflow, 'GWASLAB_HARMONIZE') == 2 },
+                { assert new File(harmonisedRoot, 'example_bfile_qt--ldak_kvik/example_bfile_qt--ldak_kvik.gwaslab.tsv.gz').exists() },
+                { assert new File(harmonisedRoot, 'example_pgen_bt--ldak_kvik/example_pgen_bt--ldak_kvik.gwaslab.tsv.gz').exists() },
+                { assert snapshot(stableNameAssociation, stablePathAssociation).match('association') },
+                { assert snapshot(removeNextflowVersion(versions.toString())).match('versions') },
+            )
+        }
+    }
+
+    test("thin-common reuse is genotype-view scoped and independent of phenotype and covariates") {
+        tag "ldak_kvik_reuse"
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, 'ldak_kvik_thin_reuse', { rows ->
+                    def firstBundle = RELATIONAL.twoChromosomePlink1(projectDir, outputDir, 'ldak_kvik_thin_reuse_first')
+                    rows[0] = RELATIONAL.cohort('example_bfile')
+                    rows[0].cohort_id = 'view_a'
+                    rows[0].bed = firstBundle.bed
+                    rows[0].bim = firstBundle.bim
+                    rows[0].fam = firstBundle.fam
+
+                    def secondBundle = RELATIONAL.twoChromosomePlink1(projectDir, outputDir, 'ldak_kvik_thin_reuse_second')
+                    def secondBim = new File(secondBundle.bim)
+                    def secondLines = secondBim.readLines()
+                    def changedFields = secondLines.first().split('\t', -1)
+                    changedFields[3] = (changedFields[3].toInteger() + 1).toString()
+                    secondBim.text = ([changedFields.join('\t')] + secondLines.tail()).join('\n') + '\n'
+                    def second = RELATIONAL.cohort('example_bfile')
+                    second.cohort_id = 'view_b'
+                    second.bed = secondBundle.bed
+                    second.bim = secondBundle.bim
+                    second.fam = secondBundle.fam
+                    rows << second
+                })
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, 'ldak_kvik_thin_reuse', { rows ->
+                    rows[0] = RELATIONAL.analysis(projectDir, 'example_bfile_qt')
+                    rows[0].cohort_id = 'view_a'
+
+                    def duplicate = new LinkedHashMap(rows[0])
+                    duplicate.analysis_id = 'qt_duplicate'
+                    rows << duplicate
+
+                    def binary = RELATIONAL.analysis(projectDir, 'example_pgen_bt')
+                    binary.cohort_id = 'view_a'
+                    rows << binary
+
+                    def changedCovariates = new LinkedHashMap(rows[0])
+                    changedCovariates.analysis_id = 'qt_changed_covariates'
+                    def qcovarSource = new File("${FIXTURES.base(projectDir)}results/fixtures/pheno_cov/example.qcovar")
+                    changedCovariates.quant_covariates = RELATIONAL.resource(
+                        outputDir,
+                        'ldak-kvik-thin-reuse-changed.qcovar',
+                        qcovarSource.text.replaceFirst('\t30\t', '\t31\t'),
+                    )
+                    rows << changedCovariates
+
+                    def secondView = new LinkedHashMap(rows[0])
+                    secondView.analysis_id = 'qt_second_view'
+                    secondView.cohort_id = 'view_b'
+                    rows << secondView
+
+                    rows.each { row ->
+                        row.association_methods = 'ldak_kvik'
+                        row.heritability_methods = ''
+                    }
+                })
+                method_options = RELATIONAL.methodOptions(outputDir, 'ldak_kvik_thin_reuse', [
+                    example_bfile_qt: [ldak: [kvik_step1_subset: 'thin_common']],
+                    qt_duplicate: [ldak: [kvik_step1_subset: 'thin_common']],
+                    example_pgen_bt: [ldak: [kvik_step1_subset: 'thin_common']],
+                    qt_changed_covariates: [ldak: [kvik_step1_subset: 'thin_common']],
+                    qt_second_view: [ldak: [kvik_step1_subset: 'thin_common']],
+                ])
+            }
+        }
+
+        then {
+            def nativeRoot = new File("${params.outdir}/association/ldak_kvik")
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'LDAK_THINCOMMON') == 2 },
+                { assert TRACE.count(workflow, 'LDAK_KVIKSTEP1') == 5 },
+                { assert TRACE.count(workflow, 'LDAK_KVIKSTEP2') == 5 },
+                { assert TRACE.count(workflow, 'GWASLAB_HARMONIZE') == 5 },
+                { assert nativeRoot.list().toList().sort() == ['example_bfile_qt', 'example_pgen_bt', 'qt_changed_covariates', 'qt_duplicate', 'qt_second_view'] },
+            )
+        }
+    }
+
+    test("thin-common cache identity ignores phenotype-only changes and follows genotype-view changes") {
+        tag "ldak_kvik_reuse"
+        tag "resume"
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, 'ldak_kvik_thin_resume', { rows ->
+                    def bundle = RELATIONAL.twoChromosomePlink1(projectDir, outputDir, 'ldak_kvik_thin_resume_base')
+                    rows[0] = RELATIONAL.cohort('example_bfile')
+                    rows[0].cohort_id = 'resume_view'
+                    rows[0].bed = bundle.bed
+                    rows[0].bim = bundle.bim
+                    rows[0].fam = bundle.fam
+                })
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, 'ldak_kvik_thin_resume', { rows ->
+                    rows[0] = RELATIONAL.analysis(projectDir, 'example_bfile_qt')
+                    rows[0].analysis_id = 'thin_resume'
+                    rows[0].cohort_id = 'resume_view'
+                    rows[0].association_methods = 'ldak_kvik'
+                    rows[0].heritability_methods = ''
+                })
+                method_options = RELATIONAL.methodOptions(outputDir, 'ldak_kvik_thin_resume', [
+                    thin_resume: [ldak: [kvik_step1_subset: 'thin_common']],
+                ])
+            }
+        }
+
+        then {
+            def unchangedTrace = RESUME.rerun(outputDir, [:])
+            def changedPhenotype = RELATIONAL.resource(
+                outputDir,
+                'ldak-kvik-thin-resume-changed.pheno',
+                new File("${FIXTURES.base(projectDir)}results/fixtures/pheno_cov/example.pheno").text.replaceFirst('-1.128174', '-1.028174'),
+            )
+            def phenotypeManifest = RELATIONAL.analyses(projectDir, outputDir, 'ldak_kvik_thin_resume_phenotype', { rows ->
+                rows[0] = RELATIONAL.analysis(projectDir, 'example_bfile_qt')
+                rows[0].analysis_id = 'thin_resume'
+                rows[0].cohort_id = 'resume_view'
+                rows[0].phenotype = changedPhenotype
+                rows[0].association_methods = 'ldak_kvik'
+                rows[0].heritability_methods = ''
+            })
+            def phenotypeTrace = RESUME.rerun(outputDir, [analysis_manifest: phenotypeManifest])
+
+            def changedBundle = RELATIONAL.twoChromosomePlink1(projectDir, outputDir, 'ldak_kvik_thin_resume_changed_view')
+            def changedBim = new File(changedBundle.bim)
+            def bimLines = changedBim.readLines()
+            def firstVariant = bimLines.first().split('\t', -1)
+            firstVariant[3] = (firstVariant[3].toInteger() + 1).toString()
+            changedBim.text = ([firstVariant.join('\t')] + bimLines.tail()).join('\n') + '\n'
+            def genotypeManifest = RELATIONAL.cohorts(projectDir, outputDir, 'ldak_kvik_thin_resume_genotype', { rows ->
+                rows[0] = RELATIONAL.cohort('example_bfile')
+                rows[0].cohort_id = 'resume_view'
+                rows[0].bed = changedBundle.bed
+                rows[0].bim = changedBundle.bim
+                rows[0].fam = changedBundle.fam
+            })
+            def genotypeTrace = RESUME.rerun(outputDir, [
+                cohort_manifest: genotypeManifest,
+                analysis_manifest: phenotypeManifest,
+            ])
+
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'LDAK_THINCOMMON') == 1 },
+                { assert TRACE.count(workflow, 'LDAK_KVIKSTEP1') == 1 },
+                { assert RESUME.statuses(unchangedTrace, 'LDAK_THINCOMMON') == ['CACHED'] },
+                { assert RESUME.statuses(unchangedTrace, 'LDAK_KVIKSTEP1') == ['CACHED'] },
+                { assert RESUME.statuses(phenotypeTrace, 'LDAK_THINCOMMON') == ['CACHED'] },
+                { assert RESUME.statuses(phenotypeTrace, 'LDAK_KVIKSTEP1') == ['COMPLETED'] },
+                { assert RESUME.statuses(genotypeTrace, 'LDAK_THINCOMMON') == ['COMPLETED'] },
+                { assert RESUME.statuses(genotypeTrace, 'LDAK_KVIKSTEP1') == ['COMPLETED'] },
+                // The changed bundle is a different view, so the digest that establishes the identity is
+                // itself re-run: the identity is what moved, not only the artifacts keyed on it.
+                { assert RESUME.statuses(genotypeTrace, 'PREPARE_GENOTYPE_SOURCE') == ['COMPLETED'] },
+                { assert RESUME.hashes(genotypeTrace, 'PREPARE_GENOTYPE_SOURCE') != RESUME.hashes(unchangedTrace, 'PREPARE_GENOTYPE_SOURCE') },
+                { assert RESUME.tasks(unchangedTrace, 'LDAK_KVIKSTEP2').size() == 1 },
+                { assert RESUME.tasks(phenotypeTrace, 'LDAK_KVIKSTEP2').size() == 1 },
+                { assert RESUME.tasks(genotypeTrace, 'LDAK_KVIKSTEP2').size() == 1 },
+            )
+        }
+    }
+
+    test("KVIK Step 2 sample policy resumes every unchanged prerequisite while phenotype content invalidates Step 1") {
+        tag "resume"
+        tag "kvik_step1_resume"
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, 'ldak_kvik_step1_resume', { rows ->
+                    def bundle = RELATIONAL.twoChromosomePlink1(projectDir, outputDir, 'ldak_kvik_step1_resume')
+                    rows[0] = RELATIONAL.cohort('example_bfile')
+                    rows[0].cohort_id = 'kvik_resume_view'
+                    rows[0].bed = bundle.bed
+                    rows[0].bim = bundle.bim
+                    rows[0].fam = bundle.fam
+                })
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, 'ldak_kvik_step1_resume', { rows ->
+                    rows[0] = RELATIONAL.analysis(projectDir, 'example_bfile_qt')
+                    rows[0].analysis_id = 'kvik_resume_a'
+                    rows[0].cohort_id = 'kvik_resume_view'
+                    rows[0].association_methods = 'ldak_kvik'
+                    rows[0].heritability_methods = ''
+                    def second = new LinkedHashMap(rows[0])
+                    second.analysis_id = 'kvik_resume_b'
+                    rows << second
+                })
+                method_options = RELATIONAL.methodOptions(outputDir, 'ldak_kvik_step1_resume', [
+                    kvik_resume_a: [ldak: [kvik_step1_subset: 'thin_common']],
+                    kvik_resume_b: [ldak: [kvik_step1_subset: 'thin_common']],
+                ])
+            }
+        }
+
+        then {
+            def unchangedRun = RESUME.rerunWithOutputs(outputDir, [:], 'GWASLAB_HARMONIZE')
+
+            def fam = new File("${FIXTURES.base(projectDir)}results/fixtures/genotypes/example_all.fam")
+            def keep = RELATIONAL.resource(
+                outputDir,
+                'ldak-kvik-step2-resume.keep',
+                fam.readLines().collect { line -> line.tokenize().take(2).join(' ') }.join('\n') + '\n',
+            )
+            def step2Options = RELATIONAL.methodOptions(outputDir, 'ldak_kvik_step2_resume', [
+                kvik_resume_a: [ldak: [kvik_step1_subset: 'thin_common']],
+                kvik_resume_b: [ldak: [kvik_step1_subset: 'thin_common', kvik_step2_keep: keep]],
+            ])
+            def step2Run = RESUME.rerunWithOutputs(outputDir, [method_options: step2Options], 'GWASLAB_HARMONIZE')
+
+            def changedPhenotype = RELATIONAL.resource(
+                outputDir,
+                'ldak-kvik-step1-resume-changed.pheno',
+                new File("${FIXTURES.base(projectDir)}results/fixtures/pheno_cov/example.pheno").text.replaceFirst('-1.128174', '-1.028174'),
+            )
+            def phenotypeManifest = RELATIONAL.analyses(projectDir, outputDir, 'ldak_kvik_step1_resume_changed', { rows ->
+                rows[0] = RELATIONAL.analysis(projectDir, 'example_bfile_qt')
+                rows[0].analysis_id = 'kvik_resume_a'
+                rows[0].cohort_id = 'kvik_resume_view'
+                rows[0].association_methods = 'ldak_kvik'
+                rows[0].heritability_methods = ''
+                def second = new LinkedHashMap(rows[0])
+                second.analysis_id = 'kvik_resume_b'
+                second.phenotype = changedPhenotype
+                rows << second
+            })
+            def phenotypeRun = RESUME.rerunWithOutputs(outputDir, [analysis_manifest: phenotypeManifest], 'GWASLAB_HARMONIZE')
+            def expectedOutputs = ['kvik_resume_a--ldak_kvik', 'kvik_resume_b--ldak_kvik']
+
+            assertAll(
+                { assert workflow.success },
+                // The cohort is supplied as PLINK 1, which is what LDAK-KVIK reads, so nothing is converted
+                // and nothing is projected. What is cached across the resumed runs instead is the one task
+                // that established the cohort's view identity.
+                { assert TRACE.count(workflow, 'PLINK2_MAKEBED') == 0 },
+                { assert TRACE.count(workflow, 'PREPARE_GENOTYPE_SOURCE') == 1 },
+                { assert TRACE.count(workflow, 'PREPARE_PHENOTYPE_INPUTS') == 2 },
+                { assert TRACE.count(workflow, 'LDAK_THINCOMMON') == 1 },
+                { assert TRACE.count(workflow, 'LDAK_KVIKSTEP1') == 2 },
+                { assert TRACE.count(workflow, 'LDAK_KVIKSTEP2') == 2 },
+                { assert RESUME.statuses(unchangedRun.trace, 'PREPARE_GENOTYPE_SOURCE') == ['CACHED'] },
+                { assert RESUME.statuses(unchangedRun.trace, 'PREPARE_PHENOTYPE_INPUTS') == ['CACHED', 'CACHED'] },
+                { assert RESUME.statuses(unchangedRun.trace, 'LDAK_THINCOMMON') == ['CACHED'] },
+                { assert RESUME.statuses(unchangedRun.trace, 'LDAK_KVIKSTEP1') == ['CACHED', 'CACHED'] },
+                { assert RESUME.statuses(unchangedRun.trace, 'LDAK_KVIKSTEP2') == ['CACHED', 'CACHED'] },
+                { assert RESUME.statuses(step2Run.trace, 'PREPARE_GENOTYPE_SOURCE') == ['CACHED'] },
+                { assert RESUME.statuses(step2Run.trace, 'PREPARE_PHENOTYPE_INPUTS') == ['CACHED', 'CACHED'] },
+                { assert RESUME.statuses(step2Run.trace, 'LDAK_THINCOMMON') == ['CACHED'] },
+                { assert RESUME.statuses(step2Run.trace, 'LDAK_KVIKSTEP1') == ['CACHED', 'CACHED'] },
+                { assert RESUME.statuses(step2Run.trace, 'LDAK_KVIKSTEP2') == ['CACHED', 'COMPLETED'] },
+                { assert RESUME.hashes(step2Run.trace, 'PREPARE_PHENOTYPE_INPUTS') == RESUME.hashes(unchangedRun.trace, 'PREPARE_PHENOTYPE_INPUTS') },
+                { assert RESUME.hashes(step2Run.trace, 'LDAK_THINCOMMON') == RESUME.hashes(unchangedRun.trace, 'LDAK_THINCOMMON') },
+                { assert RESUME.hashes(step2Run.trace, 'LDAK_KVIKSTEP1') == RESUME.hashes(unchangedRun.trace, 'LDAK_KVIKSTEP1') },
+                { assert RESUME.hashes(step2Run.trace, 'LDAK_KVIKSTEP2') != RESUME.hashes(unchangedRun.trace, 'LDAK_KVIKSTEP2') },
+                { assert RESUME.statuses(phenotypeRun.trace, 'PREPARE_GENOTYPE_SOURCE') == ['CACHED'] },
+                { assert RESUME.statuses(phenotypeRun.trace, 'PREPARE_PHENOTYPE_INPUTS') == ['CACHED', 'COMPLETED'] },
+                { assert RESUME.statuses(phenotypeRun.trace, 'LDAK_THINCOMMON') == ['CACHED'] },
+                { assert RESUME.statuses(phenotypeRun.trace, 'LDAK_KVIKSTEP1') == ['CACHED', 'COMPLETED'] },
+                { assert RESUME.statuses(phenotypeRun.trace, 'LDAK_KVIKSTEP2') == ['CACHED', 'COMPLETED'] },
+                { assert RESUME.hashes(phenotypeRun.trace, 'PREPARE_PHENOTYPE_INPUTS') != RESUME.hashes(unchangedRun.trace, 'PREPARE_PHENOTYPE_INPUTS') },
+                { assert RESUME.hashes(phenotypeRun.trace, 'LDAK_THINCOMMON') == RESUME.hashes(unchangedRun.trace, 'LDAK_THINCOMMON') },
+                { assert RESUME.hashes(phenotypeRun.trace, 'LDAK_KVIKSTEP1') != RESUME.hashes(unchangedRun.trace, 'LDAK_KVIKSTEP1') },
+                { assert RESUME.hashes(phenotypeRun.trace, 'LDAK_KVIKSTEP2') != RESUME.hashes(unchangedRun.trace, 'LDAK_KVIKSTEP2') },
+                { assert unchangedRun.outputIdentities == expectedOutputs },
+                { assert step2Run.outputIdentities == expectedOutputs },
+                { assert phenotypeRun.outputIdentities == expectedOutputs },
+                { assert expectedOutputs.every { id -> new File("${params.outdir}/summary_statistics/${id}/${id}.gwaslab.tsv.gz").isFile() } },
+            )
+        }
+    }
+
+    test("KVIK predictor resources are shared while each analysis declares its own fit") {
+        tag "ldak_kvik_reuse"
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, 'ldak_kvik_prediction_identity', { rows ->
+                    def bundle = RELATIONAL.twoChromosomePlink1(projectDir, outputDir, 'ldak_kvik_prediction_identity')
+                    rows[0].cohort_id = 'example_bfile'
+                    ['pgen', 'psam', 'pvar'].each { field -> rows[0][field] = '' }
+                    rows[0].bed = bundle.bed
+                    rows[0].bim = bundle.bim
+                    rows[0].fam = bundle.fam
+                })
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, 'ldak_kvik_prediction_identity', { rows ->
+                    rows[0] = RELATIONAL.analysis(projectDir, 'example_bfile_qt')
+                    ['all_reuse', 'thin_common', 'provided_a', 'provided_same_path', 'provided_b', 'provided_changed'].each { analysisId ->
+                        def analysis = new LinkedHashMap(rows[0])
+                        analysis.analysis_id = analysisId
+                        rows << analysis
+                    }
+                    rows.each { row ->
+                        row.association_methods = 'ldak_kvik'
+                        row.heritability_methods = ''
+                    }
+                })
+                def sharedPredictors = RELATIONAL.predictors(projectDir, outputDir, 'provided-a.in', 8)
+                def fam = new File("${FIXTURES.base(projectDir)}results/fixtures/genotypes/example_all.fam")
+                def step2Keep = RELATIONAL.resource(
+                    outputDir,
+                    'ldak-kvik-shared-fit.keep',
+                    fam.readLines().collect { line -> line.tokenize().take(2).join(' ') }.join('\n') + '\n',
+                )
+                method_options = RELATIONAL.methodOptions(outputDir, 'ldak_kvik_prediction_identity', [
+                    all_reuse: [ldak: [kvik_step2_keep: step2Keep]],
+                    thin_common: [ldak: [kvik_step1_subset: 'thin_common']],
+                    provided_a: [ldak: [kvik_step1_subset: 'provided', predictor_extract: sharedPredictors]],
+                    provided_same_path: [ldak: [kvik_step1_subset: 'provided', predictor_extract: sharedPredictors]],
+                    provided_b: [ldak: [kvik_step1_subset: 'provided', predictor_extract: RELATIONAL.predictors(projectDir, outputDir, 'provided-b.in', 8)]],
+                    provided_changed: [ldak: [kvik_step1_subset: 'provided', predictor_extract: RELATIONAL.predictors(projectDir, outputDir, 'provided-changed.in', 9)]],
+                ])
+            }
+        }
+
+        then {
+            def nativeRoot = new File("${params.outdir}/association/ldak_kvik")
+            def step2Commands = commands(outputDir).findAll { command -> command.contains('--kvik-step2') }
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'LDAK_THINCOMMON') == 1 },
+                { assert TRACE.count(workflow, 'LDAK_KVIKSTEP1') == 7 },
+                { assert TRACE.count(workflow, 'LDAK_KVIKSTEP2') == 7 },
+                { assert TRACE.count(workflow, 'GWASLAB_HARMONIZE') == 7 },
+                { assert step2Commands.size() == 7 },
+                { assert step2Commands.count { command -> command.contains('--keep') } == 1 },
+                { assert nativeRoot.list().toList().sort() == ['all_reuse', 'example_bfile_qt', 'provided_a', 'provided_b', 'provided_changed', 'provided_same_path', 'thin_common'] },
+            )
+        }
+    }
+
+    // The pipeline-level sentinel for the LDAK option family. Every other rule in it is asserted, message
+    // and attribution included, by
+    // subworkflows/local/validate_gwas_input/tests/method_options_ldak.function.nf.test; this one is kept
+    // because it is a two-option consistency rule on the KVIK route and only a pipeline run can show that the
+    // refusal precedes every LDAK task.
+    def invalidOptions = [
+        [
+            name: 'provided predictor subset without resource',
+            options: [ldak: [kvik_step1_subset: 'provided']],
+            expected: ["option 'ldak.predictor_extract'", "kvik_step1_subset is 'provided'"],
+        ],
+    ]
+
+    invalidOptions.each { scenario ->
+        test("method-options rejects ${scenario.name} before LDAK tasks") {
+            when {
+                params {
+                    outdir = "$outputDir"
+                    cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, "ldak_options_${scenario.name.replace(' ', '_')}")
+                    analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, "ldak_options_${scenario.name.replace(' ', '_')}", { rows ->
+                        rows[0].association_methods = 'ldak_kvik'
+                        rows[0].heritability_methods = ''
+                    })
+                    method_options = RELATIONAL.methodOptions(
+                        outputDir,
+                        "ldak_options_${scenario.name.replace(' ', '_')}",
+                        [example_pgen_qt: scenario.options.collectEntries { family, options ->
+                            [(family): options.collectEntries { option, value ->
+                                [(option): value instanceof Closure ? value(projectDir, outputDir) : value]
+                            }]
+                        }],
+                    )
+                }
+            }
+
+            then {
+                def report = VALIDATION.report(outputDir, workflow.stdout)
+                assertAll(
+                    { assert !workflow.success },
+                    { assert report.contains(params.method_options.toString()) },
+                    { assert report.contains("analysis_id 'example_pgen_qt'") },
+                    { assert scenario.expected.every { fragment -> report.contains(fragment) } },
+                    { assert TRACE.count(workflow, 'LDAK_THINCOMMON') == 0 },
+                    { assert TRACE.count(workflow, 'LDAK_KVIKSTEP1') == 0 },
+                    { assert TRACE.count(workflow, 'LDAK_CALCKINS') == 0 },
+                    // Stronger than the three named zero-counts above: nothing at all was submitted.
+                    { assert workflow.trace.tasks().isEmpty() },
+                )
+            }
+        }
+    }
+}

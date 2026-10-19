@@ -1,0 +1,132 @@
+nextflow_process {
+
+    name "Test Process PREPARE_BIVARIATE_TRAITS"
+    script "../main.nf"
+    process "PREPARE_BIVARIATE_TRAITS"
+    config "./nextflow.config"
+
+    tag "modules"
+    tag "modules_local"
+    tag "prepare_bivariate_traits"
+
+    def pairInputs = { outputDir, name, covariates = true ->
+        def root = new File(outputDir.toString(), "pair_${name}")
+        root.mkdirs()
+        def left = new File(root, 'left.pheno')
+        left.text = 'F1\tI1\t1\nF1\tI2\tNA\nF2\tI3\t3\n'
+        def right = new File(root, 'right.pheno')
+        right.text = 'F1\tI2\t2\nF2\tI3\t4\nF3\tI4\t5\n'
+        def qcovar = new File(root, 'pair.qcovar')
+        def covar = new File(root, 'pair.covar')
+        if (covariates) {
+            qcovar.text = 'FID\tIID\tage\nF1\tI1\t10\nF1\tI2\t20\nF2\tI3\t30\nF3\tI4\t40\n'
+            covar.text = 'FID\tIID\tbatch\nF1\tI1\tA\nF1\tI2\tA\nF2\tI3\tB\nF3\tI4\tB\n'
+        }
+        [left: left, right: right, qcovar: qcovar, covar: covar]
+    }
+
+    test("build a sorted full-union pair and serialise the covariates for both interfaces") {
+        when {
+            def inputs = pairInputs(outputDir, 'union')
+            process {
+                """
+                input[0] = [[request_id: 'gcta_bivariate_reml--pair'], file('${inputs.left}', checkIfExists: true), file('${inputs.right}', checkIfExists: true), file('${inputs.qcovar}', checkIfExists: true), file('${inputs.covar}', checkIfExists: true)]
+                """
+            }
+        }
+
+        then {
+            def phenotype = new File(process.out.phenotype.get(0).get(1).toString())
+            def qcovar = new File(process.out.quant_covariates.get(0).get(1).toString())
+            def covar = new File(process.out.cat_covariates.get(0).get(1).toString())
+            def named_qcovar = new File(process.out.named_quant_covariates.get(0).get(1).toString())
+            def named_covar = new File(process.out.named_cat_covariates.get(0).get(1).toString())
+            assertAll(
+                { assert process.success },
+                { assert phenotype.text == 'F1\tI1\t1\tNA\nF1\tI2\tNA\t2\nF2\tI3\t3\t4\nF3\tI4\tNA\t5\n' },
+                { assert qcovar.text == 'F1\tI1\t10\nF1\tI2\t20\nF2\tI3\t30\nF3\tI4\t40\n' },
+                { assert covar.text == 'F1\tI1\tA\nF1\tI2\tA\nF2\tI3\tB\nF3\tI4\tB\n' },
+                // The headered files are the validated header line plus exactly the headerless body, so the
+                // two estimator interfaces read one normalisation rather than two.
+                { assert qcovar.name.endsWith('.noheader.qcovar') },
+                { assert covar.name.endsWith('.noheader.catcovar') },
+                { assert named_qcovar.name.endsWith('.qcovar') && !named_qcovar.name.contains('.noheader.') },
+                { assert named_covar.name.endsWith('.catcovar') && !named_covar.name.contains('.noheader.') },
+                { assert named_qcovar.text == 'FID\tIID\tage\n' + qcovar.text },
+                { assert named_covar.text == 'FID\tIID\tbatch\n' + covar.text },
+            )
+        }
+    }
+
+    test("relationship covariates are optional") {
+        when {
+            def inputs = pairInputs(outputDir, 'without_covariates', false)
+            process {
+                """
+                input[0] = [[request_id: 'gcta_bivariate_reml--pair'], file('${inputs.left}', checkIfExists: true), file('${inputs.right}', checkIfExists: true), [], []]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.quant_covariates.empty },
+                { assert process.out.cat_covariates.empty },
+                { assert process.out.named_quant_covariates.empty },
+                { assert process.out.named_cat_covariates.empty },
+                { assert new File(process.out.phenotype.get(0).get(1).toString()).isFile() },
+            )
+        }
+    }
+
+    test("the stub emits both serialisations under the same optionality") {
+        options "-stub"
+
+        when {
+            def inputs = pairInputs(outputDir, 'stub')
+            process {
+                """
+                input[0] = [[request_id: 'gcta_bivariate_reml--pair'], file('${inputs.left}', checkIfExists: true), file('${inputs.right}', checkIfExists: true), file('${inputs.qcovar}', checkIfExists: true), []]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.named_quant_covariates.get(0).get(1).toString().endsWith('.qcovar') },
+                { assert process.out.quant_covariates.get(0).get(1).toString().endsWith('.noheader.qcovar') },
+                { assert process.out.named_cat_covariates.empty },
+                { assert process.out.cat_covariates.empty },
+            )
+        }
+    }
+
+    def invalidCovariates = [
+        [name: 'missing FID and IID header', content: 'age\n10\n', message: 'must begin with FID, IID'],
+        [name: 'duplicate sample identity', content: 'FID\tIID\tage\nF1\tI1\t10\nF1\tI1\t20\n', message: "declares sample 'F1 I1' more than once"],
+    ]
+
+    invalidCovariates.each { scenario ->
+        test("relationship quantitative covariates reject ${scenario.name}") {
+            when {
+                def inputs = pairInputs(outputDir, "invalid_${scenario.name.replace(' ', '_')}")
+                inputs.qcovar.text = scenario.content
+                process {
+                    """
+                    input[0] = [[request_id: 'gcta_bivariate_reml--pair'], file('${inputs.left}', checkIfExists: true), file('${inputs.right}', checkIfExists: true), file('${inputs.qcovar}', checkIfExists: true), []]
+                    """
+                }
+            }
+
+            then {
+                assertAll(
+                    { assert process.failed },
+                    { assert process.stdout.join('\n').contains('relationship quantitative covariate') },
+                    { assert process.stdout.join('\n').contains(scenario.message) },
+                )
+            }
+        }
+    }
+}

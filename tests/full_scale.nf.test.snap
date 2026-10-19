@@ -1,0 +1,308 @@
+{
+    "versions": {
+        "content": [
+            {
+                "CUSTOM_GCTAMERGEGRMPARTS": {
+                    "coreutils": 9.5
+                },
+                "CUSTOM_GCTASTRATIFYLDSCORES": {
+                    "gcta_stratify_ldscores": "1.0.0",
+                    "r-base": "4.2.1"
+                },
+                "GCTA_BIVARIATEREML": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_BIVARIATEREMLLDMS": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_CALCULATELDSCORES": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_FASTGWA": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_MAKEBKSPARSE": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_MAKEGRMPART": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_REML": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_REMLLDMS": {
+                    "gcta": "1.94.1"
+                },
+                "GWASLAB_HARMONIZE": {
+                    "gwaslab": "4.1.9",
+                    "python": "3.12.13"
+                },
+                "LDAK_ADJUSTGRM": {
+                    "ldak6": 6
+                },
+                "LDAK_CALCKINS": {
+                    "ldak6": 6
+                },
+                "LDAK_FILTER": {
+                    "ldak6": 6
+                },
+                "LDAK_HE": {
+                    "ldak6": 6
+                },
+                "LDAK_KVIKSTEP1": {
+                    "ldak6": 6
+                },
+                "LDAK_KVIKSTEP2": {
+                    "ldak6": 6
+                },
+                "LDAK_PCGC": {
+                    "ldak6": 6
+                },
+                "LDAK_REML": {
+                    "ldak6": 6
+                },
+                "LDAK_SUBGRM": {
+                    "ldak6": 6
+                },
+                "PLINK2_MAKEBED": {
+                    "plink2": "2.0.0-a.6.9LM"
+                },
+                "PREPARE_BIVARIATE_TRAITS": {
+                    "python": "3.14.5"
+                },
+                "PREPARE_GENOTYPE_SOURCE": {
+                    "python": "3.14.5"
+                },
+                "PREPARE_LDAK_KVIK_HARMONISATION": {
+                    "python": "3.14.5"
+                },
+                "PREPARE_PHENOTYPE_INPUTS": {
+                    "python": "3.14.5"
+                },
+                "REGENIE_STEP1": {
+                    "regenie": "4.1.2"
+                },
+                "REGENIE_STEP2": {
+                    "regenie": "4.1.2"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "timestamp": "2026-09-19T19:25:29.304908574",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "association": {
+        "content": [
+            [
+                "gcta_fastgwa",
+                "gcta_fastgwa/heterogeneous_bt",
+                "gcta_fastgwa/heterogeneous_bt/heterogeneous_bt.gcta_fastgwa.fastGWA",
+                "gcta_fastgwa/heterogeneous_qt",
+                "gcta_fastgwa/heterogeneous_qt/heterogeneous_qt.gcta_fastgwa.fastGWA",
+                "ldak_kvik",
+                "ldak_kvik/heterogeneous_bt",
+                "ldak_kvik/heterogeneous_bt/heterogeneous_bt.ldak_kvik.step2.assoc",
+                "ldak_kvik/heterogeneous_qt",
+                "ldak_kvik/heterogeneous_qt/heterogeneous_qt.ldak_kvik.step2.assoc",
+                "regenie",
+                "regenie/heterogeneous_qt",
+                "regenie/heterogeneous_qt/heterogeneous_qt.regenie.gz"
+            ],
+            [
+                "heterogeneous_bt.gcta_fastgwa.fastGWA:md5,75c148759d97f6b14999db7bd00bf7fe",
+                "heterogeneous_qt.gcta_fastgwa.fastGWA:md5,d756c893ac9fc977735a6dc3b7ba4dd7",
+                "heterogeneous_bt.ldak_kvik.step2.assoc:md5,8435a2b63c69a428bd49adb1d28f03c0",
+                "heterogeneous_qt.ldak_kvik.step2.assoc:md5,d900ec29ee8c14586bf8d9045f315d1b",
+                "heterogeneous_qt.regenie.gz:md5,87c65e520bab6bc45ba60955fc8214cd"
+            ]
+        ],
+        "timestamp": "2026-09-02T11:42:27.605038875",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "summary_statistics": {
+        "content": [
+            [
+                "heterogeneous_bt--gcta_fastgwa",
+                "heterogeneous_bt--gcta_fastgwa/heterogeneous_bt--gcta_fastgwa.gwaslab.log",
+                "heterogeneous_bt--gcta_fastgwa/heterogeneous_bt--gcta_fastgwa.gwaslab.tsv.gz",
+                "heterogeneous_bt--ldak_kvik",
+                "heterogeneous_bt--ldak_kvik/heterogeneous_bt--ldak_kvik.gwaslab.log",
+                "heterogeneous_bt--ldak_kvik/heterogeneous_bt--ldak_kvik.gwaslab.tsv.gz",
+                "heterogeneous_qt--gcta_fastgwa",
+                "heterogeneous_qt--gcta_fastgwa/heterogeneous_qt--gcta_fastgwa.gwaslab.log",
+                "heterogeneous_qt--gcta_fastgwa/heterogeneous_qt--gcta_fastgwa.gwaslab.tsv.gz",
+                "heterogeneous_qt--ldak_kvik",
+                "heterogeneous_qt--ldak_kvik/heterogeneous_qt--ldak_kvik.gwaslab.log",
+                "heterogeneous_qt--ldak_kvik/heterogeneous_qt--ldak_kvik.gwaslab.tsv.gz",
+                "heterogeneous_qt--regenie",
+                "heterogeneous_qt--regenie/heterogeneous_qt--regenie.gwaslab.log",
+                "heterogeneous_qt--regenie/heterogeneous_qt--regenie.gwaslab.tsv.gz"
+            ],
+            [
+                "heterogeneous_bt--gcta_fastgwa/heterogeneous_bt--gcta_fastgwa.gwaslab.tsv.gz:md5,62a9e3f4686436e25bf553c316749960",
+                "heterogeneous_bt--ldak_kvik/heterogeneous_bt--ldak_kvik.gwaslab.tsv.gz:md5,5ac23344d8288444e4d289d6a280a572",
+                "heterogeneous_qt--gcta_fastgwa/heterogeneous_qt--gcta_fastgwa.gwaslab.tsv.gz:md5,45d8a16e24ebba350e6e70c16d3abc32",
+                "heterogeneous_qt--ldak_kvik/heterogeneous_qt--ldak_kvik.gwaslab.tsv.gz:md5,06495c6743f296a1503271f24216d27c",
+                "heterogeneous_qt--regenie/heterogeneous_qt--regenie.gwaslab.tsv.gz:md5,e9c6b3a429d4d9f90b6b5a3e7b317afa"
+            ]
+        ],
+        "timestamp": "2026-09-02T11:42:27.63044195",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "heritability": {
+        "content": [
+            [
+                "gcta_greml",
+                "gcta_greml/heterogeneous_bt",
+                "gcta_greml/heterogeneous_bt/heterogeneous_bt.gcta_greml.hsq",
+                "gcta_greml/heterogeneous_qt",
+                "gcta_greml/heterogeneous_qt/heterogeneous_qt.gcta_greml.hsq",
+                "gcta_greml_ldms",
+                "gcta_greml_ldms/heterogeneous_bt",
+                "gcta_greml_ldms/heterogeneous_bt/heterogeneous_bt.gcta_greml_ldms.hsq",
+                "gcta_greml_ldms/heterogeneous_qt",
+                "gcta_greml_ldms/heterogeneous_qt/heterogeneous_qt.gcta_greml_ldms.hsq",
+                "ldak_he",
+                "ldak_he/heterogeneous_bt",
+                "ldak_he/heterogeneous_bt/heterogeneous_bt.ldak_he.factor",
+                "ldak_he/heterogeneous_bt/heterogeneous_bt.ldak_he.he",
+                "ldak_he/heterogeneous_bt/heterogeneous_bt.ldak_he.he.liab",
+                "ldak_he/heterogeneous_qt",
+                "ldak_he/heterogeneous_qt/heterogeneous_qt.ldak_he.he",
+                "ldak_pcgc",
+                "ldak_pcgc/heterogeneous_bt",
+                "ldak_pcgc/heterogeneous_bt/heterogeneous_bt.ldak_pcgc.pcgc",
+                "ldak_pcgc/heterogeneous_bt/heterogeneous_bt.ldak_pcgc.pcgc.marginal",
+                "ldak_reml",
+                "ldak_reml/heterogeneous_bt",
+                "ldak_reml/heterogeneous_bt/heterogeneous_bt.ldak_reml.reml",
+                "ldak_reml/heterogeneous_bt/heterogeneous_bt.ldak_reml.reml.liab",
+                "ldak_reml/heterogeneous_qt",
+                "ldak_reml/heterogeneous_qt/heterogeneous_qt.ldak_reml.reml"
+            ],
+            [
+                "heterogeneous_bt.gcta_greml.hsq:md5,549e77997ae811ba26f1575eedeb00d7",
+                "heterogeneous_qt.gcta_greml.hsq:md5,3475afa4e0119452ee59e94502a1ccd7",
+                "heterogeneous_bt.gcta_greml_ldms.hsq:md5,38d69502b784df0b2dbe7a8bb90b46b5",
+                "heterogeneous_qt.gcta_greml_ldms.hsq:md5,b0b893c27948aad255fc3e6f544a7429",
+                "heterogeneous_bt.ldak_he.factor:md5,2c4417a10e53eb4476ef8a6e972a20cd",
+                "heterogeneous_bt.ldak_reml.reml:md5,08f6f83d6ac56b235d2859d929b3b80f",
+                "heterogeneous_bt.ldak_reml.reml.liab:md5,1402a426eddc22e6611074f304e16082",
+                "heterogeneous_qt.ldak_reml.reml:md5,6d8452f526c1adc1f0a757020a233d2c"
+            ],
+            {
+                "ldak_he/heterogeneous_bt/heterogeneous_bt.ldak_he.he": [
+                    "Num_Kinships 1",
+                    "Num_Regions 0",
+                    "Num_Top_Predictors 0",
+                    "Num_Covariates 6",
+                    "Num_Environments 0",
+                    "Coeffsfile heterogeneous_bt.ldak_he.coeff",
+                    "Covar_Heritability 0.0581",
+                    "Total_Samples 200",
+                    "With_Phenotypes 200",
+                    "Null_Likelihood -28222.366884",
+                    "Alt_Likelihood -28220.972309",
+                    "LRT_Stat 2.7892",
+                    "LRT_P 9.4904e-02",
+                    "Component Heritability SE Size",
+                    "Her_K1 0.257397 0.234028 1046.99",
+                    "Her_Top 0.000000 NA NA",
+                    "Her_All 0.257397 0.234028 1046.99"
+                ],
+                "ldak_he/heterogeneous_bt/heterogeneous_bt.ldak_he.he.liab": [
+                    "Num_Kinships 1",
+                    "Num_Regions 0",
+                    "Num_Top_Predictors 0",
+                    "Num_Covariates 6",
+                    "Num_Environments 0",
+                    "Coeffsfile heterogeneous_bt.ldak_he.coeff.liab",
+                    "Covar_Heritability 0.0621",
+                    "Total_Samples 200",
+                    "With_Phenotypes 200",
+                    "Null_Likelihood -28222.366884",
+                    "Alt_Likelihood -28220.972309",
+                    "LRT_Stat 2.7892",
+                    "LRT_P 9.4904e-02",
+                    "Component Heritability SE Size",
+                    "Her_K1 0.275426 0.250420 1046.99",
+                    "Her_Top 0.000000 NA NA",
+                    "Her_All 0.275426 0.250420 1046.99"
+                ],
+                "ldak_he/heterogeneous_qt/heterogeneous_qt.ldak_he.he": [
+                    "Num_Kinships 1",
+                    "Num_Regions 0",
+                    "Num_Top_Predictors 0",
+                    "Num_Covariates 6",
+                    "Num_Environments 0",
+                    "Coeffsfile heterogeneous_qt.ldak_he.coeff",
+                    "Covar_Heritability 0.0345",
+                    "Total_Samples 167",
+                    "With_Phenotypes 167",
+                    "Null_Likelihood -19586.757216",
+                    "Alt_Likelihood -19586.737595",
+                    "LRT_Stat 0.0392",
+                    "LRT_P 8.4297e-01",
+                    "Component Heritability SE Size",
+                    "Her_K1 -0.002911 0.019407 1.25",
+                    "Her_Top 0.000000 NA NA",
+                    "Her_All -0.002911 0.019407 1.25"
+                ],
+                "ldak_pcgc/heterogeneous_bt/heterogeneous_bt.ldak_pcgc.pcgc": [
+                    "Num_Kinships 1",
+                    "Num_Regions 0",
+                    "Num_Top_Predictors 0",
+                    "Num_Covariates 6",
+                    "Num_Environments 0",
+                    "Coeffsfile heterogeneous_bt.ldak_pcgc.coeff",
+                    "Covar_Heritability 0.0637",
+                    "Total_Samples 200",
+                    "With_Phenotypes 200",
+                    "Null_Likelihood -30897.973190",
+                    "Alt_Likelihood -30896.812902",
+                    "LRT_Stat 2.3206",
+                    "LRT_P 1.2767e-01",
+                    "Component Heritability SE Size",
+                    "Her_K1 0.268572 0.264829 1046.99",
+                    "Her_Top 0.000000 NA NA",
+                    "Her_All 0.268572 0.264829 1046.99"
+                ],
+                "ldak_pcgc/heterogeneous_bt/heterogeneous_bt.ldak_pcgc.pcgc.marginal": [
+                    "Num_Kinships 1",
+                    "Num_Regions 0",
+                    "Num_Top_Predictors 0",
+                    "Num_Covariates 6",
+                    "Num_Environments 0",
+                    "Coeffsfile heterogeneous_bt.ldak_pcgc.coeff",
+                    "Covar_Heritability 0.0637",
+                    "Total_Samples 200",
+                    "With_Phenotypes 200",
+                    "Null_Likelihood -30897.973190",
+                    "Alt_Likelihood -30896.812902",
+                    "LRT_Stat 2.3206",
+                    "LRT_P 1.2767e-01",
+                    "Component Heritability SE Size",
+                    "Her_K1 0.251459 0.247955 1046.99",
+                    "Her_Top 0.000000 NA NA",
+                    "Her_All 0.251459 0.247955 1046.99"
+                ]
+            }
+        ],
+        "timestamp": "2026-10-13T04:18:39.460213841",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

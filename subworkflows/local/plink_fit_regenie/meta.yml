@@ -1,0 +1,73 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
+name: plink_fit_regenie
+description: Fit REGENIE Step 1 models in standard or chunked mode, gathering the chunks produced by the native splitter
+keywords:
+  - regenie
+  - genome-wide association study
+  - plink
+  - prediction
+components:
+  - regenie/step1
+  - regenie/splitl0
+  - regenie/runl0
+  - regenie/runl1
+input:
+  - ch_genotypes:
+      description: |
+        Focal genotype bundle with matching staged basenames. Metadata id uniquely identifies a fit.
+        Accepted file order is BED/BIM/FAM or PGEN/PVAR/PSAM. All public products preserve meta.
+      structure: [map meta, path plink_genotype_file, path plink_variant_file, path plink_sample_file]
+      pattern: "*.{bed,pgen}, *.{bim,pvar}, *.{fam,psam}"
+      ontologies:
+        - edam: "http://edamontology.org/format_3003" # BED
+        - edam: "http://edamontology.org/format_2330" # Text
+  - ch_pheno:
+      description: Phenotype file keyed by the same fit id.
+      structure: [map meta2, path pheno]
+      pattern: "*.{phe,pheno,txt,tsv}"
+      ontologies:
+        - edam: "http://edamontology.org/format_3475" # TSV
+  - ch_covar:
+      description: Covariate file keyed by the same fit id; use [] for an absent file.
+      structure: "[map meta3, path covar|[]]"
+      pattern: "*.{covar,cov,txt,tsv}"
+      optional: true
+      ontologies:
+        - edam: "http://edamontology.org/format_3475" # TSV
+  - ch_bsize:
+      description: Mandatory native block size keyed by fit id.
+      structure: [map meta4, integer bsize]
+  - ch_step1_mode:
+      description: Per-fit mode, standard or chunked.
+      structure: [map meta5, string step1_mode]
+  - ch_n_l0_jobs:
+      description: |
+        Requested native split count keyed by fit id, or [] for standard fitting.
+        Actual splitter outputs determine scatter and gather cardinality.
+      structure: "[map meta6, integer n_l0_jobs|[]]"
+      optional: true
+output:
+  - predictions:
+      description: |
+        Complete native prediction list. Set native --use-relative-path through ext.args on the fit
+        modules when moving the complete bundle to another location.
+      structure: [map meta, path predictions]
+      pattern: "*_pred.list"
+      ontologies:
+        - edam: "http://edamontology.org/format_2330" # Text
+  - loco:
+      description: All companion LOCO prediction files, staged together when consuming the prediction list.
+      structure: [map meta, path loco]
+      pattern: "*.loco.gz"
+      ontologies:
+        - edam: "http://edamontology.org/format_3987" # GZIP
+  - logs:
+      description: Native logs from all selected fit stages.
+      structure: [map meta, path log]
+      pattern: "*.log"
+      ontologies:
+        - edam: "http://edamontology.org/format_2330" # Text
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"

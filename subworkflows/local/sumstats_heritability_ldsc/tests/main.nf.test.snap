@@ -1,0 +1,144 @@
+{
+    "prepare and fit an explicit producer reference - stub": {
+        "content": [
+            {
+                "0": [
+                    [
+                        {
+                            "id": "producer_a"
+                        },
+                        "producer_a.sumstats.gz"
+                    ]
+                ],
+                "1": [
+                    [
+                        {
+                            "id": "producer_a"
+                        },
+                        "producer_a.log"
+                    ]
+                ],
+                "2": [
+                    [
+                        {
+                            "id": "fit_a"
+                        },
+                        "fit_a.log"
+                    ],
+                    [
+                        {
+                            "id": "fit_b"
+                        },
+                        "fit_b.log"
+                    ]
+                ],
+                "h2_log": [
+                    [
+                        {
+                            "id": "fit_a"
+                        },
+                        "fit_a.log"
+                    ],
+                    [
+                        {
+                            "id": "fit_b"
+                        },
+                        "fit_b.log"
+                    ]
+                ],
+                "munged_sumstats": [
+                    [
+                        {
+                            "id": "producer_a"
+                        },
+                        "producer_a.sumstats.gz"
+                    ]
+                ],
+                "munging_log": [
+                    [
+                        {
+                            "id": "producer_a"
+                        },
+                        "producer_a.log"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T22:52:41.814178048",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "prepare and fit an explicit producer reference": {
+        "content": [
+            {
+                "0": [
+                    [
+                        {
+                            "id": "producer_a"
+                        },
+                        "producer_a.sumstats.gz"
+                    ]
+                ],
+                "1": [
+                    [
+                        {
+                            "id": "producer_a"
+                        },
+                        "producer_a.log"
+                    ]
+                ],
+                "2": [
+                    [
+                        {
+                            "id": "fit_a"
+                        },
+                        "fit_a.log"
+                    ],
+                    [
+                        {
+                            "id": "fit_b"
+                        },
+                        "fit_b.log"
+                    ]
+                ],
+                "h2_log": [
+                    [
+                        {
+                            "id": "fit_a"
+                        },
+                        "fit_a.log"
+                    ],
+                    [
+                        {
+                            "id": "fit_b"
+                        },
+                        "fit_b.log"
+                    ]
+                ],
+                "munged_sumstats": [
+                    [
+                        {
+                            "id": "producer_a"
+                        },
+                        "producer_a.sumstats.gz"
+                    ]
+                ],
+                "munging_log": [
+                    [
+                        {
+                            "id": "producer_a"
+                        },
+                        "producer_a.log"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T22:52:37.156306779",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

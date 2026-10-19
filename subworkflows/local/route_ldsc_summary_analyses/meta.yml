@@ -1,0 +1,48 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
+name: route_ldsc_summary_analyses
+description: Route summary-scale LDSC requests through shared content-addressed munging into one native log per request
+keywords:
+  - ldsc
+  - munge
+  - heritability
+  - genetic correlation
+  - summary statistics
+components:
+  - ldsc/mungesumstats
+  - ldsc/h2
+  - ldsc/rg
+  - digestfilebytes
+  - digestidentitytext
+input:
+  - ch_h2_requests:
+      description: Validated H2 requests with request-owned LDSC resources
+      structure: "[map meta, path hapmap3_snplist, path reference_ld_scores, string reference_prefix,
+        path regression_weights, string weights_prefix, path tagging_file|[]]"
+      pattern: "*.{snplist,txt,tsv}"
+      ontologies: []
+  - ch_rg_requests:
+      description: Validated ordered RG requests with request-owned LDSC resources
+      structure: "[map meta, path hapmap3_snplist, path reference_ld_scores, string reference_prefix,
+        path regression_weights, string weights_prefix, path tagging_file|[]]"
+      pattern: "*.{snplist,txt,tsv}"
+      ontologies: []
+  - ch_summary_statistics:
+      description: GWASLab-standard summary statistics, one per summary_statistics_id
+      structure: "[map meta, path summary_statistics]"
+      pattern: "*.gwaslab.tsv.gz"
+      ontologies: []
+output:
+  - h2_log:
+      description: Native LDSC H2 log on the scale selected by endpoint prevalence
+      structure: "[map meta, path log]"
+      pattern: "native.log"
+      ontologies: []
+  - rg_log:
+      description: Native LDSC RG log with the scale selected by ordered endpoint prevalences
+      structure: "[map meta, path log]"
+      pattern: "native.log"
+      ontologies: []
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"

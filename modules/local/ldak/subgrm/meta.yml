@@ -1,0 +1,83 @@
+name: ldak_subgrm
+description: Extract a sub-matrix of a linkage disequilibrium-adjusted kinship (LDAK) genomic relationship matrix (GRM) restricted to a list of samples to keep
+keywords:
+  - ldak
+  - linkage disequilibrium adjusted kinship
+  - genomic relationship matrix
+  - grm
+  - kinship
+  - subset
+tools:
+  - ldak6:
+      description: LDAK toolset for kinship, heritability, and association analyses
+      homepage: https://dougspeed.com/ldak/
+      documentation: https://dougspeed.com/ldak/
+input:
+  - - meta:
+        type: map
+        description: |
+          Groovy Map containing GRM metadata.
+          Expected keys:
+            - id (string): Output prefix used for the `<id>.grm.*` sub-matrix files. The input bundle is staged
+              separately so matching input and output basenames are supported.
+    - grm_files:
+        type: file
+        description: LDAK GRM bundle sharing a common basename, containing the binary
+          matrix, sample identifiers, details, and adjustment factor files
+        pattern: "*.{grm.bin,grm.id,grm.details,grm.adjust}"
+        ontologies: []
+    - keep:
+        type: file
+        description: |
+          Sample identifiers to retain in the sub-matrix, one sample per line as whitespace-separated
+          family and individual identifiers (for example an LDAK `.keep` list or a GRM `.grm.id` file).
+        ontologies: []
+output:
+  sub_grm:
+    - - meta:
+          type: map
+          description: Metadata map propagated from input
+      - "${prefix}.grm.{bin,id,details,adjust}":
+          type: file
+          description: Sub-matrix LDAK genomic relationship matrix (GRM) with its sample identifiers, details and adjustment factors, consumed as one bundle
+          pattern: "*.grm.{bin,id,details,adjust}"
+          ontologies: []
+  versions_ldak6:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - ldak6:
+          type: string
+          description: The tool name
+      - ldak6 --version 2>&1 | grep -oP '(?<=^Version )[0-9.]+':
+          type: eval
+          description: The expression used to obtain the version of the tool
+topics:
+  versions:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - ldak6:
+          type: string
+          description: The tool name
+      - ldak6 --version 2>&1 | grep -oP '(?<=^Version )[0-9.]+':
+          type: eval
+          description: The expression used to obtain the version of the tool
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"
+containers:
+  conda:
+    linux/amd64:
+      lock_file: "modules/local/ldak/subgrm/.conda-lock/linux_amd64-bd-452828f72b3c9129_1.txt"
+  docker:
+    linux/amd64:
+      build_id: "bd-452828f72b3c9129_1"
+      name: "community.wave.seqera.io/library/ldak6_r-base:452828f72b3c9129"
+      scan_id: "sc-65cc7b1c1a9a20b6_1"
+  singularity:
+    linux/amd64:
+      build_id: "bd-e8012f1be139af77_1"
+      name: "oras://community.wave.seqera.io/library/ldak6_r-base:e8012f1be139af77"
+      https: "https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/c9/c94e5424f08cbd7e0856ab3c3a9992b4080944a5d0c497ce0abcceb413db4a3e/data"

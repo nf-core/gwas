@@ -1,0 +1,80 @@
+name: "custom_preparemrmegainput"
+description: Convert aligned GWASLab study columns into ordered native MR-MEGA study inputs
+keywords:
+  - gwas
+  - genome-wide association study
+  - meta-analysis
+  - MR-MEGA
+  - meta-regression of multi-ancestry genetic association studies
+tools:
+  - python:
+      description: Python programming language interpreter
+      homepage: "https://www.python.org/"
+      documentation: "https://docs.python.org/3/"
+      licence: ["PSF-2.0"]
+input:
+  - - meta:
+        type: map
+        description: Groovy Map containing caller metadata, preserved unchanged
+    - aligned_studies:
+        type: file
+        description: Gzip TSV containing META_VARIANT_KEY, CHR, POS, EA, NEA and one-based EAF_i, BETA_i, SE_i, N_i columns in study_names order
+        pattern: "*.tsv.gz"
+        ontologies:
+          - edam: "http://edamontology.org/format_3475"
+    - study_names:
+        type: list
+        description: Study labels in deterministic declared order
+    - trait_type:
+        type: string
+        description: Quantitative or binary trait selector
+output:
+  study_files:
+    - - meta:
+          type: map
+          description: Groovy Map containing caller metadata, preserved unchanged
+      - "${prefix}.mrmega_inputs/*.txt.gz":
+          type: file
+          description: Native MR-MEGA study inputs in declared order
+          pattern: "*.txt.gz"
+          ontologies: []
+  filelist:
+    - - meta:
+          type: map
+          description: Groovy Map containing caller metadata, preserved unchanged
+      - "${prefix}.filelist.txt":
+          type: file
+          description: Ordered list of the generated native study inputs
+          pattern: "*.filelist.txt"
+          ontologies: []
+  versions:
+    - "versions.yml":
+        type: file
+        description: File containing software versions
+        pattern: "versions.yml"
+        ontologies: []
+topics:
+  versions:
+    - "versions.yml":
+        type: file
+        description: File containing software versions
+        pattern: "versions.yml"
+        ontologies: []
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"
+containers:
+  docker:
+    linux/amd64:
+      name: community.wave.seqera.io/library/python:3.14.5--dc8358b3c5eeb927
+      build_id: bd-dc8358b3c5eeb927_1
+      scan_id: sc-d453bf85569b853d_1
+  singularity:
+    linux/amd64:
+      name: oras://community.wave.seqera.io/library/python:3.14.5--b29a2f2e65e096bd
+      build_id: bd-b29a2f2e65e096bd_10
+      https: https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/18/1841daa69f98a0b0ffcb8f545070c8350a75febb167202136eab0990131d31c0/data
+  conda:
+    linux/amd64:
+      lock_file: modules/local/custom/preparemrmegainput/.conda-lock/linux_amd64-bd-dc8358b3c5eeb927_1.txt

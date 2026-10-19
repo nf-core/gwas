@@ -1,0 +1,274 @@
+{
+    "chunked fit serves distinct analyses and testing genotype formats": {
+        "content": [
+            [
+                [
+                    {
+                        "id": "analysis_a"
+                    },
+                    "analysis_a.plink_simulated_QuantitativeTrait.regenie.gz"
+                ],
+                [
+                    {
+                        "id": "analysis_b"
+                    },
+                    "analysis_b.plink_simulated_QuantitativeTrait.regenie.gz"
+                ]
+            ]
+        ],
+        "timestamp": "2026-09-18T20:20:55.827704339",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "one fit fans out to 22 separately named chromosome bundles - stub": {
+        "content": [
+            [
+                [
+                    {
+                        "id": "analysis"
+                    },
+                    [
+                        "analysis.chr10_QuantitativeTrait.regenie.gz",
+                        "analysis.chr10_QuantitativeTrait2.regenie.gz"
+                    ]
+                ],
+                [
+                    {
+                        "id": "analysis"
+                    },
+                    [
+                        "analysis.chr11_QuantitativeTrait.regenie.gz",
+                        "analysis.chr11_QuantitativeTrait2.regenie.gz"
+                    ]
+                ],
+                [
+                    {
+                        "id": "analysis"
+                    },
+                    [
+                        "analysis.chr12_QuantitativeTrait.regenie.gz",
+                        "analysis.chr12_QuantitativeTrait2.regenie.gz"
+                    ]
+                ],
+                [
+                    {
+                        "id": "analysis"
+                    },
+                    [
+                        "analysis.chr13_QuantitativeTrait.regenie.gz",
+                        "analysis.chr13_QuantitativeTrait2.regenie.gz"
+                    ]
+                ],
+                [
+                    {
+                        "id": "analysis"
+                    },
+                    [
+                        "analysis.chr14_QuantitativeTrait.regenie.gz",
+                        "analysis.chr14_QuantitativeTrait2.regenie.gz"
+                    ]
+                ],
+                [
+                    {
+                        "id": "analysis"
+                    },
+                    [
+                        "analysis.chr15_QuantitativeTrait.regenie.gz",
+                        "analysis.chr15_QuantitativeTrait2.regenie.gz"
+                    ]
+                ],
+                [
+                    {
+                        "id": "analysis"
+                    },
+                    [
+                        "analysis.chr16_QuantitativeTrait.regenie.gz",
+                        "analysis.chr16_QuantitativeTrait2.regenie.gz"
+                    ]
+                ],
+                [
+                    {
+                        "id": "analysis"
+                    },
+                    [
+                        "analysis.chr17_QuantitativeTrait.regenie.gz",
+                        "analysis.chr17_QuantitativeTrait2.regenie.gz"
+                    ]
+                ],
+                [
+                    {
+                        "id": "analysis"
+                    },
+                    [
+                        "analysis.chr18_QuantitativeTrait.regenie.gz",
+                        "analysis.chr18_QuantitativeTrait2.regenie.gz"
+                    ]
+                ],
+                [
+                    {
+                        "id": "analysis"
+                    },
+                    [
+                        "analysis.chr19_QuantitativeTrait.regenie.gz",
+                        "analysis.chr19_QuantitativeTrait2.regenie.gz"
+                    ]
+                ],
+                [
+                    {
+                        "id": "analysis"
+                    },
+                    [
+                        "analysis.chr1_QuantitativeTrait.regenie.gz",
+                        "analysis.chr1_QuantitativeTrait2.regenie.gz"
+                    ]
+                ],
+                [
+                    {
+                        "id": "analysis"
+                    },
+                    [
+                        "analysis.chr20_QuantitativeTrait.regenie.gz",
+                        "analysis.chr20_QuantitativeTrait2.regenie.gz"
+                    ]
+                ],
+                [
+                    {
+                        "id": "analysis"
+                    },
+                    [
+                        "analysis.chr21_QuantitativeTrait.regenie.gz",
+                        "analysis.chr21_QuantitativeTrait2.regenie.gz"
+                    ]
+                ],
+                [
+                    {
+                        "id": "analysis"
+                    },
+                    [
+                        "analysis.chr22_QuantitativeTrait.regenie.gz",
+                        "analysis.chr22_QuantitativeTrait2.regenie.gz"
+                    ]
+                ],
+                [
+                    {
+                        "id": "analysis"
+                    },
+                    [
+                        "analysis.chr2_QuantitativeTrait.regenie.gz",
+                        "analysis.chr2_QuantitativeTrait2.regenie.gz"
+                    ]
+                ],
+                [
+                    {
+                        "id": "analysis"
+                    },
+                    [
+                        "analysis.chr3_QuantitativeTrait.regenie.gz",
+                        "analysis.chr3_QuantitativeTrait2.regenie.gz"
+                    ]
+                ],
+                [
+                    {
+                        "id": "analysis"
+                    },
+                    [
+                        "analysis.chr4_QuantitativeTrait.regenie.gz",
+                        "analysis.chr4_QuantitativeTrait2.regenie.gz"
+                    ]
+                ],
+                [
+                    {
+                        "id": "analysis"
+                    },
+                    [
+                        "analysis.chr5_QuantitativeTrait.regenie.gz",
+                        "analysis.chr5_QuantitativeTrait2.regenie.gz"
+                    ]
+                ],
+                [
+                    {
+                        "id": "analysis"
+                    },
+                    [
+                        "analysis.chr6_QuantitativeTrait.regenie.gz",
+                        "analysis.chr6_QuantitativeTrait2.regenie.gz"
+                    ]
+                ],
+                [
+                    {
+                        "id": "analysis"
+                    },
+                    [
+                        "analysis.chr7_QuantitativeTrait.regenie.gz",
+                        "analysis.chr7_QuantitativeTrait2.regenie.gz"
+                    ]
+                ],
+                [
+                    {
+                        "id": "analysis"
+                    },
+                    [
+                        "analysis.chr8_QuantitativeTrait.regenie.gz",
+                        "analysis.chr8_QuantitativeTrait2.regenie.gz"
+                    ]
+                ],
+                [
+                    {
+                        "id": "analysis"
+                    },
+                    [
+                        "analysis.chr9_QuantitativeTrait.regenie.gz",
+                        "analysis.chr9_QuantitativeTrait2.regenie.gz"
+                    ]
+                ]
+            ]
+        ],
+        "timestamp": "2026-09-18T20:35:05.098343586",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "supplied complete predictions bypass fitting": {
+        "content": [
+            [
+                [
+                    {
+                        "id": "consumer"
+                    },
+                    "consumer.plink_simulated_QuantitativeTrait.regenie.gz"
+                ]
+            ]
+        ],
+        "timestamp": "2026-09-18T20:34:59.339202607",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "standard fit serves distinct analyses and testing genotype formats": {
+        "content": [
+            [
+                [
+                    {
+                        "id": "analysis_a"
+                    },
+                    "analysis_a.plink_simulated_QuantitativeTrait.regenie.gz"
+                ],
+                [
+                    {
+                        "id": "analysis_b"
+                    },
+                    "analysis_b.plink_simulated_QuantitativeTrait.regenie.gz"
+                ]
+            ]
+        ],
+        "timestamp": "2026-09-18T20:20:34.968350394",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

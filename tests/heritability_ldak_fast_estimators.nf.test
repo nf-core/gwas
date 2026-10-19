@@ -1,0 +1,452 @@
+nextflow_pipeline {
+
+    name "Test LDAK fast Haseman-Elston and fast PCGC direct-genotype heritability routes"
+    script "../main.nf"
+    tag "pipeline"
+    tag "heritability"
+    tag "ldak"
+    tag "ldak_fast"
+
+    def commands = { outputDir ->
+        def scripts = []
+        new File(new File(outputDir.toString()).parentFile, 'work').eachFileRecurse { entry ->
+            if (entry.isFile() && entry.name == '.command.sh') {
+                scripts << entry.text.replaceAll(/\s+/, ' ')
+            }
+        }
+        return scripts
+    }
+
+    test("a binary fast HE row publishes the native liability scale and conversion factors") {
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, 'ldak_fast_binary')
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, 'ldak_fast_binary', { rows ->
+                    rows.clear()
+                    def binary = RELATIONAL.analysis(projectDir, 'example_pgen_bt')
+                    binary.analysis_id = 'fast_he_binary'
+                    binary.association_methods = ''
+                    binary.heritability_methods = 'ldak_fast_he'
+                    binary.population_prevalence = 0.1
+                    rows << binary
+                })
+                method_options = RELATIONAL.methodOptions(outputDir, 'ldak_fast_binary', [
+                    fast_he_binary: [ldak: [fast_seed: 7]],
+                ])
+            }
+        }
+        then {
+            def resultDir = new File("${params.outdir}/heritability/individual/ldak_fast_he/fast_he_binary")
+            def command = commands(params.outdir).find { script -> script.contains('ldak6 --fast-he') }
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'LDAK_FASTHE') == 1 },
+                { assert TRACE.count(workflow, 'LDAK_CALCKINS') == 0 },
+                // FASTHE takes its optional prevalence through `ext.args`, so the route renders it unquoted.
+                { assert command.contains('--prevalence 0.1') },
+                { assert new File(resultDir, 'fast_he_binary.ldak_fast_he.fasthe.liab').text.contains('Her_All') },
+                { assert new File(resultDir, 'fast_he_binary.ldak_fast_he.factor').text.contains('Scaling_Factor_Observed->Liability') },
+            )
+        }
+    }
+
+    test("fast-only rows estimate from raw genotypes and build no relatedness matrix at all") {
+
+        tag "ldak_fast_direct"
+
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, 'ldak_fast_direct')
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, 'ldak_fast_direct', { rows ->
+                    rows[0].analysis_id = 'fast_qt'
+                    rows[0].association_methods = ''
+                    rows[0].heritability_methods = 'ldak_fast_he'
+
+                    def binary = RELATIONAL.analysis(projectDir, 'example_pgen_bt')
+                    binary.analysis_id = 'fast_bt'
+                    binary.association_methods = ''
+                    binary.heritability_methods = 'ldak_fast_pcgc'
+                    binary.population_prevalence = 0.3
+                    rows << binary
+                })
+                method_options = RELATIONAL.methodOptions(outputDir, 'ldak_fast_direct', [
+                    fast_qt: [ldak: [model: 'human_default', power: -0.25, weights_policy: 'equal', fast_repetitions: 50, fast_num_blocks: 20, fast_seed: 7]],
+                    fast_bt: [ldak: [
+                        model: 'human_default',
+                        power: -0.25,
+                        weights_policy: 'provided',
+                        weights: RELATIONAL.weights(projectDir, outputDir, 'fast-weights.txt', 1),
+                        fast_seed: 7,
+                    ]],
+                ])
+            }
+        }
+
+        then {
+            def individual = new File("${params.outdir}/heritability/individual")
+            def heRun = new File(individual, 'ldak_fast_he/fast_qt')
+            def pcgcRun = new File(individual, 'ldak_fast_pcgc/fast_bt')
+            def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
+            assertAll(
+                { assert workflow.success },
+                // The cohort is converted to PLINK 1 once, and nothing that builds or filters a relatedness
+                // matrix runs at all. This is the claim the whole route exists to make.
+                { assert TRACE.count(workflow, 'PLINK2_MAKEBED') == 1 },
+                { assert TRACE.count(workflow, 'LDAK_FASTHE') == 1 },
+                { assert TRACE.count(workflow, 'LDAK_FASTPCGC') == 1 },
+                { assert TRACE.count(workflow, 'LDAK_CALCKINS') == 0 },
+                { assert TRACE.count(workflow, 'LDAK_ADJUSTGRM') == 0 },
+                { assert TRACE.count(workflow, 'LDAK_FILTER') == 0 },
+                { assert TRACE.count(workflow, 'LDAK_SUBGRM') == 0 },
+                { assert TRACE.count(workflow, 'LDAK_HE') == 0 },
+                { assert TRACE.count(workflow, 'LDAK_PCGC') == 0 },
+                { assert TRACE.count(workflow, 'LDAK_REML') == 0 },
+                { assert TRACE.count(workflow, 'GCTA_MAKEGRMPART') == 0 },
+                { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 0 },
+                { assert !new File("${params.outdir}/quality_control").exists() },
+                { assert individual.list().toList().sort() == ['ldak_fast_he', 'ldak_fast_pcgc'] },
+                // The published set is the native result family; the per-predictor, jackknife, repetition,
+                // label, progress and combined-covariate members stay in the work directory.
+                { assert heRun.list().toList().sort() == [
+                    'fast_qt.ldak_fast_he.cats',
+                    'fast_qt.ldak_fast_he.coeff',
+                    'fast_qt.ldak_fast_he.cross',
+                    'fast_qt.ldak_fast_he.enrich',
+                    'fast_qt.ldak_fast_he.fasthe',
+                    'fast_qt.ldak_fast_he.log',
+                    'fast_qt.ldak_fast_he.share',
+                ] },
+                { assert pcgcRun.list().toList().sort() == [
+                    'fast_bt.ldak_fast_pcgc.cats',
+                    'fast_bt.ldak_fast_pcgc.coeff',
+                    'fast_bt.ldak_fast_pcgc.cross',
+                    'fast_bt.ldak_fast_pcgc.enrich',
+                    'fast_bt.ldak_fast_pcgc.fastpcgc',
+                    'fast_bt.ldak_fast_pcgc.fastpcgc.marginal',
+                    'fast_bt.ldak_fast_pcgc.log',
+                    'fast_bt.ldak_fast_pcgc.share',
+                ] },
+            )
+            def runCommands = commands(params.outdir)
+            def fastHeCommand = runCommands.find { command -> command.contains('ldak6 --fast-he') }
+            def fastPcgcCommand = runCommands.find { command -> command.contains('ldak6 --fast-pcgc') }
+            def fasthe = new File(heRun, 'fast_qt.ldak_fast_he.fasthe')
+            assertAll(
+                // Every curated option reaches the native command line, and nothing that belongs to the
+                // kinship routes does.
+                { assert fastHeCommand.contains('--bfile "example_pgen"') },
+                { assert fastHeCommand.contains('--power "-0.25"') },
+                { assert !fastHeCommand.contains('--ignore-weights YES') },
+                { assert fastHeCommand.contains('--covar "fast_qt.noheader.qcovar"') },
+                { assert fastHeCommand.contains('--factors "fast_qt.noheader.catcovar"') },
+                { assert fastHeCommand.contains('--mpheno 1') },
+                { assert fastHeCommand.contains('--repetitions 50') },
+                { assert fastHeCommand.contains('--num-blocks 20') },
+                { assert fastHeCommand.contains('--random-seed 7') },
+                { assert !fastHeCommand.contains('--grm') },
+                { assert !fastHeCommand.contains('--keep') },
+                { assert !fastHeCommand.contains('--prevalence') },
+                { assert fastPcgcCommand.contains('--prevalence "0.3"') },
+                { assert fastPcgcCommand.contains('--weights') },
+                { assert !fastPcgcCommand.contains('--ignore-weights') },
+                // The compact cohort's four quantitative covariates and one two-level factor, plus the
+                // intercept; every phenotyped sample is retained because the covariates are complete.
+                { assert fasthe.readLines().contains('Num_Covariates 6') },
+                { assert fasthe.readLines().contains('With_Phenotypes 200') },
+                // Full predictor coverage: LDAK zero-weights nothing and says nothing about it.
+                { assert !new File(pcgcRun, 'fast_bt.ldak_fast_pcgc.log').text.contains('contains weights for only') },
+                { assert snapshot(removeNextflowVersion(versions.toString())).match('versions') },
+                { assert snapshot(
+                    getAllFilesFromDir(individual.toString(), relative: true, includeDir: true, ignoreFile: 'tests/.nftignore'),
+                    getAllFilesFromDir(individual.toString(), ignoreFile: 'tests/.nftignore'),
+                ).match('heritability') },
+                // The native logs carry a wall-clock line and can never be content-snapshotted; the ignore
+                // globs are scan-root-independent precisely so this holds under this scan root too.
+                { assert !getAllFilesFromDir(individual.toString(), ignoreFile: 'tests/.nftignore').any { entry -> entry.name.endsWith('.log') } },
+            )
+        }
+    }
+
+    test("exact and fast LDAK estimators coexist on one row without colliding") {
+
+        tag "ldak_fast_mixed"
+
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, 'ldak_fast_mixed')
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, 'ldak_fast_mixed', { rows ->
+                    rows[0].analysis_id = 'mixed_qt'
+                    rows[0].association_methods = ''
+                    rows[0].heritability_methods = 'ldak_he,ldak_fast_he'
+                    rows[0].quant_covariates = ''
+                    rows[0].cat_covariates = ''
+
+                    def binary = RELATIONAL.analysis(projectDir, 'example_pgen_bt')
+                    binary.analysis_id = 'mixed_bt'
+                    binary.association_methods = ''
+                    binary.heritability_methods = 'ldak_pcgc,ldak_fast_pcgc'
+                    binary.population_prevalence = 0.3
+                    binary.quant_covariates = ''
+                    binary.cat_covariates = ''
+                    rows << binary
+                })
+                method_options = RELATIONAL.methodOptions(outputDir, 'ldak_fast_mixed', [
+                    mixed_qt: [ldak: [model: 'human_default', power: -0.25, weights_policy: 'equal', fast_seed: 7]],
+                    mixed_bt: [ldak: [model: 'human_default', power: -0.25, weights_policy: 'equal', fast_seed: 7]],
+                ])
+            }
+        }
+
+        then {
+            def individual = new File("${params.outdir}/heritability/individual")
+            assertAll(
+                { assert workflow.success },
+                // One kinship base serves both exact estimators; the fast estimators request none, so the
+                // matrix count is unchanged by their presence on the same rows.
+                { assert TRACE.count(workflow, 'LDAK_CALCKINS') == 1 },
+                { assert TRACE.count(workflow, 'LDAK_ADJUSTGRM') == 0 },
+                { assert TRACE.count(workflow, 'LDAK_HE') == 1 },
+                { assert TRACE.count(workflow, 'LDAK_PCGC') == 1 },
+                { assert TRACE.count(workflow, 'LDAK_FASTHE') == 1 },
+                { assert TRACE.count(workflow, 'LDAK_FASTPCGC') == 1 },
+                { assert individual.list().toList().sort() == ['ldak_fast_he', 'ldak_fast_pcgc', 'ldak_he', 'ldak_pcgc'] },
+                // Different directories and different prefixes: the exact and the fast result of one
+                // analysis can never overwrite one another.
+                { assert new File(individual, 'ldak_he/mixed_qt/mixed_qt.ldak_he.he').isFile() },
+                { assert new File(individual, 'ldak_fast_he/mixed_qt/mixed_qt.ldak_fast_he.fasthe').isFile() },
+                { assert new File(individual, 'ldak_pcgc/mixed_bt/mixed_bt.ldak_pcgc.pcgc').isFile() },
+                { assert new File(individual, 'ldak_fast_pcgc/mixed_bt/mixed_bt.ldak_fast_pcgc.fastpcgc').isFile() },
+            )
+            def runCommands = commands(params.outdir)
+            def multiqcReport = new File("${params.outdir}/multiqc/multiqc_report.html")
+            def modelCommands = runCommands.findAll { command -> command.contains('--calc-kins-direct') || command.contains('--fast-he') }
+            assertAll(
+                // The kinship builder and the direct estimator are given the same predictor-scaling
+                // model, which is what makes the two estimates comparable at all.
+                { assert modelCommands.size() == 2 },
+                { assert modelCommands.every { command -> command.contains('--power "-0.25"') && !command.contains('--ignore-weights YES') } },
+                { assert multiqcReport.text.contains('LDAK fast Haseman-Elston regression (Speed <em>et al.</em>, 2012; Pazokitoroudi <em>et al.</em>, 2020)') },
+                { assert multiqcReport.text.contains('LDAK fast PCGC regression (Speed <em>et al.</em>, 2012; Pazokitoroudi <em>et al.</em>, 2020)') },
+                { assert multiqcReport.text.count('https://doi.org/10.1038/s41467-020-17576-9') == 1 },
+            )
+        }
+    }
+
+    test("a seeded fast estimate is reproduced on resume and a changed seed re-estimates") {
+
+        tag "ldak_fast_resume"
+
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, 'ldak_fast_resume')
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, 'ldak_fast_resume', { rows ->
+                    rows[0].analysis_id = 'resume_qt'
+                    rows[0].association_methods = ''
+                    rows[0].heritability_methods = 'ldak_fast_he'
+                })
+                method_options = RELATIONAL.methodOptions(outputDir, 'ldak_fast_resume', [
+                    resume_qt: [ldak: [model: 'human_default', power: -0.25, weights_policy: 'equal', fast_repetitions: 20, fast_num_blocks: 20, fast_seed: 7]],
+                ])
+            }
+        }
+
+        then {
+            def published = new File("${params.outdir}/heritability/individual/ldak_fast_he/resume_qt/resume_qt.ldak_fast_he.fasthe")
+            def seeded = published.text
+            def unchangedTrace = RESUME.rerun(outputDir, [:])
+            def afterUnchangedRerun = published.text
+            def reseeded = RELATIONAL.methodOptions(outputDir, 'ldak_fast_resume_reseeded', [
+                resume_qt: [ldak: [model: 'human_default', power: -0.25, weights_policy: 'equal', fast_repetitions: 20, fast_num_blocks: 20, fast_seed: 8]],
+            ])
+            def reseededTrace = RESUME.rerun(outputDir, [method_options: reseeded])
+            def afterReseededRerun = published.text
+            assertAll(
+                { assert workflow.success },
+                // The seed is curated method options, so it is part of the task identity: an unchanged rerun
+                // reuses the estimate byte for byte, and a changed seed genuinely re-estimates rather than
+                // republishing the cached one.
+                { assert RESUME.statuses(unchangedTrace, 'LDAK_FASTHE') == ['CACHED'] },
+                // Phenotype preparation is a scientific stage whose cache boundary this branch widened: its
+                // task meta now carries `requires_complete_covariates`. An unchanged rerun must still reuse
+                // it, and the changed-seed rerun below must leave it reused while re-estimating downstream.
+                { assert RESUME.statuses(unchangedTrace, 'PREPARE_PHENOTYPE_INPUTS') == ['CACHED'] },
+                { assert RESUME.statuses(reseededTrace, 'PREPARE_PHENOTYPE_INPUTS') == ['CACHED'] },
+                { assert afterUnchangedRerun == seeded },
+                { assert RESUME.statuses(reseededTrace, 'LDAK_FASTHE') == ['COMPLETED'] },
+                { assert RESUME.tasks(reseededTrace, 'LDAK_FASTHE').size() == 1 },
+                { assert RESUME.statuses(reseededTrace, 'PLINK2_MAKEBED') == ['CACHED'] },
+                { assert afterReseededRerun != seeded },
+            )
+        }
+    }
+
+    test("a mixed row keeps the unrelated-sample filter for its kinship estimator and warns about the fast one") {
+
+        tag "ldak_fast_mixed_filter"
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, 'ldak_fast_mixed_filter')
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, 'ldak_fast_mixed_filter', { rows ->
+                    rows[0].analysis_id = 'filtered_mixed_qt'
+                    rows[0].association_methods = ''
+                    rows[0].heritability_methods = 'ldak_he,ldak_fast_he'
+                })
+                method_options = RELATIONAL.methodOptions(outputDir, 'ldak_fast_mixed_filter', [
+                    filtered_mixed_qt: [ldak: [model: 'human_default', power: -0.25, weights_policy: 'equal', relatedness_filter: true, fast_seed: 7]],
+                ])
+            }
+        }
+
+        then {
+            // `relatedness_filter` is rejected only where nothing can consume it. Here the kinship estimator
+            // genuinely does, so the row runs — and the two estimators then work on different sample sets,
+            // which is exactly what the warning has to say out loud because no native output reveals it.
+            def report = VALIDATION.report(outputDir, workflow.stdout)
+            def individual = new File("${params.outdir}/heritability/individual")
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'LDAK_CALCKINS') == 1 },
+                { assert TRACE.count(workflow, 'LDAK_FILTER') == 1 },
+                { assert TRACE.count(workflow, 'LDAK_SUBGRM') == 1 },
+                { assert TRACE.count(workflow, 'LDAK_HE') == 1 },
+                { assert TRACE.count(workflow, 'LDAK_FASTHE') == 1 },
+                { assert new File(individual, 'ldak_he/filtered_mixed_qt/filtered_mixed_qt.ldak_he.he').isFile() },
+                { assert new File(individual, 'ldak_fast_he/filtered_mixed_qt/filtered_mixed_qt.ldak_fast_he.fasthe').isFile() },
+                { assert report.contains("analysis 'filtered_mixed_qt' sets 'ldak.relatedness_filter' beside direct-genotype estimator(s) ldak_fast_he") },
+                { assert report.contains('estimates are computed on different sample sets') },
+            )
+        }
+    }
+
+    // The rule is declared by a registry capability that six selectors carry, and the spine asks the question
+    // of the association selectors and the heritability selectors alike. Both halves of that expression, and
+    // both covariate roles, therefore need a case: with only the fast-route cases, deleting the association
+    // term would leave the whole suite green while silently reverting the refusal for `ldak_kvik`.
+    def incompleteCovariates = [
+        [name: 'a quantitative covariate on a fast heritability row', selector: 'heritability', methods: 'ldak_fast_he', fixture: 'example.qcovar', column: 'AGE', role: 'quant'],
+        [name: 'a categorical covariate on a fast heritability row', selector: 'heritability', methods: 'ldak_fast_he', fixture: 'example.catcovar', column: 'SEX', role: 'cat'],
+        [name: 'a quantitative covariate on a kinship heritability row', selector: 'heritability', methods: 'ldak_he', fixture: 'example.qcovar', column: 'AGE', role: 'quant'],
+        [name: 'a quantitative covariate on an LDAK association row', selector: 'association', methods: 'ldak_kvik', fixture: 'example.qcovar', column: 'AGE', role: 'quant'],
+    ]
+
+    incompleteCovariates.each { scenario ->
+        test("preparation refuses ${scenario.name} that would silently fit an arbitrary value") {
+
+            tag "ldak_fast_covariates"
+
+            when {
+                params {
+                    def fixture = "ldak_missing_${scenario.methods}_${scenario.role}"
+                    def incomplete = RELATIONAL.covariatesWithMissingCell(projectDir, outputDir, "${fixture}.covar", scenario.fixture, scenario.column)
+                    outdir = "$outputDir"
+                    cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, fixture)
+                    analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, fixture, { rows ->
+                        rows[0].analysis_id = 'incomplete_covariates'
+                        rows[0].association_methods = scenario.selector == 'association' ? scenario.methods : ''
+                        rows[0].heritability_methods = scenario.selector == 'heritability' ? scenario.methods : ''
+                        if (scenario.role == 'quant') {
+                            rows[0].quant_covariates = incomplete.path
+                        }
+                        else {
+                            rows[0].cat_covariates = incomplete.path
+                        }
+                    })
+                }
+            }
+
+            then {
+                // LDAK leaves an unparsed `--covar` cell as whatever was last in its read buffer, and turns a
+                // missing `--factors` cell into an extra level, in both cases silently. The pipeline therefore
+                // refuses the input rather than letting the run report a covariate model nobody declared.
+                def report = VALIDATION.report(outputDir, workflow.stdout)
+                assertAll(
+                    { assert !workflow.success },
+                    // The rule lives in the preparation task, so preparation must have run and failed. A
+                    // count of zero successful tasks would also hold if the run had never reached the process.
+                    // Membership rather than equality: a sibling task already in flight when the run aborts is
+                    // recorded as failed too, and which ones those are depends on scheduling.
+                    { assert 'PREPARE_PHENOTYPE_INPUTS' in workflow.trace.failed().collect { task -> task.name.split(/ \(/).first().tokenize(':').last() } },
+                    { assert TRACE.count(workflow, 'PREPARE_PHENOTYPE_INPUTS') == 0 },
+                    { assert TRACE.count(workflow, 'LDAK_FASTHE') == 0 },
+                    { assert TRACE.count(workflow, 'LDAK_HE') == 0 },
+                    { assert TRACE.count(workflow, 'LDAK_KVIKSTEP1') == 0 },
+                    { assert report.contains('missing covariate cells') },
+                    { assert report.contains('LDAK --covar/--factors') },
+                    { assert report.contains("S001 S001 ${scenario.column}") },
+                )
+            }
+        }
+    }
+
+    test("a fast row without a seed uses the native default") {
+
+        tag "ldak_fast_unseeded"
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, 'ldak_fast_unseeded')
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, 'ldak_fast_unseeded', { rows ->
+                    rows[0].analysis_id = 'unseeded_qt'
+                    rows[0].association_methods = ''
+                    rows[0].heritability_methods = 'ldak_fast_he'
+                })
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'LDAK_FASTHE') == 1 },
+            )
+        }
+    }
+
+    test("weights covering only half the predictors are a native warning, not a failure") {
+
+        tag "ldak_fast_partial_weights"
+
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, 'ldak_fast_partial_weights')
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, 'ldak_fast_partial_weights', { rows ->
+                    rows[0].analysis_id = 'partial_weights_qt'
+                    rows[0].association_methods = ''
+                    rows[0].heritability_methods = 'ldak_fast_he'
+                })
+                method_options = RELATIONAL.methodOptions(outputDir, 'ldak_fast_partial_weights', [
+                    partial_weights_qt: [ldak: [
+                        model: 'human_default',
+                        power: -0.25,
+                        weights_policy: 'provided',
+                        weights: RELATIONAL.weights(projectDir, outputDir, 'fast-weights-half.txt', 1, 2),
+                        fast_repetitions: 20,
+                        fast_seed: 7,
+                    ]],
+                ])
+            }
+        }
+
+        then {
+            // The pipeline adds no coverage guard of its own: an incomplete weights file zero-weights the
+            // predictors it omits, LDAK says so in the log the route publishes, and the researcher decides.
+            // This pins that behaviour end to end so a future shared guard has a red test to turn green.
+            def published = new File("${params.outdir}/heritability/individual/ldak_fast_he/partial_weights_qt")
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'LDAK_FASTHE') == 1 },
+                { assert new File(published, 'partial_weights_qt.ldak_fast_he.log').text.contains('contains weights for only 1100 of the 2200 predictors') },
+                { assert new File(published, 'partial_weights_qt.ldak_fast_he.fasthe').isFile() },
+            )
+        }
+    }
+}

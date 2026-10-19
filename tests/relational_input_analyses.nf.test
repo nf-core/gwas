@@ -1,0 +1,123 @@
+nextflow_pipeline {
+
+    name "Test linked cohort and analysis manifests"
+    script "../main.nf"
+    tag "pipeline"
+    tag "input"
+    tag "relational"
+    tag "analyses"
+
+    test("linked analyses preserve identity through REGENIE native and harmonised outputs") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, "regenie_trait_semantics")
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, "regenie_trait_semantics", { rows ->
+                    def binary = RELATIONAL.analysis(projectDir, 'example_pgen_bt')
+                    def quantitativeWithoutCovariates = new LinkedHashMap(rows[0])
+                    quantitativeWithoutCovariates.analysis_id = 'example_pgen_qt_no_covariates'
+                    quantitativeWithoutCovariates.quant_covariates = ''
+                    quantitativeWithoutCovariates.cat_covariates = ''
+                    def binaryWithoutCovariates = new LinkedHashMap(binary)
+                    binaryWithoutCovariates.analysis_id = 'example_pgen_bt_no_covariates'
+                    binaryWithoutCovariates.quant_covariates = ''
+                    binaryWithoutCovariates.cat_covariates = ''
+                    rows.addAll([binary, quantitativeWithoutCovariates, binaryWithoutCovariates])
+                })
+            }
+        }
+
+        then {
+            def analysisIds = [
+                'example_pgen_bt',
+                'example_pgen_bt_no_covariates',
+                'example_pgen_qt',
+                'example_pgen_qt_no_covariates',
+            ]
+            def regenie = new File("${params.outdir}/association/regenie")
+            def harmonised = new File("${params.outdir}/summary_statistics")
+            def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
+            def stable_name_association = getAllFilesFromDir(
+                "${params.outdir}/association",
+                relative: true,
+                includeDir: true,
+            ).findAll { path -> path.toString() }
+            def stable_path_association = RELATIONAL.gzipTextHashes("${params.outdir}/association")
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.tags(workflow, 'PREPARE_PHENOTYPE_INPUTS').sort() == analysisIds },
+                { assert TRACE.count(workflow, 'PREPARE_PHENOTYPE_INPUTS') == analysisIds.size() },
+                // Four distinct phenotype/covariate byte sets, so the REGENIE Step 1 reuse key produces one
+                // fit per analysis rather than collapsing any of them.
+                { assert TRACE.count(workflow, 'REGENIE_STEP1') == analysisIds.size() },
+                { assert TRACE.count(workflow, 'REGENIE_STEP2') == analysisIds.size() },
+                { assert TRACE.tags(workflow, 'GWASLAB_HARMONIZE').sort() == analysisIds.collect { id -> "${id}--regenie" }.sort() },
+                { assert regenie.list().toList().sort() == analysisIds },
+                { assert harmonised.list().toList().sort() == analysisIds.collect { id -> "${id}--regenie" }.sort() },
+                { assert analysisIds.every { id -> new File(harmonised, "${id}--regenie/${id}--regenie.gwaslab.tsv.gz").exists() } },
+                { assert snapshot(stable_name_association, stable_path_association).match('association') },
+                { assert snapshot(removeNextflowVersion(versions.toString())).match('versions') },
+            )
+        }
+    }
+
+    // The pipeline-level sentinel for the analysis-manifest contracts. Every other rule in that family is
+    // asserted, message and attribution included, by resolve_input.function.nf.test; this case is kept because
+    // it is the cross-manifest link — an analysis row resolved against the cohort manifest — and because only a
+    // pipeline run can prove the refusal happens before any task is submitted.
+    test("an analysis naming an undefined cohort fails before task submission") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, "undefined_cohort")
+                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, "undefined_cohort", { rows ->
+                    rows[0].cohort_id = 'missing_cohort'
+                })
+            }
+        }
+
+        then {
+            def report = VALIDATION.report(outputDir, workflow.stdout)
+            assertAll(
+                { assert !workflow.success },
+                { assert report.contains(params.analysis_manifest.toString()) },
+                { assert report.contains("row 2 (analysis_id 'example_pgen_qt')") },
+                { assert report.contains("field 'cohort_id'") },
+                { assert report.contains("undefined cohort_id 'missing_cohort'") },
+                { assert TRACE.count(workflow, 'PREPARE_PHENOTYPE_INPUTS') == 0 },
+                // Stronger than any list of named zero-counts: nothing at all was submitted.
+                { assert workflow.trace.tasks().isEmpty() },
+            )
+        }
+    }
+
+    // The pipeline-level sentinel for manifest pairing. The rule lives in the VALIDATE_GWAS_INPUT workflow body
+    // rather than in a resolver, so it has no function form at all; this case additionally proves that a null
+    // --analysis_manifest passes nf-schema and that the pairing check fires before samplesheetToList. Its
+    // mirror image, an analysis manifest with no cohort manifest, is a workflow-level case in
+    // subworkflows/local/validate_gwas_input/tests/main.nf.test.
+    test("a cohort manifest without an analysis manifest is rejected") {
+        tag "manifest_pairing"
+
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, "cohort_only")
+                analysis_manifest = null
+            }
+        }
+
+        then {
+            def report = VALIDATION.report(outputDir, workflow.stdout)
+            assertAll(
+                { assert !workflow.success },
+                { assert report.contains('--analysis_manifest is missing; linked manifests require both') },
+                { assert TRACE.count(workflow, 'PREPARE_PHENOTYPE_INPUTS') == 0 },
+                { assert workflow.trace.tasks().isEmpty() },
+            )
+        }
+    }
+
+}

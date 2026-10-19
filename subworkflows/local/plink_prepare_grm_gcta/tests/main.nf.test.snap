@@ -1,0 +1,107 @@
+{
+    "parts=1 selected=false - real": {
+        "content": [
+            {
+                "0": [
+                    [
+                        {
+                            "id": "focal"
+                        },
+                        [
+                            "focal.grm.N.bin:md5,acaa43bbbf2253d392537a178ecf09a4",
+                            "focal.grm.bin:md5,45f8dff14bda17d50009a21050572228",
+                            "focal.grm.id:md5,4f9aa36c44a417ff6d7caa9841e66ad9"
+                        ]
+                    ]
+                ],
+                "grm_files": [
+                    [
+                        {
+                            "id": "focal"
+                        },
+                        [
+                            "focal.grm.N.bin:md5,acaa43bbbf2253d392537a178ecf09a4",
+                            "focal.grm.bin:md5,45f8dff14bda17d50009a21050572228",
+                            "focal.grm.id:md5,4f9aa36c44a417ff6d7caa9841e66ad9"
+                        ]
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T18:41:18.022492105",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "parts=2 selected=false - stub": {
+        "content": [
+            {
+                "0": [
+                    [
+                        {
+                            "id": "focal"
+                        },
+                        [
+                            "focal.grm.N.bin:md5,d41d8cd98f00b204e9800998ecf8427e",
+                            "focal.grm.bin:md5,d41d8cd98f00b204e9800998ecf8427e",
+                            "focal.grm.id:md5,d41d8cd98f00b204e9800998ecf8427e"
+                        ]
+                    ]
+                ],
+                "grm_files": [
+                    [
+                        {
+                            "id": "focal"
+                        },
+                        [
+                            "focal.grm.N.bin:md5,d41d8cd98f00b204e9800998ecf8427e",
+                            "focal.grm.bin:md5,d41d8cd98f00b204e9800998ecf8427e",
+                            "focal.grm.id:md5,d41d8cd98f00b204e9800998ecf8427e"
+                        ]
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T18:41:32.731550116",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "parts=2 selected=true - real": {
+        "content": [
+            {
+                "0": [
+                    [
+                        {
+                            "id": "focal"
+                        },
+                        [
+                            "focal.grm.N.bin:md5,e738b21f8ae67d289f7dfa9c217d30b4",
+                            "focal.grm.bin:md5,19a2161de5b963e679a2cd8394085106",
+                            "focal.grm.id:md5,4f9aa36c44a417ff6d7caa9841e66ad9"
+                        ]
+                    ]
+                ],
+                "grm_files": [
+                    [
+                        {
+                            "id": "focal"
+                        },
+                        [
+                            "focal.grm.N.bin:md5,e738b21f8ae67d289f7dfa9c217d30b4",
+                            "focal.grm.bin:md5,19a2161de5b963e679a2cd8394085106",
+                            "focal.grm.id:md5,4f9aa36c44a417ff6d7caa9841e66ad9"
+                        ]
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T18:41:25.455607495",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

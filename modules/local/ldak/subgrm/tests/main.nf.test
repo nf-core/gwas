@@ -1,0 +1,76 @@
+nextflow_process {
+    name "Test Process LDAK_SUBGRM"
+    script "../main.nf"
+    config "./nextflow.config"
+    process "LDAK_SUBGRM"
+    tag "modules"
+    tag "modules_nfcore"
+    tag "ldak"
+    tag "ldak/calckins"
+    tag "ldak/subgrm"
+
+    test("homo sapiens - native") {
+        tag "ldak-subgrm-sample-subset"
+        setup {
+            run("LDAK_CALCKINS") {
+                script "../../calckins/main.nf"
+                process {
+                    """
+                    input[0] = Channel.of([[id:'base'], file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bed', checkIfExists: true),
+                        file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bim', checkIfExists: true),
+                        file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.fam', checkIfExists: true), -0.25])
+                    input[1] = Channel.of([[id:'weights'], []])
+                    """
+                }
+            }
+        }
+        when {
+            process {
+                """
+                input[0] = LDAK_CALCKINS.out.ldak_grm.map { _meta, grm_files ->
+                    def keep = file('samples.keep')
+                    keep.text = grm_files.find { grm_file -> grm_file.name.endsWith('.grm.id') }.readLines().take(10).join('\\n') + '\\n'
+                    [[id:'base'], grm_files, keep]
+                }
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert process.success },
+                { assert path(process.out.sub_grm[0][1].find { grm_file -> grm_file.endsWith('.grm.id') }).readLines().size() == 10 },
+                { assert snapshot(sanitizeOutput(process.out)).match() }
+            )
+        }
+    }
+
+    test("homo sapiens - bed bim fam - stub") {
+        options "-stub"
+        setup {
+            run("LDAK_CALCKINS") {
+                script "../../calckins/main.nf"
+                process {
+                    """
+                    input[0] = Channel.of([[id:'base'], file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bed', checkIfExists: true),
+                        file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bim', checkIfExists: true),
+                        file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.fam', checkIfExists: true), -0.25])
+                    input[1] = Channel.of([[id:'weights'], []])
+                    """
+                }
+            }
+        }
+        when {
+            process {
+                """
+                input[0] = LDAK_CALCKINS.out.ldak_grm.map { _meta, grm_files -> [[id:'base'], grm_files, grm_files.find { grm_file -> grm_file.name.endsWith('.grm.id') }] }
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert process.success },
+                { assert snapshot(sanitizeOutput(process.out)).match() }
+            )
+        }
+    }
+}

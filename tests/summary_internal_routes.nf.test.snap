@@ -1,0 +1,76 @@
+{
+    "versions": {
+        "content": [
+            {
+                "CUSTOM_GCTAMERGEGRMPARTS": {
+                    "coreutils": 9.5
+                },
+                "GCTA_FASTGWA": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_MAKEBKSPARSE": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_MAKEGRMPART": {
+                    "gcta": "1.94.1"
+                },
+                "GWASLAB_HARMONIZE": {
+                    "gwaslab": "4.1.9",
+                    "python": "3.12.13"
+                },
+                "LDAK_SUMCORS": {
+                    "ldak": 6.3
+                },
+                "LDAK_SUMHER": {
+                    "ldak": 6.3
+                },
+                "LDSC_H2": {
+                    "ldsc": "3.0.2",
+                    "python": "3.9.13"
+                },
+                "LDSC_MUNGESUMSTATS": {
+                    "ldsc": "3.0.2",
+                    "python": "3.9.13"
+                },
+                "LDSC_RG": {
+                    "ldsc": "3.0.2",
+                    "python": "3.9.13"
+                },
+                "PREPARE_GENOTYPE_SOURCE": {
+                    "python": "3.14.5"
+                },
+                "PREPARE_LDAK_SUMMARY_STATISTICS": {
+                    "python": "3.14.5"
+                },
+                "PREPARE_PHENOTYPE_INPUTS": {
+                    "python": "3.14.5"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "timestamp": "2026-09-19T19:28:15.659727437",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "stub association summaries join all unary and pair summary estimators": {
+        "content": [
+            [
+                "example_pgen_bt--gcta_fastgwa/example_pgen_bt--gcta_fastgwa.gwaslab.tsv.gz:md5,d41d8cd98f00b204e9800998ecf8427e",
+                "example_pgen_qt--gcta_fastgwa/example_pgen_qt--gcta_fastgwa.gwaslab.tsv.gz:md5,d41d8cd98f00b204e9800998ecf8427e"
+            ],
+            "",
+            "",
+            "LDSC heritability stub\n",
+            "LDSC genetic correlation stub\n"
+        ],
+        "timestamp": "2026-08-30T22:22:11.456234043",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

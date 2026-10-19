@@ -1,0 +1,127 @@
+nextflow_function {
+
+    name "Test LDSC munging reuse identity"
+    script "../main.nf"
+    tag "function"
+    tag "ldsc"
+    tag "ldsc_h2"
+    tag "ldsc_rg"
+
+    // The reusable munging identity is exactly the adapter contract, the summary-statistics identity and the
+    // SHA-256 of the HapMap3 SNP-list bytes. `hapmap3_duplicate.snplist` holds bytes identical to
+    // `hapmap3_primary.snplist`; `hapmap3_alternate.snplist` holds different bytes.
+    def TESTS = { project_dir -> "${project_dir}/subworkflows/local/route_ldsc_summary_analyses/tests" }
+    def SNPLIST = { project_dir, name -> "file('${TESTS(project_dir)}/${name}', checkIfExists: true)" }
+
+    test("the key is the pinned digest of the adapter contract, the summary identity and the HapMap3 bytes") {
+        function "getLdscMungingKey"
+
+        when {
+            function {
+                """
+                input[0] = 'external_qt1'
+                input[1] = ${SNPLIST(projectDir, 'hapmap3_primary.snplist')}
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == '4e1eb0db2ace' },
+            )
+        }
+    }
+
+    test("byte-identical SNP lists under different names produce the same key") {
+        function "getLdscMungingKey"
+
+        when {
+            function {
+                """
+                input[0] = 'external_qt1'
+                input[1] = ${SNPLIST(projectDir, 'hapmap3_duplicate.snplist')}
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == '4e1eb0db2ace' },
+            )
+        }
+    }
+
+    test("a different HapMap3 allele universe produces a different key") {
+        function "getLdscMungingKey"
+
+        when {
+            function {
+                """
+                input[0] = 'external_qt1'
+                input[1] = ${SNPLIST(projectDir, 'hapmap3_alternate.snplist')}
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == '9119e4d34437' },
+            )
+        }
+    }
+
+    test("a different summary-statistics identity produces a different key") {
+        function "getLdscMungingKey"
+
+        when {
+            function {
+                """
+                input[0] = 'external_qt2'
+                input[1] = ${SNPLIST(projectDir, 'hapmap3_primary.snplist')}
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == '7f8d35e12b5b' },
+            )
+        }
+    }
+
+    test("the controller's private reuse identity is dropped from a result record") {
+        function "stripRoutingIdentity"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    request_id: 'ldsc_rg--external_pair',
+                    method: 'ldsc_rg',
+                    relationship_id: 'external_pair',
+                    left_summary_statistics_id: 'external_qt',
+                    right_summary_statistics_id: 'external_bt',
+                    reference_bundle_id: 'ldsc_eur',
+                    native_scale: 'observed',
+                    munging_keys: ['4e1eb0db2ace', '7f8d35e12b5b'],
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert !function.result.containsKey('munging_keys') },
+                { assert function.result.request_id == 'ldsc_rg--external_pair' },
+                { assert function.result.left_summary_statistics_id == 'external_qt' },
+                { assert function.result.right_summary_statistics_id == 'external_bt' },
+                { assert function.result.reference_bundle_id == 'ldsc_eur' },
+            )
+        }
+    }
+}

@@ -1,0 +1,29 @@
+{
+    "versions": {
+        "content": [
+            {
+                "GWASLAB_HARMONIZE": {
+                    "gwaslab": "4.1.9",
+                    "python": "3.12.13"
+                },
+                "LDAK_SUMCORS": {
+                    "ldak": 6.3
+                },
+                "LDAK_SUMHER": {
+                    "ldak": 6.3
+                },
+                "PREPARE_LDAK_SUMMARY_STATISTICS": {
+                    "python": "3.14.5"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "timestamp": "2026-08-30T22:22:40.159398773",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

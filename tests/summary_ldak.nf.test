@@ -1,0 +1,189 @@
+nextflow_pipeline {
+
+    name "Test LDAK SumHer and SumCors summary-statistics routes"
+    script "../main.nf"
+    tag "pipeline"
+    tag "summary_statistics"
+    tag "heritability"
+    tag "genetic_correlation"
+    tag "ldak"
+    tag "ldak_sumher"
+    tag "ldak_sumcors"
+
+    def routeInputs = { projectDir, outputDir, name, model = 'LDAK-Thin', nativeArgs = ['--check-sums', 'NO'], binary = false, rightSamplePrevalence = 0.5 ->
+        def leftSource = RELATIONAL.ldakGwaslabSummary(projectDir, outputDir, "${name}_left", 'trait1')
+        def rightSource = RELATIONAL.ldakGwaslabSummary(projectDir, outputDir, "${name}_right", 'trait2')
+        def summaries = RELATIONAL.summaryStatistics(projectDir, outputDir, name, { rows ->
+            rows[0].source = leftSource
+            rows[0].heritability_methods = 'ldak_sumher'
+            if (binary) {
+                rows[0].trait_type = 'binary'
+                rows[0].population_prevalence = 0.1
+                rows[0].sample_prevalence = 0.4
+            }
+            def right = new LinkedHashMap(rows[0])
+            right.summary_statistics_id = 'external_qt2'
+            right.trait_id = 'QT_external_2'
+            right.source = rightSource
+            right.heritability_methods = ''
+            if (binary) {
+                right.population_prevalence = 0.2
+                right.sample_prevalence = rightSamplePrevalence
+            }
+            rows << right
+        })
+        def relationships = RELATIONAL.summaryRelationships(projectDir, outputDir, name, { rows ->
+            rows[0].right_summary_statistics_id = 'external_qt2'
+            rows[0].relationship_methods = 'ldak_sumcors'
+        })
+        return [
+            summaries: summaries,
+            relationships: relationships,
+            catalog: RELATIONAL.ldakReferenceCatalog(projectDir, outputDir, name, model),
+            options: RELATIONAL.methodOptions(outputDir, name, [
+                unary_requests: [
+                    'ldak_sumher--external_qt': [reference_bundle_id: 'ldak_test'],
+                ],
+                pair_requests: [
+                    'ldak_sumcors--external_pair': [reference_bundle_id: 'ldak_test', native_args: nativeArgs],
+                ],
+            ]),
+        ]
+    }
+
+    def workFiles = { outputDir ->
+        def files = []
+        new File(new File(outputDir.toString()).parentFile, 'work').eachFileRecurse { entry ->
+            if (entry.isFile()) {
+                files << entry
+            }
+        }
+        return files
+    }
+
+    test("SumHer and SumCors publish their complete native result families") {
+        when {
+            def inputs = routeInputs(projectDir, outputDir, 'ldak_summary_routes')
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = null
+                analysis_manifest = null
+                summary_statistics_manifest = inputs.summaries
+                relationship_manifest = inputs.relationships
+                reference_catalog = inputs.catalog
+                method_options = inputs.options
+            }
+        }
+
+        then {
+            def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
+            def sumherRequest = new File("${params.outdir}/requests/ldak_sumher/ldak_sumher--external_qt")
+            def sumcorsRequest = new File("${params.outdir}/requests/ldak_sumcors/ldak_sumcors--external_pair")
+            def commands = workFiles(outputDir).findAll { entry -> entry.name == '.command.sh' }*.text
+            def sumherCommand = commands.find { command -> command.contains('--sum-hers "native"') }
+            def sumcorsCommand = commands.find { command -> command.contains('--sum-cors "native"') }
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'PREPARE_LDAK_SUMMARY_STATISTICS') == 2 },
+                { assert TRACE.count(workflow, 'LDAK_SUMHER') == 1 },
+                { assert TRACE.count(workflow, 'LDAK_SUMCORS') == 1 },
+                { assert sumherRequest.listFiles()*.name.toSet().containsAll(['native.hers', 'native.cats', 'native.share', 'native.enrich', 'native.extra', 'native.cross', 'native.taus', 'native.labels', 'native.progress', 'native.overlap', 'native.log']) },
+                { assert sumcorsRequest.listFiles()*.name.toSet().containsAll(['native.cors', 'native.cors.full', 'native.labels', 'native.progress', 'native.overlap', 'native.log']) },
+                { assert sumherCommand.contains('--cutoff 0.01') },
+                { assert !sumherCommand.contains('--prevalence') },
+                { assert sumcorsCommand.contains('--check-sums NO --cutoff 0.01') },
+                { assert snapshot(removeNextflowVersion(versions.toString())).match('versions') },
+            )
+        }
+    }
+
+    test("complete binary endpoints receive ordered SumHer and SumCors liability arguments") {
+        when {
+            def inputs = routeInputs(projectDir, outputDir, 'ldak_summary_binary', 'LDAK-Thin', ['--check-sums', 'NO'], true)
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = null
+                analysis_manifest = null
+                summary_statistics_manifest = inputs.summaries
+                relationship_manifest = inputs.relationships
+                reference_catalog = inputs.catalog
+                method_options = inputs.options
+            }
+        }
+
+        then {
+            def sumherRequest = new File("${params.outdir}/requests/ldak_sumher/ldak_sumher--external_qt")
+            def sumcorsRequest = new File("${params.outdir}/requests/ldak_sumcors/ldak_sumcors--external_pair")
+            def commands = workFiles(outputDir).findAll { entry -> entry.name == '.command.sh' }*.text
+            def sumherCommand = commands.find { command -> command.contains('--sum-hers "native"') }
+            def sumcorsCommand = commands.find { command -> command.contains('--sum-cors "native"') }
+            assertAll(
+                { assert workflow.success },
+                { assert sumherRequest.listFiles()*.name.toSet().containsAll(['native.hers.liab', 'native.cats.liab', 'native.factor']) },
+                { assert sumcorsRequest.listFiles()*.name.contains('native.cors.liab') },
+                { assert sumherCommand.contains('--prevalence 0.1 --ascertainment 0.4') },
+                { assert sumcorsCommand.contains('--prevalence 0.1 --ascertainment 0.4 --prevalence2 0.2 --ascertainment2 0.5') },
+            )
+        }
+    }
+
+    test("incomplete binary-pair prevalence leaves SumCors on its native scale") {
+        options "-stub"
+
+        when {
+            def inputs = routeInputs(projectDir, outputDir, 'ldak_summary_incomplete_binary', 'LDAK-Thin', ['--check-sums', 'NO'], true, '')
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = null
+                analysis_manifest = null
+                summary_statistics_manifest = inputs.summaries
+                relationship_manifest = inputs.relationships
+                reference_catalog = inputs.catalog
+                method_options = inputs.options
+            }
+        }
+
+        then {
+            def sumherRequest = new File("${params.outdir}/requests/ldak_sumher/ldak_sumher--external_qt")
+            def sumcorsRequest = new File("${params.outdir}/requests/ldak_sumcors/ldak_sumcors--external_pair")
+            assertAll(
+                { assert workflow.success },
+                { assert sumherRequest.listFiles()*.name.toSet().containsAll(['native.hers.liab', 'native.cats.liab', 'native.factor']) },
+                { assert !sumcorsRequest.listFiles()*.name.contains('native.cors.liab') },
+            )
+        }
+    }
+
+    // The one pipeline-level summary-statistics contract case. It is the only place the reference catalog and
+    // the request namespace are joined at runtime: the bundle's declared model is read from the catalog and
+    // refused against the estimator the request selected, before any summary task is submitted. The three
+    // native-argument refusals this file used to run beside it are rules of the firewall rather than of the
+    // catalog join, and are asserted at function level in
+    // `subworkflows/local/validate_gwas_input/tests/native_option_policy.function.nf.test`.
+    test("preflight rejects unsupported SumCors BLD-LDAK model") {
+        when {
+            def inputs = routeInputs(projectDir, outputDir, 'invalid_sumcors_model', 'BLD-LDAK')
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = null
+                analysis_manifest = null
+                summary_statistics_manifest = inputs.summaries
+                relationship_manifest = inputs.relationships
+                reference_catalog = inputs.catalog
+                method_options = inputs.options
+            }
+        }
+
+        then {
+            def report = VALIDATION.report(outputDir, workflow.stdout)
+            assertAll(
+                { assert !workflow.success },
+                { assert report.contains("first-release LDAK SumCors supports models 'LDAK-Thin', 'Uniform-GCTA' and 'Human-Default'") },
+                // "Before task submission" as the direct claim rather than as a pair of named zero-counts.
+                { assert workflow.trace.tasks().isEmpty() },
+                { assert TRACE.count(workflow, 'PREPARE_LDAK_SUMMARY_STATISTICS') == 0 },
+                { assert TRACE.count(workflow, 'LDAK_SUMCORS') == 0 },
+            )
+        }
+    }
+}

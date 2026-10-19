@@ -1,0 +1,114 @@
+{
+    "bins=1 edges=[0, 0.5] - real": {
+        "content": [
+            {
+                "groups": [
+                    [
+                        {
+                            "id": "focal"
+                        },
+                        "focal.groups.tsv:md5,a21f20148ba89a2390eeafc488de706a",
+                        "focal_snp_group_ld01_maf01.txt:md5,40de898b3319849597ad6f880f1c426e"
+                    ]
+                ],
+                "strata_bundle": [
+                    [
+                        {
+                            "id": "focal"
+                        },
+                        "focal.strata.tsv:md5,311e9261a69505a3b27790ba695852c3",
+                        "focal_snp_group_ld01_maf01.txt:md5,40de898b3319849597ad6f880f1c426e"
+                    ]
+                ],
+                "versions": [
+                    "versions.yml:md5,468870a258cff8f29962cd9016889a37"
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T18:49:14.377922115",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "bins=2 edges=[0, 0.2, 0.5] - real": {
+        "content": [
+            {
+                "groups": [
+                    [
+                        {
+                            "id": "focal"
+                        },
+                        "focal.groups.tsv:md5,9641311bac0901c155fe05488f91a6c5",
+                        [
+                            "focal_snp_group_ld01_maf01.txt:md5,519f03d7d7d9a62db27918deb6d8a24d",
+                            "focal_snp_group_ld01_maf02.txt:md5,a9adc0083a3f41b84b070d36adfafee4",
+                            "focal_snp_group_ld02_maf01.txt:md5,1609aedeb74eef0b8666ee60dbe8964c",
+                            "focal_snp_group_ld02_maf02.txt:md5,083f3f32bd0d1688e418ac4dca898c97"
+                        ]
+                    ]
+                ],
+                "strata_bundle": [
+                    [
+                        {
+                            "id": "focal"
+                        },
+                        "focal.strata.tsv:md5,2dad21a1e877eb82f01bcb88fa9d9696",
+                        [
+                            "focal_snp_group_ld01_maf01.txt:md5,519f03d7d7d9a62db27918deb6d8a24d",
+                            "focal_snp_group_ld01_maf02.txt:md5,a9adc0083a3f41b84b070d36adfafee4",
+                            "focal_snp_group_ld02_maf01.txt:md5,1609aedeb74eef0b8666ee60dbe8964c",
+                            "focal_snp_group_ld02_maf02.txt:md5,083f3f32bd0d1688e418ac4dca898c97"
+                        ]
+                    ]
+                ],
+                "versions": [
+                    "versions.yml:md5,468870a258cff8f29962cd9016889a37"
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T18:49:18.110711024",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "bins=2 edges=[0, 0.5] - stub": {
+        "content": [
+            {
+                "groups": [
+                    [
+                        {
+                            "id": "focal"
+                        },
+                        "focal.groups.tsv:md5,ffb792a10936119181f9487c2f3e3a22",
+                        [
+                            "focal_snp_group_ld01_maf01.txt:md5,a48b3426cc201c1c0be8e11cf34e9365",
+                            "focal_snp_group_ld02_maf01.txt:md5,6d0959c8d45c313c024c6d3fa5c8c630"
+                        ]
+                    ]
+                ],
+                "strata_bundle": [
+                    [
+                        {
+                            "id": "focal"
+                        },
+                        "focal.strata.tsv:md5,58072a37f0c38b918171458d193731b8",
+                        [
+                            "focal_snp_group_ld01_maf01.txt:md5,a48b3426cc201c1c0be8e11cf34e9365",
+                            "focal_snp_group_ld02_maf01.txt:md5,6d0959c8d45c313c024c6d3fa5c8c630"
+                        ]
+                    ]
+                ],
+                "versions": [
+                    "versions.yml:md5,468870a258cff8f29962cd9016889a37"
+                ]
+            }
+        ],
+        "timestamp": "2026-09-19T04:08:22.901225121",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

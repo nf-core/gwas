@@ -1,0 +1,86 @@
+nextflow_function {
+
+    name "Test GCTA group ordering"
+    script "../main.nf"
+    tag "function"
+    tag "gcta"
+    tag "groups"
+
+    def resource = { output_dir, name, content ->
+        def root = new File(new File(output_dir.toString()).parentFile, 'inputs')
+        root.mkdirs()
+        def target = new File(root, name)
+        target.text = content
+        target.absolutePath
+    }
+
+    test("restore compact non-empty plan order after shuffled stratum completion") {
+        function "orderGroupMatrices"
+
+        when {
+            function {
+                """
+                input[0] = [2, 1]
+                input[1] = [
+                    [file('ld01_maf03.grm.id'), file('ld01_maf03.grm.N.bin'), file('ld01_maf03.grm.bin')],
+                    [file('ld01_maf01.grm.id'), file('ld01_maf01.grm.N.bin'), file('ld01_maf01.grm.bin')],
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result*.first() == [1, 2] },
+                { assert function.result.collect { _ordinal, files -> files.collect { value -> value.tokenize('/').last() } } == [
+                    ['ld01_maf01.grm.id', 'ld01_maf01.grm.N.bin', 'ld01_maf01.grm.bin'],
+                    ['ld01_maf03.grm.id', 'ld01_maf03.grm.N.bin', 'ld01_maf03.grm.bin'],
+                ] },
+            )
+        }
+    }
+
+    test("generic table order is independent of group file arrival") {
+        function "readNamedGroups"
+        when {
+            function {
+                """
+                input[0] = file('${resource(outputDir, 'groups.tsv', 'group_id\tgroup_filename\nsecond\tsecond.txt\nfirst\tfirst.txt\n')}', checkIfExists: true)
+                input[1] = [
+                    file('${resource(outputDir, 'first.txt', 'rs1\n')}', checkIfExists: true),
+                    file('${resource(outputDir, 'second.txt', 'rs2\n')}', checkIfExists: true),
+                ]
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result*.group_id == ['second', 'first'] },
+                { assert function.result*.ordinal == [1, 2] },
+                { assert function.result*.count == [2, 2] },
+                { assert function.result.collect { group -> group.group_file.toString().tokenize('/').last() } == ['second.txt', 'first.txt'] },
+            )
+        }
+    }
+
+    test("a single group accepts its file as one path") {
+        function "readNamedGroups"
+        when {
+            function {
+                """
+                input[0] = file('${resource(outputDir, 'single.tsv', 'group_id\tgroup_filename\nall\tall.txt\n')}', checkIfExists: true)
+                input[1] = file('${resource(outputDir, 'all.txt', 'rs1\n')}', checkIfExists: true)
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result*.group_id == ['all'] },
+                { assert function.result*.count == [1] },
+            )
+        }
+    }
+}

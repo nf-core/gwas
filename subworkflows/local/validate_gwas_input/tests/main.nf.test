@@ -1,0 +1,418 @@
+nextflow_workflow {
+
+    name "Test subworkflow VALIDATE_GWAS_INPUT"
+    script "../main.nf"
+    workflow "VALIDATE_GWAS_INPUT"
+    tag "subworkflow"
+    tag "subworkflows_local"
+    tag "input"
+    tag "relational"
+
+    test("linked manifests emit the canonical analysis tuple") {
+        when {
+            workflow {
+                """
+                input[0] = file('${RELATIONAL.cohorts(projectDir, outputDir, 'validate_gwas_input')}', checkIfExists: true)
+                input[1] = file('${RELATIONAL.analyses(projectDir, outputDir, 'validate_gwas_input')}', checkIfExists: true)
+                input[2] = null
+                input[3] = null
+                input[4] = null
+                input[5] = null
+                """
+            }
+        }
+
+        then {
+            def records = workflow.out.analyses
+            def meta = records[0][0]
+            assertAll(
+                { assert workflow.success },
+                { assert records.size() == 1 },
+                { assert meta.id == 'example_pgen_qt' },
+                { assert meta.cohort == 'example_pgen' },
+                { assert meta.association_methods == ['regenie'] },
+                { assert meta.heritability_methods == [] },
+                { assert meta.genotype_format == 'plink2' },
+                { assert !meta.is_binary },
+                { assert meta.method_options.gcta.sparse_cutoff == 0.05 },
+                { assert meta.method_options.gcta.ldms_maf_edges == [0, 0.01, 0.05, 0.2, 0.5] },
+                { assert meta.method_options.ldak.weights_policy == 'equal' },
+                { assert meta.method_options.regenie.step1_bsize == 1000 },
+                { assert records[0][1].collect { input -> input.tokenize('.').last() } == ['pgen', 'psam', 'pvar'] },
+                { assert records[0][2].endsWith('example.pheno') },
+                { assert records[0][5] == [] },
+                { assert records[0][6] == [] },
+            )
+        }
+    }
+
+    test("external-only summaries resolve typed unary and pair requests") {
+        tag "external_summary"
+
+        when {
+            workflow {
+                """
+                input[0] = null
+                input[1] = null
+                input[2] = file('${RELATIONAL.summaryStatistics(projectDir, outputDir, 'external_only') { rows -> rows << RELATIONAL.summary(outputDir, 'external_bt') }}', checkIfExists: true)
+                input[3] = file('${RELATIONAL.summaryRelationships(projectDir, outputDir, 'external_only')}', checkIfExists: true)
+                input[4] = file('${RELATIONAL.referenceCatalog(outputDir, 'external_only')}', checkIfExists: true)
+                input[5] = file('${RELATIONAL.methodOptions(outputDir, 'external_only', [
+                    unary_requests: [
+                        'ldsc_h2--external_qt': [reference_bundle_id: 'ldsc_eur'],
+                        'ldsc_h2--external_qt--alternate': [
+                            primary_request_id: 'ldsc_h2--external_qt',
+                            request_name: 'alternate',
+                            reference_bundle_id: 'ldsc_eur',
+                            native_args: ['--chisq-max', '999'],
+                        ],
+                    ],
+                    pair_requests: [
+                        'ldsc_rg--external_pair': [reference_bundle_id: 'ldsc_eur'],
+                        'ldsc_rg--external_pair--constrained': [
+                            primary_request_id: 'ldsc_rg--external_pair',
+                            request_name: 'constrained',
+                            reference_bundle_id: 'ldsc_eur',
+                            native_args: ['--intercept-gencov', '0'],
+                        ],
+                        'ldak_sumcors--external_pair': [reference_bundle_id: 'ldak_thin_eur'],
+                    ],
+                ])}', checkIfExists: true)
+                """
+            }
+        }
+
+        then {
+            def summaries = workflow.out.summary_statistics
+            def unary = workflow.out.unary_requests
+            def pairs = workflow.out.pair_requests
+            def summariesById = summaries.collectEntries { record -> [(record[0].summary_statistics_id): record] }
+            def pairsById = pairs.collectEntries { record -> [(record[0].request_id): record] }
+            assertAll(
+                { assert workflow.success },
+                { assert workflow.out.analyses.size() == 0 },
+                { assert summariesById.keySet() == ['external_qt', 'external_bt'] as Set },
+                { assert summariesById.external_qt[0].source_format == 'gwaslab' },
+                { assert unary.collect { record -> record[0].request_id } as Set == ['ldsc_h2--external_qt', 'ldsc_h2--external_qt--alternate'] as Set },
+                { assert unary.find { record -> record[0].request_id.endsWith('--alternate') }[0].native_args == ['--chisq-max', '999'] },
+                { assert unary.every { record -> record[0].reference_bundle_id == 'ldsc_eur' } },
+                { assert unary.every { record -> [record[1], record[2], record[4]].every { resource -> resource } } },
+                // A stem whose files are named `<chr>.l2.*` carries the empty prefix in both stem positions.
+                { assert unary.every { record -> record[3] == '' && record[5] == '' } },
+                { assert unary.every { record -> record[6] == [] } },
+                { assert pairsById.keySet() == ['ldsc_rg--external_pair', 'ldsc_rg--external_pair--constrained', 'ldak_sumcors--external_pair'] as Set },
+                { assert pairsById['ldsc_rg--external_pair'][0].left_summary_statistics_id == 'external_qt' },
+                { assert pairsById['ldsc_rg--external_pair'][0].right_summary_statistics_id == 'external_bt' },
+                { assert pairsById['ldsc_rg--external_pair'][0].left_genome_build == 'GRCh37' },
+                { assert pairsById['ldsc_rg--external_pair'][0].right_ancestry == 'EUR' },
+                { assert [1, 2, 4].every { index -> pairsById['ldsc_rg--external_pair'][index] } },
+                { assert pairsById['ldsc_rg--external_pair'][3] == '' && pairsById['ldsc_rg--external_pair'][5] == '' },
+                { assert pairsById['ldsc_rg--external_pair--constrained'][0].primary_request_id == 'ldsc_rg--external_pair' },
+                { assert pairsById['ldsc_rg--external_pair--constrained'][0].native_args == ['--intercept-gencov', '0'] },
+                { assert pairsById['ldak_sumcors--external_pair'][1..5] == [[], [], '', [], ''] },
+                { assert pairsById['ldak_sumcors--external_pair'][6] },
+            )
+        }
+    }
+
+    test("declared internal summaries bind producer results and external pair endpoints") {
+        tag "internal_summary"
+
+        when {
+            workflow {
+                """
+                input[0] = file('${RELATIONAL.cohorts(projectDir, outputDir, 'internal_summary') { rows ->
+                    rows[0].pgen = RELATIONAL.resource(outputDir, 'internal_summary/example.pgen', '')
+                    rows[0].psam = RELATIONAL.resource(outputDir, 'internal_summary/example.psam', '#IID\nexample\n')
+                    rows[0].pvar = RELATIONAL.resource(outputDir, 'internal_summary/example.pvar', '#CHROM\tPOS\tID\tREF\tALT\n1\t1\trs1\tG\tA\n')
+                }}', checkIfExists: true)
+                input[1] = file('${RELATIONAL.analyses(projectDir, outputDir, 'internal_summary') { rows ->
+                    rows[0].phenotype = RELATIONAL.resource(outputDir, 'internal_summary/example.pheno', 'FID IID QT\nexample example 1\n')
+                    rows[0].quant_covariates = ''
+                    rows[0].cat_covariates = ''
+                }}', checkIfExists: true)
+                input[2] = file('${RELATIONAL.summaryStatistics(projectDir, outputDir, 'internal_summary') { rows ->
+                    rows.clear()
+                    rows << RELATIONAL.internalSummary('example_pgen_qt', 'regenie', 'ldsc_h2')
+                    rows << RELATIONAL.summary(outputDir, 'external_bt')
+                }}', checkIfExists: true)
+                input[3] = file('${RELATIONAL.summaryRelationships(projectDir, outputDir, 'internal_summary') { rows ->
+                    rows[0].left_summary_statistics_id = 'example_pgen_qt--regenie'
+                    rows[0].relationship_methods = 'ldsc_rg'
+                }}', checkIfExists: true)
+                input[4] = file('${RELATIONAL.referenceCatalog(outputDir, 'internal_summary')}', checkIfExists: true)
+                input[5] = file('${RELATIONAL.methodOptions(outputDir, 'internal_summary', [
+                    unary_requests: ['ldsc_h2--example_pgen_qt--regenie': [reference_bundle_id: 'ldsc_eur']],
+                    pair_requests: ['ldsc_rg--external_pair': [reference_bundle_id: 'ldsc_eur']],
+                ])}', checkIfExists: true)
+                """
+            }
+        }
+
+        then {
+            def unary = workflow.out.unary_requests
+            def pair = workflow.out.pair_requests
+            assertAll(
+                { assert workflow.success },
+                { assert workflow.out.analyses.size() == 1 },
+                { assert workflow.out.summary_statistics.size() == 1 },
+                { assert workflow.out.summary_statistics[0][0].summary_statistics_id == 'external_bt' },
+                { assert unary.size() == 1 },
+                { assert unary[0][0].summary_statistics_id == 'example_pgen_qt--regenie' },
+                { assert unary[0][0].source_kind == 'pipeline_generated' },
+                { assert unary[0][0].producer_analysis_id == 'example_pgen_qt' },
+                { assert unary[0][0].producer_association_method == 'regenie' },
+                { assert pair.size() == 1 },
+                { assert pair[0][0].left_summary_statistics_id == 'example_pgen_qt--regenie' },
+                { assert pair[0][0].right_summary_statistics_id == 'external_bt' },
+            )
+        }
+    }
+
+    test("internal summary methods retain producer prevalence metadata") {
+        tag "internal_summary"
+
+        when {
+            workflow {
+                """
+                input[0] = file('${RELATIONAL.cohorts(projectDir, outputDir, 'internal_summary_prevalence') { rows ->
+                    rows[0].pgen = RELATIONAL.resource(outputDir, 'internal_summary_prevalence/example.pgen', '')
+                    rows[0].psam = RELATIONAL.resource(outputDir, 'internal_summary_prevalence/example.psam', '#IID\nexample\n')
+                    rows[0].pvar = RELATIONAL.resource(outputDir, 'internal_summary_prevalence/example.pvar', '#CHROM\tPOS\tID\tREF\tALT\n1\t1\trs1\tG\tA\n')
+                }}', checkIfExists: true)
+                input[1] = file('${RELATIONAL.analyses(projectDir, outputDir, 'internal_summary_prevalence') { rows ->
+                    rows.clear()
+                    def analysis = RELATIONAL.analysis(projectDir, 'example_pgen_bt')
+                    analysis.phenotype = RELATIONAL.resource(outputDir, 'internal_summary_prevalence/example.pheno', 'FID IID BT\nexample example 1\n')
+                    analysis.quant_covariates = ''
+                    analysis.cat_covariates = ''
+                    analysis.population_prevalence = 0.1
+                    analysis.sample_prevalence = 0.2
+                    rows << analysis
+                }}', checkIfExists: true)
+                input[2] = file('${RELATIONAL.summaryStatistics(projectDir, outputDir, 'internal_summary_prevalence') { rows ->
+                    rows.clear()
+                    rows << RELATIONAL.internalSummary('example_pgen_bt', 'regenie', 'ldsc_h2')
+                }}', checkIfExists: true)
+                input[3] = null
+                input[4] = file('${RELATIONAL.referenceCatalog(outputDir, 'internal_summary_prevalence')}', checkIfExists: true)
+                input[5] = file('${RELATIONAL.methodOptions(outputDir, 'internal_summary_prevalence', [
+                    unary_requests: ['ldsc_h2--example_pgen_bt--regenie': [reference_bundle_id: 'ldsc_eur']],
+                ])}', checkIfExists: true)
+                """
+            }
+        }
+
+        then {
+            def request = workflow.out.unary_requests[0][0]
+            assertAll(
+                { assert workflow.success },
+                { assert request.summary_statistics_id == 'example_pgen_bt--regenie' },
+                { assert request.population_prevalence == 0.1 },
+                { assert request.sample_prevalence == 0.2 },
+            )
+        }
+    }
+
+    test("pair-only internal summaries retain ordered producer prevalence metadata") {
+        tag "internal_summary"
+
+        when {
+            workflow {
+                """
+                input[0] = file('${RELATIONAL.cohorts(projectDir, outputDir, 'pair_only_internal_prevalence')}', checkIfExists: true)
+                input[1] = file('${RELATIONAL.analyses(projectDir, outputDir, 'pair_only_internal_prevalence') { rows ->
+                    rows.clear()
+                    rows << RELATIONAL.analysis(projectDir, 'example_pgen_qt')
+                    def binary = RELATIONAL.analysis(projectDir, 'example_pgen_bt')
+                    binary.population_prevalence = 0.1
+                    binary.sample_prevalence = 0.2
+                    rows << binary
+                }}', checkIfExists: true)
+                input[2] = file('${RELATIONAL.summaryStatistics(projectDir, outputDir, 'pair_only_internal_prevalence') { rows ->
+                    rows.clear()
+                    rows << RELATIONAL.internalSummary('example_pgen_qt', 'regenie')
+                    rows << RELATIONAL.internalSummary('example_pgen_bt', 'regenie')
+                }}', checkIfExists: true)
+                input[3] = file('${RELATIONAL.summaryRelationships(projectDir, outputDir, 'pair_only_internal_prevalence') { rows ->
+                    rows[0].relationship_id = 'internal_pair'
+                    rows[0].left_summary_statistics_id = 'example_pgen_qt--regenie'
+                    rows[0].right_summary_statistics_id = 'example_pgen_bt--regenie'
+                    rows[0].relationship_methods = 'ldak_sumcors,ldsc_rg'
+                }}', checkIfExists: true)
+                input[4] = file('${RELATIONAL.referenceCatalog(outputDir, 'pair_only_internal_prevalence')}', checkIfExists: true)
+                input[5] = file('${RELATIONAL.methodOptions(outputDir, 'pair_only_internal_prevalence', [
+                    pair_requests: [
+                        'ldak_sumcors--internal_pair': [reference_bundle_id: 'ldak_thin_eur'],
+                        'ldsc_rg--internal_pair': [reference_bundle_id: 'ldsc_eur'],
+                    ],
+                ])}', checkIfExists: true)
+                """
+            }
+        }
+
+        then {
+            def requests = workflow.out.pair_requests.collectEntries { record -> [(record[0].request_id): record[0]] }
+            assertAll(
+                { assert workflow.success },
+                { assert workflow.out.unary_requests.size() == 0 },
+                { assert requests.keySet() == ['ldak_sumcors--internal_pair', 'ldsc_rg--internal_pair'] as Set },
+                { assert requests.values().every { meta -> meta.left_summary_statistics_id == 'example_pgen_qt--regenie' } },
+                { assert requests.values().every { meta -> meta.right_summary_statistics_id == 'example_pgen_bt--regenie' } },
+                { assert requests.values().every { meta -> !meta.left_is_binary } },
+                { assert requests.values().every { meta -> meta.left_population_prevalence == null } },
+                { assert requests.values().every { meta -> meta.left_sample_prevalence == null } },
+                { assert requests.values().every { meta -> meta.right_is_binary } },
+                { assert requests.values().every { meta -> meta.right_population_prevalence == 0.1 } },
+                { assert requests.values().every { meta -> meta.right_sample_prevalence == 0.2 } },
+            )
+        }
+    }
+
+    test("schema-optional manifest columns may be omitted") {
+        tag "manifest_schema"
+
+        when {
+            workflow {
+                """
+                input[0] = file('${RELATIONAL.retainColumns(
+                    RELATIONAL.cohorts(projectDir, outputDir, 'omitted_optional_columns'),
+                    ['cohort_id', 'genome_build', 'ancestry', 'pgen', 'psam', 'pvar'],
+                )}', checkIfExists: true)
+                input[1] = file('${RELATIONAL.retainColumns(
+                    RELATIONAL.analyses(projectDir, outputDir, 'omitted_optional_columns'),
+                    ['analysis_id', 'cohort_id', 'trait_id', 'trait_type', 'phenotype', 'phenotype_column', 'association_methods'],
+                )}', checkIfExists: true)
+                input[2] = null
+                input[3] = null
+                input[4] = null
+                input[5] = null
+                """
+            }
+        }
+
+        then {
+            def analysis = workflow.out.analyses[0]
+            assertAll(
+                { assert workflow.success },
+                { assert analysis[0].id == 'example_pgen_qt' },
+                { assert analysis[1].collect { genotype -> genotype.toString().tokenize('.').last() } == ['pgen', 'psam', 'pvar'] },
+                { assert analysis[3..6].every { optional -> optional == [] } },
+            )
+        }
+    }
+
+    test("quoted manifest headers preserve the schema contract") {
+        tag "manifest_schema"
+
+        when {
+            workflow {
+                """
+                input[0] = file('${RELATIONAL.quoteHeaders(RELATIONAL.cohorts(projectDir, outputDir, 'quoted_headers'))}', checkIfExists: true)
+                input[1] = file('${RELATIONAL.quoteHeaders(RELATIONAL.analyses(projectDir, outputDir, 'quoted_headers'))}', checkIfExists: true)
+                input[2] = null
+                input[3] = null
+                input[4] = null
+                input[5] = null
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert workflow.out.analyses[0][0].id == 'example_pgen_qt' },
+            )
+        }
+    }
+
+    // A cohort that declares no view identity must carry no `genotype_view_id` key at all, not a null one:
+    // analysis metadata is a task-hash input everywhere downstream, so an unconditional null would move every
+    // existing analysis's hash and every pinned snapshot for cohorts that declare nothing.
+    test("an undeclared genotype view identity leaves the key absent from analysis metadata") {
+        tag "genotype_view_id"
+
+        when {
+            workflow {
+                """
+                input[0] = file('${RELATIONAL.cohorts(projectDir, outputDir, 'undeclared_view_id')}', checkIfExists: true)
+                input[1] = file('${RELATIONAL.analyses(projectDir, outputDir, 'undeclared_view_id')}', checkIfExists: true)
+                input[2] = null
+                input[3] = null
+                input[4] = null
+                input[5] = null
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert !workflow.out.analyses[0][0].containsKey('genotype_view_id') },
+            )
+        }
+    }
+
+    def declaredViewIds = [
+        [name: 'a bare hexadecimal digest', token: '52d1d326413775cd52d1d326413775cd52d1d326413775cd52d1d326413775cd'],
+        [name: 'a shortest-accepted digest', token: '52d1d326413775cd'],
+        [name: 'a backend-namespaced identity', token: 'biofuse:52d1d326413775cd'],
+    ]
+
+    declaredViewIds.each { scenario ->
+        test("${scenario.name} declared as genotype_view_id reaches the analysis metadata") {
+            tag "genotype_view_id"
+
+            when {
+                workflow {
+                    """
+                    input[0] = file('${RELATIONAL.cohorts(projectDir, outputDir, "declared_view_id_${scenario.token.replaceAll(/[^a-z0-9]/, '_')}", { rows -> rows[0].genotype_view_id = scenario.token })}', checkIfExists: true)
+                    input[1] = file('${RELATIONAL.analyses(projectDir, outputDir, "declared_view_id_${scenario.token.replaceAll(/[^a-z0-9]/, '_')}")}', checkIfExists: true)
+                    input[2] = null
+                    input[3] = null
+                    input[4] = null
+                    input[5] = null
+                    """
+                }
+            }
+
+            then {
+                assertAll(
+                    { assert workflow.success },
+                    { assert workflow.out.analyses[0][0].genotype_view_id == scenario.token },
+                )
+            }
+        }
+    }
+
+    // The pairing rule lives in the VALIDATE_GWAS_INPUT workflow body (main.nf), not in a resolver, so it has
+    // no function form. Its other half — a cohort manifest with no analysis manifest — stays at pipeline level
+    // in tests/relational_input_analyses.nf.test, where it also proves that a null --analysis_manifest passes
+    // nf-schema; this half needs no pipeline run to make its point and is asserted here instead.
+    test("an analysis manifest without a cohort manifest is rejected") {
+        tag "manifest_pairing"
+
+        when {
+            workflow {
+                """
+                input[0] = null
+                input[1] = file('${RELATIONAL.analyses(projectDir, outputDir, 'analysis_only')}', checkIfExists: true)
+                input[2] = null
+                input[3] = null
+                input[4] = null
+                input[5] = null
+                """
+            }
+        }
+
+        then {
+            def report = workflow.stdout.join('\n')
+            assertAll(
+                { assert !workflow.success },
+                { assert report.contains('--analysis_manifest') },
+                { assert report.contains('--cohort_manifest is missing; linked manifests require both') },
+            )
+        }
+    }
+
+}

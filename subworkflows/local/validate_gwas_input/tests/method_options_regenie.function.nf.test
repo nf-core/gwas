@@ -1,0 +1,59 @@
+nextflow_function {
+
+    name "Test linked GWAS input contract functions"
+    script "../method_options.nf"
+    tag "function"
+    tag "input"
+
+    // `validateMethodOptions` is the entry point that renders the document, analysis and option attribution
+    // and raises, so these scenarios assert the whole sentence a researcher is shown rather than the bare
+    // option label the family resolver hands upwards.
+    def regenieOptions = [
+        [
+            name: 'an operational Step 1 mode in the scientific document',
+            options: [regenie: [step1_mode: 'chunked']],
+            traitType: 'quantitative',
+            expected: "option 'regenie.step1_mode': operational tuning must be supplied through run/profile configuration",
+        ],
+        [
+            name: 'a negative minimum minor-allele count',
+            options: [regenie: [min_mac: -1]],
+            traitType: 'quantitative',
+            expected: "option 'regenie.min_mac': expected a non-negative number or null",
+        ],
+        [
+            // The trait-conditioned half of the family: REGENIE's Firth controls exist only for a binary
+            // trait, so setting one on a quantitative row is a request the run could not honour.
+            name: 'a Firth control on a quantitative analysis',
+            options: [regenie: [firth: false]],
+            traitType: 'quantitative',
+            expected: "option 'regenie.firth': option is consumed by binary-trait REGENIE analyses only",
+        ],
+    ]
+
+    regenieOptions.each { scenario ->
+        test("the REGENIE family rejects ${scenario.name}") {
+            function "validateMethodOptions"
+
+            when {
+                function {
+                    """
+                    input[0] = file('${RELATIONAL.methodOptions(outputDir, "regenie_${scenario.name.replace(' ', '_')}", [
+                        example: scenario.options,
+                    ])}', checkIfExists: true)
+                    input[1] = [[[id: 'example', association_methods: 'regenie', heritability_methods: '', trait_type: '${scenario.traitType}']]]
+                    """
+                }
+            }
+
+            then {
+                def report = function.stdout.join('\n')
+                assertAll(
+                    { assert function.failed },
+                    { assert report.contains("analysis_id 'example'") },
+                    { assert report.contains(scenario.expected) },
+                )
+            }
+        }
+    }
+}

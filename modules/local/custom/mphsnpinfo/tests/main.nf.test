@@ -1,0 +1,83 @@
+nextflow_process {
+    name "Named SNP groups to MPH weights"
+    script "../main.nf"
+    process "CUSTOM_MPHSNPINFO"
+    config "./nextflow.config"
+    tag "modules"
+    tag "modules_nfcore"
+    tag "custom"
+    tag "custom/mphsnpinfo"
+
+    [1, 2].each { groups ->
+        test("${groups} named groups preserve BIM order and explicit non-autosomal membership") {
+            when {
+                process {
+                    """
+                    file('variants.bim').text = '1 rs1 0 1 A G\\n23 rs2 0 2 A G\\nMT rs3 0 3 A G\\n'
+                    file('first.txt').text = 'rs2\\n'
+                    file('second.txt').text = 'rs1\\n'
+                    file('groups.tsv').text = 'group_id\\tgroup_filename\\nfirst\\tfirst.txt\\n' + (${groups} == 2 ? 'second\\tsecond.txt\\n' : '')
+                    input[0] = [[id:'focal'], file('variants.bim')]
+                    input[1] = [[id:'groups'], file('groups.tsv'), ${groups} == 2 ? [file('second.txt'), file('first.txt')] : [file('first.txt')], ${groups} == 2 ? ['first','second'] : ['first']]
+                    """
+                }
+            }
+            then {
+                assert process.success
+                def csv = path(process.out.snp_info[0][1]).readLines()
+                def counts = path(process.out.counts[0][1]).readLines()
+                assertAll(
+                    { assert snapshot(sanitizeOutput(process.out)).match() },
+                    { assert process.out.snp_info[0][2] == (groups == 2 ? ['first','second'] : ['first']) },
+                    { assert csv == (groups == 2 ? ['SNP,first,second','rs1,0,1','rs2,1,0','rs3,0,0'] : ['SNP,first','rs1,0','rs2,1','rs3,0']) },
+                    { assert counts == (groups == 2 ? ['group_id\tpredictor_count','first\t1','second\t1','__unassigned__\t1','__bim_rows__\t3'] : ['group_id\tpredictor_count','first\t1','__unassigned__\t2','__bim_rows__\t3']) }
+                )
+            }
+        }
+    }
+    ['overlap','unknown'].each { invalid ->
+        test("reject ${invalid} membership at the supplied group boundary") {
+            when {
+                process {
+                    """
+                    file('variants.bim').text = '1 rs1 0 1 A G\\n'
+                    file('a.txt').text = 'rs1\\n'
+                    file('b.txt').text = '${invalid == 'overlap' ? 'rs1' : 'rs2'}\\n'
+                    file('groups.tsv').text = 'group_id\\tgroup_filename\\na\\ta.txt\\nb\\tb.txt\\n'
+                    input[0] = [[id:'focal'],file('variants.bim')]
+                    input[1] = [[id:'groups'],file('groups.tsv'),[file('a.txt'),file('b.txt')],['a','b']]
+                    """
+                }
+            }
+            then {
+                assert !process.success
+                // The whole formatted message, not a fragment: the error report echoes the template source,
+                // in which these phrases also appear around their `{}` placeholders, so a fragment would
+                // match a template that never ran.
+                assert process.errorReport.contains(invalid == 'overlap'
+                    ? "MPH SNP information: SNP 'rs1' is in more than one group file; groups must be disjoint"
+                    : "MPH SNP information: SNP 'rs2' is in group 'b' but not in the BIM")
+            }
+        }
+    }
+    test("ordered column contract - stub") {
+        options "-stub"
+        when {
+            process {
+                """
+                file('variants.bim').text = '1 rs1 0 1 A G\\n'
+                file('a.txt').text = 'rs1\\n'
+                file('groups.tsv').text = 'group_id\\tgroup_filename\\na\\ta.txt\\n'
+                input[0] = [[id:'focal'],file('variants.bim')]
+                input[1] = [[id:'groups'],file('groups.tsv'),[file('a.txt')],['a']]
+                """
+            }
+        }
+        then {
+            assert process.success
+            assert path(process.out.snp_info[0][1]).readLines()[0] == 'SNP,a'
+            assert process.out.snp_info[0][2] == ['a']
+            assert snapshot(sanitizeOutput(process.out)).match()
+        }
+    }
+}

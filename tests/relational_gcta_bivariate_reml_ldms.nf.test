@@ -1,0 +1,227 @@
+nextflow_pipeline {
+
+    name "Test primary GCTA bivariate REML-LDMS relationship route"
+    script "../main.nf"
+    tag "pipeline"
+    tag "relational"
+    tag "heritability"
+    tag "genetic_correlation"
+    tag "gcta"
+    tag "gcta_bivariate_reml_ldms"
+
+    def pairInputs = { projectDir, outputDir, name, unary = false, strata = 1 ->
+        def analyses = RELATIONAL.analyses(projectDir, outputDir, name, { rows ->
+            def binary = RELATIONAL.analysis(projectDir, 'example_pgen_bt')
+            binary.population_prevalence = 0.1
+            rows << binary
+            rows.each { row ->
+                row.association_methods = ''
+                row.heritability_methods = unary && row.analysis_id == 'example_pgen_qt' ? 'gcta_greml_ldms' : ''
+            }
+        })
+        def relationships = RELATIONAL.relationships(projectDir, outputDir, name, { rows ->
+            rows[0].relationship_methods = 'gcta_bivariate_reml_ldms'
+            if (strata > 1) {
+                // Measured on the pinned image with the pipeline's own compact cohort: the two-stratum
+                // bivariate REML of this pair does not converge once the shipped pair covariates are fitted,
+                // in either the constrained or the unconstrained configuration (the constrained fit exhausts
+                // 500 iterations, the unconstrained one reports a non-invertible X'V^-1X). The one-stratum
+                // case above keeps the covariate-bearing coverage; this case declares a covariate-free
+                // relationship so a genuinely multi-component fit reaches its native per-stratum result.
+                rows[0].pair_quant_covariates = ''
+                rows[0].pair_cat_covariates = ''
+            }
+        })
+        def options = [
+            analyses: unary
+                ? [example_pgen_qt: [gcta: [
+                    reml_no_constrain: true,
+                    ld_score_region_kb: 50,
+                    ld_bins: 1,
+                    ldms_maf_edges: [0, 0.5],
+                ]]]
+                : [:],
+            pair_requests: [
+                'gcta_bivariate_reml_ldms--qt_bt': [
+                    ld_score_region_kb: 50,
+                    ld_bins: strata,
+                    ldms_maf_edges: [0, 0.5],
+                    // A 200-sample two-stratum fit reaches the boundary under GCTA's constrained default and
+                    // exhausts the iteration cap, so the multi-component case fits unconstrained. That is a
+                    // user-selectable native choice rendered into the fit unchanged.
+                    native_args: strata > 1
+                        ? ['--reml-maxit', '500', '--reml-no-constrain']
+                        : ['--reml-maxit', '500'],
+                ],
+            ],
+        ]
+        return [
+            cohort: RELATIONAL.cohorts(projectDir, outputDir, name),
+            analyses: analyses,
+            relationships: relationships,
+            options: RELATIONAL.methodOptions(outputDir, name, options),
+        ]
+    }
+
+    def workFiles = { outputDir ->
+        def files = []
+        new File(new File(outputDir.toString()).parentFile, 'work').eachFileRecurse { entry ->
+            if (entry.isFile()) {
+                files << entry
+            }
+        }
+        return files
+    }
+
+    test("mixed quantitative-binary pair publishes native LDMS outputs") {
+        when {
+            def inputs = pairInputs(projectDir, outputDir, 'gcta_bivariate_ldms_primary')
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = inputs.cohort
+                analysis_manifest = inputs.analyses
+                relationship_manifest = inputs.relationships
+                method_options = inputs.options
+                gcta_grm_parts = 1
+            }
+        }
+
+        then {
+            def request = new File("${params.outdir}/requests/gcta_bivariate_reml_ldms/gcta_bivariate_reml_ldms--qt_bt")
+            def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
+            def nativeCommand = workFiles(outputDir).find { entry ->
+                entry.name == '.command.sh' && entry.text.contains('--mgrm') && entry.text.contains('--reml-bivar 1 2')
+            }
+            def stableRequestNames = request.listFiles()*.name.sort()
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'PLINK2_MAKEBED') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 1 },
+                { assert TRACE.count(workflow, 'CUSTOM_GCTASTRATIFYLDSCORES') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_MAKEGRMPART') == 1 },
+                { assert TRACE.count(workflow, 'PREPARE_BIVARIATE_TRAITS') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEREMLLDMS') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEREML') == 0 },
+                { assert new File(request, 'native.hsq').isFile() },
+                { assert new File(request, 'native.log').isFile() },
+                { assert stableRequestNames == ['native.hsq', 'native.log'] },
+                { assert nativeCommand != null },
+                { assert nativeCommand.text.contains('--reml-bivar-prevalence 0.1') },
+                { assert nativeCommand.text.contains('--reml-maxit 500') },
+                { assert snapshot(removeNextflowVersion(versions.toString())).match('versions') },
+                { assert snapshot(stableRequestNames, new File(request, 'native.hsq').text).match('results') },
+            )
+        }
+    }
+
+    test("a two-stratum component plan publishes native per-stratum correlations") {
+        when {
+            def inputs = pairInputs(projectDir, outputDir, 'gcta_bivariate_ldms_two_stratum', false, 2)
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = inputs.cohort
+                analysis_manifest = inputs.analyses
+                relationship_manifest = inputs.relationships
+                method_options = inputs.options
+                gcta_grm_parts = 1
+            }
+        }
+
+        then {
+            def request = new File("${params.outdir}/requests/gcta_bivariate_reml_ldms/gcta_bivariate_reml_ldms--qt_bt")
+            def nativeResult = new File(request, 'native.hsq')
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'CUSTOM_GCTASTRATIFYLDSCORES') == 1 },
+                // Two strata produce two per-stratum matrices and two native correlations.
+                { assert TRACE.count(workflow, 'GCTA_MAKEGRMPART') == 2 },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEREMLLDMS') == 1 },
+                { assert nativeResult.text.contains('rG1') && nativeResult.text.contains('rG2') },
+                { assert !nativeResult.readLines().any { line -> line.startsWith('rG\t') } },
+                { assert !nativeResult.text.contains('Sampling variance/covariance') },
+                // GCTA's REML is deterministic and takes no seed, so the published text is snapshot-stable.
+                // The magnitudes on a 200-sample fixture are not scientifically meaningful, which is why the
+                // assertions above concern its native layout rather than a claimed estimate.
+                { assert snapshot(nativeResult.text).match('two_stratum_results') },
+            )
+        }
+    }
+
+    test("changing a native argument reruns the fit while the plan and matrices stay cached") {
+
+        tag "gcta_bivariate_reml_ldms_resume"
+
+        when {
+            def inputs = pairInputs(projectDir, outputDir, 'gcta_bivariate_ldms_resume', false, 2)
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = inputs.cohort
+                analysis_manifest = inputs.analyses
+                relationship_manifest = inputs.relationships
+                method_options = inputs.options
+                gcta_grm_parts = 1
+            }
+        }
+
+        then {
+            def relationships = RELATIONAL.relationships(projectDir, outputDir, 'gcta_bivariate_ldms_resume', { rows ->
+                rows[0].relationship_methods = 'gcta_bivariate_reml_ldms'
+                rows[0].pair_quant_covariates = ''
+                rows[0].pair_cat_covariates = ''
+            })
+            def rerun = RESUME.rerun(outputDir, [
+                relationship_manifest: relationships,
+                method_options: RELATIONAL.methodOptions(outputDir, 'gcta_bivariate_ldms_resume_maxit', [
+                    analyses: [:],
+                    pair_requests: [
+                        'gcta_bivariate_reml_ldms--qt_bt': [
+                            ld_score_region_kb: 50,
+                            ld_bins: 2,
+                            ldms_maf_edges: [0, 0.5],
+                            native_args: ['--reml-maxit', '400', '--reml-no-constrain'],
+                        ],
+                    ],
+                ]),
+            ])
+            assertAll(
+                { assert workflow.success },
+                // The native argument reaches the fit and nothing above it: the component plan and both
+                // stratum matrices are content-keyed on the settings that build them, which the change does
+                // not touch.
+                { assert RESUME.statuses(rerun, 'GCTA_CALCULATELDSCORES') == ['CACHED'] },
+                { assert RESUME.statuses(rerun, 'CUSTOM_GCTASTRATIFYLDSCORES') == ['CACHED'] },
+                { assert RESUME.statuses(rerun, 'GCTA_MAKEGRMPART').unique() == ['CACHED'] },
+                { assert RESUME.statuses(rerun, 'PREPARE_BIVARIATE_TRAITS') == ['CACHED'] },
+                { assert RESUME.statuses(rerun, 'GCTA_BIVARIATEREMLLDMS') == ['COMPLETED'] },
+            )
+        }
+    }
+
+    test("scientifically identical unary and pair LDMS requests share one matrix family") {
+        when {
+            def inputs = pairInputs(projectDir, outputDir, 'gcta_bivariate_ldms_reuse', true)
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = inputs.cohort
+                analysis_manifest = inputs.analyses
+                relationship_manifest = inputs.relationships
+                method_options = inputs.options
+                gcta_grm_parts = 1
+            }
+        }
+
+        then {
+            def unary = new File("${params.outdir}/heritability/individual/gcta_greml_ldms/example_pgen_qt/example_pgen_qt.gcta_greml_ldms.hsq")
+            def pair = new File("${params.outdir}/requests/gcta_bivariate_reml_ldms/gcta_bivariate_reml_ldms--qt_bt/native.hsq")
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 1 },
+                { assert TRACE.count(workflow, 'CUSTOM_GCTASTRATIFYLDSCORES') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_REMLLDMS') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEREMLLDMS') == 1 },
+                { assert unary.isFile() },
+                { assert pair.isFile() },
+            )
+        }
+    }
+}
