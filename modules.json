@@ -5,9 +5,106 @@
         "https://github.com/nf-core/modules.git": {
             "modules": {
                 "nf-core": {
+                    "gcta/addgrms": {
+                        "branch": "master",
+                        "git_sha": "322f285e0947592f92b73ef416fcce281f7e42be",
+                        "installed_by": ["modules"]
+                    },
+                    "gcta/adjustgrm": {
+                        "branch": "master",
+                        "git_sha": "a40ca37fee7f38e1dc6a58635e6c066b8be143f9",
+                        "installed_by": ["modules"]
+                    },
+                    "gcta/bivariatereml": {
+                        "branch": "master",
+                        "git_sha": "08668fe26c00529d6e17d4419479f6bb99a80236",
+                        "installed_by": ["modules"]
+                    },
+                    "gcta/bivariateremlldms": {
+                        "branch": "master",
+                        "git_sha": "12b957f0599c720ed004d792db68330d32d43b9e",
+                        "installed_by": ["modules"]
+                    },
+                    "gcta/calculateldscores": {
+                        "branch": "master",
+                        "git_sha": "d9638aa098951f787be592b1cd8b0bc6190ac911",
+                        "installed_by": ["modules"]
+                    },
+                    "gcta/grmcutoff": {
+                        "branch": "master",
+                        "git_sha": "81ee454e5346e06c955d371586dc6478a987d236",
+                        "installed_by": ["modules"]
+                    },
+                    "gcta/keep": {
+                        "branch": "master",
+                        "git_sha": "a70e3c6922b068ed104a75364deb61c21a0164f2",
+                        "installed_by": ["modules"]
+                    },
+                    "gcta/makebksparse": {
+                        "branch": "master",
+                        "git_sha": "65e342c70141c64cd53cb8078abdcf0871900e57",
+                        "installed_by": ["modules"]
+                    },
+                    "gcta/makegrm": {
+                        "branch": "master",
+                        "git_sha": "8d62f188367734e425e921c327ad3c1c319e73ab",
+                        "installed_by": ["modules"]
+                    },
+                    "gcta/makegrmpart": {
+                        "branch": "master",
+                        "git_sha": "dde039f4668e0f086e8e057c9a0e011bc1af0a9f",
+                        "installed_by": ["modules"]
+                    },
+                    "gcta/reml": {
+                        "branch": "master",
+                        "git_sha": "14864d74a613753d64cf84aa55852237eb72dde8",
+                        "installed_by": ["modules"]
+                    },
+                    "gcta/remlldms": {
+                        "branch": "master",
+                        "git_sha": "55d6d1341fa866c42fd3909a5eb52167af75127b",
+                        "installed_by": ["modules"]
+                    },
                     "multiqc": {
                         "branch": "master",
-                        "git_sha": "98403d15b0e50edae1f3fec5eae5e24982f1fade",
+                        "git_sha": "008f9d3e61209bf995edac3ba531f54e269e1215",
+                        "installed_by": ["modules"]
+                    },
+                    "plink/gwas": {
+                        "branch": "master",
+                        "git_sha": "2d5c9c019a4848ae6fb27dd5280e4e2307a18f74",
+                        "installed_by": ["modules"],
+                        "patch": "modules/nf-core/plink/gwas/plink-gwas.diff"
+                    },
+                    "plink/vcf": {
+                        "branch": "master",
+                        "git_sha": "6d46786420b4d7bc88eba026eb389c0c5535d120",
+                        "installed_by": ["modules"],
+                        "patch": "modules/nf-core/plink/vcf/plink-vcf.diff"
+                    },
+                    "regenie/runl0": {
+                        "branch": "master",
+                        "git_sha": "2bcf3f164e4656f1c1a4bfe427d104686f00ebde",
+                        "installed_by": ["modules"]
+                    },
+                    "regenie/runl1": {
+                        "branch": "master",
+                        "git_sha": "845f8561bf6e8e33954d8132ecaef4d10e9d8072",
+                        "installed_by": ["modules"]
+                    },
+                    "regenie/splitl0": {
+                        "branch": "master",
+                        "git_sha": "ff3650867b4287a91cf3babafd54b86a94b1afb7",
+                        "installed_by": ["modules"]
+                    },
+                    "regenie/step1": {
+                        "branch": "master",
+                        "git_sha": "49b49db5d59e8ac144890682c35fbabe51f04c70",
+                        "installed_by": ["modules"]
+                    },
+                    "regenie/step2": {
+                        "branch": "master",
+                        "git_sha": "0679635c4e06105b33badaf8547926b62a8cf307",
                         "installed_by": ["modules"]
                     }
                 }
@@ -16,17 +113,17 @@
                 "nf-core": {
                     "utils_nextflow_pipeline": {
                         "branch": "master",
-                        "git_sha": "c2b22d85f30a706a3073387f30380704fcae013b",
+                        "git_sha": "05954dab2ff481bcb999f24455da29a5828af08d",
                         "installed_by": ["subworkflows"]
                     },
                     "utils_nfcore_pipeline": {
                         "branch": "master",
-                        "git_sha": "6ef220fd9252b42fb3c50348bbdbcb6246730686",
+                        "git_sha": "a3fb7351b1fdb2b1de282b765816bbea190e86a8",
                         "installed_by": ["subworkflows"]
                     },
                     "utils_nfschema_plugin": {
                         "branch": "master",
-                        "git_sha": "a7b27fd25bfa8dcc07d299e88bd790585901a436",
+                        "git_sha": "fdc08b8b1ae74f56686ce21f7ea11ad11990ce57",
                         "installed_by": ["subworkflows"]
                     }
                 }
