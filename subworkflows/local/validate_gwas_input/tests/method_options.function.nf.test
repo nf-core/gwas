@@ -1,0 +1,151 @@
+nextflow_function {
+
+    name "Test linked GWAS input contract functions"
+    script "../method_options.nf"
+    tag "function"
+    tag "input"
+
+    // The family list is the accepted-family vocabulary, so its exact set is the contract. No method is
+    // registered in this release, so the document accepts no family and every analysis resolves to no options.
+    test("method option defaults declare no method family") {
+        function "getMethodOptionDefaults"
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == [:] },
+            )
+        }
+    }
+
+    test("analyses resolve to the defaults when no document is supplied") {
+        function "validateMethodOptions"
+
+        when {
+            function {
+                """
+                input[0] = null
+                input[1] = [[[id: 'example', association_methods: '', heritability_methods: '', trait_type: 'quantitative']]]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == [example: [:]] },
+            )
+        }
+    }
+
+    test("an empty namespaced document resolves every analysis to the defaults") {
+        function "validateMethodOptions"
+
+        when {
+            function {
+                """
+                input[0] = file('${RELATIONAL.methodOptions(outputDir, 'empty_namespaced', [analyses: [:]])}', checkIfExists: true)
+                input[1] = [[[id: 'example', association_methods: '', heritability_methods: '', trait_type: 'quantitative']]]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == [example: [:]] },
+            )
+        }
+    }
+
+    test("an unknown method family names the accepted family vocabulary") {
+        function "validateMethodOptions"
+
+        when {
+            function {
+                """
+                input[0] = file('${RELATIONAL.methodOptions(outputDir, 'unknown_family', [
+                    example: [mystery: [:]],
+                ])}', checkIfExists: true)
+                input[1] = [[[id: 'example', association_methods: '', heritability_methods: '', trait_type: 'quantitative']]]
+                """
+            }
+        }
+
+        then {
+            def report = function.stdout.join('\n')
+            assertAll(
+                { assert function.failed },
+                { assert report.contains("analysis_id 'example', option 'mystery': unknown method family; accepted families are none, no method is registered in this release") },
+            )
+        }
+    }
+
+    test("an undeclared analysis identifier is rejected before any family is read") {
+        function "validateMethodOptions"
+
+        when {
+            function {
+                """
+                input[0] = file('${RELATIONAL.methodOptions(outputDir, 'undeclared_analysis', [
+                    missing: [:],
+                ])}', checkIfExists: true)
+                input[1] = [[[id: 'example', association_methods: '', heritability_methods: '', trait_type: 'quantitative']]]
+                """
+            }
+        }
+
+        then {
+            def report = function.stdout.join('\n')
+            assertAll(
+                { assert function.failed },
+                { assert report.contains("analysis_id 'missing', option '<analysis>': analysis identifier is not declared in the analysis manifest") },
+            )
+        }
+    }
+
+    test("an unknown top-level namespace is rejected") {
+        function "validateMethodOptions"
+
+        when {
+            function {
+                """
+                input[0] = file('${RELATIONAL.methodOptions(outputDir, 'unknown_namespace', [
+                    analyses: [:],
+                    pair_requests: [:],
+                ])}', checkIfExists: true)
+                input[1] = [[[id: 'example', association_methods: '', heritability_methods: '', trait_type: 'quantitative']]]
+                """
+            }
+        }
+
+        then {
+            def report = function.stdout.join('\n')
+            assertAll(
+                { assert function.failed },
+                { assert report.contains("has unknown top-level namespace 'pair_requests'; accepted namespaces are analyses") },
+            )
+        }
+    }
+
+    test("malformed JSON is rejected by the document reader") {
+        function "readMethodOptionsDocument"
+
+        when {
+            function {
+                """
+                input[0] = file('${RELATIONAL.methodOptions(outputDir, 'malformed', '{"analyses": ')}', checkIfExists: true)
+                """
+            }
+        }
+
+        then {
+            def report = function.stdout.join('\n')
+            assertAll(
+                { assert function.failed },
+                { assert report.contains("option '<root>': malformed JSON") },
+            )
+        }
+    }
+
+}

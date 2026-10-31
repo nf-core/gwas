@@ -1,0 +1,261 @@
+nextflow_function {
+
+    name "Test linked GWAS input contract functions"
+    script "../method_registry.nf"
+    tag "function"
+    tag "input"
+
+    test("the capability contract fixes one closed vocabulary per declared field") {
+        function "getMethodCapabilityContract"
+        tag "method_capabilities"
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result.required_fields == [
+                    'domain',
+                    'estimator_family',
+                    'input_backend',
+                    'component_model',
+                    'trait_support',
+                    'prevalence',
+                    'requires_complete_covariates',
+                    'citation_keys',
+                ] },
+                { assert function.result.queryable_fields == [
+                    'domain',
+                    'option_family',
+                    'matrix_kind',
+                    'endpoint_domain',
+                    'reference_family',
+                    'estimator_family',
+                    'input_backend',
+                    'component_model',
+                    'trait_support',
+                    'supports_covariates',
+                    'prevalence',
+                    'requires_complete_covariates',
+                    'citation_keys',
+                ] },
+                { assert function.result.estimator_families == [
+                    'whole_genome_regression',
+                    'mixed_linear_model',
+                    'reml',
+                    'moment_he',
+                    'pcgc',
+                    'ld_score_regression',
+                    'summary_tagging_regression',
+                    'meta_analysis',
+                    'meta_regression',
+                ] },
+                { assert function.result.input_backends == [
+                    'dense_grm',
+                    'ldms_grm_family',
+                    'ldak_kinship',
+                    'mph_grm',
+                    'mph_grm_family',
+                    'sparse_grm',
+                    'direct_plink_genotypes',
+                    'direct_plink1_genotypes',
+                    'summary_statistics',
+                ] },
+                { assert function.result.component_models == [
+                    'none',
+                    'single',
+                    'ld_maf_stratified',
+                    'tagging_bundle',
+                ] },
+                { assert function.result.genotype_bundles == ['plink', 'plink1'] },
+                // Cross-pinned against the direct-genotype contract test below: every backend named here with
+                // the `direct_` prefix must be a key there, or `getMethodGenotypeBundle` has no bundle to
+                // return for it. Adding a direct backend must break exactly these two assertions together.
+                { assert function.result.input_backends.findAll { backend -> backend.startsWith('direct_') } == ['direct_plink_genotypes', 'direct_plink1_genotypes'] },
+                { assert function.result.prevalence_requirements == ['not_consumed', 'consumed', 'required'] },
+                { assert function.result.trait_support_fields == ['quantitative', 'binary'] },
+            )
+        }
+    }
+
+    test("every registered method declares every capability field in the contract vocabulary") {
+        function "getMethodCapabilities"
+        tag "method_capabilities"
+
+        then {
+            def requiredFields = [
+                'domain',
+                'estimator_family',
+                'input_backend',
+                'component_model',
+                'trait_support',
+                'prevalence',
+                'requires_complete_covariates',
+                'citation_keys',
+            ]
+            def estimatorFamilies = [
+                'whole_genome_regression',
+                'mixed_linear_model',
+                'reml',
+                'moment_he',
+                'pcgc',
+                'ld_score_regression',
+                'summary_tagging_regression',
+                    'meta_analysis',
+                    'meta_regression',
+            ]
+            def inputBackends = [
+                'dense_grm',
+                'ldms_grm_family',
+                'ldak_kinship',
+                'mph_grm',
+                'mph_grm_family',
+                'sparse_grm',
+                'direct_plink_genotypes',
+                'direct_plink1_genotypes',
+                'summary_statistics',
+            ]
+            def componentModels = [
+                'none',
+                'single',
+                'ld_maf_stratified',
+                'tagging_bundle',
+            ]
+            def prevalenceRequirements = ['not_consumed', 'consumed', 'required']
+            assertAll(
+                { assert function.success },
+                { assert function.result.every { _token, details -> requiredFields.every { field -> details.containsKey(field) } } },
+                // Exact set equality in both directions, not membership: no registered method may declare a
+                // value outside the vocabulary, AND no vocabulary value may be left without a member. The
+                // removal of the `plink2` entry would otherwise have left `generalised_linear_model` declared
+                // and dead. Both literals are pinned to the contract itself by the closed-vocabulary test
+                // above, so neither this list nor the contract can drift alone.
+                { assert function.result.collect { _token, details -> details.estimator_family }.unique().sort() == estimatorFamilies.toSorted() },
+                { assert function.result.collect { _token, details -> details.input_backend }.unique().sort() == inputBackends.toSorted() },
+                { assert function.result.collect { _token, details -> details.component_model }.unique().sort() == componentModels.toSorted() },
+                { assert function.result.every { _token, details -> details.requires_complete_covariates instanceof Boolean } },
+                { assert function.result.every { _token, details -> details.prevalence.keySet().toList() == ['population', 'sample'] } },
+                { assert function.result.every { _token, details -> details.prevalence.values().every { requirement -> requirement in prevalenceRequirements } } },
+                { assert function.result.every { _token, details -> details.trait_support.keySet().toList() == ['quantitative', 'binary'] } },
+                { assert function.result.every { _token, details -> details.trait_support.quantitative || details.trait_support.binary } },
+                { assert function.result.every { _token, details -> details.citation_keys instanceof List && details.citation_keys } },
+            )
+        }
+    }
+
+    // No analysis route is wired in this release. The registry is therefore empty, both selector
+    // vocabularies are empty, and no reusable relatedness intermediate exists; each route adds its entry when
+    // it is wired, and the contract tests above are what that entry is checked against.
+    test("the registry carries no method entry until a route is wired") {
+        function "getMethodRegistry"
+        tag "method_capabilities"
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == [:] },
+            )
+        }
+    }
+
+    test("the association selector vocabulary is empty") {
+        function "getAssociationMethodTokens"
+        tag "method_capabilities"
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == [] },
+            )
+        }
+    }
+
+    test("the heritability selector vocabulary is empty") {
+        function "getHeritabilityMethodTokens"
+        tag "method_capabilities"
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == [] },
+            )
+        }
+    }
+
+    test("no method requests the PLINK 1 compatibility bundle") {
+        function "getPlink1GenotypeMethodTokens"
+        tag "method_capabilities"
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == [] },
+            )
+        }
+    }
+
+    test("the matrix-kind contract declares no reusable relatedness intermediate") {
+        function "getMatrixKindContract"
+        tag "method_capabilities"
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == [:] },
+            )
+        }
+    }
+
+    test("capability selection over the empty registry matches nothing") {
+        function "getMethodTokensWithCapabilities"
+        tag "method_capabilities"
+
+        when {
+            function {
+                """
+                input[0] = [domain: 'association']
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == [] },
+            )
+        }
+    }
+
+    test("the direct-genotype backend contract covers every declared direct backend") {
+        function "getDirectGenotypeBackendContract"
+        tag "method_capabilities"
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == [
+                    direct_plink_genotypes: [genotype_bundle: 'plink'],
+                    direct_plink1_genotypes: [genotype_bundle: 'plink1'],
+                ] },
+            )
+        }
+    }
+
+    test("capability selection refuses an unregistered field rather than silently matching nothing") {
+        function "getMethodTokensWithCapabilities"
+        tag "method_capabilities"
+
+        when {
+            function {
+                """
+                input[0] = [mystery_capability: true]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.failed },
+                { assert function.stdout.join('\n').contains("unregistered field 'mystery_capability'") },
+            )
+        }
+    }
+}

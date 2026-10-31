@@ -1,0 +1,352 @@
+nextflow_function {
+
+    name "Test linked GWAS input contract functions"
+    script "../resolve_input.nf"
+    tag "function"
+    tag "input"
+
+    // `validateRelationalInput` is the entry point that renders the diagnostic a researcher reads: the
+    // "<manifest> row N (<id> 'x'), field 'y': <reason>" prefix is produced by the `reject` closures in the
+    // resolvers, not by the rule functions themselves, so the rules are exercised through it rather than by
+    // calling `validateTraitColumns` and friends with a stub closure. The rows are the shape
+    // `samplesheetToList` produces: `[meta, <positional cells in schema order>]`, with an absent cell as the
+    // empty list nf-schema emits. No genotype or phenotype is opened; categorical-header cases write their
+    // own files. The schemas are read because the positional column order is derived from them.
+
+    def COHORT_MANIFEST = 'cohorts.csv'
+    def ANALYSIS_MANIFEST = 'analyses.csv'
+    def COHORT_COLUMNS = ['pgen', 'psam', 'pvar', 'bed', 'bim', 'fam', 'genotype_view_id']
+
+    def cohortRow = { Map meta = [:], Map cells = [:] ->
+        def resolved_meta = [cohort: 'example_pgen', build: 'GRCh37', ancestry: 'EUR'] + meta
+        def resolved_cells = [
+            pgen: '/fixtures/genotypes/example_all.pgen',
+            psam: '/fixtures/genotypes/example_all.psam',
+            pvar: '/fixtures/genotypes/example_all.pvar',
+            bed: [],
+            bim: [],
+            fam: [],
+            genotype_view_id: [],
+        ] + cells
+        return [resolved_meta] + COHORT_COLUMNS.collect { column -> resolved_cells[column] }
+    }
+
+    def QUANTITATIVE_META = [
+        id: 'example_pgen_qt',
+        cohort: 'example_pgen',
+        trait: 'QT',
+        trait_type: 'quantitative',
+        phenotype_column: 'QT',
+        control_value: [],
+        case_value: [],
+        association_methods: '',
+        heritability_methods: '',
+        population_prevalence: [],
+        sample_prevalence: [],
+    ]
+
+    def BINARY_META = QUANTITATIVE_META + [
+        id: 'example_pgen_bt',
+        trait: 'BT',
+        trait_type: 'binary',
+        phenotype_column: 'BT',
+        control_value: '1',
+        case_value: '2',
+    ]
+
+    def analysisRow = { Map meta = [:] ->
+        return [QUANTITATIVE_META + meta, '/fixtures/pheno_cov/example.pheno', [], []]
+    }
+
+    def binaryAnalysisRow = { Map meta = [:] ->
+        return [BINARY_META + meta, '/fixtures/pheno_cov/example.pheno', [], []]
+    }
+
+    [
+        [name: 'tab-delimited', content: '\n\t\nFID\tIID\tBATCH\tSITE\n1\t1\tA\tN\n', names: ['BATCH', 'SITE']],
+        [name: 'whitespace-delimited', content: '\n  \n FID IID BATCH SITE\n1 1 A N\n', names: ['BATCH', 'SITE']],
+        [name: 'absent', content: null, names: []],
+    ].each { scenario ->
+        test("analysis metadata carries categorical names from ${scenario.name} input") {
+            function "validateRelationalInput"
+            tag "categorical_covariate_names"
+
+            when {
+                def analysis = analysisRow()
+                analysis[3] = scenario.content == null ? [] : RELATIONAL.resource(outputDir, 'user.catcovar', scenario.content)
+                function {
+                    """
+                    input[0] = ${[cohortRow()].inspect()}
+                    input[1] = ${[analysis].inspect()}
+                    input[2] = '${COHORT_MANIFEST}'                    input[3] = '${ANALYSIS_MANIFEST}'                    input[4] = '${projectDir}/assets/schema_cohort_manifest.json'                    input[5] = '${projectDir}/assets/schema_analysis_manifest.json'                    input[6] = null
+                    """
+                }
+            }
+
+            then {
+                assertAll(
+                    { assert function.success },
+                    { assert function.result.analyses[0][0].cat_covariate_names == scenario.names },
+                )
+            }
+        }
+    }
+
+    // No method is registered in this release, so a row whose selector cells are both empty is a complete
+    // declaration: it names a cohort-trait pairing to prepare. The rejection of an empty row returns with the
+    // first registered method.
+    test("an analysis row with empty method selectors is accepted") {
+        function "validateRelationalInput"
+
+        when {
+            function {
+                """
+                input[0] = ${[cohortRow()].inspect()}
+                input[1] = ${[analysisRow()].inspect()}
+                input[2] = '${COHORT_MANIFEST}'
+                input[3] = '${ANALYSIS_MANIFEST}'
+                input[4] = '${projectDir}/assets/schema_cohort_manifest.json'
+                input[5] = '${projectDir}/assets/schema_analysis_manifest.json'
+                input[6] = null
+                """
+            }
+        }
+
+        then {
+            def analysis = function.result.analyses[0]
+            assertAll(
+                { assert function.success },
+                { assert function.result.analyses.size() == 1 },
+                { assert analysis.size() == 5 },
+                { assert analysis[0].association_methods == [] },
+                { assert analysis[0].heritability_methods == [] },
+                { assert analysis[0].method_options == [:] },
+                { assert analysis[0].build == 'GRCh37' },
+                { assert analysis[0].genotype_format == 'plink2' },
+            )
+        }
+    }
+
+    // Every rule below rejects one row of one manifest, so each scenario mutates the analysis meta of a single
+    // row against a single valid cohort and asserts the whole rendered diagnostic, prefix included.
+    def analysisRowRejections = [
+        [
+            name: 'a binary analysis without a case source code',
+            binary: true,
+            meta: [case_value: []],
+            expected: "  - analyses.csv row 2 (analysis_id 'example_pgen_bt'), field 'case_value': a binary trait must declare the value used for cases in the phenotype file",
+        ],
+        [
+            name: 'a binary analysis without a control source code',
+            binary: true,
+            meta: [control_value: []],
+            expected: "  - analyses.csv row 2 (analysis_id 'example_pgen_bt'), field 'control_value': a binary trait must declare the value used for controls in the phenotype file",
+        ],
+        [
+            name: 'a binary analysis with identical case and control source codes',
+            binary: true,
+            meta: [case_value: '1'],
+            expected: "  - analyses.csv row 2 (analysis_id 'example_pgen_bt'), fields 'case_value', 'control_value': binary case_value and control_value must be distinct source codes",
+        ],
+        [
+            name: 'a quantitative analysis with a case source code',
+            meta: [case_value: '2'],
+            expected: "  - analyses.csv row 2 (analysis_id 'example_pgen_qt'), field 'case_value': case_value has no meaning on a quantitative trait, remove it or set trait_type to 'binary'",
+        ],
+        [
+            name: 'a quantitative analysis with a control source code',
+            meta: [control_value: '1'],
+            expected: "  - analyses.csv row 2 (analysis_id 'example_pgen_qt'), field 'control_value': control_value has no meaning on a quantitative trait, remove it or set trait_type to 'binary'",
+        ],
+        [
+            name: 'a quantitative analysis with a population prevalence',
+            meta: [population_prevalence: '0.3'],
+            expected: "  - analyses.csv row 2 (analysis_id 'example_pgen_qt'), field 'population_prevalence': prevalence has no meaning on a quantitative trait, remove it or set trait_type to 'binary'",
+        ],
+        [
+            name: 'a quantitative analysis with a sample prevalence',
+            meta: [sample_prevalence: '0.4'],
+            expected: "  - analyses.csv row 2 (analysis_id 'example_pgen_qt'), field 'sample_prevalence': sample prevalence has no meaning on a quantitative trait, remove it or set trait_type to 'binary'",
+        ],
+        [
+            name: 'an analysis selecting an unknown association method',
+            meta: [association_methods: 'plink3'],
+            expected: "  - analyses.csv row 2 (analysis_id 'example_pgen_qt'), field 'association_methods': unknown method 'plink3', accepted values are none, no method is registered in this release",
+        ],
+        [
+            name: 'an analysis selecting an unknown heritability method',
+            meta: [heritability_methods: 'greml3'],
+            expected: "  - analyses.csv row 2 (analysis_id 'example_pgen_qt'), field 'heritability_methods': unknown method 'greml3', accepted values are none, no method is registered in this release",
+        ],
+        [
+            name: 'an analysis repeating an association method',
+            meta: [association_methods: 'plink3,plink3'],
+            expected: "  - analyses.csv row 2 (analysis_id 'example_pgen_qt'), field 'association_methods': method 'plink3' listed more than once",
+        ],
+        [
+            name: 'a binary analysis with an unconsumed population prevalence',
+            binary: true,
+            meta: [population_prevalence: '0.3'],
+            expected: "  - analyses.csv row 2 (analysis_id 'example_pgen_bt'), field 'population_prevalence': none of the selected estimators consumes it; select a liability-aware individual, summary or pair method, or remove the prevalence",
+        ],
+        [
+            name: 'an analysis naming an undefined cohort',
+            meta: [cohort: 'missing_cohort'],
+            expected: "  - analyses.csv row 2 (analysis_id 'example_pgen_qt'), field 'cohort_id': undefined cohort_id 'missing_cohort', not declared in cohort manifest 'cohorts.csv'",
+        ],
+    ]
+
+    analysisRowRejections.each { scenario ->
+        test("linked manifests reject ${scenario.name}") {
+            function "validateRelationalInput"
+
+            when {
+                function {
+                    """
+                    input[0] = ${[cohortRow()].inspect()}
+                    input[1] = ${[scenario.binary ? binaryAnalysisRow(scenario.meta) : analysisRow(scenario.meta)].inspect()}
+                    input[2] = '${COHORT_MANIFEST}'                    input[3] = '${ANALYSIS_MANIFEST}'                    input[4] = '${projectDir}/assets/schema_cohort_manifest.json'                    input[5] = '${projectDir}/assets/schema_analysis_manifest.json'                    input[6] = null
+                    """
+                }
+            }
+
+            then {
+                def report = function.stdout.join('\n')
+                assertAll(
+                    { assert function.failed },
+                    { assert report.contains('Validation of linked manifests failed') },
+                    { assert report.contains(scenario.expected) },
+                )
+            }
+        }
+    }
+
+    // The genotype-group rules exist because every PLINK-fileset consumer would otherwise fail deep
+    // inside preparation with a message that names no cohort.
+    def cohortRowRejections = [
+        [
+            name: 'no genotype representation',
+            cells: [pgen: [], psam: [], pvar: []],
+            expected: "  - cohorts.csv row 2 (cohort_id 'example_pgen'), fields 'pgen', 'psam', 'pvar', 'bed', 'bim', 'fam': no genotype group is populated, supply exactly one of pgen/psam/pvar or bed/bim/fam",
+        ],
+        [
+            name: 'more than one genotype representation',
+            cells: [
+                bed: '/fixtures/genotypes/example_all.bed',
+                bim: '/fixtures/genotypes/example_all.bim',
+                fam: '/fixtures/genotypes/example_all.fam',
+            ],
+            expected: "  - cohorts.csv row 2 (cohort_id 'example_pgen'), field 'bed': a second genotype group is populated on this row, supply exactly one of pgen/psam/pvar or bed/bim/fam",
+        ],
+        [
+            name: 'an incomplete multi-file representation',
+            cells: [psam: []],
+            expected: "  - cohorts.csv row 2 (cohort_id 'example_pgen'), field 'psam': genotype group 'plink2' is only partly populated, all of pgen, psam, pvar are required together",
+        ],
+        [
+            name: 'a genotype group whose members do not share one basename stem',
+            cells: [pvar: '/fixtures/genotypes/example_chr1.pvar'],
+            expected: "  - cohorts.csv row 2 (cohort_id 'example_pgen'), fields 'pgen', 'psam', 'pvar': genotype group 'plink2' members do not share one basename stem (pgen='example_all', psam='example_all', pvar='example_chr1')",
+        ],
+    ]
+
+    cohortRowRejections.each { scenario ->
+        test("linked manifests reject ${scenario.name}") {
+            function "validateRelationalInput"
+
+            when {
+                function {
+                    """
+                    input[0] = ${[cohortRow([:], scenario.cells)].inspect()}
+                    input[1] = ${[analysisRow()].inspect()}
+                    input[2] = '${COHORT_MANIFEST}'                    input[3] = '${ANALYSIS_MANIFEST}'                    input[4] = '${projectDir}/assets/schema_cohort_manifest.json'                    input[5] = '${projectDir}/assets/schema_analysis_manifest.json'                    input[6] = null
+                    """
+                }
+            }
+
+            then {
+                def report = function.stdout.join('\n')
+                assertAll(
+                    { assert function.failed },
+                    { assert report.contains(scenario.expected) },
+                )
+            }
+        }
+    }
+
+    // Two rows sharing a `cohort_id` are one cohort, so their definitions must agree; without the comparison
+    // the second row would be discarded silently and every shared artifact keyed on whichever was read first.
+    def duplicateCohortRejections = [
+        [
+            name: 'an identical duplicate cohort definition',
+            first: [:],
+            second: [:],
+            first_cells: [:],
+            second_cells: [:],
+            expected: "  - cohorts.csv row 3 (cohort_id 'example_pgen'), field 'cohort_id': duplicate cohort_id 'example_pgen', identical definition on row 2",
+        ],
+        [
+            name: 'a duplicate cohort definition whose ancestry conflicts',
+            first: [:],
+            second: [ancestry: 'AFR'],
+            first_cells: [:],
+            second_cells: [:],
+            expected: "  - cohorts.csv row 3 (cohort_id 'example_pgen'), field 'cohort_id': duplicate cohort_id 'example_pgen' conflicts with row 2 in field 'ancestry'",
+        ],
+        [
+            name: 'a duplicate cohort definition whose genotype view identity conflicts',
+            first: [:],
+            second: [:],
+            first_cells: [genotype_view_id: '52d1d326413775cd'],
+            second_cells: [genotype_view_id: 'ab1d1d326413775c'],
+            expected: "  - cohorts.csv row 3 (cohort_id 'example_pgen'), field 'cohort_id': duplicate cohort_id 'example_pgen' conflicts with row 2 in field 'genotype_view_id'",
+        ],
+    ]
+
+    duplicateCohortRejections.each { scenario ->
+        test("linked manifests reject ${scenario.name}") {
+            function "validateRelationalInput"
+
+            when {
+                function {
+                    """
+                    input[0] = ${[cohortRow(scenario.first, scenario.first_cells), cohortRow(scenario.second, scenario.second_cells)].inspect()}
+                    input[1] = ${[analysisRow()].inspect()}
+                    input[2] = '${COHORT_MANIFEST}'                    input[3] = '${ANALYSIS_MANIFEST}'                    input[4] = '${projectDir}/assets/schema_cohort_manifest.json'                    input[5] = '${projectDir}/assets/schema_analysis_manifest.json'                    input[6] = null
+                    """
+                }
+            }
+
+            then {
+                def report = function.stdout.join('\n')
+                assertAll(
+                    { assert function.failed },
+                    { assert report.contains(scenario.expected) },
+                )
+            }
+        }
+    }
+
+    test("linked manifests reject a duplicate analysis identity by row") {
+        function "validateRelationalInput"
+
+        when {
+            function {
+                """
+                input[0] = ${[cohortRow()].inspect()}
+                input[1] = ${[analysisRow(), analysisRow([trait: 'QT2'])].inspect()}
+                input[2] = '${COHORT_MANIFEST}'                input[3] = '${ANALYSIS_MANIFEST}'                input[4] = '${projectDir}/assets/schema_cohort_manifest.json'                input[5] = '${projectDir}/assets/schema_analysis_manifest.json'                input[6] = null
+                """
+            }
+        }
+
+        then {
+            def report = function.stdout.join('\n')
+            assertAll(
+                { assert function.failed },
+                { assert report.contains("  - analyses.csv row 3 (analysis_id 'example_pgen_qt'), field 'analysis_id': duplicate analysis_id 'example_pgen_qt', already declared on row 2") },
+            )
+        }
+    }
+
+}
