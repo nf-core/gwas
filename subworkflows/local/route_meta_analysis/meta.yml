@@ -1,11 +1,15 @@
 name: route_meta_analysis
-description: Resolve ordered base-summary membership and publish native and derived common-variant meta-analysis results
+description:
+  Resolve ordered base-summary membership, select the requested common-variant meta-analysis models and publish
+  native and derived results
 keywords:
   - meta-analysis
   - genome-wide association study
   - summary statistics
 components:
-  - common_variant_meta_analysis
+  - gwaslab/metaanalyze
+  - metasoft/re2
+  - sumstats_metaanalysis_mrmega
   - finalise_meta_analysis
 input:
   - ch_requests:

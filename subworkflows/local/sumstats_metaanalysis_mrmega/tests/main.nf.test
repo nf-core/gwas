@@ -1,0 +1,92 @@
+nextflow_workflow {
+
+    name "Test Subworkflow SUMSTATS_METAANALYSIS_MRMEGA"
+    script "../main.nf"
+    workflow "SUMSTATS_METAANALYSIS_MRMEGA"
+    config "./nextflow.config"
+
+    tag "subworkflows"
+    tag "subworkflows_local"
+    tag "sumstats_metaanalysis_mrmega"
+    tag "subworkflows/sumstats_metaanalysis_mrmega"
+    tag "custom/preparemrmegainput"
+    tag "mrmega"
+
+    // The aligned wide table is GWASLab's export, so the fixture is produced by one GWASLab meta-analysis of
+    // five synthetic parents rather than written by hand.
+    setup {
+        run("GWASLAB_METAANALYZE") {
+            script "../../../../modules/local/gwaslab/metaanalyze/main.nf"
+            process {
+                """
+                def studies = ['one', 'two', 'three', 'four', 'five']
+                def parents = studies.withIndex().collect { name, index ->
+                    def offset = index * 0.05d
+                    def target = file("parent_\${name}.tsv")
+                    target.text = 'SNPID\\tCHR\\tPOS\\tEA\\tNEA\\tSTATUS\\tEAF\\tBETA\\tSE\\tP\\tN\\n' + (1..30).collect { marker ->
+                        "rs\${marker}\\t1\\t\${marker * 1000000}\\tA\\tG\\t9999999\\t\${0.20d + offset + marker * 0.001d}\\t\${0.10d + offset}\\t0.02\\t1e-6\\t4000"
+                    }.join('\\n') + '\\n'
+                    target
+                }
+                input[0] = [[id: 'aligned'], parents, studies, 'gwaslab', 'GRCh37', false]
+                """
+            }
+        }
+    }
+
+    test("declared trait type selects each native MR-MEGA input-column mode") {
+        when {
+            workflow {
+                """
+                input[0] = GWASLAB_METAANALYZE.out.mrmega_input.flatMap { _meta, aligned ->
+                    ['binary', 'quantitative'].collect { trait_type -> [[id: trait_type], aligned, ['one', 'two', 'three', 'four', 'five'], trait_type] }
+                }
+                """
+            }
+        }
+        then {
+            assert workflow.success
+            def results = workflow.out.result.collectEntries { meta, result -> [meta.id, result] }
+            def logs = workflow.out.mrmega_log.collectEntries { meta, native_log -> [meta.id, new File(native_log.toString()).text] }
+            assertAll(
+                { assert workflow.out.result.collect { row -> row[0] }.toSet() == [[id: 'binary'], [id: 'quantitative']].toSet() },
+                { assert workflow.out.mrmega_log.collect { row -> row[0] }.toSet() == [[id: 'binary'], [id: 'quantitative']].toSet() },
+                { assert logs.binary.contains('Binary trait analysis') },
+                { assert logs.quantitative.contains('Quantitative trait analysis') },
+                {
+                    results.each { _id, result ->
+                        def rows = new File(result.toString()).readLines()
+                        def header = rows[0].split('\t').toList()
+                        // MR-MEGA fits every one of the 30 fixture markers, which all five studies observe.
+                        assert rows.size() == 31
+                        assert rows[1].split('\t')[header.indexOf('P-value_association')] != 'NA'
+                    }
+                },
+            )
+        }
+    }
+
+    test("result and log preserve focal metadata - stub") {
+        options "-stub"
+        when {
+            workflow {
+                """
+                input[0] = GWASLAB_METAANALYZE.out.mrmega_input.map { _meta, aligned ->
+                    [[id: 'stub_request'], aligned, ['one', 'two', 'three', 'four', 'five'], 'quantitative']
+                }
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert workflow.out.result.size() == 1 },
+                { assert workflow.out.mrmega_log.size() == 1 },
+                { assert workflow.out.result.get(0)[0] == [id: 'stub_request'] },
+                { assert workflow.out.mrmega_log.get(0)[0] == [id: 'stub_request'] },
+                { assert file(workflow.out.result.get(0)[1]).name == 'stub_request.result' },
+                { assert file(workflow.out.mrmega_log.get(0)[1]).name == 'stub_request.log' },
+            )
+        }
+    }
+}

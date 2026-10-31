@@ -59,7 +59,7 @@ nextflow_workflow {
             def mrmegaLines = new File(workflow.out.mrmega_result[0][1].toString()).readLines()
             def mrmegaHeader = mrmegaLines[0].split('\\t').toList()
             def nativeMrmega = mrmegaLines[1].split('\\t')
-            // The aligned matrix is not re-emitted by the composition; read it where METASOFT_RE2 staged it.
+            // The aligned matrix is not re-emitted by the route; read it where METASOFT_RE2 staged it.
             def matrix = new File(re2File.parentFile, 'all_models.metasoft.input.txt').readLines()[0].split(' ')
             assertAll(
                 { assert workflow.success },
@@ -88,6 +88,7 @@ nextflow_workflow {
                 setup(files, [
                     [id: 'fixed_only', count: 2, models: ['fixed']],
                     [id: 'random_only', count: 3, models: ['fixed', 'random']],
+                    [id: 're2_only', count: 3, models: ['fixed', 're2']],
                 ])
             }
         }
@@ -96,13 +97,18 @@ nextflow_workflow {
             def outputs = workflow.out.summary_statistics.collectEntries { meta, path -> [meta.id, table(path)] }
             assertAll(
                 { assert workflow.success },
-                { assert outputs.keySet() == ['fixed_only', 'random_only'].toSet() },
+                { assert outputs.keySet() == ['fixed_only', 'random_only', 're2_only'].toSet() },
                 { assert Math.abs(outputs.fixed_only[0].BETA.toDouble() - 0.015d) < 1e-10 },
                 { assert Math.abs(outputs.random_only[0].BETA.toDouble() - 0.02d) < 1e-10 },
                 { assert !outputs.fixed_only[0].containsKey('BETA_RANDOM') },
                 { assert outputs.random_only[0].containsKey('BETA_RANDOM') },
-                { assert workflow.out.metasoft_result.empty },
+                { assert !outputs.re2_only[0].containsKey('BETA_RANDOM') },
+                { assert outputs.re2_only[0].containsKey('P_RE2') },
+                { assert workflow.out.random_effects.collect { meta, _result -> meta.id } == ['random_only'] },
+                { assert workflow.out.metasoft_result.collect { meta, _result -> meta.id } == ['re2_only'] },
+                { assert workflow.out.metasoft_log.collect { meta, _log -> meta.id } == ['re2_only'] },
                 { assert workflow.out.mrmega_result.empty },
+                { assert workflow.out.mrmega_log.empty },
             )
         }
     }
