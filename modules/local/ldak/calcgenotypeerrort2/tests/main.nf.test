@@ -117,9 +117,9 @@ nextflow_process {
                 """
                 he_input = LDAK_HE.out.he_results.map { meta, overall_file ->
                     // The minimal setup does not generate distinct HE within/across emits, so derive deterministic sidecars.
-                    within_file = file("he.within")
+                    def within_file = file("he.within")
                     within_file.text = file(overall_file).text
-                    across_file = file("he.across")
+                    def across_file = file("he.across")
                     across_file.text = file(overall_file).text
                     tuple([ id: "genotype_error_he_Y1_ldak_grm_adj" ], overall_file, within_file, across_file)
                 }
@@ -161,9 +161,9 @@ nextflow_process {
                 """
                 he_input = LDAK_HE.out.he_results.map { meta, overall_file ->
                     // The minimal setup does not generate distinct HE within/across emits, so derive deterministic sidecars.
-                    within_file = file("he.stub.within")
+                    def within_file = file("he.stub.within")
                     within_file.text = file(overall_file).text
-                    across_file = file("he.stub.across")
+                    def across_file = file("he.stub.across")
                     across_file.text = file(overall_file).text
                     tuple([ id: "genotype_error_stub" ], overall_file, within_file, across_file)
                 }

@@ -24,9 +24,9 @@ nextflow_process {
                 multiFam.bytes = sourceFam.bytes
                 multiBim = file("plink_multichr.bim")
                 bimLines = sourceBim.readLines()
-                chrSplit = (int) Math.ceil(bimLines.size() / 2.0)
+                chrSplit = Math.ceil(bimLines.size() / 2.0).intValue()
                 multiBim.text = bimLines.withIndex().collect { line, idx ->
-                    fields = line.split(/\\s+/)
+                    def fields = line.split(/\\s+/)
                     fields[0] = idx < chrSplit ? "21" : "22"
                     fields.join("\\t")
                 }.join("\\n") + "\\n"
@@ -98,9 +98,9 @@ nextflow_process {
                 multiFam.bytes = sourceFam.bytes
                 multiBim = file("plink_multichr.bim")
                 bimLines = sourceBim.readLines()
-                chrSplit = (int) Math.ceil(bimLines.size() / 2.0)
+                chrSplit = Math.ceil(bimLines.size() / 2.0).intValue()
                 multiBim.text = bimLines.withIndex().collect { line, idx ->
-                    fields = line.split(/\\s+/)
+                    def fields = line.split(/\\s+/)
                     fields[0] = idx < chrSplit ? "21" : "22"
                     fields.join("\\t")
                 }.join("\\n") + "\\n"
@@ -162,9 +162,9 @@ nextflow_process {
                 multiFam.bytes = sourceFam.bytes
                 multiBim = file("plink_multichr.bim")
                 bimLines = sourceBim.readLines()
-                chrSplit = (int) Math.ceil(bimLines.size() / 2.0)
+                chrSplit = Math.ceil(bimLines.size() / 2.0).intValue()
                 multiBim.text = bimLines.withIndex().collect { line, idx ->
-                    fields = line.split(/\\s+/)
+                    def fields = line.split(/\\s+/)
                     fields[0] = idx < chrSplit ? "21" : "22"
                     fields.join("\\t")
                 }.join("\\n") + "\\n"

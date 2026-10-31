@@ -76,7 +76,10 @@ nextflow_function {
         }
     }
 
-    test("every registered method declares every capability field in the contract vocabulary") {
+    // Pinned against the closed-vocabulary test above: a registered entry may only declare a value from the
+    // contract. The registry is empty in this release, so these are the rules each route's entry is held to
+    // when it is wired; exact coverage of every vocabulary value returns once entries exist to cover them.
+    test("every registered method declares every capability field within the contract vocabulary") {
         function "getMethodCapabilities"
         tag "method_capabilities"
 
@@ -99,8 +102,8 @@ nextflow_function {
                 'pcgc',
                 'ld_score_regression',
                 'summary_tagging_regression',
-                    'meta_analysis',
-                    'meta_regression',
+                'meta_analysis',
+                'meta_regression',
             ]
             def inputBackends = [
                 'dense_grm',
@@ -122,15 +125,11 @@ nextflow_function {
             def prevalenceRequirements = ['not_consumed', 'consumed', 'required']
             assertAll(
                 { assert function.success },
+                { assert function.result == [:] },
                 { assert function.result.every { _token, details -> requiredFields.every { field -> details.containsKey(field) } } },
-                // Exact set equality in both directions, not membership: no registered method may declare a
-                // value outside the vocabulary, AND no vocabulary value may be left without a member. The
-                // removal of the `plink2` entry would otherwise have left `generalised_linear_model` declared
-                // and dead. Both literals are pinned to the contract itself by the closed-vocabulary test
-                // above, so neither this list nor the contract can drift alone.
-                { assert function.result.collect { _token, details -> details.estimator_family }.unique().sort() == estimatorFamilies.toSorted() },
-                { assert function.result.collect { _token, details -> details.input_backend }.unique().sort() == inputBackends.toSorted() },
-                { assert function.result.collect { _token, details -> details.component_model }.unique().sort() == componentModels.toSorted() },
+                { assert function.result.every { _token, details -> details.estimator_family in estimatorFamilies } },
+                { assert function.result.every { _token, details -> details.input_backend in inputBackends } },
+                { assert function.result.every { _token, details -> details.component_model in componentModels } },
                 { assert function.result.every { _token, details -> details.requires_complete_covariates instanceof Boolean } },
                 { assert function.result.every { _token, details -> details.prevalence.keySet().toList() == ['population', 'sample'] } },
                 { assert function.result.every { _token, details -> details.prevalence.values().every { requirement -> requirement in prevalenceRequirements } } },

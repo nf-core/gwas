@@ -110,9 +110,9 @@ nextflow_process {
                 """
                 input[0] = LDAK_REML_FULL.out.reml_results.map { meta, reml_file ->
                     // No distinct quarter REML fixture exists for this cohort; duplicate the setup-generated REML content.
-                    quarter1 = file(meta.id + ".quarter1.reml")
+                    def quarter1 = file(meta.id + ".quarter1.reml")
                     quarter1.text = file(reml_file).text
-                    quarter2 = file(meta.id + ".quarter2.reml")
+                    def quarter2 = file(meta.id + ".quarter2.reml")
                     quarter2.text = file(reml_file).text
                     tuple([ id: "inflation_Y1" ], reml_file, [quarter1, quarter2])
                 }
@@ -151,9 +151,9 @@ nextflow_process {
                 """
                 input[0] = LDAK_REML_FULL.out.reml_results.map { meta, reml_file ->
                     // No distinct quarter REML fixture exists for this cohort; duplicate the setup-generated REML content.
-                    quarter1 = file(meta.id + ".stub.quarter1.reml")
+                    def quarter1 = file(meta.id + ".stub.quarter1.reml")
                     quarter1.text = file(reml_file).text
-                    quarter2 = file(meta.id + ".stub.quarter2.reml")
+                    def quarter2 = file(meta.id + ".stub.quarter2.reml")
                     quarter2.text = file(reml_file).text
                     tuple([ id: "inflation_Y1_stub" ], reml_file, [quarter1, quarter2])
                 }
