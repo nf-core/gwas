@@ -1,13 +1,13 @@
 nextflow_workflow {
-    name "Test Subworkflow FIT_MPH_REML"
+    name "Test Subworkflow GRM_HERITABILITY_MPH"
     script "../main.nf"
-    workflow "FIT_MPH_REML"
+    workflow "GRM_HERITABILITY_MPH"
     config "./nextflow.config"
 
     tag "subworkflows"
     tag "subworkflows_local"
-    tag "fit_mph_reml"
-    tag "subworkflows/fit_mph_reml"
+    tag "grm_heritability_mph"
+    tag "subworkflows/grm_heritability_mph"
     tag "mph/reml"
     tag "mph/makegrm"
     tag "prepare_mph_inputs"

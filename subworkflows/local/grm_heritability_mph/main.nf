@@ -1,10 +1,10 @@
-// Prepare IID-keyed trait/design CSVs, then fit one or more ordered native MPH GRMs.
+// Estimate heritability with MPH REML: prepare IID-keyed trait/design CSVs, then fit one or more ordered native MPH GRMs.
 // Callers with native-ready CSVs invoke MPH_REML directly.
 
 include { PREPARE_MPH_INPUTS } from '../../../modules/local/prepare_mph_inputs/main'
 include { MPH_REML           } from '../../../modules/local/mph/reml/main'
 
-workflow FIT_MPH_REML {
+workflow GRM_HERITABILITY_MPH {
     take:
     ch_inputs // channel: [ val(meta), path(grm_files), path(phenotypes), path(quant_covariates), path(cat_covariates), path(fam), val(trait_names), val(missing_tokens) ]
 

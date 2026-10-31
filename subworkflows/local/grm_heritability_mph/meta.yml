@@ -1,9 +1,11 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
-name: fit_mph_reml
-description: Prepare IID-keyed trait and covariate designs and fit ordered native MPH relationship matrices.
-  No integration selector is mandatory; configure MPH_REML `ext.args` for optional native fit options.
+name: grm_heritability_mph
+description: Estimate heritability with MPH REML from ordered pre-built native MPH relationship matrices, preparing
+  the IID-keyed trait and covariate designs the fit reads. No integration selector is mandatory; configure MPH_REML
+  `ext.args` for optional native fit options.
 keywords:
   - genome relationship matrix
+  - heritability
   - minque for partitioning heritability
   - restricted maximum likelihood
   - phenotype

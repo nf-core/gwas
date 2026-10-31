@@ -9,7 +9,7 @@ keywords:
   - ldms
   - relationship
 components:
-  - fit_mph_reml
+  - grm_heritability_mph
 input:
   - ch_relationships:
       description: Validated relationship requests, one row per selected method

@@ -1,9 +1,9 @@
 // Route unary MPH requests to shared sample/design preparation and REML fitting.
 // The pipeline owns estimator selection, matrix reuse, missing-value spellings, and result attribution.
-// Native CSV preparation and fitting are composed by FIT_MPH_REML.
+// Native CSV preparation and fitting are composed by GRM_HERITABILITY_MPH.
 
 // SUBWORKFLOW: Pipeline-owned composition of local components
-include { FIT_MPH_REML                    } from '../fit_mph_reml/main'
+include { GRM_HERITABILITY_MPH            } from '../grm_heritability_mph/main'
 
 // FUNCTION: Local to the pipeline
 include { getMethodTokensWithCapabilities } from '../validate_gwas_input/method_registry'
@@ -72,13 +72,13 @@ workflow ROUTE_MPH_HERITABILITY {
         }
         [route_meta, ordered_grm_files, phenotype, quant_covariates, cat_covariates, fam, [route_meta.trait], ['', 'na', 'nan', '-9']]
     }
-    FIT_MPH_REML(ch_fit_inputs)
+    GRM_HERITABILITY_MPH(ch_fit_inputs)
 
     emit:
-    mph_results    = FIT_MPH_REML.out.variance_components.map { meta, variance_components -> [stripMphRouteState(meta), variance_components] } // channel: [ val(meta), path(mq.vc.csv) ], one per analysis and selected MPH method
-    mph_fixed      = FIT_MPH_REML.out.fixed_effects.map { meta, fixed_effects -> [stripMphRouteState(meta), fixed_effects] } // channel: [ val(meta), path(mq.blue.csv) ]
-    mph_iterations = FIT_MPH_REML.out.iterations.map { meta, iterations -> [stripMphRouteState(meta), iterations] } // channel: [ val(meta), path(mq.iter.csv) ]
-    mph_log        = FIT_MPH_REML.out.native_log.map { meta, native_log -> [stripMphRouteState(meta), native_log] } // channel: [ val(meta), path(log) ]
+    mph_results    = GRM_HERITABILITY_MPH.out.variance_components.map { meta, variance_components -> [stripMphRouteState(meta), variance_components] } // channel: [ val(meta), path(mq.vc.csv) ], one per analysis and selected MPH method
+    mph_fixed      = GRM_HERITABILITY_MPH.out.fixed_effects.map { meta, fixed_effects -> [stripMphRouteState(meta), fixed_effects] } // channel: [ val(meta), path(mq.blue.csv) ]
+    mph_iterations = GRM_HERITABILITY_MPH.out.iterations.map { meta, iterations -> [stripMphRouteState(meta), iterations] } // channel: [ val(meta), path(mq.iter.csv) ]
+    mph_log        = GRM_HERITABILITY_MPH.out.native_log.map { meta, native_log -> [stripMphRouteState(meta), native_log] } // channel: [ val(meta), path(log) ]
 }
 
 /*
