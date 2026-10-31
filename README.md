@@ -10,7 +10,7 @@
 [![GitHub Actions Linting Status](https://github.com/nf-core/gwas/actions/workflows/linting.yml/badge.svg)](https://github.com/nf-core/gwas/actions/workflows/linting.yml)[![AWS CI](https://img.shields.io/badge/CI%20tests-full%20size-FF9900?labelColor=000000&logo=Amazon%20AWS)](https://nf-co.re/gwas/results)[![Cite with Zenodo](http://img.shields.io/badge/DOI-10.5281/zenodo.XXXXXXX-1073c8?labelColor=000000)](https://doi.org/10.5281/zenodo.XXXXXXX)
 [![nf-test](https://img.shields.io/badge/unit_tests-nf--test-337ab7.svg)](https://www.nf-test.com)
 
-[![Nextflow](https://img.shields.io/badge/version-%E2%89%A525.10.4-green?style=flat&logo=nextflow&logoColor=white&color=%230DC09D&link=https%3A%2F%2Fnextflow.io)](https://www.nextflow.io/)
+[![Nextflow](https://img.shields.io/badge/version-%E2%89%A526.04.6-green?style=flat&logo=nextflow&logoColor=white&color=%230DC09D&link=https%3A%2F%2Fnextflow.io)](https://www.nextflow.io/)
 [![nf-core template version](https://img.shields.io/badge/nf--core_template-4.0.3-green?style=flat&logo=nfcore&logoColor=white&color=%2324B064&link=https%3A%2F%2Fnf-co.re)](https://github.com/nf-core/tools/releases/tag/4.0.3)
 [![run with conda](http://img.shields.io/badge/run%20with-conda-3EB049?labelColor=000000&logo=anaconda)](https://docs.conda.io/en/latest/)
 [![run with docker](https://img.shields.io/badge/run%20with-docker-0db7ed?labelColor=000000&logo=docker)](https://www.docker.com/)
@@ -21,48 +21,45 @@
 
 ## Introduction
 
-**nf-core/gwas** is a bioinformatics pipeline that ...
+**nf-core/gwas** is a bioinformatics pipeline for genome-wide association and heritability analysis of genotyped cohorts. A cohort manifest owns genotype facts and an analysis manifest links each trait analysis to one cohort. This release validates the two linked manifests, prepares each cohort's genotypes and each analysis's phenotype and covariates once, and reports the run plan; the association and heritability routes that consume those prepared inputs are added in later releases, each registering its own method selector token.
 
-<!-- TODO nf-core:
-   Complete this sentence with a 2-3 sentence summary of what types of data the pipeline ingests, a brief overview of the
-   major pipeline sections and the types of output it produces. You're giving an overview to someone new
-   to nf-core here, in 15-20 seconds. For an example, see https://github.com/nf-core/rnaseq/blob/master/README.md#introduction
--->
+Genotype quality control is not performed by the pipeline. Input genotypes must already have suitable samples, variants, alleles, coordinates, genome build and analysis filters.
 
-<!-- TODO nf-core: Include a figure that guides the user through the major workflow steps. Many nf-core
-     workflows use the "tube map" design for that. See https://nf-co.re/docs/community/brand/workflow-schematics#examples for examples.   -->
-<!-- TODO nf-core: Fill in short bullet-pointed list of the default steps in the pipeline -->2. Present QC for raw reads ([`MultiQC`](http://multiqc.info/))
+## Pipeline summary
+
+1. Validate the linked cohort and analysis manifests against their JSON schemas and cross-row contracts.
+2. Prepare each distinct cohort once from PLINK 2 PGEN/PSAM/PVAR or PLINK 1 BED/BIM/FAM input, preserving the supplied representation and publishing one genotype view record per cohort.
+3. Prepare the selected phenotype and optional quantitative and categorical covariates for each analysis.
+4. Collect run and software provenance with MultiQC and Nextflow reports.
 
 ## Usage
 
 > [!NOTE]
 > If you are new to Nextflow and nf-core, please refer to [this page](https://nf-co.re/docs/get_started/environment_setup/overview) on how to set-up Nextflow. Make sure to [test your setup](https://nf-co.re/docs/get_started/run-your-first-pipeline) with `-profile test` before running the workflow on actual data.
 
-<!-- TODO nf-core: Describe the minimum required steps to execute the pipeline, e.g. how to prepare samplesheets.
-     Explain what rows and columns represent. For instance (please edit as appropriate):
+Prepare a cohort manifest and an analysis manifest linked by `cohort_id`. Each cohort row declares exactly one complete genotype representation, PLINK 2 (`pgen`, `psam`, `pvar`) or PLINK 1 (`bed`, `bim`, `fam`); VCF input is not accepted. Each analysis row names one declared cohort, the trait and its headered phenotype file, and optional covariate files. The `association_methods` and `heritability_methods` selector cells stay empty in this release, which registers no method.
 
-First, prepare a samplesheet with your input data that looks as follows:
-
-`samplesheet.csv`:
-
-```csv
-sample,fastq_1,fastq_2
-CONTROL_REP1,AEG588A1_S1_L002_R1_001.fastq.gz,AEG588A1_S1_L002_R2_001.fastq.gz
+```csv title="cohorts.csv"
+cohort_id,genome_build,ancestry,pgen,psam,pvar,bed,bim,fam
+my_cohort,GRCh37,EUR,/data/my_cohort.pgen,/data/my_cohort.psam,/data/my_cohort.pvar,,,
 ```
 
-Each row represents a fastq file (single-end) or a pair of fastq files (paired end).
+```csv title="analyses.csv"
+analysis_id,cohort_id,trait_id,trait_type,phenotype,phenotype_column,control_value,case_value,quant_covariates,cat_covariates,association_methods,heritability_methods,population_prevalence,sample_prevalence
+height,my_cohort,height,quantitative,/data/phenotypes.tsv,height,,,,,,,,
+```
 
--->
+Runnable examples are available under [`assets/examples/relational/`](assets/examples/relational/).
 
-Now, you can run the pipeline using:
-
-<!-- TODO nf-core: update the following command to include all required parameters for a minimal example -->
+Then run:
 
 ```bash
 nextflow run nf-core/gwas \
-   -profile <docker/singularity/.../institute> \
-   --input samplesheet.csv \
-   --outdir <OUTDIR>
+    -r <VERSION> \
+    -profile docker \
+    --cohort_manifest cohorts.csv \
+    --analysis_manifest analyses.csv \
+    --outdir results
 ```
 
 > [!WARNING]
@@ -71,6 +68,8 @@ nextflow run nf-core/gwas \
 For more details and further functionality, please refer to the [usage documentation](https://nf-co.re/gwas/usage) and the [parameter documentation](https://nf-co.re/gwas/parameters).
 
 ## Pipeline output
+
+Every cohort publishes its genotype view record under `genotypes/<cohort_id>/`. Prepared phenotype and covariate files are published under `phenotypes/<analysis_id>/` when `--save_normalised_phenotypes` is set, and the MultiQC run report and Nextflow execution reports are published under `multiqc/` and `pipeline_info/`. Genotype files are never copied into the results directory.
 
 To see the results of an example test run with a full size dataset refer to the [results](https://nf-co.re/gwas/results) tab on the nf-core website pipeline page.
 For more details about the output files and reports, please refer to the
