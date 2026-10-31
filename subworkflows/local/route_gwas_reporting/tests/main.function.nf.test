@@ -1,0 +1,53 @@
+nextflow_function {
+
+    name "Test methods description selection"
+    script "../main.nf"
+    tag "function"
+    tag "reporting"
+    tag "multiqc"
+
+    test("the collected metadata reduces to distinct sorted method tokens per cited domain") {
+        function "getSelectedMethods"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    [domain: 'analysis', meta: [association_methods: ['assoc_b'], heritability_methods: ['h2_a']]],
+                    [domain: 'analysis', meta: [association_methods: ['assoc_a', 'assoc_b'], heritability_methods: ['h2_b', 'h2_a']]],
+                    [domain: 'analysis', meta: [association_methods: [], heritability_methods: []]],
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == [
+                    association: ['assoc_a', 'assoc_b'],
+                    heritability: ['h2_a', 'h2_b'],
+                ] },
+            )
+        }
+    }
+
+    test("a run selecting nothing yields an empty selection per domain") {
+        function "getSelectedMethods"
+
+        when {
+            function {
+                """
+                input[0] = []
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == [association: [], heritability: []] },
+            )
+        }
+    }
+}

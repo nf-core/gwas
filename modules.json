@@ -70,18 +70,6 @@
                         "git_sha": "008f9d3e61209bf995edac3ba531f54e269e1215",
                         "installed_by": ["modules"]
                     },
-                    "plink/gwas": {
-                        "branch": "master",
-                        "git_sha": "2d5c9c019a4848ae6fb27dd5280e4e2307a18f74",
-                        "installed_by": ["modules"],
-                        "patch": "modules/nf-core/plink/gwas/plink-gwas.diff"
-                    },
-                    "plink/vcf": {
-                        "branch": "master",
-                        "git_sha": "6d46786420b4d7bc88eba026eb389c0c5535d120",
-                        "installed_by": ["modules"],
-                        "patch": "modules/nf-core/plink/vcf/plink-vcf.diff"
-                    },
                     "regenie/runl0": {
                         "branch": "master",
                         "git_sha": "2bcf3f164e4656f1c1a4bfe427d104686f00ebde",

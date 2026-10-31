@@ -1,0 +1,83 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/modules/meta-schema.json
+name: "prepare_genotype_source"
+description: Digest a supplied cohort genotype bundle in a task and emit both its per-member provenance table and its single content identity
+keywords:
+  - genotype
+  - view identity
+  - provenance
+  - sha256
+tools:
+  - "prepare_genotype_source":
+      description: |
+        A Python 3 content-identity probe. It reads each staged bundle member once, records the member's role,
+        basename, byte size and SHA-256, and folds the role and digest columns into one bundle identity. The
+        work is done in a task rather than in the Nextflow JVM so that a multi-gigabyte bundle is never hashed
+        on the head node and the result is reused across `-resume`.
+      homepage: "https://github.com/nf-core/gwas"
+      documentation: "https://nf-co.re/gwas"
+      licence: ["MIT"]
+      identifier: ""
+input:
+  - - meta:
+        type: map
+        description: |
+          Groovy Map with the cohort identifier and the manifest's declared genotype format,
+          e.g. `[ id:'cohort_pgen', genotype_format:'plink2' ]`
+    - genotype_files:
+        type: file
+        description: |
+          The members of one supplied genotype bundle in manifest-group order. Staged under `source/`, so
+          nothing written here can reach the researcher's own files through a staged symlink. The caller owns
+          the order; this module derives only each member's role from its extension.
+        pattern: "*.{pgen,psam,pvar,bed,bim,fam}"
+        ontologies:
+          - edam: "http://edamontology.org/format_2330"
+output:
+  source_members:
+    - - meta:
+          type: map
+          description: |
+            Groovy Map containing cohort information, e.g. `[ id:'cohort_pgen' ]`
+      - "${prefix}.genotype_source.tsv":
+          type: file
+          description: |
+            One headerless tab-separated row per bundle member, in supplied order: role, basename, byte size,
+            SHA-256 of the bytes. Role is the member extension with any compression suffix removed. This is
+            provenance, and it is a separate output from the identity below so a caller can publish member
+            names without putting them into a task hash.
+          pattern: "*.genotype_source.tsv"
+          ontologies:
+            - edam: "http://edamontology.org/format_3475"
+  source_identity:
+    - - meta:
+          type: map
+          description: |
+            Groovy Map containing cohort information, e.g. `[ id:'cohort_pgen' ]`
+      - "${prefix}.genotype_source.sha256":
+          type: file
+          description: |
+            One line holding the bundle's content identity: a SHA-256 over the role and per-member digest
+            columns only. Member names and byte sizes are excluded, so a byte-identical bundle that was
+            renamed or moved keeps the same identity.
+          pattern: "*.genotype_source.sha256"
+          ontologies:
+            - edam: "http://edamontology.org/format_2330"
+  versions:
+    - "versions.yml":
+        type: file
+        description: File containing software versions
+        pattern: "versions.yml"
+        ontologies:
+          - edam: "http://edamontology.org/format_3750"
+topics:
+  versions:
+    - "versions.yml":
+        type: file
+        description: File containing software versions
+        pattern: "versions.yml"
+        ontologies:
+          - edam: "http://edamontology.org/format_3750"
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"
