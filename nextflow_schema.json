@@ -2,7 +2,7 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://raw.githubusercontent.com/nf-core/gwas/master/nextflow_schema.json",
     "title": "nf-core/gwas pipeline parameters",
-    "description": "A pipeline for Genome Wide Association Studies",
+    "description": "A pipeline for Genome Wide Association Studies.",
     "type": "object",
     "$defs": {
         "input_output_options": {
@@ -10,18 +10,39 @@
             "type": "object",
             "fa_icon": "fas fa-terminal",
             "description": "Define where the pipeline should find input data and save output data.",
-            "required": ["input", "outdir"],
+            "required": ["outdir"],
             "properties": {
-                "input": {
+                "cohort_manifest": {
                     "type": "string",
                     "format": "file-path",
                     "exists": true,
-                    "schema": "assets/schema_input.json",
+                    "schema": "assets/schema_cohort_manifest.json",
                     "mimetype": "text/csv",
                     "pattern": "^\\S+\\.csv$",
-                    "description": "Path to comma-separated file containing information about the samples in the experiment.",
-                    "help_text": "You will need to create a design file with information about the samples in your experiment before running the pipeline. Use this parameter to specify its location. It has to be a comma-separated file with 3 columns, and a header row. See [usage docs](https://nf-co.re/gwas/usage#samplesheet-input).",
-                    "fa_icon": "fas fa-file-csv"
+                    "description": "Path to the cohort manifest declaring cohort-owned genotype facts.",
+                    "help_text": "Supply together with `analysis_manifest`. Each unique `cohort_id` declares one complete PLINK 2 or PLINK 1 genotype representation.",
+                    "fa_icon": "fas fa-users"
+                },
+                "analysis_manifest": {
+                    "type": "string",
+                    "format": "file-path",
+                    "exists": true,
+                    "schema": "assets/schema_analysis_manifest.json",
+                    "mimetype": "text/csv",
+                    "pattern": "^\\S+\\.csv$",
+                    "description": "Path to the analysis manifest declaring cohort and trait analysis units.",
+                    "help_text": "Supply together with `cohort_manifest`. Each unique `analysis_id` references one declared `cohort_id` and names the trait, phenotype and covariate inputs. The `association_methods` and `heritability_methods` selector columns are accepted but no method is registered in this release, so both must be left empty; each analysis route adds its selector token when it is wired.",
+                    "fa_icon": "fas fa-file-medical-alt"
+                },
+                "method_options": {
+                    "type": "string",
+                    "format": "file-path",
+                    "exists": true,
+                    "mimetype": "application/json",
+                    "pattern": "^\\S+\\.json$",
+                    "description": "Optional structured scientific method options and stageable resources.",
+                    "help_text": "A JSON document keyed by `analysis_id`, or by the `analyses` namespace holding the same object, in which each analysis names a method family and the options it sets for it. No method family is registered in this release, so every family is rejected; each analysis route adds its family when it is wired. Operational partitioning and task sizing belong to run/profile configuration.",
+                    "fa_icon": "fas fa-sliders-h"
                 },
                 "outdir": {
                     "type": "string",
@@ -40,6 +61,21 @@
                     "type": "string",
                     "description": "MultiQC report title. Printed as page header, used for filename if not otherwise specified.",
                     "fa_icon": "fas fa-file-signature"
+                }
+            }
+        },
+        "save_controls": {
+            "title": "Save controls",
+            "type": "object",
+            "fa_icon": "fas fa-save",
+            "description": "Publish intermediates that are otherwise kept out of the results directory.",
+            "help_text": "Intermediates are unpublished by default so that a large run does not fill your storage with files you did not ask for. Each save control turns one family of intermediates back on.",
+            "properties": {
+                "save_normalised_phenotypes": {
+                    "type": "boolean",
+                    "description": "Save the phenotype and covariate inputs prepared for each analysis unit.",
+                    "help_text": "Prepared files are published to `<outdir>/phenotypes/<analysis_id>/` so that you can check the exact representation consumed by downstream analysis programmes. The set is the headered phenotype file, the separate quantitative and categorical covariate files, and the merged covariate file; headerless programme-specific serialisations are never published. The parameter name is retained as `save_normalised_phenotypes`.",
+                    "fa_icon": "fas fa-download"
                 }
             }
         },
@@ -150,7 +186,7 @@
                 },
                 "multiqc_logo": {
                     "type": "string",
-                    "description": "Custom logo file to supply to MultiQC. File name must also be set in the MultiQC config file",
+                    "description": "Custom logo file to supply to MultiQC. File name must also be set in the MultiQC config file.",
                     "fa_icon": "fas fa-image",
                     "hidden": true
                 },
@@ -161,7 +197,7 @@
                 },
                 "validate_params": {
                     "type": "boolean",
-                    "description": "Boolean whether to validate parameters against the schema at runtime",
+                    "description": "Boolean whether to validate parameters against the schema at runtime.",
                     "default": true,
                     "fa_icon": "fas fa-check-square",
                     "hidden": true
@@ -169,8 +205,8 @@
                 "pipelines_testdata_base_path": {
                     "type": "string",
                     "fa_icon": "far fa-check-circle",
-                    "description": "Base URL or local path to location of pipeline test dataset files",
-                    "default": "https://raw.githubusercontent.com/nf-core/test-datasets/",
+                    "description": "Base URL or local path to location of pipeline test dataset files.",
+                    "default": "https://raw.githubusercontent.com/nf-core/test-datasets/gwas/",
                     "hidden": true
                 },
                 "trace_report_suffix": {
@@ -197,6 +233,9 @@
     "allOf": [
         {
             "$ref": "#/$defs/input_output_options"
+        },
+        {
+            "$ref": "#/$defs/save_controls"
         },
         {
             "$ref": "#/$defs/institutional_config_options"
