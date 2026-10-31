@@ -1,0 +1,138 @@
+{
+    "plink2_versions": {
+        "content": [
+            {
+                "PREPARE_GENOTYPE_SOURCE": {
+                    "python": "3.14.5"
+                },
+                "PREPARE_PHENOTYPE_INPUTS": {
+                    "python": "3.14.5"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "timestamp": "2026-10-31T10:12:33.289038551",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "plink2_view": {
+        "content": [
+            {
+                "cohort": "example_pgen",
+                "source": {
+                    "format": "plink2",
+                    "identity": {
+                        "mode": "sha256",
+                        "value": "a9b72024106c70f141c3cc41982ce59fbd6a8d32c5fa42b8ecc72953b9af28ec"
+                    },
+                    "members": [
+                        {
+                            "role": "pgen",
+                            "name": "example_all.pgen",
+                            "size": 122021,
+                            "sha256": "a48a6d0ca4f2cf66cd11ee0c391fb2bb38a6f64018654e03b042aa4db317cc62"
+                        },
+                        {
+                            "role": "psam",
+                            "name": "example_all.psam",
+                            "size": 2613,
+                            "sha256": "af45b49120abd0ac2bf0cc01773a706db8d31d581fa650ee2d6ecc9a67bc04b5"
+                        },
+                        {
+                            "role": "pvar",
+                            "name": "example_all.pvar",
+                            "size": 55105,
+                            "sha256": "48cfaba06fa15303c56297de910a92e2d6c5ec76b1bd88dca5601ee1bea63039"
+                        }
+                    ]
+                },
+                "native_view": {
+                    "key": "94cc579c9536",
+                    "format": "plink2",
+                    "origin": "supplied",
+                    "settings": {
+                        
+                    }
+                },
+                "plink1": null
+            }
+        ],
+        "timestamp": "2026-10-31T10:12:33.273839797",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "plink1_versions": {
+        "content": [
+            {
+                "PREPARE_GENOTYPE_SOURCE": {
+                    "python": "3.14.5"
+                },
+                "PREPARE_PHENOTYPE_INPUTS": {
+                    "python": "3.14.5"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "timestamp": "2026-10-31T09:56:31.863032909",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "plink1_view": {
+        "content": [
+            {
+                "cohort": "example_bfile",
+                "source": {
+                    "format": "plink1",
+                    "identity": {
+                        "mode": "sha256",
+                        "value": "f84524b232aac1a8b1f1dcea3ae2ebe2e21e56b335ee4debbaf44ab74799c28b"
+                    },
+                    "members": [
+                        {
+                            "role": "bed",
+                            "name": "example_all.bed",
+                            "size": 110003,
+                            "sha256": "524928cdd30e9f59366ad293bdaa729bcc7f251d962c6333f4555273d70d41a5"
+                        },
+                        {
+                            "role": "bim",
+                            "name": "example_all.bim",
+                            "size": 48444,
+                            "sha256": "ce050e446df03a7209f31f102d304141bd3743c39086eb61bcfbccc5630b9422"
+                        },
+                        {
+                            "role": "fam",
+                            "name": "example_all.fam",
+                            "size": 3800,
+                            "sha256": "018c10d850bced9613e912a61d8ee5ea11b9bda01acab0f6a8bf4001737dca3d"
+                        }
+                    ]
+                },
+                "native_view": {
+                    "key": "845046a58b6c",
+                    "format": "plink1",
+                    "origin": "supplied",
+                    "settings": {
+                        
+                    }
+                },
+                "plink1": null
+            }
+        ],
+        "timestamp": "2026-10-31T09:56:31.85459072",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

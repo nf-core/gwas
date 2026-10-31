@@ -1,0 +1,59 @@
+{
+    "phenotypes": {
+        "content": [
+            [
+                "example_pgen_bt",
+                "example_pgen_bt/example_pgen_bt.catcovar",
+                "example_pgen_bt/example_pgen_bt.covar",
+                "example_pgen_bt/example_pgen_bt.pheno",
+                "example_pgen_bt/example_pgen_bt.qcovar",
+                "example_pgen_bt_no_covariates",
+                "example_pgen_bt_no_covariates/example_pgen_bt_no_covariates.pheno",
+                "example_pgen_qt",
+                "example_pgen_qt/example_pgen_qt.catcovar",
+                "example_pgen_qt/example_pgen_qt.covar",
+                "example_pgen_qt/example_pgen_qt.pheno",
+                "example_pgen_qt/example_pgen_qt.qcovar",
+                "example_pgen_qt_no_covariates",
+                "example_pgen_qt_no_covariates/example_pgen_qt_no_covariates.pheno"
+            ],
+            [
+                "example_pgen_bt.catcovar:md5,47ee1a1913400a9999d066d81584311a",
+                "example_pgen_bt.covar:md5,c9974c45dc443d38ecc536f6d235a48e",
+                "example_pgen_bt.pheno:md5,1bc023e27a3b9cfd565618f7ce730ce2",
+                "example_pgen_bt.qcovar:md5,65a53c3ab50c11b025c87aeee9e821f3",
+                "example_pgen_bt_no_covariates.pheno:md5,1bc023e27a3b9cfd565618f7ce730ce2",
+                "example_pgen_qt.catcovar:md5,47ee1a1913400a9999d066d81584311a",
+                "example_pgen_qt.covar:md5,c9974c45dc443d38ecc536f6d235a48e",
+                "example_pgen_qt.pheno:md5,78c1d89b19bb502f8f8b5ecedafd66be",
+                "example_pgen_qt.qcovar:md5,65a53c3ab50c11b025c87aeee9e821f3",
+                "example_pgen_qt_no_covariates.pheno:md5,78c1d89b19bb502f8f8b5ecedafd66be"
+            ]
+        ],
+        "timestamp": "2026-10-31T09:55:58.19361653",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "versions": {
+        "content": [
+            {
+                "PREPARE_GENOTYPE_SOURCE": {
+                    "python": "3.14.5"
+                },
+                "PREPARE_PHENOTYPE_INPUTS": {
+                    "python": "3.14.5"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "timestamp": "2026-10-31T09:55:58.244963752",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}
