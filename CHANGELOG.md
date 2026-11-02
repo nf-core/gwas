@@ -49,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Gave the nf-test CI runners an 80 GB volume (`volume=80gb`, as nf-core/rnaseq and sarek do): the 2026-10-21 runner image left too little root disk for the shards that pull every container image.
 - Removed the retired, unwired PLINK 1 association and VCF-conversion components, and repaired the `GCTA_ADDGRMS` and `GCTA_BIVARIATEREMLLDMS` test setups to use the pipeline-local `GCTA_MAKEGRMPART` process and their installed GAWK dependency.
 - Corrected the lint workflow branch condition so it excludes automated nf-core template and module-update branches as intended.
 - [#96](https://github.com/nf-core/gwas/pull/96) - Bump the `nft-utils` nf-test plugin to `0.0.9` for nf-test 0.9.4 compatibility (fixes `sanitizeOutput()` `MissingMethodException` in module tests after the 4.0.2 template merge).
