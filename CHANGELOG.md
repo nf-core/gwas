@@ -16,6 +16,7 @@ Initial release of nf-core/gwas, created with the [nf-core](https://nf-co.re/) t
 ### `Fixed`
 
 - [#109](https://github.com/nf-core/gwas/pull/109) (2026-10-31) - Made the LDAK module tests compile under Nextflow 26.04 strict syntax.
+- [#109](https://github.com/nf-core/gwas/pull/109) (2026-11-03) - Made the pipeline tests read console messages from both stdout and stderr, as Nextflow 26.10 prints `error()` and log messages on stderr.
 - [#96](https://github.com/nf-core/gwas/pull/96) - Bump the `nft-utils` nf-test plugin to `0.0.9` for nf-test 0.9.4 compatibility (fixes `sanitizeOutput()` `MissingMethodException` in module tests after the 4.0.2 template merge).
 
 ### `Dependencies`

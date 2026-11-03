@@ -73,7 +73,7 @@ nextflow_function {
         }
 
         then {
-            def report = function.stdout.join('\n')
+            def report = VALIDATION.console(function)
             assertAll(
                 { assert function.failed },
                 { assert report.contains("analysis_id 'example', option 'mystery': unknown method family; accepted families are none, no method is registered in this release") },
@@ -96,7 +96,7 @@ nextflow_function {
         }
 
         then {
-            def report = function.stdout.join('\n')
+            def report = VALIDATION.console(function)
             assertAll(
                 { assert function.failed },
                 { assert report.contains("analysis_id 'missing', option '<analysis>': analysis identifier is not declared in the analysis manifest") },
@@ -120,7 +120,7 @@ nextflow_function {
         }
 
         then {
-            def report = function.stdout.join('\n')
+            def report = VALIDATION.console(function)
             assertAll(
                 { assert function.failed },
                 { assert report.contains("has unknown top-level namespace 'pair_requests'; accepted namespaces are analyses") },
@@ -140,7 +140,7 @@ nextflow_function {
         }
 
         then {
-            def report = function.stdout.join('\n')
+            def report = VALIDATION.console(function)
             assertAll(
                 { assert function.failed },
                 { assert report.contains("option '<root>': malformed JSON") },

@@ -7,8 +7,13 @@
 // detail in the run log. Both are joined here so a test does not have to know which pass caught it.
 class VALIDATION {
 
-    static String report(Object outputDir, List<String> consoleOutput) {
+    // Nextflow 26.10 prints errors and log messages on stderr rather than stdout, so read both streams.
+    static String console(Object run) {
+        return ((run.stdout ?: []) + (run.stderr ?: [])).join('\n')
+    }
+
+    static String report(Object outputDir, Object run) {
         def log = new File(new File(outputDir.toString()).parentFile, 'meta/nextflow.log')
-        return [consoleOutput ? consoleOutput.join('\n') : '', log.exists() ? log.text : ''].join('\n')
+        return [console(run), log.exists() ? log.text : ''].join('\n')
     }
 }

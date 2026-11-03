@@ -75,7 +75,7 @@ nextflow_pipeline {
         }
 
         then {
-            def report = VALIDATION.report(outputDir, workflow.stdout)
+            def report = VALIDATION.report(outputDir, workflow)
             assertAll(
                 { assert !workflow.success },
                 { assert report.contains(params.analysis_manifest.toString()) },
@@ -104,7 +104,7 @@ nextflow_pipeline {
         }
 
         then {
-            def report = VALIDATION.report(outputDir, workflow.stdout)
+            def report = VALIDATION.report(outputDir, workflow)
             assertAll(
                 { assert !workflow.success },
                 { assert report.contains("field 'association_methods'") },
@@ -131,7 +131,7 @@ nextflow_pipeline {
         }
 
         then {
-            def report = VALIDATION.report(outputDir, workflow.stdout)
+            def report = VALIDATION.report(outputDir, workflow)
             assertAll(
                 { assert !workflow.success },
                 { assert report.contains('--analysis_manifest is missing; linked manifests require both') },
