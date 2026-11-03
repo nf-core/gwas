@@ -49,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Made the tests read pipeline console messages from both stdout and stderr, because Nextflow 26.10 prints `error()` and log output on stderr, and aliased the KVIK subworkflow test's `LDAK_KVIKSTEP1` setup run, because Nextflow 26.10 shares one process definition across include sites.
 - Gave the nf-test CI runners an 80 GB volume (`volume=80gb`, as nf-core/rnaseq and sarek do): the 2026-10-21 runner image left too little root disk for the shards that pull every container image.
 - Removed the retired, unwired PLINK 1 association and VCF-conversion components, and repaired the `GCTA_ADDGRMS` and `GCTA_BIVARIATEREMLLDMS` test setups to use the pipeline-local `GCTA_MAKEGRMPART` process and their installed GAWK dependency.
 - Corrected the lint workflow branch condition so it excludes automated nf-core template and module-update branches as intended.
