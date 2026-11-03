@@ -130,7 +130,7 @@ nextflow_function {
         then {
             assertAll(
                 { assert !function.success },
-                { assert function.stdout.join('\n').contains("cohort 'cohort_bad_digest'") },
+                { assert VALIDATION.console(function).contains("cohort 'cohort_bad_digest'") },
             )
         }
     }

@@ -117,7 +117,7 @@ nextflow_pipeline {
         }
 
         then {
-            def report = VALIDATION.report(outputDir, workflow.stdout)
+            def report = VALIDATION.report(outputDir, workflow)
             assertAll(
                 { assert workflow.failed },
                 { assert report.contains("request_id 'ldsc_h2--external_qt'") },

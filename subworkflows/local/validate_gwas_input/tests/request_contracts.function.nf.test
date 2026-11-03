@@ -48,7 +48,7 @@ nextflow_function {
             then {
                 assertAll(
                     { assert function.failed },
-                    { assert function.stdout.join('\n').contains(scenario.expected) },
+                    { assert VALIDATION.console(function).contains(scenario.expected) },
                 )
             }
         }
@@ -137,7 +137,7 @@ nextflow_function {
             then {
                 assertAll(
                     { assert function.failed },
-                    { assert function.stdout.join('\n').contains(scenario.expected) },
+                    { assert VALIDATION.console(function).contains(scenario.expected) },
                 )
             }
         }

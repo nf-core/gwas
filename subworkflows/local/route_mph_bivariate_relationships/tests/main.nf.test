@@ -272,7 +272,7 @@ nextflow_workflow {
                 // no result and no error.
                 assertAll(
                     { assert !workflow.success },
-                    { assert workflow.stdout.join('\n').contains('Join mismatch') || workflow.errorReport.contains('Join mismatch') },
+                    { assert VALIDATION.console(workflow).contains('Join mismatch') || workflow.errorReport.contains('Join mismatch') },
                 )
             }
         }
@@ -312,7 +312,7 @@ nextflow_workflow {
         then {
             assertAll(
                 { assert !workflow.success },
-                { assert workflow.stdout.join('\n').contains('Join mismatch') || workflow.errorReport.contains('Join mismatch') },
+                { assert VALIDATION.console(workflow).contains('Join mismatch') || workflow.errorReport.contains('Join mismatch') },
             )
         }
     }

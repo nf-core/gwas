@@ -311,8 +311,8 @@ nextflow_process {
             assertAll(
                 { assert !process.success },
                 { assert process.exitStatus != 0 },
-                { assert process.stdout.join('\n').contains("sample set 'analysis'") },
-                { assert process.stdout.join('\n').contains('declares 4 columns but line 5 carries 3 fields') },
+                { assert VALIDATION.console(process).contains("sample set 'analysis'") },
+                { assert VALIDATION.console(process).contains('declares 4 columns but line 5 carries 3 fields') },
             )
         }
     }

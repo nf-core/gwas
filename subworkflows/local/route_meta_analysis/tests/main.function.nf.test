@@ -39,7 +39,7 @@ nextflow_function {
         then {
             assertAll(
                 { assert !function.success },
-                { assert function.stdout.join('\n').contains('did not resolve exactly its declared ordered summary parents') },
+                { assert VALIDATION.console(function).contains('did not resolve exactly its declared ordered summary parents') },
             )
         }
     }

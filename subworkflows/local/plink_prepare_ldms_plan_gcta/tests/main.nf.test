@@ -216,7 +216,7 @@ nextflow_workflow {
                 { assert !workflow.success },
                 // Named, so this case cannot be satisfied by any other failure of the stub run -- a broken
                 // stub script or a config parse error would also leave `workflow.success` false.
-                { assert workflow.stdout.join('\n').contains('Join mismatch') || workflow.errorReport.contains('Join mismatch') },
+                { assert VALIDATION.console(workflow).contains('Join mismatch') || workflow.errorReport.contains('Join mismatch') },
                 // And the failure is before any work, not after a plan was half built.
                 { assert workflow.trace.succeeded().count { it.name.contains('GCTA_CALCULATELDSCORES (') } == 0 },
                 { assert workflow.trace.succeeded().count { it.name.contains('CUSTOM_GCTASTRATIFYLDSCORES (') } == 0 },

@@ -79,7 +79,7 @@ nextflow_process {
             // PLINK 2 owns the multiallelic input contract for a PLINK 1 projection.
             assertAll(
                 { assert !process.success },
-                { assert process.stdout.join('\n').contains('cannot contain multiallelic variants') ||
+                { assert VALIDATION.console(process).contains('cannot contain multiallelic variants') ||
                     process.errorReport.contains('cannot contain multiallelic variants') },
             )
         }

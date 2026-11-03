@@ -127,8 +127,8 @@ nextflow_function {
             then {
                 assertAll(
                     { assert !function.success },
-                    { assert function.stdout.join('\n').contains(scenario.expected) },
-                    { assert function.stdout.join('\n').contains('summaries.csv row') },
+                    { assert VALIDATION.console(function).contains(scenario.expected) },
+                    { assert VALIDATION.console(function).contains('summaries.csv row') },
                 )
             }
         }
@@ -144,7 +144,7 @@ nextflow_function {
         then {
             assertAll(
                 { assert !function.success },
-                { assert function.stdout.join('\n').contains('parents must be declared base summaries') },
+                { assert VALIDATION.console(function).contains('parents must be declared base summaries') },
             )
         }
     }
@@ -168,7 +168,7 @@ nextflow_function {
             then {
                 assertAll(
                     { assert !function.success },
-                    { assert function.stdout.join('\n').contains(scenario.expected) },
+                    { assert VALIDATION.console(function).contains(scenario.expected) },
                 )
             }
         }

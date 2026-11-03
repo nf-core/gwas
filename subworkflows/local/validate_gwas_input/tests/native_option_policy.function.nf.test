@@ -100,8 +100,8 @@ nextflow_function {
             then {
                 assertAll(
                     { assert function.failed },
-                    { assert function.stdout.join('\n').contains('is not an accepted MPH native argument') },
-                    { assert function.stdout.join('\n').contains('--min_maf, --min_hwe_pval, --verbose') },
+                    { assert VALIDATION.console(function).contains('is not an accepted MPH native argument') },
+                    { assert VALIDATION.console(function).contains('--min_maf, --min_hwe_pval, --verbose') },
                 )
             }
         }
@@ -133,7 +133,7 @@ nextflow_function {
             then {
                 assertAll(
                     { assert scenario.succeeds ? function.success : function.failed },
-                    { assert scenario.succeeds ? function.result == scenario.args : function.stdout.join('\n').contains(scenario.expected) },
+                    { assert scenario.succeeds ? function.result == scenario.args : VALIDATION.console(function).contains(scenario.expected) },
                 )
             }
         }
@@ -166,7 +166,7 @@ nextflow_function {
             then {
                 assertAll(
                     { assert function.failed },
-                    { assert function.stdout.join('\n').contains(scenario.expected) },
+                    { assert VALIDATION.console(function).contains(scenario.expected) },
                 )
             }
         }
@@ -190,7 +190,7 @@ nextflow_function {
         then {
             assertAll(
                 { assert function.failed },
-                { assert function.stdout.join('\n').contains('undeclared file input') },
+                { assert VALIDATION.console(function).contains('undeclared file input') },
             )
         }
     }
@@ -239,8 +239,8 @@ nextflow_function {
         then {
             assertAll(
                 { assert function.failed },
-                { assert function.stdout.join('\n').contains("request_id 'ldsc_h2--external_qt'") },
-                { assert function.stdout.join('\n').contains("token 1 '--samp-prev' conflicts with wrapper-owned invocation mechanics") },
+                { assert VALIDATION.console(function).contains("request_id 'ldsc_h2--external_qt'") },
+                { assert VALIDATION.console(function).contains("token 1 '--samp-prev' conflicts with wrapper-owned invocation mechanics") },
             )
         }
     }
@@ -278,8 +278,8 @@ nextflow_function {
             then {
                 assertAll(
                     { assert function.failed },
-                    { assert function.stdout.join('\n').contains("request_id 'ldak_sumcors--external_pair'") },
-                    { assert function.stdout.join('\n').contains(scenario.expected) },
+                    { assert VALIDATION.console(function).contains("request_id 'ldak_sumcors--external_pair'") },
+                    { assert VALIDATION.console(function).contains(scenario.expected) },
                 )
             }
         }
@@ -323,7 +323,7 @@ nextflow_function {
                     then {
                         assertAll(
                             { assert function.failed },
-                            { assert function.stdout.join('\n').contains('requires a typed staged resource') },
+                            { assert VALIDATION.console(function).contains('requires a typed staged resource') },
                         )
                     }
                 }
@@ -348,7 +348,7 @@ nextflow_function {
             then {
                 assertAll(
                     { assert function.failed },
-                    { assert function.stdout.join('\n').contains("selects a different primary operation from wrapper-owned method '${method}'") },
+                    { assert VALIDATION.console(function).contains("selects a different primary operation from wrapper-owned method '${method}'") },
                 )
             }
         }
@@ -371,7 +371,7 @@ nextflow_function {
             then {
                 assertAll(
                     { assert function.failed },
-                    { assert function.stdout.join('\n').contains("selects a different primary operation from wrapper-owned method '${method}'") },
+                    { assert VALIDATION.console(function).contains("selects a different primary operation from wrapper-owned method '${method}'") },
                 )
             }
         }
@@ -498,7 +498,7 @@ nextflow_function {
                     then {
                         assertAll(
                             { assert function.failed },
-                            { assert function.stdout.join('\n').contains('protected LDSC option abbreviation') },
+                            { assert VALIDATION.console(function).contains('protected LDSC option abbreviation') },
                         )
                     }
                 }

@@ -261,7 +261,7 @@ nextflow_function {
                 // `error` reaches the console, and the document path is part of the same sentence, so the
                 // whole attribution is asserted as one contiguous fragment rather than as four independent
                 // `contains` checks that a reordering of the sentence would still satisfy.
-                def report = VALIDATION.report(outputDir, function.stdout)
+                def report = VALIDATION.report(outputDir, function)
                 assertAll(
                     { assert function.failed },
                     { assert report.contains('[nf-core/gwas] ERROR: Method-options document ') },

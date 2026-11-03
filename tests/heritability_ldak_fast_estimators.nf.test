@@ -308,7 +308,7 @@ nextflow_pipeline {
             // `relatedness_filter` is rejected only where nothing can consume it. Here the kinship estimator
             // genuinely does, so the row runs — and the two estimators then work on different sample sets,
             // which is exactly what the warning has to say out loud because no native output reveals it.
-            def report = VALIDATION.report(outputDir, workflow.stdout)
+            def report = VALIDATION.report(outputDir, workflow)
             def individual = new File("${params.outdir}/heritability/individual")
             assertAll(
                 { assert workflow.success },
@@ -365,7 +365,7 @@ nextflow_pipeline {
                 // LDAK leaves an unparsed `--covar` cell as whatever was last in its read buffer, and turns a
                 // missing `--factors` cell into an extra level, in both cases silently. The pipeline therefore
                 // refuses the input rather than letting the run report a covariate model nobody declared.
-                def report = VALIDATION.report(outputDir, workflow.stdout)
+                def report = VALIDATION.report(outputDir, workflow)
                 assertAll(
                     { assert !workflow.success },
                     // The rule lives in the preparation task, so preparation must have run and failed. A

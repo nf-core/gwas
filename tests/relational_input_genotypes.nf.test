@@ -433,7 +433,7 @@ nextflow_pipeline {
             }
 
             then {
-                def report = VALIDATION.report(outputDir, workflow.stdout)
+                def report = VALIDATION.report(outputDir, workflow)
                 assertAll(
                     { assert !workflow.success },
                     { assert report.contains(params.cohort_manifest.toString()) },
@@ -468,7 +468,7 @@ nextflow_pipeline {
         }
 
         then {
-            def report = VALIDATION.report(outputDir, workflow.stdout)
+            def report = VALIDATION.report(outputDir, workflow)
             assertAll(
                 { assert !workflow.success },
                 { assert report.contains(params.cohort_manifest.toString()) },

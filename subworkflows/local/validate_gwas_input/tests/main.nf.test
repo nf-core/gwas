@@ -406,7 +406,7 @@ nextflow_workflow {
         }
 
         then {
-            def report = workflow.stdout.join('\n')
+            def report = VALIDATION.console(workflow)
             assertAll(
                 { assert !workflow.success },
                 { assert report.contains('--analysis_manifest') },

@@ -249,7 +249,7 @@ nextflow_function {
             }
 
             then {
-                def report = function.stdout.join('\n')
+                def report = VALIDATION.console(function)
                 assertAll(
                     { assert function.failed },
                     { assert report.contains('Validation of linked manifests failed') },
@@ -314,7 +314,7 @@ nextflow_function {
             }
 
             then {
-                def report = function.stdout.join('\n')
+                def report = VALIDATION.console(function)
                 assertAll(
                     { assert function.failed },
                     { assert report.contains(scenario.expected) },
@@ -378,7 +378,7 @@ nextflow_function {
             }
 
             then {
-                def report = function.stdout.join('\n')
+                def report = VALIDATION.console(function)
                 assertAll(
                     { assert function.failed },
                     { assert report.contains(scenario.expected) },
@@ -412,7 +412,7 @@ nextflow_function {
         }
 
         then {
-            def report = function.stdout.join('\n')
+            def report = VALIDATION.console(function)
             assertAll(
                 { assert function.failed },
                 { assert report.contains("  - analyses.csv row 3 (analysis_id 'example_pgen_qt'), field 'analysis_id': duplicate analysis_id 'example_pgen_qt', already declared on row 2") },
@@ -527,7 +527,7 @@ nextflow_function {
             }
 
             then {
-                def report = function.stdout.join('\n')
+                def report = VALIDATION.console(function)
                 assertAll(
                     { assert function.failed },
                     { assert report.contains(scenario.expected) },

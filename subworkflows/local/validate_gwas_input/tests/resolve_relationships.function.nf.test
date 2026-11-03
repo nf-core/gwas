@@ -161,7 +161,7 @@ nextflow_function {
             }
 
             then {
-                def report = function.stdout.join('\n')
+                def report = VALIDATION.console(function)
                 assertAll(
                     { assert function.failed },
                     { assert report.contains('relationships.csv') },

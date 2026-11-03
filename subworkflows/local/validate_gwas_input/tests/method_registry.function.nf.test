@@ -678,7 +678,7 @@ nextflow_function {
         then {
             assertAll(
                 { assert function.failed },
-                { assert function.stdout.join('\n').contains("unregistered field 'mystery_capability'") },
+                { assert VALIDATION.console(function).contains("unregistered field 'mystery_capability'") },
             )
         }
     }

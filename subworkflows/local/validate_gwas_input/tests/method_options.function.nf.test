@@ -69,7 +69,7 @@ nextflow_function {
         }
 
         then {
-            def report = function.stdout.join('\n')
+            def report = VALIDATION.console(function)
             assertAll(
                 { assert function.failed },
                 { assert report.contains("option 'gcta': expected an option object") },
@@ -95,7 +95,7 @@ nextflow_function {
         }
 
         then {
-            def report = function.stdout.join('\n')
+            def report = VALIDATION.console(function)
             assertAll(
                 { assert function.failed },
                 { assert report.contains("option 'regenie.mystery': unknown option") },
@@ -121,7 +121,7 @@ nextflow_function {
         }
 
         then {
-            def report = function.stdout.join('\n')
+            def report = VALIDATION.console(function)
             assertAll(
                 { assert function.failed },
                 { assert report.contains("option 'mystery': unknown method family; accepted families are gcta, ldak, mph, regenie") },
@@ -152,7 +152,7 @@ nextflow_function {
             }
 
             then {
-                def report = function.stdout.join('\n')
+                def report = VALIDATION.console(function)
                 assertAll(
                     { assert function.failed },
                     { assert report.contains("option '${scenario.family}.${scenario.option}': ${scenario.message}") },
@@ -204,7 +204,7 @@ nextflow_function {
             }
 
             then {
-                def report = function.stdout.join('\n')
+                def report = VALIDATION.console(function)
                 assertAll(
                     { assert function.failed },
                     { assert report.contains(scenario.expected) },
@@ -267,7 +267,7 @@ nextflow_function {
             }
 
             then {
-                def report = function.stdout.join('\n')
+                def report = VALIDATION.console(function)
                 assertAll(
                     { assert function.failed },
                     { assert report.contains(scenario.expected) },
@@ -326,7 +326,7 @@ nextflow_function {
         then {
             // `log.warn` reaches the run log rather than the harness's captured stdout, so the report is read
             // from both, exactly as a pipeline-level validation test reads it.
-            def report = VALIDATION.report(outputDir, function.stdout)
+            def report = VALIDATION.report(outputDir, function)
             assertAll(
                 { assert function.success },
                 { assert function.result.example.ldak.relatedness_filter },
@@ -354,7 +354,7 @@ nextflow_function {
         then {
             // The negative half of the mixed-row warning: with no direct-genotype estimator on the row there
             // are no two sample sets to compare, so nothing should be said.
-            def report = VALIDATION.report(outputDir, function.stdout)
+            def report = VALIDATION.report(outputDir, function)
             assertAll(
                 { assert function.success },
                 { assert function.result.example.ldak.relatedness_filter },
@@ -383,7 +383,7 @@ nextflow_function {
         }
 
         then {
-            def report = function.stdout.join('\n')
+            def report = VALIDATION.console(function)
             assertAll(
                 { assert function.failed },
                 { assert report.contains("option 'regenie.step1_bsize': expected one positive integer") },
@@ -422,7 +422,7 @@ nextflow_function {
             then {
                 assertAll(
                     { assert function.failed },
-                    { assert function.stdout.join('\n').contains("option '${scenario.label}': ${scenario.reason}") },
+                    { assert VALIDATION.console(function).contains("option '${scenario.label}': ${scenario.reason}") },
                 )
             }
         }

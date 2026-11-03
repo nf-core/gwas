@@ -49,7 +49,7 @@ nextflow_pipeline {
             }
 
             then {
-                def report = VALIDATION.report(outputDir, workflow.stdout)
+                def report = VALIDATION.report(outputDir, workflow)
                 assertAll(
                     { assert !workflow.success },
                     { assert report.contains('regenie_step1_jobs') },
@@ -121,7 +121,7 @@ nextflow_pipeline {
         }
 
         then {
-            def report = VALIDATION.report(outputDir, workflow.stdout)
+            def report = VALIDATION.report(outputDir, workflow)
             assertAll(
                 { assert !workflow.success },
                 { assert report.contains("option 'regenie.firth'") },

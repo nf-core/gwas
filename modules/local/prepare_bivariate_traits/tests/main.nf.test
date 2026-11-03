@@ -123,8 +123,8 @@ nextflow_process {
             then {
                 assertAll(
                     { assert process.failed },
-                    { assert process.stdout.join('\n').contains('relationship quantitative covariate') },
-                    { assert process.stdout.join('\n').contains(scenario.message) },
+                    { assert VALIDATION.console(process).contains('relationship quantitative covariate') },
+                    { assert VALIDATION.console(process).contains(scenario.message) },
                 )
             }
         }

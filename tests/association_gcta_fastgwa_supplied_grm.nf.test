@@ -89,7 +89,7 @@ nextflow_pipeline {
         }
 
         then {
-            def report = VALIDATION.report(outputDir, workflow.stdout)
+            def report = VALIDATION.report(outputDir, workflow)
             def dropped = new File("${shipped_prefix(projectDir)}.grm.id").readLines().first().tokenize().take(2).join(' ')
             assertAll(
                 { assert workflow.failed },

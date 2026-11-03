@@ -103,7 +103,7 @@ nextflow_function {
             // published under it would be unattributable.
             assertAll(
                 { assert !function.success },
-                { assert function.stdout.join('\n').contains('expected exactly one') || function.errorReport.contains('expected exactly one') },
+                { assert VALIDATION.console(function).contains('expected exactly one') || function.errorReport.contains('expected exactly one') },
             )
         }
     }
