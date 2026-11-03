@@ -49,7 +49,10 @@ nextflow_workflow {
     '''
 
     setup {
-        run("LDAK_KVIKSTEP1") {
+        // Nextflow 26.10 runs a module script once per session, so a process called both here and inside the
+        // subworkflow under test shares one definition and its second call fails with "declares 6 inputs but was
+        // called with 5".
+        run("LDAK_KVIKSTEP1", alias: "LDAK_KVIKSTEP1_SETUP") {
             script "../../../../modules/local/ldak/kvikstep1/main.nf"
             process {
                 """
@@ -69,7 +72,7 @@ nextflow_workflow {
             workflow {
                 """
                 input[0] = channel.empty()
-                input[1] = LDAK_KVIKSTEP1.out.predictions.map { meta, root, details, prs -> ['external_F', meta, root, details, prs] }
+                input[1] = LDAK_KVIKSTEP1_SETUP.out.predictions.map { meta, root, details, prs -> ['external_F', meta, root, details, prs] }
                 input[2] = channel.of(['external_F', [id:'analysis'], bed, bim, fam, phenotype, [], [], []])
                 """
             }
