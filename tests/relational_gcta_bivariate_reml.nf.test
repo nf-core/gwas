@@ -124,6 +124,49 @@ nextflow_pipeline {
         }
     }
 
+    test("a pair request with a relatedness cutoff fits on the unrelated child of the shared dense matrix") {
+        when {
+            def inputs = pairInputs(projectDir, outputDir, 'gcta_bivariate_grm_cutoff')
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = inputs.cohort
+                analysis_manifest = inputs.analyses
+                relationship_manifest = inputs.relationships
+                method_options = RELATIONAL.methodOptions(outputDir, 'gcta_bivariate_grm_cutoff', [
+                    analyses: [:],
+                    pair_requests: [
+                        'gcta_bivariate_reml--qt_bt': [grm_cutoff: 0.15],
+                    ],
+                ])
+                gcta_grm_parts = 1
+                save_relatedness_matrices = true
+            }
+        }
+
+        then {
+            def request = new File("${params.outdir}/requests/gcta_bivariate_reml/gcta_bivariate_reml--qt_bt")
+            def matrices = new File("${params.outdir}/quality_control/relatedness_matrices")
+            def nativeCommand = workFiles(outputDir).find { entry ->
+                entry.name == '.command.sh' && entry.text.contains('--reml-bivar 1 2')
+            }
+            def unrelated = matrices.listFiles().find { matrix -> matrix.listFiles().any { artifact -> artifact.name.startsWith('gcta_unrelated.') } }
+            assertAll(
+                { assert workflow.success },
+                // One dense base, one filtered child, and the fit reads the child by its staged basename.
+                { assert TRACE.count(workflow, 'CUSTOM_GCTAMERGEGRMPARTS') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_GRMCUTOFF') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEREML') == 1 },
+                { assert nativeCommand != null },
+                { assert nativeCommand.text.contains('--grm "gcta_unrelated.') },
+                { assert matrices.list().size() == 2 },
+                { assert unrelated != null },
+                { assert unrelated.list().toList().sort() == ["gcta_unrelated.${unrelated.name}.grm.N.bin", "gcta_unrelated.${unrelated.name}.grm.bin", "gcta_unrelated.${unrelated.name}.grm.id"].sort() },
+                { assert new File(request, 'native.hsq').isFile() },
+                { assert snapshot(new File(request, 'native.hsq').text).match('cutoff_results') },
+            )
+        }
+    }
+
     // The one pipeline-level relationship-validation case. It is the only rejection here that joins all three
     // manifests -- two cohorts, two analyses and one relationship -- so it is what proves the resolver reads
     // the analysis rows' cohorts from the cohort manifest rather than from the relationship row. The

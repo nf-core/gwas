@@ -1,0 +1,131 @@
+nextflow_pipeline {
+
+    name "Test GCTA GREML relatedness-cutoff sample subsetting"
+    script "../main.nf"
+    tag "pipeline"
+    tag "heritability"
+    tag "gcta"
+    tag "gcta_greml"
+    tag "gcta_greml_ldms"
+
+    // One cohort, three rows: a dense GREML row and a stratified GREML-LDMS row that declare the same
+    // `gcta.grm_cutoff`, and a dense GREML row that declares none. What is under test is the subset wiring the
+    // option adds: the two cutoff rows share one `--grm-cutoff` derivation off the one dense matrix the full row
+    // also reads, the dense row fits on the filtered child, the stratified row keeps its whole family and takes
+    // the child's identifier list as `--keep`, and the child publishes under its own key as a three-file bundle
+    // whose identifier list is a strict subset of its parent's. The cutoff is `0.15`: measured on the fixture with
+    // the pinned GCTA, `--grm-cutoff 0.15` drops nine of the 200 samples where `0.2` drops none and `0.1` drops
+    // 81, so the child is a real subset that still leaves the REML fits well conditioned.
+    def inputs = { output_dir, project_dir ->
+        def analyses = RELATIONAL.analyses(project_dir, output_dir, 'gcta_grm_cutoff', { rows ->
+            rows.clear()
+            [
+                [analysis_id: 'dense_cutoff', heritability_methods: 'gcta_greml'],
+                [analysis_id: 'ldms_cutoff', heritability_methods: 'gcta_greml_ldms'],
+                [analysis_id: 'dense_full', heritability_methods: 'gcta_greml'],
+            ].each { declared ->
+                def row = RELATIONAL.analysis(project_dir, 'example_pgen_qt')
+                row.analysis_id = declared.analysis_id
+                row.association_methods = ''
+                row.heritability_methods = declared.heritability_methods
+                rows << row
+            }
+        })
+        def options = RELATIONAL.methodOptions(output_dir, 'gcta_grm_cutoff', [
+            dense_cutoff: [gcta: [grm_cutoff: 0.15]],
+            ldms_cutoff: [gcta: [grm_cutoff: 0.15, ld_score_region_kb: 50, ld_bins: 1, ldms_maf_edges: [0, 0.5]]],
+        ])
+        return [
+            cohort: RELATIONAL.cohorts(project_dir, output_dir, 'gcta_grm_cutoff'),
+            analysis: analyses,
+            options: options,
+        ]
+    }
+
+    def workFiles = { outputDir ->
+        def files = []
+        new File(new File(outputDir.toString()).parentFile, 'work').eachFileRecurse { entry ->
+            if (entry.isFile()) {
+                files << entry
+            }
+        }
+        return files
+    }
+
+    def sampleCount = { File hsq ->
+        hsq.readLines().find { line -> line.startsWith('n\t') }.split('\t')[1] as int
+    }
+
+    test("a dense and a stratified GREML row sharing one cutoff derive one unrelated subset from one dense matrix") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+                def linked = inputs(outputDir, projectDir)
+                cohort_manifest = linked.cohort
+                analysis_manifest = linked.analysis
+                method_options = linked.options
+                gcta_grm_parts = 1
+                save_relatedness_matrices = true
+            }
+        }
+
+        then {
+            def heritability = new File("${params.outdir}/heritability/individual")
+            def matrices = new File("${params.outdir}/quality_control/relatedness_matrices")
+            def dense_cutoff = new File(heritability, 'gcta_greml/dense_cutoff/dense_cutoff.gcta_greml.hsq')
+            def dense_full = new File(heritability, 'gcta_greml/dense_full/dense_full.gcta_greml.hsq')
+            def ldms_cutoff = new File(heritability, 'gcta_greml_ldms/ldms_cutoff/ldms_cutoff.gcta_greml_ldms.hsq')
+            def published = matrices.listFiles().collectEntries { matrix -> [(matrix.name): matrix.list().toList().sort()] }
+            def unrelated_dir = matrices.listFiles().find { matrix -> matrix.list().any { name -> name.startsWith('gcta_unrelated.') } }
+            def dense_dir = matrices.listFiles().find { matrix -> matrix.list().any { name -> name.startsWith('gcta_dense.') } }
+            def unrelated_ids = unrelated_dir ? new File(unrelated_dir, "gcta_unrelated.${unrelated_dir.name}.grm.id").readLines() : []
+            def dense_ids = dense_dir ? new File(dense_dir, "gcta_dense.${dense_dir.name}.grm.id").readLines() : []
+            def ldms_command = workFiles(outputDir).find { entry -> entry.name == '.command.sh' && entry.text.contains('--mgrm') && entry.text.contains('--reml') }
+            def dense_commands = workFiles(outputDir).findAll { entry -> entry.name == '.command.sh' && entry.text.contains('--reml') && entry.text.contains('--grm ') && !entry.text.contains('--mgrm') }
+            def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
+            def stable_name_heritability = getAllFilesFromDir(
+                heritability.toString(),
+                relative: true,
+                includeDir: true,
+            ).findAll { path -> path.toString() }
+            def stable_path_heritability = getAllFilesFromDir(
+                heritability.toString(),
+                ignoreFile: 'tests/.nftignore',
+            )
+
+            assertAll(
+                { assert workflow.success },
+                // One dense matrix serves the full row, the filtered row and the stratified row's subset; one
+                // cutoff derivation serves both cutoff rows; the stratified family is built once.
+                { assert TRACE.count(workflow, 'GCTA_MAKEGRMPART') == 2 },
+                { assert TRACE.count(workflow, 'CUSTOM_GCTAMERGEGRMPARTS') == 2 },
+                { assert TRACE.count(workflow, 'GCTA_GRMCUTOFF') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_REML') == 2 },
+                { assert TRACE.count(workflow, 'GCTA_REMLLDMS') == 1 },
+                // The child publishes under its own key as GCTA's three-file bundle, beside its parent and the
+                // stratified family, and its identifier list is a strict subset of the parent's.
+                { assert matrices.list().size() == 3 },
+                { assert unrelated_dir != null },
+                { assert published[unrelated_dir.name] == ["gcta_unrelated.${unrelated_dir.name}.grm.N.bin", "gcta_unrelated.${unrelated_dir.name}.grm.bin", "gcta_unrelated.${unrelated_dir.name}.grm.id"].sort() },
+                { assert dense_ids.size() == 200 },
+                { assert unrelated_ids.size() < dense_ids.size() },
+                { assert dense_ids.containsAll(unrelated_ids) },
+                // The dense cutoff row reads the child by its staged basename; the full row reads the parent.
+                { assert dense_commands.size() == 2 },
+                { assert dense_commands.count { command -> command.text.contains('--grm "gcta_unrelated.') } == 1 },
+                { assert dense_commands.count { command -> command.text.contains('--grm "gcta_dense.') } == 1 },
+                // The stratified row keeps its whole family and is restricted through `--keep`.
+                { assert ldms_command != null },
+                { assert ldms_command.text.contains('--keep "gcta_unrelated.') },
+                { assert ldms_command.text.contains('.grm.id"') },
+                // GCTA reports the fitted sample size, so the subset is visible in the results themselves.
+                { assert sampleCount(dense_full) == dense_ids.size() },
+                { assert sampleCount(dense_cutoff) == unrelated_ids.size() },
+                { assert sampleCount(ldms_cutoff) == unrelated_ids.size() },
+                { assert snapshot(stable_name_heritability, stable_path_heritability).match('heritability') },
+                { assert snapshot(removeNextflowVersion(versions.toString())).match('versions') },
+            )
+        }
+    }
+}

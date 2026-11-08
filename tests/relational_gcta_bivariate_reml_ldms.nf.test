@@ -9,7 +9,7 @@ nextflow_pipeline {
     tag "gcta"
     tag "gcta_bivariate_reml_ldms"
 
-    def pairInputs = { projectDir, outputDir, name, unary = false, strata = 1 ->
+    def pairInputs = { projectDir, outputDir, name, unary = false, strata = 1, grm_cutoff = null ->
         def analyses = RELATIONAL.analyses(projectDir, outputDir, name, { rows ->
             def binary = RELATIONAL.analysis(projectDir, 'example_pgen_bt')
             binary.population_prevalence = 0.1
@@ -55,6 +55,9 @@ nextflow_pipeline {
                 ],
             ],
         ]
+        if (grm_cutoff != null) {
+            options.pair_requests['gcta_bivariate_reml_ldms--qt_bt'].grm_cutoff = grm_cutoff
+        }
         return [
             cohort: RELATIONAL.cohorts(projectDir, outputDir, name),
             analyses: analyses,
@@ -110,6 +113,43 @@ nextflow_pipeline {
                 { assert nativeCommand.text.contains('--reml-maxit 500') },
                 { assert snapshot(removeNextflowVersion(versions.toString())).match('versions') },
                 { assert snapshot(stableRequestNames, new File(request, 'native.hsq').text).match('results') },
+            )
+        }
+    }
+
+    test("a pair request with a relatedness cutoff passes the unrelated subset to the stratified fit as a keep list") {
+        when {
+            def inputs = pairInputs(projectDir, outputDir, 'gcta_bivariate_ldms_grm_cutoff', false, 1, 0.15)
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = inputs.cohort
+                analysis_manifest = inputs.analyses
+                relationship_manifest = inputs.relationships
+                method_options = inputs.options
+                gcta_grm_parts = 1
+            }
+        }
+
+        then {
+            def request = new File("${params.outdir}/requests/gcta_bivariate_reml_ldms/gcta_bivariate_reml_ldms--qt_bt")
+            def nativeCommand = workFiles(outputDir).find { entry ->
+                entry.name == '.command.sh' && entry.text.contains('--mgrm') && entry.text.contains('--reml-bivar 1 2')
+            }
+            def sample_count = new File(request, 'native.hsq').readLines().find { line -> line.startsWith('n\t') }
+            assertAll(
+                { assert workflow.success },
+                // The stratified family is built whole; the cutoff filters the dense base, which the pair
+                // request now also demands, so two merged matrices exist (the one-stratum family and the
+                // dense base) and only the dense child's identifier list reaches the stratified fit.
+                { assert TRACE.count(workflow, 'CUSTOM_GCTAMERGEGRMPARTS') == 2 },
+                { assert TRACE.count(workflow, 'GCTA_GRMCUTOFF') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_BIVARIATEREMLLDMS') == 1 },
+                { assert nativeCommand != null },
+                { assert nativeCommand.text.contains('--keep gcta_unrelated.') },
+                { assert nativeCommand.text.contains('.grm.id') },
+                { assert request.listFiles()*.name.sort() == ['native.hsq', 'native.log'] },
+                { assert sample_count != null },
+                { assert snapshot(new File(request, 'native.hsq').text).match('cutoff_results') },
             )
         }
     }
