@@ -1,4 +1,38 @@
 {
+    "homo_sapiens popgen - a keep list restricts the regression to the listed individuals": {
+        "content": [
+            {
+                "hereg_results": [
+                    [
+                        {
+                            "id": "plink_simulated_ldms"
+                        },
+                        "plink_simulated_ldms.HEreg:md5,4e21e597fdf19364360b6f7f6ae5ffa5"
+                    ]
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "plink_simulated_ldms"
+                        },
+                        "plink_simulated_ldms.log"
+                    ]
+                ],
+                "versions_gcta": [
+                    [
+                        "GCTA_BIVARIATEHEREGLDMS",
+                        "gcta",
+                        "1.94.1"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-11-08T21:43:56.067221665",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
     "homo_sapiens popgen - bivariate quantitative phenotype with ldms mgrm - stub": {
         "content": [
             {
@@ -27,11 +61,11 @@
                 ]
             }
         ],
+        "timestamp": "2026-08-26T06:40:20.651615786",
         "meta": {
             "nf-test": "0.9.3",
             "nextflow": "25.10.4"
-        },
-        "timestamp": "2026-08-26T06:40:20.651615786"
+        }
     },
     "homo_sapiens popgen - bivariate quantitative phenotype with ldms mgrm": {
         "content": [
@@ -61,10 +95,10 @@
                 ]
             }
         ],
+        "timestamp": "2026-08-26T06:45:32.409445253",
         "meta": {
             "nf-test": "0.9.3",
             "nextflow": "25.10.4"
-        },
-        "timestamp": "2026-08-26T06:45:32.409445253"
+        }
     }
 }

@@ -31,6 +31,16 @@
             "nextflow": "26.04.6"
         }
     },
+    "cutoff_results": {
+        "content": [
+            "Source\tVariance\tSE\nV(G)_tr1\t0.112431\t0.151232\nV(G)_tr2\t0.034852\t0.042571\nC(G)_tr12\t-0.052970\t0.056865\nV(e)_tr1\t0.611621\t0.157460\nV(e)_tr2\t0.203234\t0.045836\nC(e)_tr12\t0.058629\t0.060149\nVp_tr1\t0.724052\t0.075564\nVp_tr2\t0.238085\t0.024830\nV(G)/Vp_tr1\t0.155280\t0.206802\nV(G)/Vp_tr2\t0.146383\t0.177081\nrG\t-0.846208\t1.243487\nlogL\t-54.727\nn\t382\n"
+        ],
+        "timestamp": "2026-11-08T21:45:11.106449874",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
     "results": {
         "content": [
             [

@@ -1,0 +1,71 @@
+{
+    "versions": {
+        "content": [
+            {
+                "CUSTOM_GCTAMERGEGRMPARTS": {
+                    "coreutils": 9.5
+                },
+                "CUSTOM_GCTASTRATIFYLDSCORES": {
+                    "gcta_stratify_ldscores": "1.0.0",
+                    "r-base": "4.2.1"
+                },
+                "GCTA_CALCULATELDSCORES": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_GRMCUTOFF": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_MAKEGRMPART": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_REML": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_REMLLDMS": {
+                    "gcta": "1.94.1"
+                },
+                "PLINK2_MAKEBED": {
+                    "plink2": "2.0.0-a.6.9LM"
+                },
+                "PREPARE_GENOTYPE_SOURCE": {
+                    "python": "3.14.5"
+                },
+                "PREPARE_PHENOTYPE_INPUTS": {
+                    "python": "3.14.5"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "timestamp": "2026-11-08T21:44:42.961607538",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "heritability": {
+        "content": [
+            [
+                "gcta_greml",
+                "gcta_greml/dense_cutoff",
+                "gcta_greml/dense_cutoff/dense_cutoff.gcta_greml.hsq",
+                "gcta_greml/dense_full",
+                "gcta_greml/dense_full/dense_full.gcta_greml.hsq",
+                "gcta_greml_ldms",
+                "gcta_greml_ldms/ldms_cutoff",
+                "gcta_greml_ldms/ldms_cutoff/ldms_cutoff.gcta_greml_ldms.hsq"
+            ],
+            [
+                "dense_cutoff.gcta_greml.hsq:md5,6e73798959c5fa9a37ae27999b118a7a",
+                "dense_full.gcta_greml.hsq:md5,3475afa4e0119452ee59e94502a1ccd7",
+                "ldms_cutoff.gcta_greml_ldms.hsq:md5,6e73798959c5fa9a37ae27999b118a7a"
+            ]
+        ],
+        "timestamp": "2026-11-08T21:44:42.933446572",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}
