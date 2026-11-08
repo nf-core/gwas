@@ -46,6 +46,20 @@ nextflow_process {
             }
         }
 
+        run("GAWK", alias: "GAWK_KEEP_SUBSET") {
+            script "../../../../nf-core/gawk/main.nf"
+            process {
+                """
+                input[0] = [
+                    [ id:'keep_subset' ],
+                    file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.fam', checkIfExists: true)
+                ]
+                input[1] = Channel.of('NR <= 100 { print \$1, \$2 }').collectFile(name:'keep_subset.awk')
+                input[2] = false
+                """
+            }
+        }
+
         run("GCTA_MAKEGRMPART", alias: "GCTA_MAKEGRMPART_LDMS1") {
             script "../../makegrmpart/main.nf"
             process {
@@ -116,6 +130,7 @@ nextflow_process {
                     [[ id:'plink_simulated_ldms' ], grm_files, ['plink_simulated_ldms1.part_1_1', 'plink_simulated_ldms2.part_1_1']]
                 }
                 input[1] = GAWK_BIVARIATE_PHENO.out.output.map { _meta, phenotype_file -> [[ id:'plink_simulated_ldms' ], phenotype_file, 1, 2] }
+                input[2] = [[ id:'plink_simulated_ldms' ], []]
                 """
             }
         }
@@ -158,6 +173,44 @@ nextflow_process {
         }
     }
 
+    test("homo_sapiens popgen - a keep list restricts the regression to the listed individuals") {
+        when {
+            process {
+                """
+                ldms_grm_files = GCTA_MAKEGRMPART_LDMS1.out.grm_files
+                    .mix(GCTA_MAKEGRMPART_LDMS2.out.grm_files)
+                    .map { _meta, grm_files, _nparts_gcta, _part_gcta_job -> grm_files }
+                    .collect()
+                    .map { rows -> rows.flatten() }
+
+                input[0] = ldms_grm_files.map { grm_files ->
+                    [[ id:'plink_simulated_ldms' ], grm_files, ['plink_simulated_ldms1.part_1_1', 'plink_simulated_ldms2.part_1_1']]
+                }
+                input[1] = GAWK_BIVARIATE_PHENO.out.output.map { _meta, phenotype_file -> [[ id:'plink_simulated_ldms' ], phenotype_file, 1, 2] }
+                input[2] = GAWK_KEEP_SUBSET.out.output.map { _meta, keep -> [[ id:'plink_simulated_ldms' ], keep] }
+                """
+            }
+        }
+
+        then {
+            def resultFile = file(process.out.hereg_results.get(0).get(1))
+            def workDirectory = path(process.out.log.get(0).get(1)).parent
+            def command = workDirectory.resolve(".command.sh").text.replaceAll(/\s+/, " ")
+            def sampleCounts = resultFile.readLines()
+                .collect { line -> (line =~ /^(N_tr\d+)\s+(\d+)\s*$/) }
+                .findAll { matcher -> matcher.matches() }
+                .collectEntries { matcher -> [(matcher.group(1)): matcher.group(2) as int] }
+            assertAll(
+                { assert process.success },
+                { assert command.contains('--keep "keep_subset.fam"') },
+                // The 100-individual list bounds the per-trait sample counts GCTA reports in the table.
+                { assert sampleCounts.keySet().containsAll(['N_tr1', 'N_tr2']) },
+                { assert sampleCounts.values().every { count -> count <= 100 } },
+                { assert snapshot(sanitizeOutput(process.out, unstableKeys: ["log"])).match() }
+            )
+        }
+    }
+
     test("homo_sapiens popgen - mgrm referencing a missing GRM basename fails") {
         when {
             process {
@@ -172,6 +225,7 @@ nextflow_process {
                     [[ id:'plink_simulated_ldms' ], grm_files, ['plink_simulated_ldms_missing.part_1_1']]
                 }
                 input[1] = GAWK_BIVARIATE_PHENO.out.output.map { _meta, phenotype_file -> [[ id:'plink_simulated_ldms' ], phenotype_file, 1, 2] }
+                input[2] = [[ id:'plink_simulated_ldms' ], []]
                 """
             }
         }
@@ -209,6 +263,7 @@ nextflow_process {
                     [[ id:'plink_simulated_ldms' ], grm_files, ['plink_simulated_ldms1.part_1_1', 'plink_simulated_ldms2.part_1_1']]
                 }
                 input[1] = GAWK_BIVARIATE_PHENO.out.output.map { _meta, phenotype_file -> [[ id:'plink_simulated_ldms' ], phenotype_file, 1, 2] }
+                input[2] = [[ id:'plink_simulated_ldms' ], []]
                 """
             }
         }

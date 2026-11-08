@@ -64,6 +64,19 @@ input:
         pattern: "*.{covar,cov,txt,tsv}"
         ontologies:
           - edam: "http://edamontology.org/format_3475"
+  - - meta5:
+        type: map
+        description: |
+          Groovy map containing sample-subset metadata; should carry the same sample
+          identity as `meta`, for example `[ id:'plink_simulated_ldms' ]`
+    - keep_file:
+        type: file
+        description: |
+          `FID IID` list of the individuals to include in the fit, passed to `--keep`;
+          pass `[]` to fit on every individual the GRM family and phenotype file share
+        pattern: "*.{id,txt,list,keep}"
+        ontologies:
+          - edam: "http://edamontology.org/format_3475"
 output:
   reml_results:
     - - meta:

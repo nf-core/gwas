@@ -9,6 +9,9 @@ include { PLINK_PREPARE_GRM_LDAK                                             } f
 include { PLINK_PREPARE_GRM_GROUPS_MPH as PLINK_PREPARE_GRM_GROUPS_MPH_DENSE } from '../plink_prepare_grm_groups_mph/main'
 include { PLINK_PREPARE_GRM_GROUPS_MPH as PLINK_PREPARE_GRM_GROUPS_MPH_LDMS  } from '../plink_prepare_grm_groups_mph/main'
 
+// MODULE: Installed directly from nf-core/modules
+include { GCTA_GRMCUTOFF                                                     } from '../../../modules/nf-core/gcta/grmcutoff/main'
+
 // MODULE: Local to the pipeline
 include { GCTA_MAKEBKSPARSE                                                  } from '../../../modules/local/gcta/makebksparse/main'
 
@@ -46,6 +49,11 @@ workflow PREPARE_RELATEDNESS_MATRICES {
     // else by its native view. Selecting per kind is what lets the key channel that is total for that kind be
     // the only one it is combined with — a `plink1` kind on a cohort with no PLINK 1 view cannot arise,
     // because the same registry predicate produces the demand and the kind.
+    //
+    // Every request also carries its cohort's native view key, because a stratified GCTA request that
+    // declares a relatedness cutoff subsets its sample set through the dense `gcta_dense` base, and that base
+    // is keyed by the native view like every other dense request. Passing the native key beside the kind's own
+    // key is what lets the subset share one dense matrix with a `gcta_greml` row on the same cohort.
     def ch_kind_requests = ch_analyses.flatMap { meta, _genotype_files, ldak_weights ->
         getRelatednessMatrixKinds(meta).collect { kind -> [meta.cohort, meta, kind, ldak_weights] }
     }
@@ -57,21 +65,34 @@ workflow PREPARE_RELATEDNESS_MATRICES {
 
     def ch_requests = ch_kind_bundles.plink1
         .combine(ch_cohort_plink1_view_keys, by: 0)
-        .mix(ch_kind_bundles.native.combine(ch_cohort_native_view_keys, by: 0))
-        .map { _cohort_id, meta, kind, ldak_weights, view_compatibility_key ->
+        .combine(ch_cohort_native_view_keys, by: 0)
+        .mix(
+            ch_kind_bundles.native
+                .combine(ch_cohort_native_view_keys, by: 0)
+                .map { cohort_id, meta, kind, ldak_weights, view_key -> [cohort_id, meta, kind, ldak_weights, view_key, view_key] }
+        )
+        .map { _cohort_id, meta, kind, ldak_weights, view_compatibility_key, native_view_key ->
             def weights_policy = kind == 'ldak_kinship' ? meta.method_options.ldak.weights_policy : 'equal'
             def weights_identity = kind == 'ldak_kinship' ? getLdakWeightsIdentity(ldak_weights, weights_policy) : [mode: 'equal']
-            def gcta_extract = kind in ['gcta_dense', 'gcta_sparse'] && !meta.relationship_id ? meta.method_options.gcta.grm_extract : []
-            def extract_identity = kind in ['gcta_dense', 'gcta_sparse'] ? getMethodResourceIdentity(gcta_extract) : [mode: 'all']
-            def request = buildRelatednessArtifactRequest(meta, view_compatibility_key, kind, weights_identity, extract_identity, gcta_extract)
+            def gcta_extract = kind in ['gcta_dense', 'gcta_sparse', 'gcta_ldms'] && !meta.relationship_id ? meta.method_options.gcta.grm_extract : []
+            def extract_identity = kind in ['gcta_dense', 'gcta_sparse', 'gcta_ldms'] ? getMethodResourceIdentity(gcta_extract) : [mode: 'all']
+            def request = buildRelatednessArtifactRequest(meta, view_compatibility_key, kind, weights_identity, extract_identity, gcta_extract, native_view_key)
             def weights_file = kind == 'ldak_kinship' ? ldak_weights ?: [] : []
             [request.selected_key, meta, request, weights_file]
         }
 
-    // Base construction is reduced independently of final requested form. Sparse cutoffs and LDAK filtering
-    // cannot fragment these records because they occur only on child requests.
+    // Base construction is reduced independently of final requested form. Sparse cutoffs, relatedness
+    // cutoffs and LDAK filtering cannot fragment these records because they occur only on child requests. A
+    // stratified request with a relatedness cutoff demands two bases: its own GRM family and the dense base
+    // its unrelated subset is derived from.
     def ch_base_requests = ch_requests
-        .map { _selected_key, _meta, request, weights_file -> [request.base.key, request.base, weights_file] }
+        .flatMap { _selected_key, _meta, request, weights_file ->
+            def bases = [[request.base.key, request.base, weights_file]]
+            if (request.subset) {
+                bases << [request.subset.base.key, request.subset.base, []]
+            }
+            bases
+        }
         .unique { key, _base, _weights_file -> key }
         .map { key, base, weights_file ->
             def matrix_meta = buildRelatednessArtifactMeta(base)
@@ -180,6 +201,37 @@ workflow PREPARE_RELATEDNESS_MATRICES {
         ch_sparse_inputs.grm,
         ch_sparse_inputs.cutoff,
     )
+
+    // Each unrelated child is keyed by its dense parent plus relatedness cutoff, whether a dense request
+    // selected it as its matrix or a stratified request selected it as its sample subset. One cutoff on one
+    // cohort therefore filters the dense matrix once for every GCTA consumer in the run.
+    def ch_unrelated_derivatives = ch_requests
+        .flatMap { _selected_key, _meta, request, _weights_file ->
+            [request.derived, request.subset ? request.subset.derived : [:]].findAll { derived -> derived && derived.type == 'gcta_unrelated' }
+        }
+        .map { derived -> [derived.key, derived] }
+        .unique { key, _derived -> key }
+
+    // `GCTA_GRMCUTOFF` addresses the staged dense matrix as `--grm ${meta.id}` (its documented contract:
+    // `meta.id` is the GRM basename and must match the staged files), so the child's meta carries the parent's
+    // id beside its own key; `ext.prefix` in `conf/modules/gcta.config` names the filtered output by that key.
+    def ch_unrelated_inputs = ch_unrelated_derivatives
+        .map { _key, derived -> [derived.parent_key, derived] }
+        .combine(
+            PLINK_PREPARE_GRM_GCTA.out.grm_files.map { matrix_meta, grm_files -> [matrix_meta.key, matrix_meta, grm_files] },
+            by: 0
+        )
+        .multiMap { _parent_key, derived, parent_meta, grm_files ->
+            grm: [buildRelatednessArtifactMeta(derived) + [id: parent_meta.id], grm_files]
+            cutoff: derived.settings.cutoff
+        }
+
+    GCTA_GRMCUTOFF(
+        ch_unrelated_inputs.grm,
+        ch_unrelated_inputs.cutoff,
+    )
+
+    def ch_unrelated_keep_lists = GCTA_GRMCUTOFF.out.keep_file.map { matrix_meta, keep -> [matrix_meta.key, keep] }
 
     // The LD-by-MAF component plan is its own reusable artifact, one layer above the matrix families that
     // consume it. Two engines now build stratified matrices from one plan, so an identical plan is computed
@@ -300,14 +352,17 @@ workflow PREPARE_RELATEDNESS_MATRICES {
         ch_ldak_subset_requests,
     )
 
-    // Fan every selected final artifact back to its unchanged focal analysis/request metadata.
+    // Fan every selected final artifact back to its unchanged focal analysis/request metadata. A dense request
+    // with a relatedness cutoff selects the filtered child in place of the base, and the dense consumers read
+    // whichever three-file bundle they are handed.
+    def ch_gcta_dense_matrices = PLINK_PREPARE_GRM_GCTA.out.grm_files
+        .map { matrix_meta, grm_files -> [matrix_meta.key, grm_files] }
+        .mix(GCTA_GRMCUTOFF.out.grm_files.map { matrix_meta, grm_files -> [matrix_meta.key, grm_files] })
+
     def ch_gcta_dense = ch_requests
         .filter { _selected_key, _meta, request, _weights_file -> request.kind == 'gcta_dense' }
         .map { selected_key, meta, _request, _weights_file -> [selected_key, meta.relationship_id ? meta + [matrix_key: selected_key] : meta] }
-        .combine(
-            PLINK_PREPARE_GRM_GCTA.out.grm_files.map { matrix_meta, grm_files -> [matrix_meta.key, grm_files] },
-            by: 0
-        )
+        .combine(ch_gcta_dense_matrices, by: 0)
         .map { _selected_key, meta, grm_files -> [meta, grm_files] }
 
     // An analysis that supplied its own sparse matrix requested no `gcta_sparse` kind, so it reaches no
@@ -328,14 +383,31 @@ workflow PREPARE_RELATEDNESS_MATRICES {
         .map { _selected_key, meta, sparse_grm_files -> [meta, sparse_grm_files] }
         .mix(ch_supplied_sparse)
 
-    def ch_gcta_ldms = ch_requests
+    // A stratified request reads its GRM family whole: GCTA documents `--grm-cutoff` for `--make-grm` only,
+    // so the sample subset reaches the stratified estimators as the `--keep` list the filtered dense child
+    // emitted, and the family itself is shared with requests that declared no cutoff.
+    def ch_gcta_ldms_requests = ch_requests
         .filter { _selected_key, _meta, request, _weights_file -> request.kind == 'gcta_ldms' }
-        .map { selected_key, meta, _request, _weights_file -> [selected_key, meta.relationship_id ? meta + [matrix_key: selected_key] : meta] }
+        .map { selected_key, meta, request, _weights_file ->
+            [request.base.key, request.subset ? request.subset.derived.key : null, meta.relationship_id ? meta + [matrix_key: selected_key] : meta]
+        }
         .combine(
             PLINK_PREPARE_GRM_GROUPS_GCTA.out.grm_family.map { matrix_meta, grm_files, grm_prefixes -> [matrix_meta.key, grm_files, grm_prefixes] },
             by: 0
         )
-        .map { _selected_key, meta, grm_files, grm_prefixes -> [meta, grm_files, grm_prefixes] }
+        .map { _base_key, subset_key, meta, grm_files, grm_prefixes -> [subset_key, meta, grm_files, grm_prefixes] }
+        .branch { subset_key, _meta, _grm_files, _grm_prefixes ->
+            subset: subset_key != null
+            whole: true
+        }
+
+    def ch_gcta_ldms = ch_gcta_ldms_requests.whole
+        .map { _subset_key, meta, grm_files, grm_prefixes -> [meta, grm_files, grm_prefixes, []] }
+        .mix(
+            ch_gcta_ldms_requests.subset
+                .combine(ch_unrelated_keep_lists, by: 0)
+                .map { _subset_key, meta, grm_files, grm_prefixes, keep -> [meta, grm_files, grm_prefixes, keep] }
+        )
 
     // The MPH families carry their identity in a tuple position rather than in analysis metadata. The matrix
     // identity includes the plan and declared predictor counts read from the completed construction outputs.
@@ -407,7 +479,7 @@ workflow PREPARE_RELATEDNESS_MATRICES {
     emit:
     gcta_dense          = ch_gcta_dense // channel: [ val(meta), path(grm_files) ]
     gcta_sparse         = ch_gcta_sparse // channel: [ val(meta), path(sparse_grm_files) ]
-    gcta_ldms           = ch_gcta_ldms // channel: [ val(meta), path(grm_files), val(grm_prefixes) ]
+    gcta_ldms           = ch_gcta_ldms // channel: [ val(meta), path(grm_files), val(grm_prefixes), path(keep) ], [] when no relatedness cutoff
     gcta_ldms_artifacts = PLINK_PREPARE_GRM_GROUPS_GCTA.out.grm_family // channel: [ val(matrix_meta), path(grm_files), val(grm_prefixes) ], one per base key
     ldak_kinship        = ch_ldak_kinship // channel: [ val(meta), val(artifact_key), path(grm_files), path(keep) ]
     mph_dense           = ch_mph_dense // channel: [ val(meta), val(matrix_identity), path(grm_files) ]
@@ -531,6 +603,13 @@ def getSuppliedSparseGrm(meta) {
     return meta.relationship_id ? [] : (meta.method_options?.gcta?.sparse_grm ?: [])
 }
 
+// The relatedness cutoff a GCTA request declared, or null for the full cohort. An analysis row carries it in
+// its resolved `gcta` method options; a pair request carries it in the request options the pair-request
+// namespace resolved, because the pair's own method options are the per-request document.
+def getGrmCutoff(meta) {
+    return meta.relationship_id ? meta.request_options.gcta.grm_cutoff : meta.method_options.gcta.grm_cutoff
+}
+
 def getLdakWeightsIdentity(weights_file, weights_policy = 'equal') {
     if (!weights_file) {
         return [mode: weights_policy]
@@ -599,16 +678,34 @@ def getRelatednessDerivedSettings(meta, requested_kind) {
     if (requested_kind == 'gcta_sparse') {
         return [cutoff: meta.method_options.gcta.sparse_cutoff]
     }
+    if (requested_kind == 'gcta_unrelated') {
+        return [cutoff: getGrmCutoff(meta)]
+    }
     if (requested_kind == 'ldak_kinship' && meta.method_options.ldak.relatedness_filter) {
         return [relatedness_filter: true]
     }
     return [:]
 }
 
+// The unrelated child of a dense base: the matrix `gcta --grm-cutoff --make-grm` writes, whose `.grm.id` is
+// also the keep list of the samples that survived the cutoff.
+def buildUnrelatedDerivedArtifact(meta, base) {
+    def settings = getRelatednessDerivedSettings(meta, 'gcta_unrelated')
+    return [
+        layer: 'derived',
+        type: 'gcta_unrelated',
+        parent_key: base.key,
+        settings: settings,
+        key: buildScientificArtifactKey([layer: 'derived', type: 'gcta_unrelated', parent_key: base.key], settings),
+    ]
+}
+
 // The view-compatibility key arrives as an argument rather than being derived here: which of a cohort's two
 // views a request is compatible with is decided by the kind's declared genotype bundle, and only the caller
-// holds both key channels. Nothing in this function reads a staged genotype name.
-def buildRelatednessArtifactRequest(meta, view_compatibility_key, kind, weights_identity = [mode: 'equal'], gcta_extract_identity = [mode: 'all'], gcta_extract = []) {
+// holds both key channels. Nothing in this function reads a staged genotype name. `native_view_key` is the
+// cohort's native view, which only a stratified request with a relatedness cutoff reads: its sample subset is
+// derived from the dense base, and that base is keyed by the native view like every dense request.
+def buildRelatednessArtifactRequest(meta, view_compatibility_key, kind, weights_identity = [mode: 'equal'], gcta_extract_identity = [mode: 'all'], gcta_extract = [], native_view_key = null) {
     def base_type = kind == 'gcta_sparse' ? 'gcta_dense' : kind
     def base_settings = getRelatednessBaseSettings(meta, kind, weights_identity, gcta_extract_identity)
 
@@ -659,6 +756,28 @@ def buildRelatednessArtifactRequest(meta, view_compatibility_key, kind, weights_
             key: buildScientificArtifactKey([layer: 'derived', type: 'gcta_sparse', parent_key: base.key], settings),
         ]
     }
+    // A dense request with a relatedness cutoff fits on the filtered child; a stratified one keeps its whole
+    // GRM family and takes the child's identifier list as its sample subset, so the child hangs off the dense
+    // base the same cohort would build for a `gcta_greml` row. A pair request's dense base carries no
+    // construction settings, exactly as a dense pair request's own base does.
+    def subset = [:]
+    if (kind in ['gcta_dense', 'gcta_ldms'] && getGrmCutoff(meta) != null) {
+        if (kind == 'gcta_dense') {
+            derived = buildUnrelatedDerivedArtifact(meta, base)
+        }
+        else {
+            def dense_settings = meta.relationship_id ? [:] : getRelatednessBaseSettings(meta, 'gcta_dense', weights_identity, gcta_extract_identity)
+            def dense_base = [
+                layer: 'base',
+                type: 'gcta_dense',
+                key: buildScientificArtifactKey([layer: 'base', type: 'gcta_dense', view_compatibility_key: native_view_key], dense_settings),
+                view_compatibility_key: native_view_key,
+                settings: dense_settings,
+                gcta_extract: gcta_extract,
+            ]
+            subset = [base: dense_base, derived: buildUnrelatedDerivedArtifact(meta, dense_base)]
+        }
+    }
     if (kind == 'ldak_kinship' && meta.method_options.ldak.relatedness_filter) {
         def settings = getRelatednessDerivedSettings(meta, kind)
         derived = [
@@ -670,11 +789,19 @@ def buildRelatednessArtifactRequest(meta, view_compatibility_key, kind, weights_
         ]
     }
 
+    // A stratified request with a subset is a different selection from the same family without one, so its
+    // selected key names both; without a subset the family key stands as before, so no published directory
+    // and no existing execution identity moves.
+    def selected_key = derived ? derived.key : base.key
+    if (subset) {
+        selected_key = buildScientificArtifactKey([layer: 'selected', type: kind, base_key: base.key, subset_key: subset.derived.key], [:])
+    }
     return [
         kind: kind,
         base: base,
         derived: derived,
-        selected_key: derived ? derived.key : base.key,
+        subset: subset,
+        selected_key: selected_key,
     ]
 }
 

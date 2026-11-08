@@ -83,6 +83,20 @@ nextflow_process {
             }
         }
 
+        run("GAWK", alias: "GAWK_KEEP_SUBSET") {
+            script "../../../../nf-core/gawk/main.nf"
+            process {
+                """
+                input[0] = [
+                    [ id:'keep_subset' ],
+                    file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.fam', checkIfExists: true)
+                ]
+                input[1] = Channel.of('NR <= 100 { print \$1, \$2 }').collectFile(name:'keep_subset.awk')
+                input[2] = false
+                """
+            }
+        }
+
         run("GCTA_MAKEGRM", alias: "GCTA_MAKEGRM_DENSE") {
             script "../../../../nf-core/gcta/makegrm/main.nf"
             process {
@@ -164,6 +178,7 @@ nextflow_process {
                 input[1] = GAWK_MULTI_PHENOTYPES.out.output.map { meta, pheno -> [[ id:'plink_simulated_ldms' ], pheno] }
                 input[2] = GAWK_QUANTITATIVE_COVARIATES.out.output.map { meta, covar -> [[ id:'plink_simulated_ldms' ], covar] }
                 input[3] = GAWK_CATEGORICAL_COVARIATES.out.output.map { meta, covar -> [[ id:'plink_simulated_ldms' ], covar] }
+                input[4] = [[ id:'plink_simulated_ldms' ], []]
                 """
             }
         }
@@ -186,6 +201,7 @@ nextflow_process {
                 input[1] = GAWK_QUANTITATIVE_PHENOTYPE.out.output.map { meta, pheno -> [[ id:'plink_simulated_ldms' ], pheno] }
                 input[2] = GAWK_QUANTITATIVE_COVARIATES.out.output.map { meta, covar -> [[ id:'plink_simulated_ldms' ], covar] }
                 input[3] = GAWK_CATEGORICAL_COVARIATES.out.output.map { meta, covar -> [[ id:'plink_simulated_ldms' ], covar] }
+                input[4] = [[ id:'plink_simulated_ldms' ], []]
                 """
             }
         }
@@ -208,6 +224,7 @@ nextflow_process {
                 input[1] = GAWK_QUANTITATIVE_PHENOTYPE.out.output.map { meta, pheno -> [[ id:'plink_simulated_ldms' ], pheno] }
                 input[2] = [[ id:'plink_simulated_ldms' ], []]
                 input[3] = [[ id:'plink_simulated_ldms' ], []]
+                input[4] = [[ id:'plink_simulated_ldms' ], []]
                 """
             }
         }
@@ -233,6 +250,7 @@ nextflow_process {
                 input[1] = GAWK_BINARY_PHENOTYPE.out.output.map { meta, pheno -> [[ id:'plink_simulated_ldms' ], pheno] }
                 input[2] = [[ id:'plink_simulated_ldms' ], []]
                 input[3] = [[ id:'plink_simulated_ldms' ], []]
+                input[4] = [[ id:'plink_simulated_ldms' ], []]
                 """
             }
         }
@@ -255,6 +273,7 @@ nextflow_process {
                 input[1] = GAWK_MULTI_PHENOTYPES.out.output.map { meta, pheno -> [[ id:'plink_simulated_ldms' ], pheno] }
                 input[2] = GAWK_QUANTITATIVE_COVARIATES.out.output.map { meta, covar -> [[ id:'plink_simulated_ldms' ], covar] }
                 input[3] = GAWK_CATEGORICAL_COVARIATES.out.output.map { meta, covar -> [[ id:'plink_simulated_ldms' ], covar] }
+                input[4] = [[ id:'plink_simulated_ldms' ], []]
                 """
             }
         }
@@ -284,6 +303,7 @@ nextflow_process {
                 input[1] = GAWK_QUANTITATIVE_PHENOTYPE.out.output.map { _meta, pheno -> [[ id:'plink_simulated_ldms_family' ], pheno] }
                 input[2] = [[ id:'plink_simulated_ldms_family' ], []]
                 input[3] = [[ id:'plink_simulated_ldms_family' ], []]
+                input[4] = [[ id:'plink_simulated_ldms_family' ], []]
                 """
             }
         }
@@ -305,6 +325,34 @@ nextflow_process {
         }
     }
 
+    test("homo_sapiens gsmr - a keep list restricts the fit to the listed individuals") {
+        when {
+            process {
+                """
+                input[0] = GCTA_MAKEGRM_DENSE.out.grm_files.map { _meta, grm_files -> [[id: 'plink_simulated_ldms'], grm_files] }
+                input[1] = GAWK_QUANTITATIVE_PHENOTYPE.out.output.map { meta, pheno -> [[ id:'plink_simulated_ldms' ], pheno] }
+                input[2] = [[ id:'plink_simulated_ldms' ], []]
+                input[3] = [[ id:'plink_simulated_ldms' ], []]
+                input[4] = GAWK_KEEP_SUBSET.out.output.map { _meta, keep -> [[ id:'plink_simulated_ldms' ], keep] }
+                """
+            }
+        }
+
+        then {
+            def results = path(process.out.reml_results.get(0).get(1))
+            def command = results.parent.resolve('.command.sh').text.replaceAll(/\s+/, ' ')
+            def sample_count = results.text.readLines().find { line -> line.startsWith('n\t') }
+            assertAll(
+                { assert process.success },
+                { assert command.contains('--keep "keep_subset.fam"') },
+                // GCTA reports the fitted sample size in the result table, so the 100-individual list is
+                // visible as the fit's own `n` rather than only as a rendered flag.
+                { assert sample_count == 'n\t100' },
+                { assert snapshot(sanitizeOutput(process.out, unstableKeys: ['log'])).match() }
+            )
+        }
+    }
+
     test("homo_sapiens gsmr - quantitative phenotype with ldms mgrm - stub") {
         options "-stub"
 
@@ -315,6 +363,7 @@ nextflow_process {
                 input[1] = GAWK_QUANTITATIVE_PHENOTYPE.out.output.map { meta, pheno -> [[ id:'plink_simulated_ldms' ], pheno] }
                 input[2] = [[ id:'plink_simulated_ldms' ], []]
                 input[3] = [[ id:'plink_simulated_ldms' ], []]
+                input[4] = [[ id:'plink_simulated_ldms' ], []]
                 """
             }
         }

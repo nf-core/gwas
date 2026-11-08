@@ -48,7 +48,8 @@ nextflow_workflow {
         ]"""
     }
 
-    def ldmsMatrix = { project_dir, meta ->
+    // The fourth member is the unrelated-subset keep list a relatedness cutoff produces, `[]` without one.
+    def ldmsMatrix = { project_dir, meta, keep = null ->
         """[
             ${meta},
             [
@@ -60,6 +61,7 @@ nextflow_workflow {
                 ${RESOURCE(project_dir, 'ldms_family_stratum2.grm.id')},
             ],
             ['ldms_family_stratum1', 'ldms_family_stratum2'],
+            ${keep ? RESOURCE(project_dir, keep) : '[]'},
         ]"""
     }
 
@@ -324,7 +326,9 @@ nextflow_workflow {
                 def beta  = ${analysisMeta('beta', ['gcta_greml_ldms'])}
 
                 input[0] = channel.of(${denseMatrix(projectDir, "alpha")})
-                input[1] = channel.of(${ldmsMatrix(projectDir, "beta")})
+                // A stratified analysis with a relatedness cutoff arrives with its keep list in the fourth
+                // slot and reaches the same estimator once, keep list and all.
+                input[1] = channel.of(${ldmsMatrix(projectDir, "beta", 'unrelated.keep')})
                 input[2] = channel.of(${kinshipMatrix(projectDir, "alpha")})
                 input[3] = channel.of(
                     ${phenotype(projectDir, "alpha", 'analysis_alpha.pheno', 'analysis.qcovar')},

@@ -10,6 +10,7 @@ process GCTA_BIVARIATEHEREGLDMS {
     input:
     tuple val(meta), path(grm_files), val(grm_prefixes)
     tuple val(meta2), path(phenotypes_file), val(phenotype_col1), val(phenotype_col2)
+    tuple val(meta3), path(keep_file)
 
     output:
     tuple val(meta), path("*.HEreg"), emit: hereg_results
@@ -25,12 +26,14 @@ process GCTA_BIVARIATEHEREGLDMS {
     def mgrm_entries = grm_prefixes.collect { grm_prefix -> "\"${grm_prefix}\"" }.join(' ')
     def mgrm_file = "${prefix}.mgrm"
     def hereg_bivar_param = phenotype_col1 && phenotype_col2 ? "--HEreg-bivar ${phenotype_col1} ${phenotype_col2}" : '--HEreg-bivar'
+    def keep_param = keep_file ? "--keep \"${keep_file}\"" : ''
     """
     printf '%s\n' ${mgrm_entries} > "${mgrm_file}"
 
     gcta \\
         ${hereg_bivar_param} \\
         --mgrm "${mgrm_file}" \\
+        ${keep_param} \\
         --pheno "${phenotypes_file}" \\
         --out "${prefix}" \\
         --thread-num "${task.cpus}" \\

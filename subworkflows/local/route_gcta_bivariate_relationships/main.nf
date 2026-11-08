@@ -28,7 +28,7 @@ workflow ROUTE_GCTA_BIVARIATE_RELATIONSHIPS {
     ch_relationships // channel: [ val(meta), [ path(genotype_file), ... ], path(pair_quant_covariates), path(pair_cat_covariates) ], one validated row per selected method per relationship
     ch_prepared_relationship_traits // channel: [ val(relationship_meta), path(phenotype), path(quant_covariates), path(cat_covariates) ], headerless, one per relationship; [] for an absent covariate table
     ch_relationship_dense_matrices // channel: [ val(meta), [ path(grm_file), ... ] ], the dense GCTA matrices built for relationship requests, already fanned out per request
-    ch_relationship_ldms_matrices // channel: [ val(meta), [ path(grm_file), ... ], val(grm_prefixes) ], ordered LDMS matrix families built for relationship requests
+    ch_relationship_ldms_matrices // channel: [ val(meta), [ path(grm_file), ... ], val(grm_prefixes), path(keep) ], ordered LDMS matrix families built for relationship requests; keep is [] without a relatedness cutoff
 
     main:
 
@@ -113,19 +113,19 @@ workflow ROUTE_GCTA_BIVARIATE_RELATIONSHIPS {
     // and a pair request can share one scientifically identical ordered matrix family without sharing result
     // identity. The consuming task writes its MGRM control list from the supplied prefix order.
     def ch_bivariate_ldms_matrices = ch_relationship_ldms_matrices
-        .filter { meta, _grm_files, _grm_prefixes -> meta.matrix_kind == 'gcta_ldms' }
-        .map { meta, grm_files, grm_prefixes ->
-            [meta.request_id, meta, grm_files, grm_prefixes]
+        .filter { meta, _grm_files, _grm_prefixes, _keep -> meta.matrix_kind == 'gcta_ldms' }
+        .map { meta, grm_files, grm_prefixes, keep ->
+            [meta.request_id, meta, grm_files, grm_prefixes, keep]
         }
 
     def ch_ldms_prepared_pairs = ch_prepared_pairs.filter { _request_id, pair_meta, _phenotype, _quant_covariates, _cat_covariates -> pair_meta.matrix_kind == 'gcta_ldms' }
 
     def ch_ldms_requests = ch_bivariate_ldms_matrices
         .join(ch_ldms_prepared_pairs, failOnDuplicate: true, failOnMismatch: true)
-        .map { _request_id, matrix_meta, grm_files, grm_prefixes, pair_meta, phenotype, quant_covariates, cat_covariates ->
-            [resolveLdmsRouteMeta(matrix_meta, pair_meta), grm_files, grm_prefixes, phenotype, quant_covariates, cat_covariates]
+        .map { _request_id, matrix_meta, grm_files, grm_prefixes, keep, pair_meta, phenotype, quant_covariates, cat_covariates ->
+            [resolveLdmsRouteMeta(matrix_meta, pair_meta), grm_files, grm_prefixes, keep, phenotype, quant_covariates, cat_covariates]
         }
-        .branch { route_meta, _grm_files, _grm_prefixes, _phenotype, _quant_covariates, _cat_covariates ->
+        .branch { route_meta, _grm_files, _grm_prefixes, _keep, _phenotype, _quant_covariates, _cat_covariates ->
             reml: route_meta.method == 'gcta_bivariate_reml_ldms'
             hereg: route_meta.method == 'gcta_bivariate_he_ldms'
         }
@@ -133,11 +133,17 @@ workflow ROUTE_GCTA_BIVARIATE_RELATIONSHIPS {
     //
     // MODULE: primary GCTA bivariate REML-LDMS relationship request
     //
-    def ch_bivariate_ldms_invocations = ch_ldms_requests.reml.multiMap { route_meta, grm_files, grm_prefixes, phenotype, quant_covariates, cat_covariates ->
-        mgrm: [route_meta, grm_files, grm_prefixes]
-        pheno: [route_meta, phenotype, 1, 2]
-        qcovar: [route_meta, quant_covariates]
-        covar: [route_meta, cat_covariates]
+    // Adapter: the installed `GCTA_BIVARIATEREMLLDMS` has no keep-list input, and without `--keep` a request
+    // with a relatedness cutoff would be fitted on the full cohort, a wrong result. The list is therefore staged
+    // among the GRM files, which the module only reads by the prefixes it is given, and its staged name travels
+    // in the route meta for `ext.args` in `conf/modules/gcta.config` to render as `--keep`. Retire this when the
+    // installed module gains a keep-list input.
+    def ch_bivariate_ldms_invocations = ch_ldms_requests.reml.multiMap { route_meta, grm_files, grm_prefixes, keep, phenotype, quant_covariates, cat_covariates ->
+        def keep_meta = keep ? route_meta + [keep_file: keep.name] : route_meta
+        mgrm: [keep_meta, keep ? grm_files + [keep] : grm_files, grm_prefixes]
+        pheno: [keep_meta, phenotype, 1, 2]
+        qcovar: [keep_meta, quant_covariates]
+        covar: [keep_meta, cat_covariates]
     }
 
     GCTA_BIVARIATEREMLLDMS(
@@ -151,14 +157,16 @@ workflow ROUTE_GCTA_BIVARIATE_RELATIONSHIPS {
     // MODULE: primary GCTA bivariate HEreg-LDMS relationship request
     //
     // The multi-component moment fit emits its own native component and total results.
-    def ch_hereg_ldms_invocations = ch_ldms_requests.hereg.multiMap { route_meta, grm_files, grm_prefixes, phenotype, _quant_covariates, _cat_covariates ->
+    def ch_hereg_ldms_invocations = ch_ldms_requests.hereg.multiMap { route_meta, grm_files, grm_prefixes, keep, phenotype, _quant_covariates, _cat_covariates ->
         mgrm: [route_meta, grm_files, grm_prefixes]
         pheno: [route_meta, phenotype, 1, 2]
+        keep: [route_meta, keep]
     }
 
     GCTA_BIVARIATEHEREGLDMS(
         ch_hereg_ldms_invocations.mgrm,
         ch_hereg_ldms_invocations.pheno,
+        ch_hereg_ldms_invocations.keep,
     )
 
     emit:
@@ -193,8 +201,9 @@ def stripMatrixReuseIdentity(meta) {
     return meta.findAll { key, _value -> key != 'matrix_key' }
 }
 
-// LDMS execution uses the matrix reuse key as its task-local output identity. Drop that key and restore the
-// request identity before emitting the result.
+// LDMS execution uses the matrix reuse key as its task-local output identity. Drop that key, and the staged
+// keep-list name the REML-LDMS invocation carried for its `--keep` argument, and restore the request identity
+// before emitting the result.
 def stripNativeMatrixIdentity(meta) {
-    return stripMatrixReuseIdentity(meta) + [id: meta.request_id]
+    return stripMatrixReuseIdentity(meta).findAll { key, _value -> key != 'keep_file' } + [id: meta.request_id]
 }

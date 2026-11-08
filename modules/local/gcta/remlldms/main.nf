@@ -11,6 +11,7 @@ process GCTA_REMLLDMS {
     tuple val(meta2), path(phenotypes_file)
     tuple val(meta3), path(quant_covariates_file)
     tuple val(meta4), path(cat_covariates_file)
+    tuple val(meta5), path(keep_file)
 
     output:
     tuple val(meta), path("*.hsq"), emit: reml_results
@@ -27,12 +28,14 @@ process GCTA_REMLLDMS {
     def mgrm_file = "${prefix}.mgrm"
     def qcovar_param = quant_covariates_file ? "--qcovar \"${quant_covariates_file}\"" : ''
     def covar_param = cat_covariates_file ? "--covar \"${cat_covariates_file}\"" : ''
+    def keep_param = keep_file ? "--keep \"${keep_file}\"" : ''
     """
     printf '%s\\n' ${mgrm_entries} > "${mgrm_file}"
 
     gcta \\
         --reml \\
         --mgrm "${mgrm_file}" \\
+        ${keep_param} \\
         --pheno "${phenotypes_file}" \\
         ${qcovar_param} \\
         ${covar_param} \\

@@ -289,7 +289,7 @@ workflow GWAS {
     // that stream is passed as PREPARE_RELATEDNESS_MATRICES emits it.
     ROUTE_GRM_HERITABILITY(
         PREPARE_RELATEDNESS_MATRICES.out.gcta_dense.filter { meta, _grm_files -> !meta.relationship_id },
-        PREPARE_RELATEDNESS_MATRICES.out.gcta_ldms.filter { meta, _grm_files, _grm_prefixes -> !meta.relationship_id },
+        PREPARE_RELATEDNESS_MATRICES.out.gcta_ldms.filter { meta, _grm_files, _grm_prefixes, _keep -> !meta.relationship_id },
         PREPARE_RELATEDNESS_MATRICES.out.ldak_kinship,
         ch_gcta_phenotypes,
         ch_prepared_adjustment_covariates,
@@ -349,7 +349,7 @@ workflow GWAS {
         ch_relationships,
         PREPARE_RELATIONSHIP_TRAITS.out.pairs,
         PREPARE_RELATEDNESS_MATRICES.out.gcta_dense.filter { meta, _grm_files -> meta.relationship_id },
-        PREPARE_RELATEDNESS_MATRICES.out.gcta_ldms.filter { meta, _grm_files, _grm_prefixes -> meta.relationship_id },
+        PREPARE_RELATEDNESS_MATRICES.out.gcta_ldms.filter { meta, _grm_files, _grm_prefixes, _keep -> meta.relationship_id },
     )
 
     //

@@ -18,7 +18,7 @@ include { digestIdentityText         } from '../utils_nfcore_gwas_pipeline'
 workflow ROUTE_GRM_HERITABILITY {
     take:
     ch_dense_matrices // channel: [ val(meta), [ path(grm_file), ... ] ], dense GCTA matrices fanned to unary consumers
-    ch_ldms_matrices // channel: [ val(meta), [ path(grm_file), ... ], val(grm_prefixes) ], LDMS matrix families fanned to unary consumers
+    ch_ldms_matrices // channel: [ val(meta), [ path(grm_file), ... ], val(grm_prefixes), path(keep) ], LDMS matrix families fanned to unary consumers; keep is [] without a relatedness cutoff
     ch_ldak_kinship_matrices // channel: [ val(meta), val(artifact_key), [ path(grm_file), ... ], path(keep) ], selected LDAK base/subset artifact
     ch_headerless_phenotypes // channel: [ val(meta), path(phenotype), path(quant_covariates), path(cat_covariates) ], optional covariates are []
     ch_adjustment_covariates // channel: [ val(meta), path(adjustment_covariates) ], only analyses with covariates
@@ -26,20 +26,22 @@ workflow ROUTE_GRM_HERITABILITY {
     main:
 
     // GCTA GREML and GREML-LDMS preserve their native matrix families and result contracts.
+    // A dense request with a relatedness cutoff already receives the filtered matrix; a stratified one receives
+    // its whole family plus the filtered matrix's identifier list, which GREML-LDMS passes as `--keep`.
     def ch_greml_matrices = ch_dense_matrices
-        .map { meta, grm_files -> [meta, grm_files, [], 'greml'] }
+        .map { meta, grm_files -> [meta, grm_files, [], [], 'greml'] }
         .mix(
-            ch_ldms_matrices.map { meta, grm_files, grm_prefixes -> [meta, grm_files, grm_prefixes, 'greml_ldms'] }
+            ch_ldms_matrices.map { meta, grm_files, grm_prefixes, keep -> [meta, grm_files, grm_prefixes, keep, 'greml_ldms'] }
         )
 
     def ch_greml_routes = ch_greml_matrices
         .combine(ch_headerless_phenotypes, by: 0)
-        .branch { _meta, _grm_files, _grm_prefixes, estimator, _phenotype, _quant_covariates, _cat_covariates ->
+        .branch { _meta, _grm_files, _grm_prefixes, _keep, estimator, _phenotype, _quant_covariates, _cat_covariates ->
             greml: estimator == 'greml'
             greml_ldms: estimator == 'greml_ldms'
         }
 
-    def ch_greml_inputs = ch_greml_routes.greml.multiMap { meta, grm_files, _grm_prefixes, estimator, phenotype, quant_covariates, cat_covariates ->
+    def ch_greml_inputs = ch_greml_routes.greml.multiMap { meta, grm_files, _grm_prefixes, _keep, estimator, phenotype, quant_covariates, cat_covariates ->
         def route_meta = meta + [gcta_estimator: estimator]
         grm: [route_meta, grm_files]
         pheno: [route_meta, phenotype]
@@ -52,14 +54,15 @@ workflow ROUTE_GRM_HERITABILITY {
     // declared family before the native module derives its MGRM entries from their filenames. The declared
     // family and the staged bundle are two members of one `PLINK_PREPARE_GRM_LDMS_GCTA.out.grm_family`
     // emission, so every declared prefix has its files here and the ordering never drops a component.
-    def ch_ldms_inputs = ch_greml_routes.greml_ldms.multiMap { meta, grm_files, grm_prefixes, estimator, phenotype, quant_covariates, cat_covariates ->
+    def ch_ldms_inputs = ch_greml_routes.greml_ldms.multiMap { meta, grm_files, grm_prefixes, keep, estimator, phenotype, quant_covariates, cat_covariates ->
         def route_meta = meta + [gcta_estimator: estimator]
         grm: [route_meta, grm_prefixes.collectMany { grm_prefix -> grm_files.findAll { grm_file -> grm_file.name.startsWith("${grm_prefix}.grm.") } }]
         pheno: [route_meta, phenotype]
         qcovar: [route_meta, quant_covariates]
         covar: [route_meta, cat_covariates]
+        keep: [route_meta, keep]
     }
-    GCTA_REMLLDMS(ch_ldms_inputs.grm, ch_ldms_inputs.pheno, ch_ldms_inputs.qcovar, ch_ldms_inputs.covar)
+    GCTA_REMLLDMS(ch_ldms_inputs.grm, ch_ldms_inputs.pheno, ch_ldms_inputs.qcovar, ch_ldms_inputs.covar, ch_ldms_inputs.keep)
 
     // Expand one selected LDAK parent per analysis into its requested estimators while retaining the parent
     // artifact key beside, rather than inside, focal metadata.

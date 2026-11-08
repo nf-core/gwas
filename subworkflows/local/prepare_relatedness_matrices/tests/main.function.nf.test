@@ -255,6 +255,121 @@ nextflow_function {
         }
     }
 
+    test("a dense request with a relatedness cutoff selects the unrelated child of the shared dense base") {
+        function "buildRelatednessArtifactRequest"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    cohort: 'example_pgen',
+                    genotype_format: 'plink2',
+                    method_options: [gcta: [grm_maf: null, grm_extract: [], grm_cutoff: 0.05]],
+                ]
+                input[1] = '${view_key}'
+                input[2] = 'gcta_dense'
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                // The cutoff is a child setting: the dense base is the one a request without a cutoff
+                // selects, so the full and the filtered fit share one construction.
+                { assert function.result.base.key == 'aadb7d038da8' },
+                { assert function.result.base.settings == [:] },
+                { assert function.result.derived.layer == 'derived' },
+                { assert function.result.derived.type == 'gcta_unrelated' },
+                { assert function.result.derived.parent_key == function.result.base.key },
+                { assert function.result.derived.settings == [cutoff: 0.05] },
+                { assert function.result.selected_key == function.result.derived.key },
+                { assert function.result.subset == [:] },
+            )
+        }
+    }
+
+    test("a stratified request with a relatedness cutoff keeps its family and subsets through the dense base") {
+        function "buildRelatednessArtifactRequest"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    cohort: 'example_pgen',
+                    genotype_format: 'plink2',
+                    method_options: [gcta: [grm_maf: null, grm_extract: [], grm_cutoff: 0.05, ld_score_region_kb: 50, ld_bins: 2, ldms_maf_edges: [0, 0.5]]],
+                ]
+                input[1] = '${view_key}'
+                input[2] = 'gcta_ldms'
+                input[3] = [mode: 'equal']
+                input[4] = [mode: 'all']
+                input[5] = []
+                input[6] = '${view_key}'
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                // The GRM family is the one a request without a cutoff builds: same base key, no child.
+                { assert function.result.base.type == 'gcta_ldms' },
+                { assert function.result.base.key == 'd4339b608fb2' },
+                { assert function.result.derived == [:] },
+                // The subset hangs off the dense base keyed on the native view with the dense settings this
+                // row would give a `gcta_greml` request, so the two share one dense matrix and one child.
+                { assert function.result.subset.base.type == 'gcta_dense' },
+                { assert function.result.subset.base.key == 'aadb7d038da8' },
+                { assert function.result.subset.base.view_compatibility_key == view_key },
+                { assert function.result.subset.base.gcta_extract == [] },
+                { assert function.result.subset.derived.type == 'gcta_unrelated' },
+                { assert function.result.subset.derived.parent_key == function.result.subset.base.key },
+                { assert function.result.subset.derived.settings == [cutoff: 0.05] },
+                // The selection names both the family and the subset, so it differs from the family alone.
+                { assert function.result.selected_key != function.result.base.key },
+                { assert function.result.selected_key != function.result.subset.derived.key },
+            )
+        }
+    }
+
+    test("a pair request with a relatedness cutoff reads it from the request options over an unconfigured dense base") {
+        function "buildRelatednessArtifactRequest"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    relationship_id: 'qt_bt',
+                    method: 'gcta_bivariate_reml_ldms',
+                    cohort: 'example_pgen',
+                    matrix_settings: [ld_score_region_kb: 50, ld_bins: 2, maf_edges: [0, 0.5]],
+                    request_options: [gcta: [grm_cutoff: 0.05]],
+                ]
+                input[1] = '${view_key}'
+                input[2] = 'gcta_ldms'
+                input[3] = [mode: 'equal']
+                input[4] = [mode: 'all']
+                input[5] = []
+                input[6] = '${view_key}'
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result.base.key == 'd4339b608fb2' },
+                // A pair request's dense base carries no construction settings, exactly as a dense pair
+                // request's own base does, so the subset is the one a `gcta_bivariate_reml` request with the
+                // same cutoff selects.
+                { assert function.result.subset.base.key == 'aadb7d038da8' },
+                { assert function.result.subset.base.settings == [:] },
+                { assert function.result.subset.derived.settings == [cutoff: 0.05] },
+            )
+        }
+    }
+
     test("an unrestricted LDAK request selects only its base artifact") {
         function "buildRelatednessArtifactRequest"
 
