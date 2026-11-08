@@ -13,6 +13,7 @@ def getMethodOptionDefaults() {
         gcta: [
             grm_maf: null,
             grm_extract: [],
+            grm_cutoff: null,
             reml_no_constrain: false,
             sparse_cutoff: 0.05,
             sparse_grm: [],
@@ -155,6 +156,16 @@ def resolveRegenieMethodOptions(analysis_id, options, methods, defaults, fail) {
     ]
 }
 
+// `gcta.grm_cutoff` is the one GCTA option that is also accepted on the four GCTA pair requests, so the value
+// contract lives here and both the per-analysis resolver and the pair-request resolver call it. `null` keeps
+// the full cohort; a number is the `--grm-cutoff` threshold GCTA documents as the relatedness of one member
+// of each pair it drops.
+def validateGrmCutoffValue(grm_cutoff, fail) {
+    if (grm_cutoff != null && (!(grm_cutoff instanceof Number) || grm_cutoff < 0 || grm_cutoff > 1)) {
+        fail.call('expected a number between 0 and 1 inclusive or null')
+    }
+}
+
 def resolveGctaMethodOptions(analysis_id, options, methods, defaults, fail) {
     def capabilities = getMethodCapabilities()
     // The LD- and MAF-stratified plan settings live in this family because GCTA's own LD-score pass builds the
@@ -180,6 +191,13 @@ def resolveGctaMethodOptions(analysis_id, options, methods, defaults, fail) {
             fail.call(analysis_id, "gcta.${option}", "option is consumed by 'gcta_greml' only, which this analysis does not select")
         }
     }
+    // The relatedness cutoff restricts the sample set of the GCTA GREML estimators, dense and stratified alike:
+    // `gcta_greml` fits on the `--grm-cutoff` filtered matrix and `gcta_greml_ldms` passes the filtered
+    // matrix's identifier list as `--keep`. `gcta_fastgwa` fits on the sparse matrix, which already encodes
+    // unrelatedness through `sparse_cutoff`, so it is not a consumer.
+    if (options.containsKey('grm_cutoff') && !methods.heritability_methods.any { method -> method in gcta_greml_estimators }) {
+        fail.call(analysis_id, 'gcta.grm_cutoff', "option is consumed by GCTA GREML estimators only, but this analysis selects neither 'gcta_greml' nor 'gcta_greml_ldms'")
+    }
     // Both options restrict the GCTA dense predictor set and nothing else: matrix construction applies them to
     // `gcta_dense`/`gcta_sparse` only, and MPH's matrices are built over their own declared variant universe.
     // A row selecting both families would therefore publish a filtered GCTA estimate and an unfiltered MPH one
@@ -192,6 +210,11 @@ def resolveGctaMethodOptions(analysis_id, options, methods, defaults, fail) {
         if (options.containsKey(option) && selected_mph) {
             fail.call(analysis_id, "gcta.${option}", "option restricts the GCTA dense predictor set only; the MPH matrices this analysis also selects (${selected_mph.join(', ')}) are built over the declared MPH variant universe, so the two estimates would be published side by side over different predictor sets. Remove the option or drop the MPH selector(s) from this row")
         }
+    }
+    // The same side-by-side hazard applies to the sample set: the cutoff subsets the GCTA fits only, and the
+    // MPH matrices stay over the full cohort.
+    if (options.containsKey('grm_cutoff') && selected_mph) {
+        fail.call(analysis_id, 'gcta.grm_cutoff', "option restricts the GCTA GREML sample set only; the MPH matrices this analysis also selects (${selected_mph.join(', ')}) are built over the full cohort, so the two estimates would be published side by side over different sample sets. Remove the option or drop the MPH selector(s) from this row")
     }
     ['sparse_cutoff', 'sparse_grm'].each { option ->
         if (options.containsKey(option) && !methods.association_methods.any { method -> method in gcta_sparse_association }) {
@@ -210,6 +233,7 @@ def resolveGctaMethodOptions(analysis_id, options, methods, defaults, fail) {
     }
 
     def grm_maf = options.containsKey('grm_maf') ? options.grm_maf : defaults.grm_maf
+    def grm_cutoff = options.containsKey('grm_cutoff') ? options.grm_cutoff : defaults.grm_cutoff
     def sparse_cutoff = options.containsKey('sparse_cutoff') ? options.sparse_cutoff : defaults.sparse_cutoff
     def ld_score_region_kb = options.containsKey('ld_score_region_kb') ? options.ld_score_region_kb : defaults.ld_score_region_kb
     def ld_bins = options.containsKey('ld_bins') ? options.ld_bins : defaults.ld_bins
@@ -218,6 +242,7 @@ def resolveGctaMethodOptions(analysis_id, options, methods, defaults, fail) {
     if (grm_maf != null && (!(grm_maf instanceof Number) || grm_maf < 0 || grm_maf > 0.5)) {
         fail.call(analysis_id, 'gcta.grm_maf', 'expected a number between 0 and 0.5 inclusive')
     }
+    validateGrmCutoffValue(grm_cutoff) { reason -> fail.call(analysis_id, 'gcta.grm_cutoff', reason) }
     if (!(sparse_cutoff instanceof Number) || sparse_cutoff < 0 || sparse_cutoff > 1) {
         fail.call(analysis_id, 'gcta.sparse_cutoff', 'expected a number between 0 and 1 inclusive')
     }
@@ -242,6 +267,7 @@ def resolveGctaMethodOptions(analysis_id, options, methods, defaults, fail) {
     return [
         grm_maf: grm_maf,
         grm_extract: resolveMethodResource(analysis_id, 'gcta', 'grm_extract', options, fail),
+        grm_cutoff: grm_cutoff,
         reml_no_constrain: reml_no_constrain,
         sparse_cutoff: sparse_cutoff,
         sparse_grm: resolveSparseGrmResource(analysis_id, options, fail),

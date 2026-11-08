@@ -98,7 +98,24 @@ nextflow_function {
             request: [request_id: 'gcta_bivariate_reml--qt_qt2', method: 'gcta_bivariate_reml', reference_family: null, meta: [:]],
             options: [seed: 7],
             bundles: [:],
-            expected: "namespace 'pair_requests', request_id 'gcta_bivariate_reml--qt_qt2', option 'seed': unknown option; accepted options are native_args, primary_request_id, request_name",
+            expected: "namespace 'pair_requests', request_id 'gcta_bivariate_reml--qt_qt2', option 'seed': unknown option; accepted options are native_args, primary_request_id, request_name, grm_cutoff",
+        ],
+        [
+            name: 'a relatedness cutoff above one on a GCTA pair request',
+            namespace: 'pair_requests',
+            request: [request_id: 'gcta_bivariate_he_ldms--qt_qt2', method: 'gcta_bivariate_he_ldms', reference_family: null, meta: [:]],
+            options: [grm_cutoff: 1.5],
+            bundles: [:],
+            expected: "namespace 'pair_requests', request_id 'gcta_bivariate_he_ldms--qt_qt2', option 'grm_cutoff': expected a number between 0 and 1 inclusive or null",
+        ],
+        [
+            // The cutoff is a GCTA GREML sample-set control, so a non-GCTA pair request does not accept it.
+            name: 'a relatedness cutoff on an MPH pair request',
+            namespace: 'pair_requests',
+            request: [request_id: 'mph_bivariate_reml--qt_qt2', method: 'mph_bivariate_reml', reference_family: null, meta: [:]],
+            options: [grm_cutoff: 0.05],
+            bundles: [:],
+            expected: "request_id 'mph_bivariate_reml--qt_qt2', option 'grm_cutoff': unknown option",
         ],
         [
             name: 'a fractional seed on an MPH pair request',
@@ -140,6 +157,37 @@ nextflow_function {
                     { assert VALIDATION.console(function).contains(scenario.expected) },
                 )
             }
+        }
+    }
+
+    test("a GCTA pair request resolves its relatedness cutoff into the request options, defaulting to the full cohort") {
+        function "resolveRequestNamespace"
+
+        when {
+            function {
+                """
+                input[0] = 'method_options.json'
+                input[1] = [pair_requests: ['gcta_bivariate_reml--qt_bt': [grm_cutoff: 0.05]]]
+                input[2] = 'pair_requests'
+                input[3] = [
+                    [request_id: 'gcta_bivariate_reml--qt_bt', method: 'gcta_bivariate_reml', reference_family: null, meta: [:]],
+                    [request_id: 'gcta_bivariate_he--qt_bt', method: 'gcta_bivariate_he', reference_family: null, meta: [:]],
+                ]
+                input[4] = [:]
+                """
+            }
+        }
+
+        then {
+            def by_request = function.result.collectEntries { resolved -> [(resolved.meta.request_id): resolved.meta.request_options] }
+            assertAll(
+                { assert function.success },
+                // The declared cutoff travels with the request that declared it; the sibling GCTA request on
+                // the same relationship keeps the full cohort, which is the resolved `null` rather than an
+                // absent key, so matrix preparation reads one contract for every GCTA pair request.
+                { assert by_request['gcta_bivariate_reml--qt_bt'] == [gcta: [grm_cutoff: 0.05]] },
+                { assert by_request['gcta_bivariate_he--qt_bt'] == [gcta: [grm_cutoff: null]] },
+            )
         }
     }
 

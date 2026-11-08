@@ -1,7 +1,7 @@
 include { getMethodCapabilities                    } from './method_registry'
 include { getMethodCapability                      } from './method_registry'
 include { getMethodTokensWithCapabilities          } from './method_registry'
-include { getMethodOptionDefaults ; validateMphOptionValues } from './method_options'
+include { getMethodOptionDefaults ; validateGrmCutoffValue ; validateMphOptionValues } from './method_options'
 include { validateAnalysisPairNativeArgumentTokens ; validateSummaryNativeArgumentTokens } from './native_option_policy'
 
 // Each LDSC LD-score role travels as the staged directory followed by the file-name prefix the catalog stem
@@ -78,6 +78,12 @@ def resolveRequestNamespace(method_options, document, namespace, primary_request
         if (option_family == 'mph') {
             accepted += ['iterations', 'tolerance', 'random_vectors', 'seed', 'save_memory']
         }
+        // The relatedness cutoff is admitted on the GCTA pair requests the same way: the dense bivariate
+        // estimators fit on the `--grm-cutoff` filtered matrix and the stratified ones pass its identifier
+        // list as `--keep`, so a pair request can subset its sample set like a `gcta_greml` row does.
+        if (option_family == 'gcta') {
+            accepted += ['grm_cutoff']
+        }
         def unknown = options.keySet().findAll { option -> !(option in accepted) }
         if (unknown) {
             error("[nf-core/gwas] ERROR: Method-options document '${method_options}', namespace '${namespace}', request_id '${request.request_id}', option '${unknown.first()}': unknown option; accepted options are ${accepted.join(', ')}")
@@ -87,6 +93,13 @@ def resolveRequestNamespace(method_options, document, namespace, primary_request
             request_options = [mph: validateMphOptionValues(options, getMethodOptionDefaults().mph) { option, reason ->
                 error("[nf-core/gwas] ERROR: Method-options document '${method_options}', namespace '${namespace}', request_id '${request.request_id}', option '${option}': ${reason}")
             }]
+        }
+        if (option_family == 'gcta') {
+            def grm_cutoff = options.containsKey('grm_cutoff') ? options.grm_cutoff : getMethodOptionDefaults().gcta.grm_cutoff
+            validateGrmCutoffValue(grm_cutoff) { reason ->
+                error("[nf-core/gwas] ERROR: Method-options document '${method_options}', namespace '${namespace}', request_id '${request.request_id}', option 'grm_cutoff': ${reason}")
+            }
+            request_options = [gcta: [grm_cutoff: grm_cutoff]]
         }
         def native_args = request.reference_family
             ? validateSummaryNativeArgumentTokens(method_options, namespace, request.request_id, request.method, options.native_args ?: [])

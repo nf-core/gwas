@@ -182,6 +182,35 @@ nextflow_function {
             reason: "option is consumed by 'gcta_greml' only, which this analysis does not select",
         ],
         [
+            name: 'an invalid relatedness cutoff scalar type',
+            options: [example_pgen_qt: [gcta: [grm_cutoff: 'close']]],
+            association: '',
+            heritability: 'gcta_greml',
+            analysis: 'example_pgen_qt',
+            option: 'gcta.grm_cutoff',
+            reason: 'expected a number between 0 and 1 inclusive or null',
+        ],
+        [
+            name: 'a negative relatedness cutoff',
+            options: [example_pgen_qt: [gcta: [grm_cutoff: -0.05]]],
+            association: '',
+            heritability: 'gcta_greml_ldms',
+            analysis: 'example_pgen_qt',
+            option: 'gcta.grm_cutoff',
+            reason: 'expected a number between 0 and 1 inclusive or null',
+        ],
+        [
+            // fastGWA fits on the sparse matrix, whose own cutoff already encodes unrelatedness, so the
+            // dense relatedness cutoff has no consumer on a fastGWA-only row.
+            name: 'a relatedness cutoff on a fastGWA-only row',
+            options: [example_pgen_qt: [gcta: [grm_cutoff: 0.05]]],
+            association: 'gcta_fastgwa',
+            heritability: '',
+            analysis: 'example_pgen_qt',
+            option: 'gcta.grm_cutoff',
+            reason: "option is consumed by GCTA GREML estimators only, but this analysis selects neither 'gcta_greml' nor 'gcta_greml_ldms'",
+        ],
+        [
             name: 'an operational partition count in the scientific document',
             options: [example_pgen_qt: [gcta: [gcta_grm_parts: 2]]],
             association: '',

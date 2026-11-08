@@ -41,6 +41,12 @@ nextflow_function {
             expected: "option 'gcta.grm_maf': option restricts the GCTA dense predictor set only; the MPH matrices this analysis also selects (mph_reml) are built over the declared MPH variant universe",
         ],
         [
+            name: 'a GCTA relatedness cutoff beside an MPH selector',
+            heritability: 'gcta_greml_ldms,mph_reml_ldms',
+            options: [gcta: [grm_cutoff: 0.05]],
+            expected: "option 'gcta.grm_cutoff': option restricts the GCTA GREML sample set only; the MPH matrices this analysis also selects (mph_reml_ldms) are built over the full cohort",
+        ],
+        [
             name: 'a GCTA dense extract list beside an MPH selector',
             heritability: 'gcta_greml,mph_reml_ldms',
             options: [gcta: [grm_extract: 'RESOURCE']],
