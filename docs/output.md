@@ -307,13 +307,14 @@ The native files retain LDAK's own result structure, warnings and missing-value 
 <details markdown="1">
 <summary>Output files</summary>
 
-The pipeline builds each reusable [GCTA](https://yanglab.westlake.edu.cn/software/gcta/), [LDAK](https://dougspeed.com/ldak/) or [MPH](https://jiang18.github.io/mph/) base artifact once and derives each requested child artifact once. Compatible GREML and fastGWA routes share a dense GCTA base, while the fastGWA cutoff identifies only its sparse child. Filtered and unrestricted LDAK routes share a kinship base, while unrelated-sample subsetting identifies only its child. LDAK HE and PCGC likewise share a covariate-adjusted child when their selected parent, effective sample subset, covariate content and native options match.
+The pipeline builds each reusable [GCTA](https://yanglab.westlake.edu.cn/software/gcta/), [LDAK](https://dougspeed.com/ldak/) or [MPH](https://jiang18.github.io/mph/) base artifact once and derives each requested child artifact once. Compatible GREML and fastGWA routes share a dense GCTA base, while the fastGWA cutoff identifies only its sparse child and the GREML relatedness cutoff (`gcta.grm_cutoff`) identifies only its unrelated child. Filtered and unrestricted LDAK routes share a kinship base, while unrelated-sample subsetting identifies only its child. LDAK HE and PCGC likewise share a covariate-adjusted child when their selected parent, effective sample subset, covariate content and native options match.
 
 Matrices are unpublished by default because they are large intermediates. `<key>` is a content-derived artifact identity over immutable input or parent identity and effective scientific settings. It never contains focal analysis, estimator or publication state. Key-addressing is necessary because one cohort may need several artifacts, while one artifact may serve unary, pairwise and association consumers. Each base or child is published exactly once by its own key; per-partition construction files and logs are never published.
 
 - `quality_control/relatedness_matrices/<key>/` (with `--save_relatedness_matrices`)
   - `*.grm.bin`, `*.grm.N.bin`, `*.grm.id`: Dense GCTA matrix bundle.
   - `*.grm.sp`, `*.grm.id`: Sparse GCTA fastGWA child bundle.
+  - `gcta_unrelated.<key>.grm.bin`, `gcta_unrelated.<key>.grm.N.bin`, `gcta_unrelated.<key>.grm.id`: Unrelated-sample child of a dense GCTA matrix, written by `gcta --grm-cutoff --make-grm`. Dense GREML routes fit on it; the stratified GREML-LDMS routes read only its `.grm.id`, which is the `--keep` list of the samples that survived the cutoff.
   - `*.grm.bin`, `*.grm.N.bin`, `*.grm.id`: GCTA GREML-LDMS stratified matrix bundles in their declared non-empty LD-by-MAF order. Each native consumer writes its small MGRM control list inside its own task; the control list is not an independently published artifact.
   - `*.grm.bin`, `*.grm.id`, `*.grm.details`, `*.grm.adjust`: Base or unrelated-sample child LDAK kinship bundle.
   - `*.grm.bin`, `*.grm.id`, `*.grm.details`, `*.grm.adjust`, `*.grm.root`: Covariate-adjusted LDAK child bundle.
