@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
 name: "plink_prepare_ldms_plan_gcta"
-description: Build one ordered LD-by-MAF component plan from a PLINK 1 bundle, shared by every stratified matrix family
+description: Build one ordered LD-by-MAF component plan from a PLINK 1 bundle, shared by every stratified matrix family, with GCTA's LD-score pass scattered per chromosome
 keywords:
   - genome-wide complex trait analysis
   - gcta
@@ -10,7 +10,9 @@ keywords:
   - ld score
   - variant partition
 components:
+  - custom/plinkbimchromosomes
   - gcta/calculateldscores
+  - custom/gctaconcatldscores
   - custom/gctastratifyldscores
 input:
   - ch_genotypes:
@@ -47,7 +49,12 @@ output:
       pattern: "*.groups.tsv, *_snp_group*.txt"
       ontologies: []
   - ld_scores:
-      description: Per-variant LD scores and allele frequencies the plan was derived from.
+      description: |
+        Per-variant LD scores and allele frequencies the plan was derived from. GCTA's LD-score pass runs
+        once per chromosome listed in the BIM, and this is the per-chromosome tables joined in the order the
+        BIM first lists each chromosome, under one header and with each chromosome's rows unchanged.
+        `ldscore_region` is therefore a within-chromosome segment mean; `ldscore_SNP` and `freq`, the
+        columns the plan is derived from, are the same as a genome-wide pass gives.
       structure: [map meta, path ld_scores]
       pattern: "*_gcta_ld.score.ld"
       ontologies:

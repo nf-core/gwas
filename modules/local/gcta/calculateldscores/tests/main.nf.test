@@ -21,7 +21,7 @@ nextflow_process {
             fields[3] = ((fields[3] as int) * 1000).toString()
             fields.join('\\t')
         }.join('\\n') + '\\n'
-        input[0] = [[id: 'focal'], file(root + 'bed'), bim, file(root + 'fam'), 50]
+        input[0] = [[id: 'focal'], file(root + 'bed'), bim, file(root + 'fam'), 50, []]
     """
 
     // GCTA 1.94.1 links Intel MKL, which takes a different code path on Intel and non-Intel CPUs, so `mean_rsq`,
@@ -52,6 +52,32 @@ nextflow_process {
                 { assert process.success },
                 { assert process.out.ld_scores[0][0] == [id: 'focal'] },
                 { assert snapshot(sanitizeOutput(process.out, unstableKeys: ['log', 'ld_scores']), ldScoreContent(process.out.ld_scores[0][1])).match() }
+            )
+        }
+    }
+
+    // `--chr` restricts the pass to one chromosome of a multi-chromosome bundle. The pipeline's two-chromosome
+    // fixture carries 1,100 variants on each of chromosomes 1 and 2, spanning about 110 kb each, so a 50 kb
+    // region fits inside one chromosome (GCTA 1.94.1 exits 139 when the span is narrower
+    // than the region).
+    test("native LD scores for one chromosome - real") {
+        when {
+            process {
+                """
+                def root = '${FIXTURES.base(projectDir)}results/fixtures/genotypes/example_all.'
+                input[0] = [[id: 'focal'], file(root + 'bed', checkIfExists: true), file(root + 'bim', checkIfExists: true), file(root + 'fam', checkIfExists: true), 50, '2']
+                """
+            }
+        }
+        then {
+            def rows = new File(process.out.ld_scores[0][1].toString()).readLines()*.tokenize()
+            assertAll(
+                { assert process.success },
+                { assert process.out.ld_scores[0][0] == [id: 'focal'] },
+                { assert new File(process.out.ld_scores[0][1].toString()).name == 'focal_chr2_gcta_ld.score.ld' },
+                { assert rows.head() == ['SNP', 'chr', 'bp', 'freq', 'mean_rsq', 'snp_num', 'max_rsq', 'ldscore_SNP', 'ldscore_region'] },
+                { assert rows.tail().size() == 1100 },
+                { assert rows.tail().every { row -> row[1] == '2' } },
             )
         }
     }

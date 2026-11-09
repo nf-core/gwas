@@ -49,7 +49,8 @@ nextflow_pipeline {
                 // matrix families are built from it: one dense and one two-component stratified family.
                 // No GCTA matrix and no LDAK kinship is built at all, because no selector asked for one.
                 { assert TRACE.count(workflow, 'PLINK2_MAKEBED') == 1 },
-                { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 2 },
+                { assert TRACE.count(workflow, 'CUSTOM_GCTACONCATLDSCORES') == 1 },
                 { assert TRACE.count(workflow, 'CUSTOM_GCTASTRATIFYLDSCORES') == 1 },
                 { assert TRACE.count(workflow, 'CUSTOM_MPHSNPINFO') == 2 },
                 { assert TRACE.count(workflow, 'MPH_MAKEGRM') == 3 },
@@ -156,7 +157,8 @@ nextflow_pipeline {
                 { assert workflow.success },
                 // Two analyses, one plan, one two-component family, two independent fits. The reuse claim is
                 // the whole point of keying the plan separately from the matrices it feeds.
-                { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 2 },
+                { assert TRACE.count(workflow, 'CUSTOM_GCTACONCATLDSCORES') == 1 },
                 { assert TRACE.count(workflow, 'CUSTOM_GCTASTRATIFYLDSCORES') == 1 },
                 { assert TRACE.count(workflow, 'CUSTOM_MPHSNPINFO') == 1 },
                 { assert TRACE.count(workflow, 'MPH_MAKEGRM') == 2 },
@@ -209,7 +211,7 @@ nextflow_pipeline {
                 // The counterpart of the reuse case above. Two declarations that differ only in `ld_bins` must
                 // not collapse onto one family: dropping the plan key from the stratified MPH identity would
                 // publish one matrix directory here and fit both analyses against whichever family won.
-                { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 2 },
+                { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 4 },
                 { assert TRACE.count(workflow, 'CUSTOM_MPHSNPINFO') == 2 },
                 { assert TRACE.count(workflow, 'MPH_MAKEGRM') == 6 },
                 { assert plans.list().toList().size() == 2 },
@@ -268,7 +270,8 @@ nextflow_pipeline {
                 { assert workflow.success },
                 // One plan feeds both engines: one LD-score pass, one stratifier, then two matrix families of
                 // the same cardinality built from the same group files.
-                { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 2 },
+                { assert TRACE.count(workflow, 'CUSTOM_GCTACONCATLDSCORES') == 1 },
                 { assert TRACE.count(workflow, 'CUSTOM_GCTASTRATIFYLDSCORES') == 1 },
                 { assert TRACE.count(workflow, 'GCTA_MAKEGRMPART') == 2 },
                 { assert TRACE.count(workflow, 'MPH_MAKEGRM') == 2 },
@@ -323,7 +326,9 @@ nextflow_pipeline {
                 { assert workflow.success },
                 // The seed reaches the fit and nothing above it, so a reseeded run reuses the plan and the
                 // matrices and recomputes the estimate.
-                { assert RESUME.statuses(rerun, 'GCTA_CALCULATELDSCORES') == ['CACHED'] },
+                { assert RESUME.statuses(rerun, 'CUSTOM_PLINKBIMCHROMOSOMES') == ['CACHED'] },
+                { assert RESUME.statuses(rerun, 'GCTA_CALCULATELDSCORES') == ['CACHED', 'CACHED'] },
+                { assert RESUME.statuses(rerun, 'CUSTOM_GCTACONCATLDSCORES') == ['CACHED'] },
                 { assert RESUME.statuses(rerun, 'CUSTOM_GCTASTRATIFYLDSCORES') == ['CACHED'] },
                 { assert RESUME.statuses(rerun, 'CUSTOM_MPHSNPINFO') == ['CACHED'] },
                 { assert RESUME.statuses(rerun, 'MPH_MAKEGRM').unique() == ['CACHED'] },

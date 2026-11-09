@@ -1,5 +1,5 @@
 process GCTA_CALCULATELDSCORES {
-    tag "${meta.id}"
+    tag "${chr ? "${meta.id} chr${chr}" : meta.id}"
     label 'process_medium'
     conda "${moduleDir}/environment.yml"
     container "${workflow.containerEngine in ['singularity', 'apptainer'] && !task.ext.singularity_pull_docker_container
@@ -7,7 +7,7 @@ process GCTA_CALCULATELDSCORES {
         : 'community.wave.seqera.io/library/gcta:1.94.1--9bc35dc424fcf6e9'}"
 
     input:
-    tuple val(meta), path(bed), path(bim), path(fam), val(ld_score_region)
+    tuple val(meta), path(bed), path(bim), path(fam), val(ld_score_region), val(chr)
 
     output:
     tuple val(meta), path("*_gcta_ld.score.ld"), emit: ld_scores
@@ -20,10 +20,14 @@ process GCTA_CALCULATELDSCORES {
     script:
     def args = task.ext.args ?: ''
     def bfile_prefix = bed.baseName
-    def prefix = task.ext.prefix ?: "${meta.id}"
+    // A per-chromosome call gets its own default prefix, so the tables of one bundle's chromosomes can be
+    // staged side by side.
+    def prefix = task.ext.prefix ?: (chr ? "${meta.id}_chr${chr}" : "${meta.id}")
+    def chr_arg = chr ? "--chr ${chr}" : ''
     """
     gcta \\
         --bfile "${bfile_prefix}" \\
+        ${chr_arg} \\
         --ld-score-region "${ld_score_region}" \\
         --out "${prefix}_gcta_ld" \\
         --thread-num "${task.cpus}" \\
@@ -31,7 +35,7 @@ process GCTA_CALCULATELDSCORES {
     """
 
     stub:
-    def prefix = task.ext.prefix ?: "${meta.id}"
+    def prefix = task.ext.prefix ?: (chr ? "${meta.id}_chr${chr}" : "${meta.id}")
     """
     printf "%s\\n" \
         "SNP chr bp freq mean_rsq snp_num max_rsq ldscore_SNP ldscore_region" \

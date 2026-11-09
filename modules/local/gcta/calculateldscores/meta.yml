@@ -40,6 +40,12 @@ input:
     - ld_score_region:
         type: integer
         description: Required LD-score region width in kilobases passed to --ld-score-region.
+    - chr:
+        type: string
+        description: |
+          Optional chromosome code passed to GCTA's --chr, restricting the pass to the SNPs on that
+          chromosome. Pass `[]` for one pass over the whole bundle. When set, the default output prefix is
+          `${meta.id}_chr${chr}`.
 output:
   ld_scores:
     - - meta:

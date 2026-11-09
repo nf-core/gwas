@@ -80,7 +80,8 @@ nextflow_pipeline {
                 { assert TRACE.count(workflow, 'PLINK2_MAKEBED') == 0 },
                 // The equivalent 0;0.5 and 0.0;0.50 declarations share one build. A different
                 // populated MAF edge list and a different LD-bin count each fork the scientific matrix key.
-                { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 3 },
+                { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 6 },
+                { assert TRACE.count(workflow, 'CUSTOM_GCTACONCATLDSCORES') == 3 },
                 { assert TRACE.count(workflow, 'CUSTOM_GCTASTRATIFYLDSCORES') == 3 },
                 { assert TRACE.count(workflow, 'GCTA_MAKEGRMPART') == 10 },
                 { assert TRACE.count(workflow, 'GCTA_REMLLDMS') == 4 },

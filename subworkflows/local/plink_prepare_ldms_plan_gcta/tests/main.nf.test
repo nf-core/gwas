@@ -7,7 +7,9 @@ nextflow_workflow {
     tag "subworkflows"
     tag "subworkflows_nfcore"
     tag "subworkflows/plink_prepare_ldms_plan_gcta"
+    tag "custom/plinkbimchromosomes"
     tag "gcta/calculateldscores"
+    tag "custom/gctaconcatldscores"
     tag "custom/gctastratifyldscores"
     tag "subworkflow"
     tag "gcta"
@@ -90,7 +92,11 @@ nextflow_workflow {
                 .collect { line -> line.trim().split(/\s+/).first() }
             assertAll(
                 { assert workflow.success },
+                // The popgen bundle is one chromosome, so the per-chromosome scatter is one LD-score task,
+                // and the join that follows it is the identity on that one table.
+                { assert workflow.trace.succeeded().count { it.name.contains('CUSTOM_PLINKBIMCHROMOSOMES (') } == 1 },
                 { assert workflow.trace.succeeded().count { it.name.contains('GCTA_CALCULATELDSCORES (') } == 1 },
+                { assert workflow.trace.succeeded().count { it.name.contains('CUSTOM_GCTACONCATLDSCORES (') } == 1 },
                 { assert workflow.trace.succeeded().count { it.name.contains('CUSTOM_GCTASTRATIFYLDSCORES (') } == 1 },
                 // Two LD quantile bins across one MAF interval is exactly two non-empty strata here, and the
                 // row order is the LD-major, MAF-minor order every consumer of the plan relies on.

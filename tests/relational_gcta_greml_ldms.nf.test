@@ -57,7 +57,8 @@ nextflow_pipeline {
             def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
             assertAll(
                 { assert workflow.success },
-                { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 2 },
+                { assert TRACE.count(workflow, 'CUSTOM_GCTACONCATLDSCORES') == 1 },
                 { assert TRACE.count(workflow, 'CUSTOM_GCTASTRATIFYLDSCORES') == 1 },
                 { assert TRACE.tags(workflow, 'GCTA_REMLLDMS').sort() == ['example_pgen_bt_example_pgen_bt', 'example_pgen_qt_example_pgen_qt'] },
                 { assert binary.contains('/Vp_L') },
@@ -123,7 +124,8 @@ nextflow_pipeline {
                 { assert workflow.success },
                 // The two explicitly equivalent compact settings share one family. Each single-setting
                 // scientific change creates one further content-derived family.
-                { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 4 },
+                { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 8 },
+                { assert TRACE.count(workflow, 'CUSTOM_GCTACONCATLDSCORES') == 4 },
                 { assert TRACE.count(workflow, 'CUSTOM_GCTASTRATIFYLDSCORES') == 4 },
                 { assert TRACE.count(workflow, 'GCTA_REMLLDMS') == 5 },
                 { assert matrices.list().size() == 4 },

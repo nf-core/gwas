@@ -100,7 +100,8 @@ nextflow_pipeline {
                 // The cohort is converted once, the component plan is built once, and two matrix families come
                 // out of it. The prepared pair is built once however many pair methods select the relationship.
                 { assert TRACE.count(workflow, 'PLINK2_MAKEBED') == 1 },
-                { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 2 },
+                { assert TRACE.count(workflow, 'CUSTOM_GCTACONCATLDSCORES') == 1 },
                 { assert TRACE.count(workflow, 'CUSTOM_GCTASTRATIFYLDSCORES') == 1 },
                 { assert TRACE.count(workflow, 'CUSTOM_MPHSNPINFO') == 2 },
                 { assert TRACE.count(workflow, 'MPH_MAKEGRM') == 3 },
@@ -196,7 +197,8 @@ nextflow_pipeline {
                 { assert workflow.success },
                 // One plan, one LD-score pass, one stratification: both matrix families are built from the same
                 // published component plan, which is the acceptance criterion this case exists for.
-                { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 2 },
+                { assert TRACE.count(workflow, 'CUSTOM_GCTACONCATLDSCORES') == 1 },
                 { assert TRACE.count(workflow, 'CUSTOM_GCTASTRATIFYLDSCORES') == 1 },
                 { assert plans.list().toList().size() == 1 },
                 // One component family per tool: they are different on-disk formats and are never
@@ -257,7 +259,8 @@ nextflow_pipeline {
             def plans = new File("${params.outdir}/quality_control/ldms_component_plans")
             assertAll(
                 { assert workflow.success },
-                { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 2 },
+                { assert TRACE.count(workflow, 'CUSTOM_GCTACONCATLDSCORES') == 1 },
                 { assert TRACE.count(workflow, 'CUSTOM_GCTASTRATIFYLDSCORES') == 1 },
                 { assert plans.list().toList().size() == 1 },
                 // One family of two strata, not two families of two: the unary and the pair request resolved
@@ -360,7 +363,9 @@ nextflow_pipeline {
                 // The seed reaches the fit and nothing above it. The prepared pair stays cached because its
                 // identity is the relationship's, not the request's: this is the property that makes sharing
                 // the preparation between a GCTA and an MPH request safe.
-                { assert RESUME.statuses(rerun, 'GCTA_CALCULATELDSCORES') == ['CACHED'] },
+                { assert RESUME.statuses(rerun, 'CUSTOM_PLINKBIMCHROMOSOMES') == ['CACHED'] },
+                { assert RESUME.statuses(rerun, 'GCTA_CALCULATELDSCORES') == ['CACHED', 'CACHED'] },
+                { assert RESUME.statuses(rerun, 'CUSTOM_GCTACONCATLDSCORES') == ['CACHED'] },
                 { assert RESUME.statuses(rerun, 'CUSTOM_GCTASTRATIFYLDSCORES') == ['CACHED'] },
                 { assert RESUME.statuses(rerun, 'CUSTOM_MPHSNPINFO') == ['CACHED'] },
                 { assert RESUME.statuses(rerun, 'MPH_MAKEGRM').unique() == ['CACHED'] },

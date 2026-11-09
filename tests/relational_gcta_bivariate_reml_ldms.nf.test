@@ -99,7 +99,8 @@ nextflow_pipeline {
             assertAll(
                 { assert workflow.success },
                 { assert TRACE.count(workflow, 'PLINK2_MAKEBED') == 1 },
-                { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 2 },
+                { assert TRACE.count(workflow, 'CUSTOM_GCTACONCATLDSCORES') == 1 },
                 { assert TRACE.count(workflow, 'CUSTOM_GCTASTRATIFYLDSCORES') == 1 },
                 { assert TRACE.count(workflow, 'GCTA_MAKEGRMPART') == 1 },
                 { assert TRACE.count(workflow, 'PREPARE_BIVARIATE_TRAITS') == 1 },
@@ -172,6 +173,7 @@ nextflow_pipeline {
             def nativeResult = new File(request, 'native.hsq')
             assertAll(
                 { assert workflow.success },
+                { assert TRACE.count(workflow, 'CUSTOM_GCTACONCATLDSCORES') == 1 },
                 { assert TRACE.count(workflow, 'CUSTOM_GCTASTRATIFYLDSCORES') == 1 },
                 // Two strata produce two per-stratum matrices and two native correlations.
                 { assert TRACE.count(workflow, 'GCTA_MAKEGRMPART') == 2 },
@@ -228,7 +230,9 @@ nextflow_pipeline {
                 // The native argument reaches the fit and nothing above it: the component plan and both
                 // stratum matrices are content-keyed on the settings that build them, which the change does
                 // not touch.
-                { assert RESUME.statuses(rerun, 'GCTA_CALCULATELDSCORES') == ['CACHED'] },
+                { assert RESUME.statuses(rerun, 'CUSTOM_PLINKBIMCHROMOSOMES') == ['CACHED'] },
+                { assert RESUME.statuses(rerun, 'GCTA_CALCULATELDSCORES') == ['CACHED', 'CACHED'] },
+                { assert RESUME.statuses(rerun, 'CUSTOM_GCTACONCATLDSCORES') == ['CACHED'] },
                 { assert RESUME.statuses(rerun, 'CUSTOM_GCTASTRATIFYLDSCORES') == ['CACHED'] },
                 { assert RESUME.statuses(rerun, 'GCTA_MAKEGRMPART').unique() == ['CACHED'] },
                 { assert RESUME.statuses(rerun, 'PREPARE_BIVARIATE_TRAITS') == ['CACHED'] },
@@ -255,7 +259,8 @@ nextflow_pipeline {
             def pair = new File("${params.outdir}/requests/gcta_bivariate_reml_ldms/gcta_bivariate_reml_ldms--qt_bt/native.hsq")
             assertAll(
                 { assert workflow.success },
-                { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_CALCULATELDSCORES') == 2 },
+                { assert TRACE.count(workflow, 'CUSTOM_GCTACONCATLDSCORES') == 1 },
                 { assert TRACE.count(workflow, 'CUSTOM_GCTASTRATIFYLDSCORES') == 1 },
                 { assert TRACE.count(workflow, 'GCTA_REMLLDMS') == 1 },
                 { assert TRACE.count(workflow, 'GCTA_BIVARIATEREMLLDMS') == 1 },

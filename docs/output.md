@@ -334,7 +334,7 @@ Relatedness matrices and LD-by-MAF component plans are the two current `quality_
 An LD-by-MAF component plan is the LD scores of one cohort genotype view and the ordered, disjoint SNP groups derived from them. It is built once by GCTA's LD-score pass and the pipeline's stratifier, and every stratified matrix family that declares the same settings reads it, so `gcta_greml_ldms` and `mph_reml_ldms` on one row partition one identical variant set. `<plan_key>` digests that genotype view and the three plan settings only, never the tool or the method token that asked for it, which is why the plan is published as its own family rather than inside either matrix family.
 
 - `quality_control/ldms_component_plans/<plan_key>/` (with `--save_relatedness_matrices`)
-  - `*_gcta_ld.score.ld`: Native GCTA per-variant LD scores for the plan's declared region size.
+  - `*_gcta_ld.score.ld`: Native GCTA per-variant LD scores for the plan's declared region size. GCTA's LD-score pass runs once per chromosome, each chromosome a task of its own, and this file joins the per-chromosome tables in the order the `.bim` first lists each chromosome, under one header and with each chromosome's rows as GCTA wrote them. `ldscore_region` is therefore a within-chromosome segment mean. The plan is binned on `ldscore_SNP` and `freq`, which are the same as a genome-wide pass gives, so the scatter does not affect stratification.
   - `*.strata.tsv`: Ordered stratum manifest, LD-major and MAF-minor with empty strata omitted: `model_key`, `stratum_key`, `ld_lower`, `ld_upper`, `maf_lower`, `maf_upper`, `predictor_count`, `group_filename`.
   - `*_snp_group_<stratum_key>.txt`: The variant IDs of one non-empty stratum, one per line.
 

@@ -1,0 +1,116 @@
+nextflow_workflow {
+
+    name "Test the per-chromosome LD-score scatter against one genome-wide pass"
+    script "./scatter_equivalence.nf"
+    workflow "LDMS_PLAN_SCATTER_EQUIVALENCE"
+    config "./nextflow.config"
+    tag "subworkflows"
+    tag "subworkflows/plink_prepare_ldms_plan_gcta"
+    tag "gcta/calculateldscores"
+    tag "custom/plinkbimchromosomes"
+    tag "custom/gctaconcatldscores"
+    tag "custom/gctastratifyldscores"
+    tag "gcta"
+    tag "ldms"
+
+    // The pipeline's two-chromosome fixture: 200 samples, 1,100 variants on each of chromosomes 1 and 2 at bp
+    // 1,100..111,000. Each chromosome spans about 110 kb, so the regions compared here are 50 kb and 100 kb:
+    // GCTA 1.94.1 exits 139 when the span it is given is narrower than the region, and a
+    // per-chromosome pass is given one chromosome's span.
+    def genotypes = { project_dir, plan_id ->
+        def root = "${FIXTURES.base(project_dir)}results/fixtures/genotypes/example_all."
+        return "[[id: '${plan_id}'], file('${root}bed', checkIfExists: true), file('${root}bim', checkIfExists: true), file('${root}fam', checkIfExists: true)]"
+    }
+
+    def rowsOf = { table -> new File(table.toString()).readLines().collect { line -> line.tokenize() } }
+    def stagedFiles = { member -> (member instanceof List ? member : [member]).collect { entry -> new File(entry.toString()) } }
+    def planContent = { plan ->
+        [
+            manifest: new File(plan[1].toString()).text,
+            groups: stagedFiles(plan[2]).collectEntries { group_file -> [group_file.name, group_file.text] },
+        ]
+    }
+
+    // The segments of each chromosome, as runs of rows sharing one `ldscore_region` value in the per-chromosome
+    // table. A difference from the genome-wide pass is expected only where a genome-wide segment can reach
+    // across a chromosome boundary: the last segment of every chromosome but the last, and the first segment
+    // of every chromosome but the first.
+    def boundaryRows = { rows ->
+        def chromosomes = rows.collect { row -> row[1] }.unique()
+        def segments = chromosomes.collect { chromosome ->
+            def indices = (0..<rows.size()).findAll { index -> rows[index][1] == chromosome }
+            indices.inject([]) { runs, index ->
+                if (runs && rows[runs.last().last()][8] == rows[index][8]) {
+                    runs.last() << index
+                } else {
+                    runs << [index]
+                }
+                runs
+            }
+        }
+        def allowed = [] as Set
+        (0..<(chromosomes.size() - 1)).each { position ->
+            allowed.addAll(segments[position].last())
+            allowed.addAll(segments[position + 1].first())
+        }
+        return allowed
+    }
+
+    test("per-chromosome LD scores joined in BIM order match one genome-wide pass and give the same plan") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                input[0] = channel.of(${genotypes(projectDir, 'region_50kb')}, ${genotypes(projectDir, 'region_100kb')})
+                input[1] = channel.of([[id: 'region_50kb'], 50], [[id: 'region_100kb'], 100])
+                input[2] = channel.of([[id: 'region_50kb'], 4], [[id: 'region_100kb'], 4])
+                input[3] = channel.of([[id: 'region_50kb'], [0, 0.01, 0.05, 0.2, 0.5]], [[id: 'region_100kb'], [0, 0.01, 0.05, 0.2, 0.5]])
+                """
+            }
+        }
+
+        then {
+            def byPlan = { emitted -> emitted.collectEntries { record -> [record[0].id, record] } }
+            def scatteredTables = byPlan(workflow.out.scattered_ld_scores)
+            def genomeWideTables = byPlan(workflow.out.genome_wide_ld_scores)
+            def scatteredPlans = byPlan(workflow.out.scattered_plan)
+            def genomeWidePlans = byPlan(workflow.out.genome_wide_plan)
+            def plan_ids = ['region_100kb', 'region_50kb']
+            def scatteredTasks = workflow.trace.succeeded().findAll { task -> task.name.contains(':PLINK_PREPARE_LDMS_PLAN_GCTA:GCTA_CALCULATELDSCORES (') }
+            def comparisons = plan_ids.collectEntries { plan_id ->
+                def scattered = rowsOf(scatteredTables[plan_id][1])
+                def genome_wide = rowsOf(genomeWideTables[plan_id][1])
+                def differing = (1..<Math.min(scattered.size(), genome_wide.size())).findAll { index -> scattered[index][8] != genome_wide[index][8] }
+                [plan_id, [scattered: scattered, genome_wide: genome_wide, differing: differing, allowed: boundaryRows(scattered.tail()).collect { index -> index + 1 } as Set]]
+            }
+            assertAll(
+                { assert workflow.success },
+                { assert scatteredTables.keySet().sort() == plan_ids },
+                { assert genomeWideTables.keySet().sort() == plan_ids },
+                // One LD-score task per chromosome per plan, and one listing, join and plan per plan.
+                { assert scatteredTasks.size() == 4 },
+                { assert scatteredTasks.collect { task -> task.name.replaceAll(/.*\((.*)\)$/, '$1') }.sort() == ['region_100kb chr1', 'region_100kb chr2', 'region_50kb chr1', 'region_50kb chr2'] },
+                { assert workflow.trace.succeeded().count { task -> task.name.contains(':CUSTOM_PLINKBIMCHROMOSOMES (') } == 2 },
+                { assert workflow.trace.succeeded().count { task -> task.name.contains(':CUSTOM_GCTACONCATLDSCORES (') } == 2 },
+                // The published table keeps the genome-wide name pattern.
+                { assert plan_ids.every { plan_id -> new File(scatteredTables[plan_id][1].toString()).name == "${plan_id}_gcta_ld.score.ld" } },
+                // Same header, same row count, and the same rows in the same order in every column but the
+                // segment-based regional mean.
+                { assert plan_ids.every { plan_id -> comparisons[plan_id].scattered.size() == 2201 && comparisons[plan_id].genome_wide.size() == 2201 } },
+                { assert plan_ids.every { plan_id -> comparisons[plan_id].scattered.head() == comparisons[plan_id].genome_wide.head() } },
+                { assert plan_ids.every { plan_id -> comparisons[plan_id].scattered.head() == ['SNP', 'chr', 'bp', 'freq', 'mean_rsq', 'snp_num', 'max_rsq', 'ldscore_SNP', 'ldscore_region'] } },
+                { assert plan_ids.every { plan_id -> comparisons[plan_id].scattered.collect { row -> row.take(8) } == comparisons[plan_id].genome_wide.collect { row -> row.take(8) } } },
+                { assert plan_ids.every { plan_id -> comparisons[plan_id].scattered.tail().collect { row -> row[1] }.unique() == ['1', '2'] } },
+                // `ldscore_region` differs only inside the segments at the chromosome boundary.
+                { assert plan_ids.every { plan_id -> comparisons[plan_id].allowed.containsAll(comparisons[plan_id].differing) } },
+                // The stratifier reads `ldscore_SNP` and `freq` only, so both routes give byte-identical plans.
+                { assert scatteredPlans.keySet().sort() == plan_ids },
+                { assert plan_ids.every { plan_id -> planContent(scatteredPlans[plan_id]) == planContent(genomeWidePlans[plan_id]) } },
+                { assert plan_ids.every { plan_id -> planContent(scatteredPlans[plan_id]).groups.size() > 1 } },
+            )
+        }
+    }
+}
