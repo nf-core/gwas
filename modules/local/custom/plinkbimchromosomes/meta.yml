@@ -1,0 +1,77 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/modules/meta-schema.json
+name: "custom_plinkbimchromosomes"
+description: |
+  List the chromosome codes of a PLINK 1 BIM file once each, in order of first appearance. The list is the
+  chromosome axis of a per-chromosome scatter over that bundle, read from the BIM's own first column rather
+  than assumed. GNU coreutils and sed are the executable owners; the module preserves the incoming metadata.
+keywords:
+  - plink
+  - bim
+  - chromosome
+  - scatter
+tools:
+  - "coreutils":
+      description: "GNU coreutils and sed extract and de-duplicate the BIM chromosome column in input order."
+      homepage: "https://www.gnu.org/software/coreutils/"
+      documentation: "https://www.cog-genomics.org/plink/1.9/formats#bim"
+      licence: ["GPL-3.0-or-later"]
+      identifier: ""
+input:
+  - - meta:
+        type: map
+        description: Groovy map containing genotype bundle identity
+    - bim:
+        type: file
+        description: PLINK 1 variant metadata file whose first whitespace-delimited column is the chromosome code
+        pattern: "*.bim"
+        ontologies: []
+output:
+  chromosomes:
+    - - meta:
+          type: map
+          description: Unchanged genotype bundle metadata
+      - "${prefix}.chromosomes.txt":
+          type: file
+          description: One chromosome code per line, each once, in the order the BIM first lists it
+          pattern: "*.chromosomes.txt"
+          ontologies:
+            - edam: "http://edamontology.org/format_2330" # Textual format
+  versions_coreutils:
+    - - ${task.process}:
+          type: string
+          description: Process name
+      - coreutils:
+          type: string
+          description: Executable provider
+      - "cat --version | head -n 1 | cut -d ' ' -f 4":
+          type: eval
+          description: GNU coreutils version
+topics:
+  versions:
+    - - ${task.process}:
+          type: string
+          description: Process name
+      - coreutils:
+          type: string
+          description: Executable provider
+      - "cat --version | head -n 1 | cut -d ' ' -f 4":
+          type: eval
+          description: GNU coreutils version
+containers:
+  conda:
+    linux/amd64:
+      lock_file: "modules/local/custom/plinkbimchromosomes/.conda-lock/linux_amd64-bd-838ba80435a629f8_1.txt"
+  docker:
+    linux/amd64:
+      build_id: "bd-838ba80435a629f8_1"
+      name: "community.wave.seqera.io/library/coreutils_grep_gzip_lbzip2_pruned:838ba80435a629f8"
+      scan_id: "sc-2b1453b6febde61b_1"
+  singularity:
+    linux/amd64:
+      build_id: "bd-2f90c612c8e49f19_1"
+      name: "oras://community.wave.seqera.io/library/coreutils_grep_gzip_lbzip2_pruned:2f90c612c8e49f19"
+      https: "https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/52/52ccce28d2ab928ab862e25aae26314d69c8e38bd41ca9431c67ef05221348aa/data"
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"

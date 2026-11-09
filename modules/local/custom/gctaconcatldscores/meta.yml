@@ -1,0 +1,81 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/modules/meta-schema.json
+name: "custom_gctaconcatldscores"
+description: |
+  Concatenate per-chromosome GCTA `--ld-score-region` tables into one table with a single header. The header
+  is the first table's; every table's data rows follow in the order the caller supplies, unchanged and
+  unreordered. The caller supplies the chromosome order, for example the order of first appearance in the
+  bundle's BIM. GNU coreutils is the executable owner; the module performs no recomputation and preserves the
+  incoming metadata.
+keywords:
+  - gcta
+  - genome-wide complex trait analysis
+  - ld score
+  - concatenate
+  - gather
+tools:
+  - "coreutils":
+      description: "GNU head and tail join the per-chromosome tables in the supplied order."
+      homepage: "https://www.gnu.org/software/coreutils/"
+      documentation: "https://yanglab.westlake.edu.cn/software/gcta/#GREML-LDMS"
+      licence: ["GPL-3.0-or-later"]
+      identifier: ""
+input:
+  - - meta:
+        type: map
+        description: Groovy map containing the identity of the bundle the tables were computed from
+    - ld_scores:
+        type: file
+        description: Per-chromosome GCTA LD-score tables with distinct names, in the order they are to be joined; each carries the same header line
+        pattern: "*.score.ld"
+        ontologies:
+          - edam: "http://edamontology.org/format_3475" # TSV
+output:
+  ld_scores:
+    - - meta:
+          type: map
+          description: Unchanged bundle metadata
+      - "${prefix}_gcta_ld.score.ld":
+          type: file
+          description: One LD-score table, the first input's header followed by every input's data rows in input order
+          pattern: "*_gcta_ld.score.ld"
+          ontologies:
+            - edam: "http://edamontology.org/format_3475" # TSV
+  versions_coreutils:
+    - - ${task.process}:
+          type: string
+          description: Process name
+      - coreutils:
+          type: string
+          description: Executable provider
+      - "cat --version | head -n 1 | cut -d ' ' -f 4":
+          type: eval
+          description: GNU coreutils version
+topics:
+  versions:
+    - - ${task.process}:
+          type: string
+          description: Process name
+      - coreutils:
+          type: string
+          description: Executable provider
+      - "cat --version | head -n 1 | cut -d ' ' -f 4":
+          type: eval
+          description: GNU coreutils version
+containers:
+  conda:
+    linux/amd64:
+      lock_file: "modules/local/custom/gctaconcatldscores/.conda-lock/linux_amd64-bd-838ba80435a629f8_1.txt"
+  docker:
+    linux/amd64:
+      build_id: "bd-838ba80435a629f8_1"
+      name: "community.wave.seqera.io/library/coreutils_grep_gzip_lbzip2_pruned:838ba80435a629f8"
+      scan_id: "sc-2b1453b6febde61b_1"
+  singularity:
+    linux/amd64:
+      build_id: "bd-2f90c612c8e49f19_1"
+      name: "oras://community.wave.seqera.io/library/coreutils_grep_gzip_lbzip2_pruned:2f90c612c8e49f19"
+      https: "https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/52/52ccce28d2ab928ab862e25aae26314d69c8e38bd41ca9431c67ef05221348aa/data"
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"
