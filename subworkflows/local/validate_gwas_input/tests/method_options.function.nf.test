@@ -14,6 +14,7 @@ nextflow_function {
                 { assert function.result.gcta == [
                     grm_maf: null,
                     grm_extract: [],
+                    grm_cutoff: null,
                     reml_no_constrain: false,
                     sparse_cutoff: 0.05,
                     sparse_grm: [],
