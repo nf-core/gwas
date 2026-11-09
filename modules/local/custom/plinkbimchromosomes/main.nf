@@ -31,17 +31,11 @@ process CUSTOM_PLINKBIMCHROMOSOMES {
         > "${prefix}.chromosomes.txt"
     """
 
-    // The listing is the scatter's cardinality rather than a scientific result, and it costs one pass over
-    // the BIM, so the stub computes it too: a stub run then scatters exactly as a real one would.
+    // An upstream stub can hand this one an empty placeholder BIM, so the stub lists one placeholder
+    // chromosome instead of reading the file: a stub run then scatters into one task per bundle.
     stub:
     prefix = task.ext.prefix ?: "${meta.id}"
     """
-    sed 's/[[:space:]].*//' "${bim}" \\
-        | uniq \\
-        | cat -n \\
-        | sort -s -u -k2,2 \\
-        | sort -n -k1,1 \\
-        | cut -f2 \\
-        > "${prefix}.chromosomes.txt"
+    printf '1\\n' > "${prefix}.chromosomes.txt"
     """
 }
