@@ -24,5 +24,31 @@
             "nf-test": "0.9.5",
             "nextflow": "26.10.3"
         }
+    },
+    "chromosome listing - stub": {
+        "content": [
+            {
+                "chromosomes": [
+                    [
+                        {
+                            "id": "scatter"
+                        },
+                        "scatter.chromosomes.txt:md5,b026324c6904b2a9cb4b88d6d61c81d1"
+                    ]
+                ],
+                "versions_coreutils": [
+                    [
+                        "CUSTOM_PLINKBIMCHROMOSOMES",
+                        "coreutils",
+                        "9.5"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-11-09T09:29:01.445468877",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.10.3"
+        }
     }
 }

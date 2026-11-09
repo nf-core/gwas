@@ -86,12 +86,18 @@
     "heritability-versions": {
         "content": [
             {
+                "CUSTOM_GCTACONCATLDSCORES": {
+                    "coreutils": 9.5
+                },
                 "CUSTOM_GCTAMERGEGRMPARTS": {
                     "coreutils": 9.5
                 },
                 "CUSTOM_GCTASTRATIFYLDSCORES": {
                     "gcta_stratify_ldscores": "1.0.0",
                     "r-base": "4.2.1"
+                },
+                "CUSTOM_PLINKBIMCHROMOSOMES": {
+                    "coreutils": 9.5
                 },
                 "GCTA_CALCULATELDSCORES": {
                     "gcta": "1.94.1"
@@ -134,10 +140,10 @@
                 }
             }
         ],
-        "timestamp": "2026-09-19T19:27:58.458893062",
+        "timestamp": "2026-11-09T09:34:59.192687257",
         "meta": {
             "nf-test": "0.9.5",
-            "nextflow": "26.04.6"
+            "nextflow": "26.10.3"
         }
     }
 }

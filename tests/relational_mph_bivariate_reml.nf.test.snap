@@ -2,12 +2,18 @@
     "versions": {
         "content": [
             {
+                "CUSTOM_GCTACONCATLDSCORES": {
+                    "coreutils": 9.5
+                },
                 "CUSTOM_GCTASTRATIFYLDSCORES": {
                     "gcta_stratify_ldscores": "1.0.0",
                     "r-base": "4.2.1"
                 },
                 "CUSTOM_MPHSNPINFO": {
                     "python": "3.14.5"
+                },
+                "CUSTOM_PLINKBIMCHROMOSOMES": {
+                    "coreutils": 9.5
                 },
                 "GCTA_CALCULATELDSCORES": {
                     "gcta": "1.94.1"
@@ -38,10 +44,10 @@
                 }
             }
         ],
-        "timestamp": "2026-09-19T08:52:53.929057477",
+        "timestamp": "2026-11-09T09:32:26.308368561",
         "meta": {
             "nf-test": "0.9.5",
-            "nextflow": "26.04.6"
+            "nextflow": "26.10.3"
         }
     }
 }
