@@ -18,6 +18,7 @@ components:
   - plink_prepare_grm_ldak
   - plink_prepare_grm_groups_mph
   - gcta/makebksparse
+  - gcta/grmcutoff
   - buildscientificartifactkey
   - canonicalisescientificidentifier
   - canonicalisescientificvalue
