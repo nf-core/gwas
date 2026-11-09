@@ -5,6 +5,11 @@
 // tests/fixtures/materialize.sh builds that bundle from the published branch and prints its root;
 // tests/fixtures/nf-test.sh does it for a focused run. GWAS_FIXTURE_SOURCE selects the canonical
 // source materialize.sh reads from, without committing a machine-specific path.
+//
+// The genotype fixture `example_all` carries chromosomes 1 and 2, 1,100 variants each at bp 1,100..111,000.
+// GCTA's LD-score pass runs per chromosome, and GCTA 1.94.1 exits 139 when the span it is given is narrower
+// than the region, so every LDMS case that runs GCTA on this fixture declares an
+// `ld_score_region_kb` of at most 100 rather than the 200 kb default.
 class FIXTURES {
 
     // The canonical bundle's published address, and the same prefix the published manifests embed.

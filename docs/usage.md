@@ -207,7 +207,7 @@ The component model names the variance-component structure the estimator fits, a
 
 ### Examples
 
-[`assets/examples/relational/cohort_manifest.csv`](../assets/examples/relational/cohort_manifest.csv) is shared by the [minimal quantitative](../assets/examples/relational/analysis_manifest_quantitative.csv), [minimal binary](../assets/examples/relational/analysis_manifest_binary.csv), [association-only](../assets/examples/relational/analysis_manifest_association_only.csv), and [heritability-only](../assets/examples/relational/analysis_manifest_heritability_only.csv) examples. They use standard defaults and do not need `--method_options`.
+[`assets/examples/relational/cohort_manifest.csv`](../assets/examples/relational/cohort_manifest.csv) is shared by the [minimal quantitative](../assets/examples/relational/analysis_manifest_quantitative.csv), [minimal binary](../assets/examples/relational/analysis_manifest_binary.csv), [association-only](../assets/examples/relational/analysis_manifest_association_only.csv), and [heritability-only](../assets/examples/relational/analysis_manifest_heritability_only.csv) examples. The heritability-only example pairs with [method options](../assets/examples/relational/method_options_heritability_only.json) that narrow `ld_score_region_kb` to 100, because each chromosome of the compact example cohort spans about 110 kb; the other three use standard defaults and do not need `--method_options`.
 
 ```bash
 nextflow run nf-core/gwas \
