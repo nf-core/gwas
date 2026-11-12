@@ -21,6 +21,7 @@ Initial release of nf-core/gwas, created with the [nf-core](https://nf-co.re/) t
 
 ### `Dependencies`
 
+- [#109](https://github.com/nf-core/gwas/pull/109) (2026-11-12) - Installed the `plink2/makebed` module from nf-core/modules ([nf-core/modules#13525](https://github.com/nf-core/modules/pull/13525)) for the PLINK 1 hard-call projection of a PGEN cohort; it runs PLINK 2 2.0.0-a.7.13, which the projection's recorded `tool_contract` names.
 - Updated the `plink/gwas` (`2d5c9c0`) and `plink/vcf` (`6d46786`) modules to the latest nf-core/modules version, preserving the pipeline's local patches (the `plink/vcf` `--pheno`/`--make-bed` phenotype input and the `plink/gwas` split `assoc`/`qassoc` outputs plus resource-label overrides).
 
 ### `Removed`
