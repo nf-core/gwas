@@ -51,6 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- GCTA `--make-grm-part` and LDAK kinship construction now size their memory by the variant count of the build as well as the sample count, and the LD-score stratifier of the LD-by-MAF plan by the LD-score table's row count. At 5,234 samples and 12.8M variants the sample-only formulas asked for 2 GB against measured peaks of 5.4 GB (GCTA) and 5.3 GB (LDAK), and both builds were killed under Slurm; they had completed under `single_node`, whose local executor does not enforce memory. The coefficients are fitted to those measurements and the scaling-study cells, and the usage guidance says that a scheduler, not the local executor, enforces the computed requests.
 - Made the tests read pipeline console messages from both stdout and stderr, because Nextflow 26.10 prints `error()` and log output on stderr, and aliased the KVIK subworkflow test's `LDAK_KVIKSTEP1` setup run, because Nextflow 26.10 shares one process definition across include sites.
 - Gave the nf-test CI runners an 80 GB volume (`volume=80gb`, as nf-core/rnaseq and sarek do): the 2026-10-21 runner image left too little root disk for the shards that pull every container image.
 - Removed the retired, unwired PLINK 1 association and VCF-conversion components, and repaired the `GCTA_ADDGRMS` and `GCTA_BIVARIATEREMLLDMS` test setups to use the pipeline-local `GCTA_MAKEGRMPART` process and their installed GAWK dependency.
