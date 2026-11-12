@@ -640,7 +640,7 @@ The `single_node` profile runs the whole pipeline with the local executor inside
 
 ### `-resume`
 
-Add `-resume` when restarting a run. Nextflow reuses cached tasks whose inputs, code and configuration have not changed. You can resume a named run with `-resume <run-name>`; use `nextflow log` to list run names.
+Add `-resume` when restarting a run. Nextflow reuses cached tasks whose inputs, code and configuration have not changed. You can resume a named run with `-resume <run-name>`; use `nextflow log` to list run names. Upgrading Nextflow across a minor release has been observed to invalidate the cache of tasks with `eval()` outputs, which every tool task in this pipeline has: a task cached under Nextflow 26.04.6 was recomputed, unchanged, under 26.10.3. Plan an upgrade between studies, or expect a resumed run to rebuild from its first tool task.
 
 ### `-c`
 
