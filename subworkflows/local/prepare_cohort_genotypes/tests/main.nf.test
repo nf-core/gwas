@@ -10,8 +10,8 @@ nextflow_workflow {
     // The pipeline-level suite can see that a cohort was prepared once because preparation appears in
     // the execution trace. This focused test verifies the other half of the contract directly at the
     // seam: every request on that cohort receives the prepared bundle, in the representation the cohort
-    // was supplied in. No registered method reads PLINK 1 yet, so the projection branch is exercised by
-    // the PLINK2_MAKEBED module test alone; the request-facing PLINK 1 stream is asserted empty here.
+    // was supplied in. No registered method reads PLINK 1 yet, so the projection branch is exercised only by
+    // the nf-core/modules `plink2/makebed` test; the request-facing PLINK 1 stream is asserted empty here.
 
     def fixtures = { project_dir -> "${FIXTURES.base(project_dir)}results/fixtures/genotypes/" }
 

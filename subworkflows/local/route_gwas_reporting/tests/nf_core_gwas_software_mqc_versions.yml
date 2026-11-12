@@ -1,5 +1,5 @@
 PLINK2_MAKEBED:
-  plink2: 2.0.0a.6.9
+  plink2: 2.0.0-a.7.13
 Workflow:
   nf-core/gwas: v1.0.0dev
   Nextflow: 26.04.6
