@@ -2,9 +2,11 @@
 // selected consumer of that cohort reads PLINK 1. Every process reports on the run-wide versions topic, so
 // this subworkflow emits no versions.
 
+// MODULE: Installed directly from nf-core/modules
+include { PLINK2_MAKEBED                } from '../../../modules/nf-core/plink2/makebed/main'
+
 // MODULE: Local to the pipeline
 include { PREPARE_GENOTYPE_SOURCE       } from '../../../modules/local/prepare_genotype_source/main'
-include { PLINK2_MAKEBED                } from '../../../modules/local/plink2/makebed/main'
 
 // FUNCTION: Local to the pipeline
 include { buildScientificArtifactKey    } from '../utils_nfcore_gwas_pipeline'
@@ -199,8 +201,8 @@ def getSelectedMethods(meta) {
 // change to the policy cannot reach the command without also moving the identity.
 def getPlink1ProjectionPolicy() {
     return [
-        // Bump together with modules/local/plink2/makebed/environment.yml; a function test pins the two.
-        tool_contract: 'plink2_2.0.0a.6.9_make_bed_v1',
+        // Bump together with modules/nf-core/plink2/makebed/environment.yml; a function test pins the two.
+        tool_contract: 'plink2_2.0.0a7.post13_make_bed_v1',
         // Explicit because dosage hard calls enter the derivative's identity.
         hard_call_threshold: 0.1,
         missing_call_policy: 'dosage_distance_above_threshold_is_missing',

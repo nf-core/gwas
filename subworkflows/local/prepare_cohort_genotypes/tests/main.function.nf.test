@@ -14,7 +14,7 @@ nextflow_function {
                 // The policy is the derivative's identity input, its published provenance and the rendered
                 // `ext.args` all at once, so every field is pinned here rather than left to a comment.
                 { assert function.result == [
-                    tool_contract: 'plink2_2.0.0a.6.9_make_bed_v1',
+                    tool_contract: 'plink2_2.0.0a7.post13_make_bed_v1',
                     hard_call_threshold: 0.1,
                     missing_call_policy: 'dosage_distance_above_threshold_is_missing',
                     dosage: 'dropped',
@@ -24,7 +24,7 @@ nextflow_function {
                 // The version inside the tool contract must be the version the atom is pinned to; otherwise a
                 // container bump would silently keep an identity that claims the old semantics.
                 { assert function.result.tool_contract.contains(
-                    new File("${projectDir}/modules/local/plink2/makebed/environment.yml")
+                    new File("${projectDir}/modules/nf-core/plink2/makebed/environment.yml")
                         .readLines()
                         .find { line -> line.contains('plink2=') }
                         .split('plink2=')
@@ -93,7 +93,7 @@ nextflow_function {
                 """
                 input[0] = '61f8d14d59ab'
                 input[1] = [
-                    tool_contract: 'plink2_2.0.0a.6.9_make_bed_v1',
+                    tool_contract: 'plink2_2.0.0a7.post13_make_bed_v1',
                     hard_call_threshold: 0.1,
                     missing_call_policy: 'dosage_distance_above_threshold_is_missing',
                     dosage: 'dropped',
@@ -107,7 +107,7 @@ nextflow_function {
         then {
             assertAll(
                 { assert function.success },
-                { assert function.result == 'eddfd0dafc07' },
+                { assert function.result == '537b163f05fb' },
                 // The derivative is a distinct artifact from the bundle it was projected from, so a consumer
                 // of one can never be handed the other under the same key.
                 { assert function.result != '61f8d14d59ab' },

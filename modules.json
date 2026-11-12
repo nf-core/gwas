@@ -56,6 +56,11 @@
                         "branch": "master",
                         "git_sha": "008f9d3e61209bf995edac3ba531f54e269e1215",
                         "installed_by": ["modules"]
+                    },
+                    "plink2/makebed": {
+                        "branch": "master",
+                        "git_sha": "f505e501f8e58346c85940e35c9288f3eb591b03",
+                        "installed_by": ["modules"]
                     }
                 }
             },

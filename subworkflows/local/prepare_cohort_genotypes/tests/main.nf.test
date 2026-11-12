@@ -148,7 +148,7 @@ nextflow_workflow {
                 { assert view.plink1.origin == 'hard_call_projection' },
                 { assert view.plink1.parent_key == view.native_view.key },
                 { assert view.plink1.settings.hard_call_threshold == 0.1 },
-                { assert view.plink1.settings.tool_contract == 'plink2_2.0.0a.6.9_make_bed_v1' },
+                { assert view.plink1.settings.tool_contract == 'plink2_2.0.0a7.post13_make_bed_v1' },
                 { assert view.plink1.information_loss == ['dosage', 'phase'] },
                 { assert !view.source.containsKey('state') },
                 { assert view.source.identity.mode == 'sha256' },
