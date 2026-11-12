@@ -31,7 +31,7 @@
                     "gcta": "1.94.1"
                 },
                 "PLINK2_MAKEBED": {
-                    "plink2": "2.0.0-a.6.9LM"
+                    "plink2": "2.0.0-a.7.13"
                 },
                 "PREPARE_GENOTYPE_SOURCE": {
                     "python": "3.14.5"
@@ -44,10 +44,10 @@
                 }
             }
         ],
-        "timestamp": "2026-11-08T21:44:42.961607538",
+        "timestamp": "2026-11-12T06:51:24.85426914",
         "meta": {
             "nf-test": "0.9.5",
-            "nextflow": "26.04.6"
+            "nextflow": "26.10.3"
         }
     },
     "heritability": {

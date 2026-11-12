@@ -2,63 +2,63 @@
     "distinct-relatedness-matrices": {
         "content": [
             [
-                "06c8f6195c7a",
-                "06c8f6195c7a/ldak_kinship.06c8f6195c7a.grm.adjust",
-                "06c8f6195c7a/ldak_kinship.06c8f6195c7a.grm.bin",
-                "06c8f6195c7a/ldak_kinship.06c8f6195c7a.grm.details",
-                "06c8f6195c7a/ldak_kinship.06c8f6195c7a.grm.id",
-                "333d2a9f19df",
-                "333d2a9f19df/ldak_kinship.333d2a9f19df.grm.adjust",
-                "333d2a9f19df/ldak_kinship.333d2a9f19df.grm.bin",
-                "333d2a9f19df/ldak_kinship.333d2a9f19df.grm.details",
-                "333d2a9f19df/ldak_kinship.333d2a9f19df.grm.id",
-                "d4b8e1441edb",
-                "d4b8e1441edb/ldak_kinship.d4b8e1441edb.grm.adjust",
-                "d4b8e1441edb/ldak_kinship.d4b8e1441edb.grm.bin",
-                "d4b8e1441edb/ldak_kinship.d4b8e1441edb.grm.details",
-                "d4b8e1441edb/ldak_kinship.d4b8e1441edb.grm.id"
+                "70543c173338",
+                "70543c173338/ldak_kinship.70543c173338.grm.adjust",
+                "70543c173338/ldak_kinship.70543c173338.grm.bin",
+                "70543c173338/ldak_kinship.70543c173338.grm.details",
+                "70543c173338/ldak_kinship.70543c173338.grm.id",
+                "7dfb5cedd119",
+                "7dfb5cedd119/ldak_kinship.7dfb5cedd119.grm.adjust",
+                "7dfb5cedd119/ldak_kinship.7dfb5cedd119.grm.bin",
+                "7dfb5cedd119/ldak_kinship.7dfb5cedd119.grm.details",
+                "7dfb5cedd119/ldak_kinship.7dfb5cedd119.grm.id",
+                "aa2bdee4a07c",
+                "aa2bdee4a07c/ldak_kinship.aa2bdee4a07c.grm.adjust",
+                "aa2bdee4a07c/ldak_kinship.aa2bdee4a07c.grm.bin",
+                "aa2bdee4a07c/ldak_kinship.aa2bdee4a07c.grm.details",
+                "aa2bdee4a07c/ldak_kinship.aa2bdee4a07c.grm.id"
             ],
             [
-                "ldak_kinship.06c8f6195c7a.grm.adjust:md5,6338fdf32f899d90a9daf84c177bf3ee",
-                "ldak_kinship.06c8f6195c7a.grm.bin:md5,4e2994fe974956f2146148e3e40fdf6e",
-                "ldak_kinship.06c8f6195c7a.grm.details:md5,f7adbac672e396e830516273cc968c4f",
-                "ldak_kinship.06c8f6195c7a.grm.id:md5,bee126b7afe8985da84d031c0eb3f47e",
-                "ldak_kinship.333d2a9f19df.grm.adjust:md5,6338fdf32f899d90a9daf84c177bf3ee",
-                "ldak_kinship.333d2a9f19df.grm.bin:md5,4e2994fe974956f2146148e3e40fdf6e",
-                "ldak_kinship.333d2a9f19df.grm.details:md5,f7adbac672e396e830516273cc968c4f",
-                "ldak_kinship.333d2a9f19df.grm.id:md5,bee126b7afe8985da84d031c0eb3f47e",
-                "ldak_kinship.d4b8e1441edb.grm.adjust:md5,64f5e3d6c2bb7348ccb0062b64299a68",
-                "ldak_kinship.d4b8e1441edb.grm.bin:md5,4e7cbe74874dbcd489b849368f11cc70",
-                "ldak_kinship.d4b8e1441edb.grm.details:md5,8bcfa5e00fc4845ca2d5e304d53a0536",
-                "ldak_kinship.d4b8e1441edb.grm.id:md5,bee126b7afe8985da84d031c0eb3f47e"
+                "ldak_kinship.70543c173338.grm.adjust:md5,6338fdf32f899d90a9daf84c177bf3ee",
+                "ldak_kinship.70543c173338.grm.bin:md5,4e2994fe974956f2146148e3e40fdf6e",
+                "ldak_kinship.70543c173338.grm.details:md5,f7adbac672e396e830516273cc968c4f",
+                "ldak_kinship.70543c173338.grm.id:md5,bee126b7afe8985da84d031c0eb3f47e",
+                "ldak_kinship.7dfb5cedd119.grm.adjust:md5,6338fdf32f899d90a9daf84c177bf3ee",
+                "ldak_kinship.7dfb5cedd119.grm.bin:md5,4e2994fe974956f2146148e3e40fdf6e",
+                "ldak_kinship.7dfb5cedd119.grm.details:md5,f7adbac672e396e830516273cc968c4f",
+                "ldak_kinship.7dfb5cedd119.grm.id:md5,bee126b7afe8985da84d031c0eb3f47e",
+                "ldak_kinship.aa2bdee4a07c.grm.adjust:md5,64f5e3d6c2bb7348ccb0062b64299a68",
+                "ldak_kinship.aa2bdee4a07c.grm.bin:md5,4e7cbe74874dbcd489b849368f11cc70",
+                "ldak_kinship.aa2bdee4a07c.grm.details:md5,8bcfa5e00fc4845ca2d5e304d53a0536",
+                "ldak_kinship.aa2bdee4a07c.grm.id:md5,bee126b7afe8985da84d031c0eb3f47e"
             ]
         ],
-        "timestamp": "2026-09-10T06:31:25.067584381",
+        "timestamp": "2026-11-12T06:48:55.87092722",
         "meta": {
             "nf-test": "0.9.5",
-            "nextflow": "26.04.6"
+            "nextflow": "26.10.3"
         }
     },
     "same-weights-relatedness-matrices": {
         "content": [
             [
-                "f03a7469f909",
-                "f03a7469f909/ldak_kinship.f03a7469f909.grm.adjust",
-                "f03a7469f909/ldak_kinship.f03a7469f909.grm.bin",
-                "f03a7469f909/ldak_kinship.f03a7469f909.grm.details",
-                "f03a7469f909/ldak_kinship.f03a7469f909.grm.id"
+                "86dbec91188b",
+                "86dbec91188b/ldak_kinship.86dbec91188b.grm.adjust",
+                "86dbec91188b/ldak_kinship.86dbec91188b.grm.bin",
+                "86dbec91188b/ldak_kinship.86dbec91188b.grm.details",
+                "86dbec91188b/ldak_kinship.86dbec91188b.grm.id"
             ],
             [
-                "ldak_kinship.f03a7469f909.grm.adjust:md5,64f5e3d6c2bb7348ccb0062b64299a68",
-                "ldak_kinship.f03a7469f909.grm.bin:md5,4e7cbe74874dbcd489b849368f11cc70",
-                "ldak_kinship.f03a7469f909.grm.details:md5,8bcfa5e00fc4845ca2d5e304d53a0536",
-                "ldak_kinship.f03a7469f909.grm.id:md5,bee126b7afe8985da84d031c0eb3f47e"
+                "ldak_kinship.86dbec91188b.grm.adjust:md5,64f5e3d6c2bb7348ccb0062b64299a68",
+                "ldak_kinship.86dbec91188b.grm.bin:md5,4e7cbe74874dbcd489b849368f11cc70",
+                "ldak_kinship.86dbec91188b.grm.details:md5,8bcfa5e00fc4845ca2d5e304d53a0536",
+                "ldak_kinship.86dbec91188b.grm.id:md5,bee126b7afe8985da84d031c0eb3f47e"
             ]
         ],
-        "timestamp": "2026-09-10T06:31:47.223881874",
+        "timestamp": "2026-11-12T06:48:48.10795573",
         "meta": {
             "nf-test": "0.9.5",
-            "nextflow": "26.04.6"
+            "nextflow": "26.10.3"
         }
     },
     "versions": {
@@ -77,7 +77,7 @@
                     "ldak6": 6
                 },
                 "PLINK2_MAKEBED": {
-                    "plink2": "2.0.0-a.6.9LM"
+                    "plink2": "2.0.0-a.7.13"
                 },
                 "PREPARE_GENOTYPE_SOURCE": {
                     "python": "3.14.5"
@@ -90,10 +90,10 @@
                 }
             }
         ],
-        "timestamp": "2026-09-10T06:31:02.740847639",
+        "timestamp": "2026-11-12T06:48:38.175230123",
         "meta": {
             "nf-test": "0.9.5",
-            "nextflow": "26.04.6"
+            "nextflow": "26.10.3"
         }
     },
     "different-weights-heritability": {
@@ -122,32 +122,32 @@
     "different-weights-relatedness-matrices": {
         "content": [
             [
-                "7e13947be844",
-                "7e13947be844/ldak_kinship.7e13947be844.grm.adjust",
-                "7e13947be844/ldak_kinship.7e13947be844.grm.bin",
-                "7e13947be844/ldak_kinship.7e13947be844.grm.details",
-                "7e13947be844/ldak_kinship.7e13947be844.grm.id",
-                "f03a7469f909",
-                "f03a7469f909/ldak_kinship.f03a7469f909.grm.adjust",
-                "f03a7469f909/ldak_kinship.f03a7469f909.grm.bin",
-                "f03a7469f909/ldak_kinship.f03a7469f909.grm.details",
-                "f03a7469f909/ldak_kinship.f03a7469f909.grm.id"
+                "396e1001ba20",
+                "396e1001ba20/ldak_kinship.396e1001ba20.grm.adjust",
+                "396e1001ba20/ldak_kinship.396e1001ba20.grm.bin",
+                "396e1001ba20/ldak_kinship.396e1001ba20.grm.details",
+                "396e1001ba20/ldak_kinship.396e1001ba20.grm.id",
+                "86dbec91188b",
+                "86dbec91188b/ldak_kinship.86dbec91188b.grm.adjust",
+                "86dbec91188b/ldak_kinship.86dbec91188b.grm.bin",
+                "86dbec91188b/ldak_kinship.86dbec91188b.grm.details",
+                "86dbec91188b/ldak_kinship.86dbec91188b.grm.id"
             ],
             [
-                "ldak_kinship.7e13947be844.grm.adjust:md5,9d46d4e26d99c7f77f9f075ed9c76b7c",
-                "ldak_kinship.7e13947be844.grm.bin:md5,4e7cbe74874dbcd489b849368f11cc70",
-                "ldak_kinship.7e13947be844.grm.details:md5,77664bdec196774970203997c00be304",
-                "ldak_kinship.7e13947be844.grm.id:md5,bee126b7afe8985da84d031c0eb3f47e",
-                "ldak_kinship.f03a7469f909.grm.adjust:md5,64f5e3d6c2bb7348ccb0062b64299a68",
-                "ldak_kinship.f03a7469f909.grm.bin:md5,4e7cbe74874dbcd489b849368f11cc70",
-                "ldak_kinship.f03a7469f909.grm.details:md5,8bcfa5e00fc4845ca2d5e304d53a0536",
-                "ldak_kinship.f03a7469f909.grm.id:md5,bee126b7afe8985da84d031c0eb3f47e"
+                "ldak_kinship.396e1001ba20.grm.adjust:md5,9d46d4e26d99c7f77f9f075ed9c76b7c",
+                "ldak_kinship.396e1001ba20.grm.bin:md5,4e7cbe74874dbcd489b849368f11cc70",
+                "ldak_kinship.396e1001ba20.grm.details:md5,77664bdec196774970203997c00be304",
+                "ldak_kinship.396e1001ba20.grm.id:md5,bee126b7afe8985da84d031c0eb3f47e",
+                "ldak_kinship.86dbec91188b.grm.adjust:md5,64f5e3d6c2bb7348ccb0062b64299a68",
+                "ldak_kinship.86dbec91188b.grm.bin:md5,4e7cbe74874dbcd489b849368f11cc70",
+                "ldak_kinship.86dbec91188b.grm.details:md5,8bcfa5e00fc4845ca2d5e304d53a0536",
+                "ldak_kinship.86dbec91188b.grm.id:md5,bee126b7afe8985da84d031c0eb3f47e"
             ]
         ],
-        "timestamp": "2026-09-10T06:32:11.12613256",
+        "timestamp": "2026-11-12T06:52:19.924956039",
         "meta": {
             "nf-test": "0.9.5",
-            "nextflow": "26.04.6"
+            "nextflow": "26.10.3"
         }
     },
     "distinct-heritability": {

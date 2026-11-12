@@ -9,7 +9,7 @@
                     "ldak6": 6
                 },
                 "PLINK2_MAKEBED": {
-                    "plink2": "2.0.0-a.6.9LM"
+                    "plink2": "2.0.0-a.7.13"
                 },
                 "PREPARE_GENOTYPE_SOURCE": {
                     "python": "3.14.5"
@@ -22,10 +22,10 @@
                 }
             }
         ],
-        "timestamp": "2026-09-10T05:55:55.954174774",
+        "timestamp": "2026-11-12T06:46:47.761989008",
         "meta": {
             "nf-test": "0.9.5",
-            "nextflow": "26.04.6"
+            "nextflow": "26.10.3"
         }
     },
     "heritability": {

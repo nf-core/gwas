@@ -25,7 +25,7 @@
                     "mph": "0.55.1"
                 },
                 "PLINK2_MAKEBED": {
-                    "plink2": "2.0.0-a.6.9LM"
+                    "plink2": "2.0.0-a.7.13"
                 },
                 "PREPARE_BIVARIATE_TRAITS": {
                     "python": "3.14.5"
@@ -44,7 +44,7 @@
                 }
             }
         ],
-        "timestamp": "2026-11-09T09:32:26.308368561",
+        "timestamp": "2026-11-12T06:49:56.303897396",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.10.3"

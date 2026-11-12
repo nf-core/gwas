@@ -71,7 +71,7 @@
                     "ldak6": 6
                 },
                 "PLINK2_MAKEBED": {
-                    "plink2": "2.0.0-a.6.9LM"
+                    "plink2": "2.0.0-a.7.13"
                 },
                 "PREPARE_BIVARIATE_TRAITS": {
                     "python": "3.14.5"
@@ -96,7 +96,7 @@
                 }
             }
         ],
-        "timestamp": "2026-11-09T09:29:30.047559741",
+        "timestamp": "2026-11-12T06:48:09.298302734",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.10.3"
