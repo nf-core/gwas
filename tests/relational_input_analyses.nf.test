@@ -14,7 +14,7 @@ nextflow_pipeline {
                 outdir = "$outputDir"
                 save_normalised_phenotypes = true
                 cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, "trait_semantics")
-                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, "trait_semantics", { rows ->
+                input = RELATIONAL.analyses(projectDir, outputDir, "trait_semantics", { rows ->
                     def binary = RELATIONAL.analysis(projectDir, 'example_pgen_bt')
                     def quantitativeWithoutCovariates = new LinkedHashMap(rows[0])
                     quantitativeWithoutCovariates.analysis_id = 'example_pgen_qt_no_covariates'
@@ -68,7 +68,7 @@ nextflow_pipeline {
             params {
                 outdir = "$outputDir"
                 cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, "undefined_cohort")
-                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, "undefined_cohort", { rows ->
+                input = RELATIONAL.analyses(projectDir, outputDir, "undefined_cohort", { rows ->
                     rows[0].cohort_id = 'missing_cohort'
                 })
             }
@@ -78,7 +78,7 @@ nextflow_pipeline {
             def report = VALIDATION.report(outputDir, workflow)
             assertAll(
                 { assert !workflow.success },
-                { assert report.contains(params.analysis_manifest.toString()) },
+                { assert report.contains(params.input.toString()) },
                 { assert report.contains("row 2 (analysis_id 'example_pgen_qt')") },
                 { assert report.contains("field 'cohort_id'") },
                 { assert report.contains("undefined cohort_id 'missing_cohort'") },
@@ -97,7 +97,7 @@ nextflow_pipeline {
             params {
                 outdir = "$outputDir"
                 cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, "unregistered_method")
-                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, "unregistered_method", { rows ->
+                input = RELATIONAL.analyses(projectDir, outputDir, "unregistered_method", { rows ->
                     rows[0].association_methods = 'regenie'
                 })
             }
@@ -116,7 +116,7 @@ nextflow_pipeline {
 
     // The pipeline-level sentinel for manifest pairing. The rule lives in the VALIDATE_GWAS_INPUT workflow body
     // rather than in a resolver, so it has no function form at all; this case additionally proves that a null
-    // --analysis_manifest passes nf-schema and that the pairing check fires before samplesheetToList. Its
+    // analysis manifest (`--input`) passes nf-schema and that the pairing check fires before samplesheetToList. Its
     // mirror image, an analysis manifest with no cohort manifest, is a workflow-level case in
     // subworkflows/local/validate_gwas_input/tests/main.nf.test.
     test("a cohort manifest without an analysis manifest is rejected") {
@@ -126,7 +126,7 @@ nextflow_pipeline {
             params {
                 outdir = "$outputDir"
                 cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, "cohort_only")
-                analysis_manifest = null
+                input = null
             }
         }
 
@@ -134,7 +134,7 @@ nextflow_pipeline {
             def report = VALIDATION.report(outputDir, workflow)
             assertAll(
                 { assert !workflow.success },
-                { assert report.contains('--analysis_manifest is missing; linked manifests require both') },
+                { assert report.contains('the analysis manifest --input is missing; linked manifests require both') },
                 { assert TRACE.count(workflow, 'PREPARE_PHENOTYPE_INPUTS') == 0 },
                 { assert workflow.trace.tasks().isEmpty() },
             )

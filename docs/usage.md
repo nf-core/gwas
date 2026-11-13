@@ -14,7 +14,7 @@ nf-core/gwas takes genotyped cohorts and the traits to analyse on them as two li
 
 ## Relational manifest input
 
-Every run supplies the linked `--cohort_manifest` and `--analysis_manifest` together.
+Every run supplies the analysis manifest as `--input` together with the cohort manifest it links to as `--cohort_manifest`.
 
 The JSON schemas own column names, required fields, types, enumerations and file existence. Schema-optional columns may be omitted entirely or supplied with blank cells. Unexpected and repeated column names are rejected; quoted CSV headers and values are supported, and column order is not significant.
 
@@ -22,8 +22,8 @@ The JSON schemas own column names, required fields, types, enumerations and file
 nextflow run nf-core/gwas \
     -r <VERSION> \
     -profile docker \
+    --input ./analyses.csv \
     --cohort_manifest ./cohorts.csv \
-    --analysis_manifest ./analyses.csv \
     --outdir ./results
 ```
 
@@ -77,8 +77,8 @@ Tokens in a selector cell are comma-delimited without spaces and may appear only
 nextflow run nf-core/gwas \
     -r <VERSION> \
     -profile docker \
+    --input assets/examples/relational/analysis_manifest_preparation_only.csv \
     --cohort_manifest assets/examples/relational/cohort_manifest.csv \
-    --analysis_manifest assets/examples/relational/analysis_manifest_preparation_only.csv \
     --save_normalised_phenotypes \
     --outdir results
 ```
@@ -121,8 +121,8 @@ The typical command for running the pipeline is:
 nextflow run nf-core/gwas \
     -r <VERSION> \
     -profile docker \
+    --input ./analyses.csv \
     --cohort_manifest ./cohorts.csv \
-    --analysis_manifest ./analyses.csv \
     --outdir ./results
 ```
 
@@ -143,8 +143,8 @@ nextflow run nf-core/gwas -r <VERSION> -profile docker -params-file params.yaml
 ```
 
 ```yaml title="params.yaml"
+input: "./analyses.csv"
 cohort_manifest: "./cohorts.csv"
-analysis_manifest: "./analyses.csv"
 outdir: "./results/"
 ```
 

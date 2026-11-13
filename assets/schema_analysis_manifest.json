@@ -2,7 +2,7 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://raw.githubusercontent.com/nf-core/gwas/master/assets/schema_analysis_manifest.json",
     "title": "nf-core/gwas pipeline - analysis manifest schema",
-    "description": "Schema for the analysis manifest provided with params.analysis_manifest. One row declares one cohort and trait analysis unit.",
+    "description": "Schema for the analysis manifest provided with params.input. One row declares one cohort and trait analysis unit.",
     "type": "array",
     "items": {
         "type": "object",

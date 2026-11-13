@@ -8,11 +8,6 @@ lint:
     # deleted file, the second stops the `withName:` check reading it.
     - conf/modules.config
   modules_config: false
-  # The template's `--input` samplesheet was replaced by the linked `--cohort_manifest` and
-  # `--analysis_manifest` parameters, so `params.input` is intentionally absent from nextflow.config and
-  # nextflow_schema.json.
-  nextflow_config:
-    - params.input
 nf_core_version: 4.0.3
 repository_type: pipeline
 template:

@@ -36,8 +36,8 @@ workflow PIPELINE_INITIALISATION {
     monochrome_logs // channel: val(monochrome_logs)
     nextflow_cli_args // channel: val(nextflow_cli_args)
     outdir // channel: val(outdir)
+    input // channel: val(input), the analysis manifest
     cohort_manifest // channel: val(cohort_manifest)
-    analysis_manifest // channel: val(analysis_manifest)
     method_options // channel: val(method_options)
     help // channel: val(help)
     help_full // channel: val(help_full)
@@ -82,7 +82,7 @@ workflow PIPELINE_INITIALISATION {
         before_text = before_text.replaceAll(/\033\[[0-9;]*m/, '')
     }
 
-    command = "nextflow run ${workflow.manifest.name} -profile <docker/singularity/.../institute> --cohort_manifest cohorts.csv --analysis_manifest analyses.csv --outdir <OUTDIR>"
+    command = "nextflow run ${workflow.manifest.name} -profile <docker/singularity/.../institute> --input analyses.csv --cohort_manifest cohorts.csv --outdir <OUTDIR>"
 
     UTILS_NFSCHEMA_PLUGIN(
         workflow,
@@ -108,7 +108,7 @@ workflow PIPELINE_INITIALISATION {
     //
     VALIDATE_GWAS_INPUT(
         cohort_manifest,
-        analysis_manifest,
+        input,
         method_options,
     )
 

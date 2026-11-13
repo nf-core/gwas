@@ -12,6 +12,17 @@
             "description": "Define where the pipeline should find input data and save output data.",
             "required": ["outdir"],
             "properties": {
+                "input": {
+                    "type": "string",
+                    "format": "file-path",
+                    "exists": true,
+                    "schema": "assets/schema_analysis_manifest.json",
+                    "mimetype": "text/csv",
+                    "pattern": "^\\S+\\.csv$",
+                    "description": "Path to the analysis manifest, a comma-separated file declaring cohort and trait analysis units.",
+                    "help_text": "The analysis manifest. Supply together with `--cohort_manifest`. Each unique `analysis_id` references one `cohort_id` declared in the cohort manifest and names the trait, phenotype and covariate inputs. The `association_methods` and `heritability_methods` selector columns are accepted but no method is registered in this release, so both must be left empty; each analysis route adds its selector token when it is wired. See [usage docs](https://nf-co.re/gwas/usage#analysis-manifest-fields).",
+                    "fa_icon": "fas fa-file-csv"
+                },
                 "cohort_manifest": {
                     "type": "string",
                     "format": "file-path",
@@ -20,19 +31,8 @@
                     "mimetype": "text/csv",
                     "pattern": "^\\S+\\.csv$",
                     "description": "Path to the cohort manifest declaring cohort-owned genotype facts.",
-                    "help_text": "Supply together with `analysis_manifest`. Each unique `cohort_id` declares one complete PLINK 2 or PLINK 1 genotype representation.",
+                    "help_text": "Supply together with the analysis manifest (`--input`). Each unique `cohort_id` declares one complete PLINK 2 or PLINK 1 genotype representation.",
                     "fa_icon": "fas fa-users"
-                },
-                "analysis_manifest": {
-                    "type": "string",
-                    "format": "file-path",
-                    "exists": true,
-                    "schema": "assets/schema_analysis_manifest.json",
-                    "mimetype": "text/csv",
-                    "pattern": "^\\S+\\.csv$",
-                    "description": "Path to the analysis manifest declaring cohort and trait analysis units.",
-                    "help_text": "Supply together with `cohort_manifest`. Each unique `analysis_id` references one declared `cohort_id` and names the trait, phenotype and covariate inputs. The `association_methods` and `heritability_methods` selector columns are accepted but no method is registered in this release, so both must be left empty; each analysis route adds its selector token when it is wired.",
-                    "fa_icon": "fas fa-file-medical-alt"
                 },
                 "method_options": {
                     "type": "string",

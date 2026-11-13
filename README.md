@@ -57,8 +57,8 @@ Then run:
 nextflow run nf-core/gwas \
     -r <VERSION> \
     -profile docker \
+    --input analyses.csv \
     --cohort_manifest cohorts.csv \
-    --analysis_manifest analyses.csv \
     --outdir results
 ```
 

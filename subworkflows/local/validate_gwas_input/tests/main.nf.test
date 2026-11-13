@@ -145,8 +145,8 @@ nextflow_workflow {
 
     // The pairing rule lives in the VALIDATE_GWAS_INPUT workflow body (main.nf), not in a resolver, so it has
     // no function form. Its other half — a cohort manifest with no analysis manifest — stays at pipeline level
-    // in tests/relational_input_analyses.nf.test, where it also proves that a null --analysis_manifest passes
-    // nf-schema; this half needs no pipeline run to make its point and is asserted here instead.
+    // in tests/relational_input_analyses.nf.test, where it also proves that a null analysis manifest (`--input`)
+    // passes nf-schema; this half needs no pipeline run to make its point and is asserted here instead.
     test("an analysis manifest without a cohort manifest is rejected") {
         tag "manifest_pairing"
 
@@ -164,7 +164,7 @@ nextflow_workflow {
             def report = VALIDATION.console(workflow)
             assertAll(
                 { assert !workflow.success },
-                { assert report.contains('--analysis_manifest') },
+                { assert report.contains('the analysis manifest --input') },
                 { assert report.contains('--cohort_manifest is missing; linked manifests require both') },
             )
         }

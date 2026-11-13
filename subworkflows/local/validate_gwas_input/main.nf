@@ -22,13 +22,13 @@ workflow VALIDATE_GWAS_INPUT {
 
     main:
     if (analysis_manifest && !cohort_manifest) {
-        error("[nf-core/gwas] ERROR: --analysis_manifest '${analysis_manifest ?: ''}' was supplied but --cohort_manifest is missing; linked manifests require both")
+        error("[nf-core/gwas] ERROR: the analysis manifest --input '${analysis_manifest ?: ''}' was supplied but --cohort_manifest is missing; linked manifests require both")
     }
     if (cohort_manifest && !analysis_manifest) {
-        error("[nf-core/gwas] ERROR: --cohort_manifest '${cohort_manifest}' was supplied but --analysis_manifest is missing; linked manifests require both")
+        error("[nf-core/gwas] ERROR: --cohort_manifest '${cohort_manifest}' was supplied but the analysis manifest --input is missing; linked manifests require both")
     }
     if (!cohort_manifest && !analysis_manifest) {
-        error("[nf-core/gwas] ERROR: supply the linked --cohort_manifest and --analysis_manifest inputs")
+        error("[nf-core/gwas] ERROR: supply the analysis manifest as --input and the linked cohort manifest as --cohort_manifest")
     }
 
     def cohort_schema = "${projectDir}/assets/schema_cohort_manifest.json"

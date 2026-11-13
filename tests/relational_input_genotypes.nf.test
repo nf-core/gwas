@@ -23,7 +23,7 @@ nextflow_pipeline {
                     cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, "${encoding}_preparation", { rows ->
                         rows[0] = RELATIONAL.cohort(fixture.cohort)
                     })
-                    analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, "${encoding}_preparation", { rows ->
+                    input = RELATIONAL.analyses(projectDir, outputDir, "${encoding}_preparation", { rows ->
                         rows[0].analysis_id = "${fixture.cohort}_qt"
                         rows[0].cohort_id = fixture.cohort
                     })
@@ -63,7 +63,7 @@ nextflow_pipeline {
                     rows[0] = RELATIONAL.cohort('example_bfile')
                     rows[0].genotype_view_id = 'biofuse:52d1d326413775cd'
                 })
-                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, "declared_identity", { rows ->
+                input = RELATIONAL.analyses(projectDir, outputDir, "declared_identity", { rows ->
                     rows[0].analysis_id = 'example_bfile_declared_qt'
                     rows[0].cohort_id = 'example_bfile'
                 })
@@ -94,7 +94,7 @@ nextflow_pipeline {
                     rows[0] = RELATIONAL.cohort('example_pgen')
                     rows[0].cohort_id = 'identity_cache'
                 })
-                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, "identity_cache", { rows ->
+                input = RELATIONAL.analyses(projectDir, outputDir, "identity_cache", { rows ->
                     rows[0].analysis_id = 'identity_cache_qt'
                     rows[0].cohort_id = 'identity_cache'
                 })
@@ -212,7 +212,7 @@ nextflow_pipeline {
                 params {
                     outdir = "$outputDir"
                     cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, "invalid_genotypes_${index}", { rows -> invalid.mutate(rows, outputDir, projectDir) })
-                    analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, "invalid_genotypes_${index}")
+                    input = RELATIONAL.analyses(projectDir, outputDir, "invalid_genotypes_${index}")
                 }
             }
 
@@ -248,7 +248,7 @@ nextflow_pipeline {
                     'vcf_index',
                     'unused.vcf.gz.tbi',
                 )
-                analysis_manifest = RELATIONAL.analyses(projectDir, outputDir, "unexpected_vcf_index")
+                input = RELATIONAL.analyses(projectDir, outputDir, "unexpected_vcf_index")
             }
         }
 
