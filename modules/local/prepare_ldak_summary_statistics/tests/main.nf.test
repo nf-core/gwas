@@ -1,0 +1,68 @@
+nextflow_process {
+
+    name "Test Process PREPARE_LDAK_SUMMARY_STATISTICS"
+    script "../main.nf"
+    process "PREPARE_LDAK_SUMMARY_STATISTICS"
+
+    tag "modules"
+    tag "modules_local"
+    tag "prepare_ldak_summary_statistics"
+
+    def gwaslabSummary = { outputDir ->
+        def target = new File(outputDir.toString(), 'trait.gwaslab.tsv.gz')
+        def table = [
+            'SNPID\tCHR\tPOS\tEA\tNEA\tSTATUS\tEAF\tBETA\tSE\tP\tN',
+            'rs1\t1\t1000\tA\tG\t9999999\t0.30\t0.01\t0.02\t0.6\t1000',
+            'rs2\t1\t2000\tT\tC\t9999999\t0.42\t-0.04\t0.02\t0.05\t1200',
+        ].join('\n') + '\n'
+        target.withOutputStream { output ->
+            def gzip = new java.util.zip.GZIPOutputStream(output)
+            gzip.write(table.getBytes('UTF-8'))
+            gzip.close()
+        }
+        target
+    }
+
+    test("convert the GWASLab representation to LDAK's native summary format") {
+        when {
+            def input = gwaslabSummary(outputDir)
+            process {
+                """
+                input[0] = [[summary_statistics_id: 'trait'], file('${input}', checkIfExists: true)]
+                """
+            }
+        }
+
+        then {
+            def result = new File(process.out.summary_statistics.get(0).get(1).toString())
+            assertAll(
+                { assert process.success },
+                { assert process.out.summary_statistics.get(0).get(0).summary_statistics_id == 'trait' },
+                { assert result.name == 'trait.ldak.summaries' },
+                { assert result.text == 'Predictor\tA1\tA2\tZ\tn\tA1Freq\nrs1\tA\tG\t0.5\t1000\t0.30\nrs2\tT\tC\t-2.0\t1200\t0.42\n' },
+            )
+        }
+    }
+
+    test("preserve the adapter contract under stub execution") {
+        options "-stub"
+
+        when {
+            def input = gwaslabSummary(outputDir)
+            process {
+                """
+                input[0] = [[summary_statistics_id: 'trait'], file('${input}', checkIfExists: true)]
+                """
+            }
+        }
+
+        then {
+            def result = new File(process.out.summary_statistics.get(0).get(1).toString())
+            assertAll(
+                { assert process.success },
+                { assert result.name == 'trait.ldak.summaries' },
+                { assert result.text == 'Predictor\tA1\tA2\tZ\tn\tA1Freq\n' },
+            )
+        }
+    }
+}

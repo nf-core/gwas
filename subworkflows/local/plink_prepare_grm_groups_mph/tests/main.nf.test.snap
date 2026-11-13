@@ -1,0 +1,250 @@
+{
+    "1 named groups preserve order and focal identity": {
+        "content": [
+            {
+                "0": [
+                    [
+                        {
+                            "id": "focal",
+                            "single_end": false
+                        },
+                        [
+                            "focal__000001_all.grm.bin:md5,01f3a2f6d089b06505ce14309144ad2f",
+                            "focal__000001_all.grm.iid:md5,4aaa3586dd143906e5db22334a257566"
+                        ],
+                        [
+                            "focal__000001_all"
+                        ]
+                    ]
+                ],
+                "1": [
+                    [
+                        {
+                            "id": "focal",
+                            "single_end": false
+                        },
+                        "focal.snp_info.counts.tsv:md5,b248bb90349202bcdcbfd53bd2648643"
+                    ]
+                ],
+                "counts": [
+                    [
+                        {
+                            "id": "focal",
+                            "single_end": false
+                        },
+                        "focal.snp_info.counts.tsv:md5,b248bb90349202bcdcbfd53bd2648643"
+                    ]
+                ],
+                "grm_family": [
+                    [
+                        {
+                            "id": "focal",
+                            "single_end": false
+                        },
+                        [
+                            "focal__000001_all.grm.bin:md5,01f3a2f6d089b06505ce14309144ad2f",
+                            "focal__000001_all.grm.iid:md5,4aaa3586dd143906e5db22334a257566"
+                        ],
+                        [
+                            "focal__000001_all"
+                        ]
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T17:26:30.964879944",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "2 named groups preserve order and focal identity - stub": {
+        "content": [
+            {
+                "0": [
+                    [
+                        {
+                            "id": "focal",
+                            "single_end": false
+                        },
+                        [
+                            "focal__000001_second.grm.bin:md5,b34194ef3dd581acc21d8061282c3800",
+                            "focal__000001_second.grm.iid:md5,c9f3c179cf033d8b365c1294243922a7",
+                            "focal__000002_first.grm.bin:md5,b34194ef3dd581acc21d8061282c3800",
+                            "focal__000002_first.grm.iid:md5,c9f3c179cf033d8b365c1294243922a7"
+                        ],
+                        [
+                            "focal__000001_second",
+                            "focal__000002_first"
+                        ]
+                    ]
+                ],
+                "1": [
+                    [
+                        {
+                            "id": "focal",
+                            "single_end": false
+                        },
+                        "focal.snp_info.counts.tsv:md5,a9e7d003145b74cd11528d4d9bb81ef8"
+                    ]
+                ],
+                "counts": [
+                    [
+                        {
+                            "id": "focal",
+                            "single_end": false
+                        },
+                        "focal.snp_info.counts.tsv:md5,a9e7d003145b74cd11528d4d9bb81ef8"
+                    ]
+                ],
+                "grm_family": [
+                    [
+                        {
+                            "id": "focal",
+                            "single_end": false
+                        },
+                        [
+                            "focal__000001_second.grm.bin:md5,b34194ef3dd581acc21d8061282c3800",
+                            "focal__000001_second.grm.iid:md5,c9f3c179cf033d8b365c1294243922a7",
+                            "focal__000002_first.grm.bin:md5,b34194ef3dd581acc21d8061282c3800",
+                            "focal__000002_first.grm.iid:md5,c9f3c179cf033d8b365c1294243922a7"
+                        ],
+                        [
+                            "focal__000001_second",
+                            "focal__000002_first"
+                        ]
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T17:26:59.603579688",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "1 named groups preserve order and focal identity - stub": {
+        "content": [
+            {
+                "0": [
+                    [
+                        {
+                            "id": "focal",
+                            "single_end": false
+                        },
+                        [
+                            "focal__000001_all.grm.bin:md5,b34194ef3dd581acc21d8061282c3800",
+                            "focal__000001_all.grm.iid:md5,c9f3c179cf033d8b365c1294243922a7"
+                        ],
+                        [
+                            "focal__000001_all"
+                        ]
+                    ]
+                ],
+                "1": [
+                    [
+                        {
+                            "id": "focal",
+                            "single_end": false
+                        },
+                        "focal.snp_info.counts.tsv:md5,0828d4a8073abe13e968affc78c6ea7a"
+                    ]
+                ],
+                "counts": [
+                    [
+                        {
+                            "id": "focal",
+                            "single_end": false
+                        },
+                        "focal.snp_info.counts.tsv:md5,0828d4a8073abe13e968affc78c6ea7a"
+                    ]
+                ],
+                "grm_family": [
+                    [
+                        {
+                            "id": "focal",
+                            "single_end": false
+                        },
+                        [
+                            "focal__000001_all.grm.bin:md5,b34194ef3dd581acc21d8061282c3800",
+                            "focal__000001_all.grm.iid:md5,c9f3c179cf033d8b365c1294243922a7"
+                        ],
+                        [
+                            "focal__000001_all"
+                        ]
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T17:26:39.413883069",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "2 named groups preserve order and focal identity": {
+        "content": [
+            {
+                "0": [
+                    [
+                        {
+                            "id": "focal",
+                            "single_end": false
+                        },
+                        [
+                            "focal__000001_second.grm.bin:md5,fee20b162857371f1bc03c9409cc4cc5",
+                            "focal__000001_second.grm.iid:md5,4aaa3586dd143906e5db22334a257566",
+                            "focal__000002_first.grm.bin:md5,533f44dec983e8283df60ae006718c15",
+                            "focal__000002_first.grm.iid:md5,4aaa3586dd143906e5db22334a257566"
+                        ],
+                        [
+                            "focal__000001_second",
+                            "focal__000002_first"
+                        ]
+                    ]
+                ],
+                "1": [
+                    [
+                        {
+                            "id": "focal",
+                            "single_end": false
+                        },
+                        "focal.snp_info.counts.tsv:md5,cfd446f909d84b6ea0d852b0d1cdc98a"
+                    ]
+                ],
+                "counts": [
+                    [
+                        {
+                            "id": "focal",
+                            "single_end": false
+                        },
+                        "focal.snp_info.counts.tsv:md5,cfd446f909d84b6ea0d852b0d1cdc98a"
+                    ]
+                ],
+                "grm_family": [
+                    [
+                        {
+                            "id": "focal",
+                            "single_end": false
+                        },
+                        [
+                            "focal__000001_second.grm.bin:md5,fee20b162857371f1bc03c9409cc4cc5",
+                            "focal__000001_second.grm.iid:md5,4aaa3586dd143906e5db22334a257566",
+                            "focal__000002_first.grm.bin:md5,533f44dec983e8283df60ae006718c15",
+                            "focal__000002_first.grm.iid:md5,4aaa3586dd143906e5db22334a257566"
+                        ],
+                        [
+                            "focal__000001_second",
+                            "focal__000002_first"
+                        ]
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T17:26:48.497124013",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

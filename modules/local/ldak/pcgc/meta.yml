@@ -2,7 +2,9 @@ name: ldak_pcgc
 description: Run linkage disequilibrium-adjusted kinship (LDAK) phenotype correlation-genotype correlation (PCGC) regression for binary trait heritability on a precomputed genomic relationship matrix (GRM)
 keywords:
   - ldak
+  - linkage disequilibrium adjusted kinship
   - pcgc
+  - phenotype correlation genotype correlation
   - heritability
 tools:
   - ldak6:
@@ -19,51 +21,45 @@ input:
     - phenotype_file:
         type: file
         description: Headerless phenotype file passed to `--pheno`
-    - mpheno:
-        type: integer
-        description: Optional phenotype column index passed to `--mpheno`; pass [] to use fallback `1`
+        ontologies: []
     - prevalence:
         type: float
-        description: Optional disease prevalence passed to `--prevalence`; pass [] when absent
+        description: Required population disease prevalence passed to `--prevalence`, strictly between zero and one
   - - meta2:
         type: map
         description: |
           Groovy Map containing GRM metadata.
           Expected keys:
             - id (string): GRM identifier.
-    - grm_bin:
+    - grm_files:
         type: file
-        description: GRM binary matrix (`.grm.bin`)
-    - grm_id:
-        type: file
-        description: GRM sample identifiers (`.grm.id`)
-    - grm_details:
-        type: file
-        description: GRM details (`.grm.details`)
-    - grm_adjust:
-        type: file
-        description: GRM adjustment factors (`.grm.adjust`)
-    - grm_root:
-        type: file
-        description: Optional adjusted GRM root file (`.grm.root`); pass [] for non-adjusted GRM
+        description: GRM bundle (`.grm.bin`, `.grm.id`, `.grm.details`, `.grm.adjust`, and optionally `.grm.root` for an adjusted GRM)
+        pattern: "*.{grm.bin,grm.id,grm.details,grm.adjust,grm.root}"
+        ontologies: []
   - - meta3:
         type: map
         description: Metadata map paired with optional keep input.
     - keep_file:
         type: file
+        optional: true
         description: Optional keep file for sample filtering; pass [] when GRM is pre-filtered
+        ontologies: []
   - - meta4:
         type: map
         description: Metadata map paired with optional quantitative covariates input.
     - quant_covariates_file:
         type: file
+        optional: true
         description: Optional quantitative covariates file passed to `--covar`; pass [] when absent
+        ontologies: []
   - - meta5:
         type: map
         description: Metadata map paired with optional categorical covariates input.
     - cat_covariates_file:
         type: file
+        optional: true
         description: Optional categorical covariates file passed to `--factors`; pass [] when absent
+        ontologies: []
 output:
   pcgc_results:
     - - meta:
@@ -72,48 +68,69 @@ output:
       - "${prefix}.pcgc":
           type: file
           description: PCGC summary output (`<prefix>.pcgc`)
+          ontologies: []
   pcgc_marginal:
     - - meta:
           type: map
           description: Metadata map propagated from input
       - "${prefix}.pcgc.marginal":
           type: file
+          optional: true
           description: Optional marginal PCGC output (`<prefix>.pcgc.marginal`)
+          ontologies: []
   coeff:
     - - meta:
           type: map
           description: Metadata map propagated from input
       - "${prefix}.coeff":
           type: file
+          optional: true
           description: Optional coefficient output (`<prefix>.coeff`)
+          ontologies: []
   combined:
     - - meta:
           type: map
           description: Metadata map propagated from input
       - "${prefix}.combined":
           type: file
+          optional: true
           description: Optional combined output (`<prefix>.combined`)
+          ontologies: []
   cross:
     - - meta:
           type: map
           description: Metadata map propagated from input
       - "${prefix}.cross":
           type: file
+          optional: true
           description: Optional cross output (`<prefix>.cross`)
+          ontologies: []
   progress:
     - - meta:
           type: map
           description: Metadata map propagated from input
       - "${prefix}.progress":
           type: file
+          optional: true
           description: Optional progress output (`<prefix>.progress`)
+          ontologies: []
   share:
     - - meta:
           type: map
           description: Metadata map propagated from input
       - "${prefix}.share":
           type: file
+          optional: true
           description: Optional share output (`<prefix>.share`)
+          ontologies: []
+  log:
+    - - meta:
+          type: map
+          description: Metadata map propagated from input
+      - "${prefix}.log":
+          type: file
+          description: LDAK PCGC log file (`<prefix>.log`)
+          ontologies: []
   versions_ldak6:
     - - ${task.process}:
           type: string
@@ -135,6 +152,20 @@ topics:
       - ldak6 --version 2>&1 | grep -oP '(?<=^Version )[0-9.]+':
           type: eval
           description: The expression used to obtain the version of the tool
+containers:
+  conda:
+    linux/amd64:
+      lock_file: "modules/local/ldak/pcgc/.conda-lock/linux_amd64-bd-452828f72b3c9129_1.txt"
+  docker:
+    linux/amd64:
+      build_id: "bd-452828f72b3c9129_1"
+      name: "community.wave.seqera.io/library/ldak6_r-base:452828f72b3c9129"
+      scan_id: "sc-65cc7b1c1a9a20b6_1"
+  singularity:
+    linux/amd64:
+      build_id: "bd-e8012f1be139af77_1"
+      name: "oras://community.wave.seqera.io/library/ldak6_r-base:e8012f1be139af77"
+      https: "https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/c9/c94e5424f08cbd7e0856ab3c3a9992b4080944a5d0c497ce0abcceb413db4a3e/data"
 authors:
   - "@lyh970817"
 maintainers:

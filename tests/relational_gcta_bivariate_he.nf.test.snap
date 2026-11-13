@@ -1,0 +1,44 @@
+{
+    "versions": {
+        "content": [
+            {
+                "CUSTOM_GCTAMERGEGRMPARTS": {
+                    "coreutils": 9.5
+                },
+                "GCTA_BIVARIATEHEREG": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_MAKEGRMPART": {
+                    "gcta": "1.94.1"
+                },
+                "PREPARE_BIVARIATE_TRAITS": {
+                    "python": "3.14.5"
+                },
+                "PREPARE_GENOTYPE_SOURCE": {
+                    "python": "3.14.5"
+                },
+                "PREPARE_PHENOTYPE_INPUTS": {
+                    "python": "3.14.5"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "timestamp": "2026-09-10T06:04:02.247000752",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "results": {
+        "content": [
+            "\nHE-CP\nCoefficient         Estimate        SE_OLS          SE_Jackknife    P_OLS           P_Jackknife     \nIntercept_tr1       -0.0047819      0.00706016      0.0014249       0.498218        0.000792409     \nIntercept_tr2       -0.00408848     0.00709873      0.00132941      0.564659        0.00210499      \nIntercept_tr12      -0.000842899    0.0049911       0.000869783     0.865892        0.34723         \nV(G)/Vp_tr1         0.0435188       0.161055        0.187314        0.787001        0.816287        \nV(G)/Vp_tr2         0.181885        0.161935        0.263719        0.261369        0.490396        \nC(G)/Vp_tr12        -0.338075       0.161421        0.23955         0.0362338       0.15825         \nrG                  -3.79993        7.45616         -nan            \nN_tr1               200             \nN_tr2               200             \n\n\n"
+        ],
+        "timestamp": "2026-08-30T22:09:08.435021705",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

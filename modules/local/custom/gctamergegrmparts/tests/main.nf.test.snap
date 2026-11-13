@@ -1,0 +1,62 @@
+{
+    "merged GRM bundle contract - stub": {
+        "content": [
+            {
+                "grm_files": [
+                    [
+                        {
+                            "id": "joined"
+                        },
+                        [
+                            "joined.grm.N.bin:md5,d41d8cd98f00b204e9800998ecf8427e",
+                            "joined.grm.bin:md5,d41d8cd98f00b204e9800998ecf8427e",
+                            "joined.grm.id:md5,d41d8cd98f00b204e9800998ecf8427e"
+                        ]
+                    ]
+                ],
+                "versions_coreutils": [
+                    [
+                        "CUSTOM_GCTAMERGEGRMPARTS",
+                        "coreutils",
+                        "9.5"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T18:40:14.962809985",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "concatenate twelve parts in supplied numeric order rather than staged filename order": {
+        "content": [
+            {
+                "grm_files": [
+                    [
+                        {
+                            "id": "joined"
+                        },
+                        [
+                            "joined.grm.N.bin:md5,a6447ff05945f240aae026486fd87591",
+                            "joined.grm.bin:md5,86fbabf7d72b4c64e36a4ebfc28dadd1",
+                            "joined.grm.id:md5,a250779b0eca8f16dbdb06cc4f7dd46b"
+                        ]
+                    ]
+                ],
+                "versions_coreutils": [
+                    [
+                        "CUSTOM_GCTAMERGEGRMPARTS",
+                        "coreutils",
+                        "9.5"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T18:40:11.630741267",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

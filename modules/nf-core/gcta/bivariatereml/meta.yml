@@ -23,8 +23,8 @@ input:
         type: map
         description: |
           Groovy map containing dense GRM metadata
-          `meta.id` must be the GRM basename passed to `--grm`
-          (for example `plink_simulated_dense` for `plink_simulated_dense.grm.{id,bin,N.bin}`)
+          The dense GRM basename passed to `--grm` is taken from the staged
+          `.grm.bin` file, while `meta.id` names the outputs
     - grm_files:
         type: file
         description: Dense GRM bundle containing sample identifier, binary matrix,

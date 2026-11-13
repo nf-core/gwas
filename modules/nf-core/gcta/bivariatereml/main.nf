@@ -22,6 +22,7 @@ process GCTA_BIVARIATEREML {
 
     script:
     def args = task.ext.args ?: ''
+    def dense_grm_prefix = grm_files.find { grm_file -> grm_file.name.endsWith('.grm.bin') }.name.replaceFirst(/\.grm\.bin$/, '')
     def prefix = task.ext.prefix ?: "${meta.id}"
     def reml_bivar_param = phenotype_col1 && phenotype_col2 ? "--reml-bivar ${phenotype_col1} ${phenotype_col2}" : "--reml-bivar"
     def qcovar_param = quant_covariates_file ? "--qcovar ${quant_covariates_file}" : ''
@@ -29,7 +30,7 @@ process GCTA_BIVARIATEREML {
     """
     gcta \\
         ${reml_bivar_param} \\
-        --grm ${meta.id} \\
+        --grm "${dense_grm_prefix}" \\
         --pheno "${phenotype_file}" \\
         ${qcovar_param} \\
         ${covar_param} \\

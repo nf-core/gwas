@@ -1,0 +1,151 @@
+{
+    "external-versions": {
+        "content": [
+            {
+                "FINALISE_META_ANALYSIS": {
+                    "pandas": "2.3.3",
+                    "python": "3.12.13"
+                },
+                "GWASLAB_HARMONIZE": {
+                    "gwaslab": "4.1.9",
+                    "python": "3.12.13"
+                },
+                "GWASLAB_METAANALYZE": {
+                    "gwaslab": "4.1.9",
+                    "python": "3.12.13"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "timestamp": "2026-09-25T12:28:25.626722806",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "internal-versions": {
+        "content": [
+            {
+                "CUSTOM_GCTAMERGEGRMPARTS": {
+                    "coreutils": 9.5
+                },
+                "FINALISE_META_ANALYSIS": {
+                    "pandas": "2.3.3",
+                    "python": "3.12.13"
+                },
+                "GCTA_FASTGWA": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_MAKEBKSPARSE": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_MAKEGRMPART": {
+                    "gcta": "1.94.1"
+                },
+                "GWASLAB_HARMONIZE": {
+                    "gwaslab": "4.1.9",
+                    "python": "3.12.13"
+                },
+                "GWASLAB_METAANALYZE": {
+                    "gwaslab": "4.1.9",
+                    "python": "3.12.13"
+                },
+                "LDAK_SUMCORS": {
+                    "ldak": 6.3
+                },
+                "LDAK_SUMHER": {
+                    "ldak": 6.3
+                },
+                "LDSC_H2": {
+                    "ldsc": "3.0.2",
+                    "python": "3.9.13"
+                },
+                "LDSC_MUNGESUMSTATS": {
+                    "ldsc": "3.0.2",
+                    "python": "3.9.13"
+                },
+                "LDSC_RG": {
+                    "ldsc": "3.0.2",
+                    "python": "3.9.13"
+                },
+                "METASOFT_RE2": {
+                    "java": "17.0.20.1",
+                    "metasoft": "2.0.1"
+                },
+                "PREPARE_GENOTYPE_SOURCE": {
+                    "python": "3.14.5"
+                },
+                "PREPARE_LDAK_SUMMARY_STATISTICS": {
+                    "python": "3.14.5"
+                },
+                "PREPARE_PHENOTYPE_INPUTS": {
+                    "python": "3.14.5"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "timestamp": "2026-09-25T12:28:49.626109802",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "mixed-versions": {
+        "content": [
+            {
+                "CUSTOM_GCTAMERGEGRMPARTS": {
+                    "coreutils": 9.5
+                },
+                "CUSTOM_PREPAREMRMEGAINPUT": {
+                    "python": "3.14.5"
+                },
+                "FINALISE_META_ANALYSIS": {
+                    "pandas": "2.3.3",
+                    "python": "3.12.13"
+                },
+                "GCTA_FASTGWA": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_MAKEBKSPARSE": {
+                    "gcta": "1.94.1"
+                },
+                "GCTA_MAKEGRMPART": {
+                    "gcta": "1.94.1"
+                },
+                "GWASLAB_HARMONIZE": {
+                    "gwaslab": "4.1.9",
+                    "python": "3.12.13"
+                },
+                "GWASLAB_METAANALYZE": {
+                    "gwaslab": "4.1.9",
+                    "python": "3.12.13"
+                },
+                "METASOFT_RE2": {
+                    "java": "17.0.20.1",
+                    "metasoft": "2.0.1"
+                },
+                "MRMEGA": {
+                    "mrmega": 0.2
+                },
+                "PREPARE_GENOTYPE_SOURCE": {
+                    "python": "3.14.5"
+                },
+                "PREPARE_PHENOTYPE_INPUTS": {
+                    "python": "3.14.5"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "timestamp": "2026-09-25T12:29:49.916400632",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

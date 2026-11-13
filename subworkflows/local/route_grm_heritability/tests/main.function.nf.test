@@ -1,0 +1,107 @@
+nextflow_function {
+
+    name "Test LDAK adjustment artifact identity"
+    script "../main.nf"
+    tag "function"
+    tag "heritability"
+    tag "ldak"
+
+    test("effective adjustment samples are identified independently of phenotype values") {
+        function "getLdakAdjustmentSampleIdentity"
+
+        when {
+            function {
+                """
+                input[0] = file('${RELATIONAL.resource(outputDir, 'adjustment-phenotype-a.pheno', 'FID1\tIID1\t1.24\n')}', checkIfExists: true)
+                input[1] = []
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == '935b23e25b3b' },
+            )
+        }
+    }
+
+    test("an adjusted child contains exactly parent subset covariate and native-option identity") {
+        function "buildLdakAdjustmentRequest"
+
+        when {
+            function {
+                """
+                input[0] = 'parent-a'
+                input[1] = file('${RELATIONAL.resource(outputDir, 'adjustment-phenotype-b.pheno', 'FID1\tIID1\t0.81\n')}', checkIfExists: true)
+                input[2] = []
+                input[3] = file('${RELATIONAL.resource(outputDir, 'adjustment-covariates-a.qcovar', 'FID1\tIID1\t0.5\t1.75\n')}', checkIfExists: true)
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result.layer == 'derived' },
+                { assert function.result.type == 'ldak_adjusted' },
+                { assert function.result.parent_key == 'parent-a' },
+                { assert function.result.settings == [
+                    sample_subset: '935b23e25b3b',
+                    adjustment_covariates: [sha256: '310950ac9205c766a9704cf90b936760f012a717f9363784f7773e7929aadf7e'],
+                    native_options: [],
+                ] },
+                { assert function.result.key == '6600b36c7a4b' },
+                { assert !function.result.toString().contains('estimator') },
+                { assert !function.result.toString().contains('analysis') },
+                { assert !function.result.toString().contains('publication') },
+            )
+        }
+    }
+
+    test("a different parent is a different adjusted child") {
+        function "buildLdakAdjustmentRequest"
+
+        when {
+            function {
+                """
+                input[0] = 'parent-b'
+                input[1] = file('${RELATIONAL.resource(outputDir, 'adjustment-phenotype-c.pheno', 'FID1\tIID1\t0.81\n')}', checkIfExists: true)
+                input[2] = []
+                input[3] = file('${RELATIONAL.resource(outputDir, 'adjustment-covariates-b.qcovar', 'FID1\tIID1\t0.5\t1.75\n')}', checkIfExists: true)
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result.key == '5197277eb479' },
+                { assert function.result.key != '6600b36c7a4b' },
+            )
+        }
+    }
+
+    test("different adjustment covariate content is a different adjusted child") {
+        function "buildLdakAdjustmentRequest"
+
+        when {
+            function {
+                """
+                input[0] = 'parent-a'
+                input[1] = file('${RELATIONAL.resource(outputDir, 'adjustment-phenotype-d.pheno', 'FID1\tIID1\t0.81\n')}', checkIfExists: true)
+                input[2] = []
+                input[3] = file('${RELATIONAL.resource(outputDir, 'adjustment-covariates-changed.qcovar', 'FID1\tIID1\t0.75\t1.75\n')}', checkIfExists: true)
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result.settings.adjustment_covariates.sha256 == '71cbd47990374f877274f29c0b7342fa7dfb75c0bf46f74f0f8d572d80baae90' },
+                { assert function.result.key != '6600b36c7a4b' },
+            )
+        }
+    }
+}

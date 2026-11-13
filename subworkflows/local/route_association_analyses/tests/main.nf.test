@@ -1,0 +1,507 @@
+nextflow_workflow {
+
+    name "Test association analyses route"
+    script "../main.nf"
+    workflow "ROUTE_ASSOCIATION_ANALYSES"
+    tag "subworkflow"
+    tag "subworkflows_local"
+    tag "association"
+    tag "regenie"
+    tag "ldak"
+    tag "gcta"
+
+    // Every case is stubbed, so the staged genotypes, phenotypes, covariates, matrices and predictor lists only
+    // have to exist and to be byte-stable where a fit reuse key digests them. What is under test is the routing:
+    // that each method runs exactly for the analyses that selected it, that an analysis absent from the
+    // optional covariate stream still reaches its method through the remainder join, that scientifically
+    // identical analyses share one Step 1 fit without the fit key ever reaching the emitted metadata, that a
+    // relationship-scoped genotype row never enters an association, and that an absent optional file stays
+    // `[]`. The scientific content is covered end to end by `tests/association_*.nf.test`,
+    // `tests/relational_*.nf.test` and `tests/default.nf.test`.
+    def TESTS = { project_dir -> "${project_dir}/subworkflows/local/route_association_analyses/tests" }
+    def RESOURCE = { project_dir, name -> "file('${TESTS(project_dir)}/${name}', checkIfExists: true)" }
+
+    // A validated unary analysis unit as `VALIDATE_GWAS_INPUT` hands it over. No `relationship_id`: a unary row
+    // never has one, and the per-analysis call shape assembled inside the controller excludes the rows that do.
+    def analysisMeta = { analysis_id, association_methods, options = [:] ->
+        """[
+            id: '${analysis_id}',
+            cohort: '${options.cohort ?: 'cohort_a'}',
+            trait: '${options.trait ?: "TRAIT_${analysis_id}"}',
+            is_binary: ${options.is_binary ?: false},
+            association_methods: [${association_methods.collect { method -> "'${method}'" }.join(', ')}],
+            heritability_methods: [],
+            method_options: [
+                regenie: [step1_bsize: 100, firth: false, firth_approx: false, firth_p_threshold: 0.05, min_mac: null],
+                ldak: [
+                    kvik_step1_subset: '${options.kvik_step1_subset ?: 'all'}',
+                    kvik_step2_keep: [],
+                ],
+            ],
+        ]"""
+    }
+
+    // A relationship request as the spine routes it to LD- and MAF-stratified matrix construction. It reaches
+    // the shared genotype streams and carries no association methods at all.
+    def relationshipMeta = { relationship_id ->
+        """[
+            id: 'gcta_bivariate_reml_ldms--${relationship_id}',
+            request_id: 'gcta_bivariate_reml_ldms--${relationship_id}',
+            relationship_id: '${relationship_id}',
+            method: 'gcta_bivariate_reml_ldms',
+            cohort: 'cohort_a',
+            matrix_kind: 'gcta_ldms',
+        ]"""
+    }
+
+    // The native stream is format-polymorphic: primary genotype, variant file, sample file. A PLINK 2 cohort
+    // arrives as pgen/pvar/psam and a PLINK 1 cohort as bed/bim/fam, and REGENIE and fastGWA select their
+    // native flag from the primary member's extension rather than from anything this controller states.
+    def plink2Genotypes = { project_dir, meta ->
+        """[
+            ${meta},
+            ${RESOURCE(project_dir, 'cohort.pgen')},
+            ${RESOURCE(project_dir, 'cohort.pvar')},
+            ${RESOURCE(project_dir, 'cohort.psam')},
+        ]"""
+    }
+
+    def plink1Genotypes = { project_dir, meta ->
+        """[
+            ${meta},
+            ${RESOURCE(project_dir, 'cohort.bed')},
+            ${RESOURCE(project_dir, 'cohort.bim')},
+            ${RESOURCE(project_dir, 'cohort.fam')},
+        ]"""
+    }
+
+    // The two cohort-scoped view-key channels. The PLINK 1 one is partial by design: it holds an element for
+    // exactly the cohorts that have a PLINK 1 view, which is exactly the set reaching `ch_plink1_genotypes`.
+
+    def plink1ViewKeys = { cohorts -> cohorts ? "channel.of(${cohorts.collect { cohort -> "['${cohort}', 'plink1_view_${cohort}']" }.join(', ')})" : 'channel.empty()' }
+
+    // The headered REGENIE call shape. The merged covariate design is optional and is folded on with a
+    // remainder join, so an analysis simply absent from that stream still reaches the method.
+    def phenotype = { project_dir, meta -> "[${meta}, ${RESOURCE(project_dir, 'analysis.pheno')}]" }
+    def covariates = { project_dir, meta -> "[${meta}, ${RESOURCE(project_dir, 'analysis.covar')}]" }
+
+    // The headerless call shape LDAK-KVIK and GCTA fastGWA share. An absent optional covariate is `[]`.
+    def headerlessPhenotype = { project_dir, meta, quant_covariates = 'analysis.qcovar', cat_covariates = 'analysis.headerless.covar' ->
+        """[
+            ${meta},
+            ${RESOURCE(project_dir, 'analysis.headerless.pheno')},
+            ${quant_covariates ? RESOURCE(project_dir, quant_covariates) : '[]'},
+            ${cat_covariates ? RESOURCE(project_dir, cat_covariates) : '[]'},
+        ]"""
+    }
+
+    def sparseMatrix = { project_dir, meta ->
+        """[
+            ${meta},
+            [
+                ${RESOURCE(project_dir, 'sparse.grm.id')},
+                ${RESOURCE(project_dir, 'sparse.grm.sp')},
+            ],
+        ]"""
+    }
+
+    test("each association method runs exactly for the analyses that selected it") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                def alpha = ${analysisMeta('alpha', ['regenie'])}
+                def beta  = ${analysisMeta('beta', ['ldak_kvik'], [kvik_step1_subset: 'provided'])}
+                def gamma = ${analysisMeta('gamma', ['gcta_fastgwa'])}
+
+                input[0] = channel.of(
+                    ${plink2Genotypes(projectDir, "alpha")},
+                    ${plink2Genotypes(projectDir, "beta")},
+                    ${plink2Genotypes(projectDir, "gamma")},
+                )
+                input[1] = channel.of(
+                    ${plink1Genotypes(projectDir, "alpha")},
+                    ${plink1Genotypes(projectDir, "beta")},
+                    ${plink1Genotypes(projectDir, "gamma")},
+                )
+
+                input[2] = ${plink1ViewKeys(['cohort_a'])}
+                input[3] = channel.of(
+                    ${phenotype(projectDir, "alpha")},
+                    ${phenotype(projectDir, "beta")},
+                    ${phenotype(projectDir, "gamma")},
+                )
+                input[4] = channel.of(
+                    ${covariates(projectDir, "alpha")},
+                    ${covariates(projectDir, "beta")},
+                    ${covariates(projectDir, "gamma")},
+                )
+                input[5] = channel.of(
+                    ${headerlessPhenotype(projectDir, "alpha")},
+                    ${headerlessPhenotype(projectDir, "beta")},
+                    ${headerlessPhenotype(projectDir, "gamma")},
+                )
+                input[6] = channel.of(${sparseMatrix(projectDir, "gamma")})
+                input[7] = channel.of(
+                    [alpha, []],
+                    [beta, ${RESOURCE(projectDir, 'predictors.extract')}],
+                    [gamma, []],
+                )
+                input[8] = 200
+                input[9] = 'standard'
+                input[10] = null
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                // Selection is per method, out of the shared prepared streams. No analysis acquires a method it
+                // did not declare, and the relatedness matrix reaches only the fastGWA analysis.
+                { assert TRACE.count(workflow, 'REGENIE_STEP1') == 1 },
+                { assert TRACE.count(workflow, 'REGENIE_STEP2') == 1 },
+                { assert TRACE.tags(workflow, 'REGENIE_STEP2') == ['alpha'] },
+                { assert TRACE.count(workflow, 'REGENIE_SPLITL0') == 0 },
+                { assert TRACE.count(workflow, 'LDAK_KVIKSTEP1') == 1 },
+                { assert TRACE.count(workflow, 'LDAK_KVIKSTEP2') == 1 },
+                { assert TRACE.tags(workflow, 'LDAK_KVIKSTEP2') == ['beta:beta'] },
+                // `provided` supplies its own predictor list, so the thinning step is not reached.
+                { assert TRACE.count(workflow, 'LDAK_THINCOMMON') == 0 },
+                { assert TRACE.count(workflow, 'GCTA_FASTGWA') == 1 },
+                { assert TRACE.tags(workflow, 'GCTA_FASTGWA') == ['gamma'] },
+                // One record per analysis per method actually exercised, each naming its producer.
+                { assert workflow.out.association_results.collect { meta, _sumstats -> "${meta.id}/${meta.method}" }.sort() == ['alpha/regenie', 'beta/ldak_kvik', 'gamma/gcta_fastgwa'] },
+                // The analysis identity is untouched: the method is an added key, not a replacement.
+                { assert workflow.out.association_results.every { meta, _sumstats -> meta.cohort == 'cohort_a' && meta.trait == "TRAIT_${meta.id}" } },
+                // Publication is analysis-addressed, method-directory-keyed and unchanged by the controller
+                // scope: every association selector in `conf/modules/**` is a bare leaf name.
+                { assert new File("${params.outdir}/association/regenie/alpha/alpha.regenie.gz").isFile() },
+                { assert new File("${params.outdir}/association/ldak_kvik/beta/beta.ldak_kvik.step2.assoc").isFile() },
+                { assert new File("${params.outdir}/association/gcta_fastgwa/gamma/gamma.gcta_fastgwa.fastGWA").isFile() },
+            )
+        }
+    }
+
+    test("an analysis absent from the optional covariate stream still reaches REGENIE through the remainder join") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                def alpha = ${analysisMeta('alpha', ['regenie'])}
+                def beta  = ${analysisMeta('beta', ['regenie'], [is_binary: true])}
+
+                input[0] = channel.of(
+                    ${plink2Genotypes(projectDir, "alpha")},
+                    ${plink2Genotypes(projectDir, "beta")},
+                )
+                input[1] = channel.empty()
+
+                input[2] = ${plink1ViewKeys([])}
+                input[3] = channel.of(
+                    ${phenotype(projectDir, "alpha")},
+                    ${phenotype(projectDir, "beta")},
+                )
+                input[4] = channel.of(${covariates(projectDir, "alpha")})
+                input[5] = channel.empty()
+                input[6] = channel.empty()
+                input[7] = channel.empty()
+                input[8] = 200
+                input[9] = 'standard'
+                input[10] = null
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                // `alpha` and `beta` differ in covariate presence and in `is_binary`, so the route's Step 1
+                // reuse key separates them and each analysis gets its own fit and its own test.
+                { assert TRACE.count(workflow, 'REGENIE_STEP1') == 2 },
+                { assert TRACE.count(workflow, 'REGENIE_STEP2') == 2 },
+                { assert TRACE.tags(workflow, 'REGENIE_STEP2').sort() == ['alpha', 'beta'] },
+                { assert workflow.out.association_results.size() == 2 },
+                { assert workflow.out.association_results.collect { meta, sumstats -> "${meta.id}:${file(sumstats).name}" }.sort() == ['alpha:alpha.regenie_PHENO.regenie.gz', 'beta:beta.regenie_PHENO.regenie.gz'] },
+                { assert workflow.out.association_results.every { meta, _sumstats -> meta.method == 'regenie' } },
+                // `beta` declared no covariates and is simply absent from the optional stream. The remainder
+                // join still delivers it, with `[]`, which stages nothing.
+                { assert new File("${params.outdir}/association/regenie/beta/beta.regenie.gz").isFile() },
+            )
+        }
+    }
+
+    test("scientifically identical analyses retain distinct declared fits and unchanged focal metadata") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                def alpha = ${analysisMeta('alpha', ['regenie', 'ldak_kvik'], [trait: 'SHARED_TRAIT'])}
+                def beta  = ${analysisMeta('beta', ['regenie', 'ldak_kvik'], [trait: 'SHARED_TRAIT'])}
+
+                input[0] = channel.of(
+                    ${plink2Genotypes(projectDir, "alpha")},
+                    ${plink2Genotypes(projectDir, "beta")},
+                )
+                input[1] = channel.of(
+                    ${plink1Genotypes(projectDir, "alpha")},
+                    ${plink1Genotypes(projectDir, "beta")},
+                )
+
+                input[2] = ${plink1ViewKeys(['cohort_a'])}
+                input[3] = channel.of(
+                    ${phenotype(projectDir, "alpha")},
+                    ${phenotype(projectDir, "beta")},
+                )
+                input[4] = channel.of(
+                    ${covariates(projectDir, "alpha")},
+                    ${covariates(projectDir, "beta")},
+                )
+                input[5] = channel.of(
+                    ${headerlessPhenotype(projectDir, "alpha")},
+                    ${headerlessPhenotype(projectDir, "beta")},
+                )
+                input[6] = channel.empty()
+                input[7] = channel.of([alpha, []], [beta, []])
+                input[8] = 200
+                input[9] = 'standard'
+                input[10] = null
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                // Each analysis declares a separate fit even when the scientific inputs agree.
+                { assert TRACE.count(workflow, 'REGENIE_STEP1') == 2 },
+                { assert TRACE.count(workflow, 'REGENIE_STEP2') == 2 },
+                { assert TRACE.tags(workflow, 'REGENIE_STEP2') == ['alpha', 'beta'] },
+                { assert TRACE.count(workflow, 'LDAK_KVIKSTEP1') == 2 },
+                { assert TRACE.count(workflow, 'LDAK_KVIKSTEP2') == 2 },
+                { assert TRACE.tags(workflow, 'LDAK_KVIKSTEP2') == ['alpha:alpha', 'beta:beta'] },
+                { assert workflow.out.association_results.collect { meta, _sumstats -> "${meta.id}/${meta.method}" }.sort() == ['alpha/ldak_kvik', 'alpha/regenie', 'beta/ldak_kvik', 'beta/regenie'] },
+                // The emitted metadata is the focal analysis identity plus exactly one added key. No prediction
+                // key, no synthetic fit id and no fastGWA join key survives.
+                { assert workflow.out.association_results.every { meta, _sumstats ->
+                    meta.keySet().sort() == ['association_methods', 'cohort', 'heritability_methods', 'id', 'is_binary', 'method', 'method_options', 'trait']
+                } },
+                { assert workflow.out.association_results.every { meta, _sumstats -> meta.id in ['alpha', 'beta'] && meta.trait == 'SHARED_TRAIT' } },
+            )
+        }
+    }
+
+    test("a relationship-scoped genotype row never enters an association") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                def alpha        = ${analysisMeta('alpha', ['gcta_fastgwa'])}
+                def relationship = ${relationshipMeta('pair_one')}
+
+                input[0] = channel.of(
+                    ${plink2Genotypes(projectDir, "alpha")},
+                    ${plink2Genotypes(projectDir, "relationship")},
+                )
+                input[1] = channel.of(
+                    ${plink1Genotypes(projectDir, "alpha")},
+                    ${plink1Genotypes(projectDir, "relationship")},
+                )
+
+                input[2] = ${plink1ViewKeys(['cohort_a'])}
+                input[3] = channel.of(${phenotype(projectDir, "alpha")})
+                input[4] = channel.of(${covariates(projectDir, "alpha")})
+                input[5] = channel.of(${headerlessPhenotype(projectDir, "alpha")})
+                input[6] = channel.of(${sparseMatrix(projectDir, "alpha")})
+                input[7] = channel.of([alpha, []])
+                input[8] = 200
+                input[9] = 'standard'
+                input[10] = null
+                """
+            }
+        }
+
+        then {
+            // A relationship request reaches the shared genotype streams because the spine routes it to matrix
+            // construction. It has no phenotype and no association methods at all, so the headered call shape
+            // excludes it on `relationship_id` and every selected-method test rejects it — the guarded one on
+            // the PLINK 1 stream included. The strict phenotype join must not see it either.
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'GCTA_FASTGWA') == 1 },
+                { assert TRACE.tags(workflow, 'GCTA_FASTGWA') == ['alpha'] },
+                { assert TRACE.count(workflow, 'LDAK_KVIKSTEP1') == 0 },
+                { assert TRACE.count(workflow, 'REGENIE_STEP1') == 0 },
+                { assert workflow.out.association_results.collect { meta, _sumstats -> "${meta.id}/${meta.method}" } == ['alpha/gcta_fastgwa'] },
+                { assert workflow.out.association_results.every { meta, _sumstats -> !meta.relationship_id } },
+            )
+        }
+    }
+
+    test("a run declaring no association method executes nothing and emits nothing") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                def alpha = ${analysisMeta('alpha', [])}
+
+                input[0] = channel.of(${plink2Genotypes(projectDir, "alpha")})
+                input[1] = channel.empty()
+
+                input[2] = ${plink1ViewKeys([])}
+                input[3] = channel.of(${phenotype(projectDir, "alpha")})
+                input[4] = channel.empty()
+                input[5] = channel.of(${headerlessPhenotype(projectDir, "alpha", null, null)})
+                input[6] = channel.empty()
+                input[7] = channel.of([alpha, []])
+                input[8] = 200
+                input[9] = 'standard'
+                input[10] = null
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'REGENIE_STEP1') == 0 },
+                { assert TRACE.count(workflow, 'REGENIE_STEP2') == 0 },
+                { assert TRACE.count(workflow, 'LDAK_THINCOMMON') == 0 },
+                { assert TRACE.count(workflow, 'LDAK_KVIKSTEP1') == 0 },
+                { assert TRACE.count(workflow, 'LDAK_KVIKSTEP2') == 0 },
+                { assert TRACE.count(workflow, 'GCTA_FASTGWA') == 0 },
+                { assert workflow.out.association_results.size() == 0 },
+            )
+        }
+    }
+    test("a cohort with a PLINK 1 view and a cohort without one run in the same execution") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                def kvik    = ${analysisMeta('kvik', ['ldak_kvik'], [cohort: 'cohort_kvik'])}
+                def regenie = ${analysisMeta('regenie_only', ['regenie'], [cohort: 'cohort_regenie'])}
+
+                input[0] = channel.of(
+                    ${plink2Genotypes(projectDir, "kvik")},
+                    ${plink2Genotypes(projectDir, "regenie")},
+                )
+                input[1] = channel.of(${plink1Genotypes(projectDir, "kvik")})
+
+                input[2] = ${plink1ViewKeys(['cohort_kvik'])}
+                input[3] = channel.of(
+                    ${phenotype(projectDir, "kvik")},
+                    ${phenotype(projectDir, "regenie")},
+                )
+                input[4] = channel.of(
+                    ${covariates(projectDir, "kvik")},
+                    ${covariates(projectDir, "regenie")},
+                )
+                input[5] = channel.of(${headerlessPhenotype(projectDir, "kvik")})
+                input[6] = channel.empty()
+                input[7] = channel.of([kvik, []])
+                input[8] = 200
+                input[9] = 'standard'
+                input[10] = null
+                """
+            }
+        }
+
+        then {
+            // The PLINK 1 key channel is partial by design: `cohort_regenie` is absent from it. Both routes
+            // must still run, because each is combined only with the key channel that is total for its own
+            // inputs. A single stream carrying a nullable PLINK 1 key would throw here instead.
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'LDAK_KVIKSTEP2') == 1 },
+                { assert TRACE.count(workflow, 'REGENIE_STEP2') == 1 },
+                { assert TRACE.tags(workflow, 'REGENIE_STEP2') == ['regenie_only'] },
+                { assert workflow.out.association_results.collect { meta, _sumstats -> "${meta.id}/${meta.method}" }.sort() == ['kvik/ldak_kvik', 'regenie_only/regenie'] },
+            )
+        }
+    }
+
+    test("a native PLINK 1 cohort reaches REGENIE and fastGWA without any PLINK 2 bundle") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                def alpha = ${analysisMeta('alpha', ['regenie'])}
+                def gamma = ${analysisMeta('gamma', ['gcta_fastgwa'])}
+
+                input[0] = channel.of(
+                    ${plink1Genotypes(projectDir, "alpha")},
+                    ${plink1Genotypes(projectDir, "gamma")},
+                )
+                input[1] = channel.of(
+                    ${plink1Genotypes(projectDir, "alpha")},
+                    ${plink1Genotypes(projectDir, "gamma")},
+                )
+
+                input[2] = ${plink1ViewKeys(['cohort_a'])}
+                input[3] = channel.of(
+                    ${phenotype(projectDir, "alpha")},
+                    ${phenotype(projectDir, "gamma")},
+                )
+                input[4] = channel.of(
+                    ${covariates(projectDir, "alpha")},
+                    ${covariates(projectDir, "gamma")},
+                )
+                input[5] = channel.of(${headerlessPhenotype(projectDir, "gamma")})
+                input[6] = channel.of(${sparseMatrix(projectDir, "gamma")})
+                input[7] = channel.of([gamma, []])
+                input[8] = 200
+                input[9] = 'standard'
+                input[10] = null
+                """
+            }
+        }
+
+        then {
+            // Both consumers of the native stream are format-polymorphic, so a cohort supplied as BED/BIM/FAM
+            // reaches them with its own members and no PLINK 2 bundle is ever built for it.
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'REGENIE_STEP1') == 1 },
+                { assert TRACE.count(workflow, 'REGENIE_STEP2') == 1 },
+                { assert TRACE.count(workflow, 'GCTA_FASTGWA') == 1 },
+                { assert workflow.out.association_results.collect { meta, _sumstats -> "${meta.id}/${meta.method}" }.sort() == ['alpha/regenie', 'gamma/gcta_fastgwa'] },
+            )
+        }
+    }
+}

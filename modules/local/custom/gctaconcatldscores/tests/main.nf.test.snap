@@ -1,0 +1,54 @@
+{
+    "per-chromosome table join - stub": {
+        "content": [
+            {
+                "ld_scores": [
+                    [
+                        {
+                            "id": "plan"
+                        },
+                        "plan_gcta_ld.score.ld:md5,f284adb138e63e590d7e32198570e87d"
+                    ]
+                ],
+                "versions_coreutils": [
+                    [
+                        "CUSTOM_GCTACONCATLDSCORES",
+                        "coreutils",
+                        "9.5"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-11-09T09:00:54.979117016",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.10.3"
+        }
+    },
+    "per-chromosome tables join in supplied order under one header": {
+        "content": [
+            {
+                "ld_scores": [
+                    [
+                        {
+                            "id": "plan"
+                        },
+                        "plan_gcta_ld.score.ld:md5,f284adb138e63e590d7e32198570e87d"
+                    ]
+                ],
+                "versions_coreutils": [
+                    [
+                        "CUSTOM_GCTACONCATLDSCORES",
+                        "coreutils",
+                        "9.5"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-11-09T09:00:52.185167641",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.10.3"
+        }
+    }
+}

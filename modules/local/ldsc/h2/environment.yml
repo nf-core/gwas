@@ -1,0 +1,20 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/modules/environment-schema.json
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - conda-forge::python=3.9.13
+  - conda-forge::pip=24.0
+  - conda-forge::bitarray=2.6.0
+  - conda-forge::nose=1.3.7
+  - conda-forge::numpy=1.23.3
+  - conda-forge::pandas=1.5.0
+  - bioconda::pybedtools=0.9.1
+  - bioconda::pysam=0.19.1
+  - conda-forge::python-dateutil=2.8.2
+  - conda-forge::pytz=2022.4
+  - conda-forge::scipy=1.9.2
+  - conda-forge::six=1.16.0
+  - pip:
+      - "ldsc @ https://github.com/CBIIT/ldsc/archive/6c673952cee74bd5c57aef1555a03b1c015399a0.tar.gz#sha256=9b3f0c26c181fdcd5c668183fa5ef6f4d0df28a371831f49f1b6254402ce2321"

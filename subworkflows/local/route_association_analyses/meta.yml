@@ -1,0 +1,81 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
+name: route_association_analyses
+description: Route nf-core/gwas unary analysis units through the association methods they selected — REGENIE, LDAK-KVIK and GCTA fastGWA-MLM — and converge the three native result contracts on one raw-association stream naming the producing method
+keywords:
+  - gwas
+  - association
+  - regenie
+  - fastgwa
+components:
+  - gcta/fastgwa
+  - plink_association_regenie
+  - route_ldak_kvik_associations
+input:
+  - ch_native_genotypes:
+      description: The native bundle each distinct cohort was prepared in, fanned out one element per genotype request and carrying that request's meta. The member order is format-polymorphic — primary genotype, variant file, sample file — and REGENIE and fastGWA both select their native flag from the primary member's extension, so a PLINK 1 cohort reaches them as bed/bim/fam and a PLINK 2 cohort as pgen/pvar/psam without conversion. The stream also carries the relationship-scoped rows the spine routes to LD- and MAF-stratified matrix construction; the per-analysis call shape assembled here excludes them on `meta.relationship_id`
+      structure: "[map meta, path primary_genotype, path variant_file, path sample_file]"
+      pattern: "*.{bed,bim,fam,pgen,pvar,psam}"
+      ontologies: []
+  - ch_plink1_genotypes:
+      description: The PLINK 1 view of a prepared cohort, present only for a request whose selected method reads PLINK 1. LDAK-KVIK is one such consumer. A relationship-scoped row can reach this stream and carries no association methods at all, so the selected-method test applied to it is guarded
+      structure: "[map meta, path bed, path bim, path fam]"
+      pattern: "*.{bed,bim,fam}"
+      ontologies: []
+  - ch_cohort_plink1_view_keys:
+      description: One PLINK 1 view key per cohort that has a PLINK 1 view. It is LDAK-KVIK's shared thin-common resource identity. The channel is partial by design and total for `ch_plink1_genotypes`, because preparation emits both from one stream
+      structure: "[val cohort_id, val plink1_view_key]"
+      ontologies: []
+  - ch_phenotypes:
+      description: The headered canonical phenotype of every analysis unit, keyed one-to-one on the analysis meta. REGENIE reads a header row, unlike the GCTA and LDAK families
+      structure: "[map meta, path phenotype]"
+      pattern: "*.pheno"
+      ontologies: []
+  - ch_covariates:
+      description: The headered merged covariate design of an analysis unit, present only for a unit that declared covariates. It is folded onto the per-analysis call shape with a remainder join, so an analysis without one still reaches REGENIE with `[]`, which stages nothing and makes the module omit the covariate flag
+      structure: "[map meta, path covariates]"
+      pattern: "*.covar"
+      ontologies: []
+  - ch_headerless_phenotypes:
+      description: The headerless canonical phenotype and covariate serialisations of every analysis unit, keyed one-to-one on the analysis meta. LDAK-KVIK and GCTA fastGWA reject a header row and keep quantitative and categorical covariates separate. An absent optional covariate file is already `[]` on arrival, never a placeholder file and never a null path
+      structure: "[map meta, path phenotype, path quant_covariates|[], path cat_covariates|[]]"
+      pattern: "*.{pheno,qcovar,covar}"
+      ontologies: []
+  - ch_sparse_matrices:
+      description: The sparse GCTA relatedness matrices built by the spine, already fanned out one element per requesting analysis. Present only for an analysis that selected `gcta_fastgwa`, because the matrix kind is derived from the selected methods. Matrix construction is not owned here
+      structure: "[map meta, [ path grm_file, ... ]]"
+      pattern: "*.grm.{id,sp}"
+      ontologies: []
+  - ch_predictor_extracts:
+      description: The optional LDAK predictor list each analysis unit declared on its relational row, already `[]` when absent. It remains an explicit tuple member so Nextflow stages it, while shared predictor selection remains owned by the LDAK-KVIK route. Rows for analyses that did not select `ldak_kvik` are ignored
+      structure: "[map meta, path extract|[]]"
+      pattern: "*.{txt,extract}"
+      ontologies: []
+  - regenie_step2_bsize:
+      description: The REGENIE Step 2 block size, an execution control independent of the explicit Step 1 producer reference
+      structure: "val step2_bsize"
+      ontologies: []
+  - regenie_step1_mode:
+      description: The REGENIE Step 1 execution mode, `standard` or `chunked`. An execution control attached to each explicitly declared fit
+      structure: "val step1_mode"
+      ontologies: []
+  - regenie_step1_jobs:
+      description: The number of REGENIE Step 1 chunk jobs, required in `chunked` mode and `null` in `standard` mode. An execution control attached to each explicitly declared fit
+      structure: "val step1_jobs"
+      ontologies: []
+output:
+  - association_results:
+      description: |
+        The raw native summary statistics of every association actually exercised, one record per analysis unit per
+        selected association method. `meta` is the focal analysis identity with `meta.method` added — one of
+        `regenie`, `ldak_kvik` or `gcta_fastgwa` — because the analysis is what the published summary-statistics
+        directory is keyed by and the method is what distinguishes the files inside it. Explicit REGENIE and LDAK-KVIK
+        producer references and the fastGWA analysis join key remain tuple members within their callers;
+        emitted metadata contains the focal analysis and its producing method.
+        The tables are not yet harmonised or canonical
+      structure: "[map meta, path raw_summary_statistics]"
+      pattern: "*.{regenie.gz,tsv,fastGWA}"
+      ontologies: []
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"

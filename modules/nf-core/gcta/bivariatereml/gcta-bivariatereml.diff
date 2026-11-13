@@ -1,0 +1,95 @@
+Changes in component 'nf-core/gcta/bivariatereml'
+Changes in 'gcta/bivariatereml/main.nf':
+--- modules/nf-core/gcta/bivariatereml/main.nf
++++ modules/nf-core/gcta/bivariatereml/main.nf
+@@ -22,6 +22,7 @@
+ 
+     script:
+     def args = task.ext.args ?: ''
++    def dense_grm_prefix = grm_files.find { grm_file -> grm_file.name.endsWith('.grm.bin') }.name.replaceFirst(/\.grm\.bin$/, '')
+     def prefix = task.ext.prefix ?: "${meta.id}"
+     def reml_bivar_param = phenotype_col1 && phenotype_col2 ? "--reml-bivar ${phenotype_col1} ${phenotype_col2}" : "--reml-bivar"
+     def qcovar_param = quant_covariates_file ? "--qcovar ${quant_covariates_file}" : ''
+@@ -29,7 +30,7 @@
+     """
+     gcta \\
+         ${reml_bivar_param} \\
+-        --grm ${meta.id} \\
++        --grm "${dense_grm_prefix}" \\
+         --pheno "${phenotype_file}" \\
+         ${qcovar_param} \\
+         ${covar_param} \\
+
+'modules/nf-core/gcta/bivariatereml/environment.yml' is unchanged
+Changes in 'gcta/bivariatereml/meta.yml':
+--- modules/nf-core/gcta/bivariatereml/meta.yml
++++ modules/nf-core/gcta/bivariatereml/meta.yml
+@@ -23,8 +23,8 @@
+         type: map
+         description: |
+           Groovy map containing dense GRM metadata
+-          `meta.id` must be the GRM basename passed to `--grm`
+-          (for example `plink_simulated_dense` for `plink_simulated_dense.grm.{id,bin,N.bin}`)
++          The dense GRM basename passed to `--grm` is taken from the staged
++          `.grm.bin` file, while `meta.id` names the outputs
+     - grm_files:
+         type: file
+         description: Dense GRM bundle containing sample identifier, binary matrix,
+
+Changes in 'gcta/bivariatereml/tests/main.nf.test':
+--- modules/nf-core/gcta/bivariatereml/tests/main.nf.test
++++ modules/nf-core/gcta/bivariatereml/tests/main.nf.test
+@@ -177,26 +177,31 @@
+         }
+     }
+ 
+-    test("homo_sapiens popgen - bivariate phenotype fails when meta.id is not GRM basename") {
+-        when {
+-            process {
+-                """
+-                mismatched_dense_grm = GCTA_MAKEGRM_DENSE.out.grm_files.map { meta, grm_files ->
+-                    [[ id:meta.id + '_mismatched' ], grm_files]
++    test("homo_sapiens popgen - request identity differs from dense GRM basename") {
++        when {
++            process {
++                """
++                request_dense_grm = GCTA_MAKEGRM_DENSE.out.grm_files.map { _meta, grm_files ->
++                    [[ id:'gcta_bivariate_reml--trait1_trait2' ], grm_files]
+                 }
+ 
+-                input[0] = mismatched_dense_grm
+-                input[1] = GAWK_BIVARIATE_PHENO.out.output.map { meta, phenotype_file -> [[ id:'plink_simulated_dense_mismatched' ], phenotype_file, '', ''] }
+-                input[2] = [[ id:'plink_simulated_dense_mismatched' ], []]
+-                input[3] = [[ id:'plink_simulated_dense_mismatched' ], []]
+-                """
+-            }
+-        }
+-
+-        then {
+-            assertAll(
+-                { assert !process.success },
+-                { assert process.exitStatus != 0 }
++                input[0] = request_dense_grm
++                input[1] = GAWK_BIVARIATE_PHENO.out.output.map { _meta, phenotype_file -> [[ id:'gcta_bivariate_reml--trait1_trait2' ], phenotype_file, '', ''] }
++                input[2] = [[ id:'gcta_bivariate_reml--trait1_trait2' ], []]
++                input[3] = [[ id:'gcta_bivariate_reml--trait1_trait2' ], []]
++                """
++            }
++        }
++
++        then {
++            def command = path(process.out.log_file.get(0).get(1)).parent.resolve(".command.sh").text.replaceAll(/\s+/, " ")
++            assertAll(
++                { assert process.success },
++                { assert process.out.bivariate_results.get(0).get(0).id == 'gcta_bivariate_reml--trait1_trait2' },
++                { assert file(process.out.bivariate_results.get(0).get(1)).name == 'gcta_bivariate_reml--trait1_trait2.hsq' },
++                { assert file(process.out.log_file.get(0).get(1)).name == 'gcta_bivariate_reml--trait1_trait2.log' },
++                { assert command.contains('--grm "plink_simulated_dense"') },
++                { assert command.contains('--out "gcta_bivariate_reml--trait1_trait2"') },
+             )
+         }
+     }
+
+'modules/nf-core/gcta/bivariatereml/tests/main.nf.test.snap' is unchanged
+'modules/nf-core/gcta/bivariatereml/tests/nextflow.config' is unchanged
+************************************************************

@@ -1,0 +1,102 @@
+{
+    "homo sapiens - native": {
+        "content": [
+            {
+                "filtered_list": [
+                    [
+                        {
+                            "id": "derived"
+                        },
+                        "derived.keep:md5,c8c14b946089b7f16c1179f37fcdb8bf",
+                        "derived.lose:md5,ac7d6cbbf2def728c2a05bd8359c5fad"
+                    ]
+                ],
+                "maxrel": [
+                    [
+                        {
+                            "id": "derived"
+                        },
+                        "derived.maxrel:md5,de3165b9e5105201924a076ea72ec7ca"
+                    ]
+                ],
+                "versions_ldak6": [
+                    [
+                        "LDAK_FILTER",
+                        "ldak6",
+                        "6"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T22:48:07.161200653",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "homo sapiens - bed bim fam - stub": {
+        "content": [
+            {
+                "filtered_list": [
+                    [
+                        {
+                            "id": "derived"
+                        },
+                        "derived.keep:md5,d41d8cd98f00b204e9800998ecf8427e",
+                        "derived.lose:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "maxrel": [
+                    [
+                        {
+                            "id": "derived"
+                        },
+                        "derived.maxrel:md5,6808ca805661622ad65ae014a4b2a094"
+                    ]
+                ],
+                "versions_ldak6": [
+                    [
+                        "LDAK_FILTER",
+                        "ldak6",
+                        "6"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T22:48:25.557708124",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "homo sapiens - explicit threshold": {
+        "content": [
+            {
+                "filtered_list": [
+                    [
+                        {
+                            "id": "derived"
+                        },
+                        "derived.keep:md5,d0b73f5c806a727349f50584e8864996",
+                        "derived.lose:md5,dd48ac7fb1e33e1780bb7c71207c2bee"
+                    ]
+                ],
+                "maxrel": [
+
+                ],
+                "versions_ldak6": [
+                    [
+                        "LDAK_FILTER",
+                        "ldak6",
+                        "6"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T22:48:15.861956276",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

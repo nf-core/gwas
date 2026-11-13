@@ -1,0 +1,114 @@
+nextflow_workflow {
+    name "Test Workflow PLINK_PREPARE_GRM_LDAK"
+    script "../main.nf"
+    config "./nextflow.config"
+    workflow "PLINK_PREPARE_GRM_LDAK"
+    tag "subworkflows"
+    tag "subworkflows_nfcore"
+    tag "ldak/calckins"
+    tag "ldak/filter"
+    tag "ldak/subgrm"
+    tag "plink_prepare_grm_ldak"
+    tag "subworkflows/plink_prepare_grm_ldak"
+
+    test("homo sapiens - base only") {
+        when {
+            workflow {
+                """
+                input[0] = Channel.of([[id:'base_a'], file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bed', checkIfExists: true),
+                        file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bim', checkIfExists: true),
+                        file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.fam', checkIfExists: true), -0.25, 'producer-a'])
+                input[1] = Channel.of([[id:'weights_a'], [], 'producer-a'])
+                input[2] = Channel.empty()
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert workflow.out.base_grm.collect { it[2] }.sort() == ['producer-a'] },
+                { assert workflow.out.subset_grm.size() == 0 },
+                { assert workflow.out.subset_grm.collect { it[0].id }.sort() == [] },
+                { assert snapshot(sanitizeOutput(workflow.out)).match() }
+            )
+        }
+    }
+
+    test("homo sapiens - base only - stub") {
+        options "-stub"
+        when {
+            workflow {
+                """
+                input[0] = Channel.of([[id:'base_a'], file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bed', checkIfExists: true),
+                        file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bim', checkIfExists: true),
+                        file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.fam', checkIfExists: true), -0.25, 'producer-a'])
+                input[1] = Channel.of([[id:'weights_a'], [], 'producer-a'])
+                input[2] = Channel.empty()
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert workflow.out.base_grm.collect { it[2] }.sort() == ['producer-a'] },
+                { assert workflow.out.subset_grm.size() == 0 },
+                { assert workflow.out.subset_grm.collect { it[0].id }.sort() == [] },
+                { assert snapshot(sanitizeOutput(workflow.out)).match() }
+            )
+        }
+    }
+
+    test("homo sapiens - one producer many derivatives") {
+        when {
+            workflow {
+                """
+                input[0] = Channel.of([[id:'base_a'], file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bed', checkIfExists: true),
+                        file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bim', checkIfExists: true),
+                        file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.fam', checkIfExists: true), -0.25, 'producer-a'])
+                input[1] = Channel.of([[id:'weights_a'], [], 'producer-a'])
+                input[2] = Channel.of([[id:'subset_one'], 'producer-a'], [[id:'subset_two'], 'producer-a'])
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert workflow.out.base_grm.collect { it[2] }.sort() == ['producer-a'] },
+                { assert workflow.out.subset_grm.size() == 2 },
+                { assert workflow.out.subset_grm.collect { it[0].id }.sort() == ['subset_one', 'subset_two'] },
+                { assert snapshot(sanitizeOutput(workflow.out)).match() }
+            )
+        }
+    }
+
+    test("homo sapiens - reference routing") {
+        when {
+            workflow {
+                """
+                input[0] = Channel.of([[id:'base_a'], file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bed', checkIfExists: true),
+                        file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bim', checkIfExists: true),
+                        file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.fam', checkIfExists: true), -0.25, 'producer-a'], [[id:'base_b'], file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bed', checkIfExists: true),
+                        file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bim', checkIfExists: true),
+                        file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.fam', checkIfExists: true), -0.5, 'producer-b'])
+                input[1] = Channel.of([[id:'weights_a'], [], 'producer-a'], [[id:'weights_b'], [], 'producer-b'])
+                input[2] = Channel.of([[id:'subset_b'], 'producer-b'], [[id:'subset_a'], 'producer-a'])
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert workflow.out.base_grm.collect { it[2] }.sort() == ['producer-a', 'producer-b'] },
+                { assert workflow.out.subset_grm.size() == 2 },
+                { assert workflow.out.subset_grm.collect { it[0].id }.sort() == ['subset_a', 'subset_b'] },
+                {
+                    workflow.out.filtered_list.each { item ->
+                        def expectedParent = item[0].id == 'subset_a' ? 'base_a' : 'base_b'
+                        assert path(item[1]).parent.resolve('.command.sh').text.contains('--grm "' + expectedParent + '"')
+                    }
+                },
+                { assert snapshot(sanitizeOutput(workflow.out)).match() }
+            )
+        }
+    }
+}

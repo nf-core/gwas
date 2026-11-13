@@ -1,0 +1,43 @@
+{
+    "emit a native-log stub": {
+        "content": [
+            [
+                "trait_stub.log",
+                "LDSC heritability stub\n"
+            ]
+        ],
+        "timestamp": "2026-08-24T04:46:01.71712994",
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.4"
+        }
+    },
+    "estimate heritability from munged summary statistics": {
+        "content": [
+            {
+                "output": "trait_a.log",
+                "versions": {
+                    "versions_ldsc": [
+                        [
+                            "LDSC_H2",
+                            "ldsc",
+                            "3.0.2"
+                        ]
+                    ],
+                    "versions_python": [
+                        [
+                            "LDSC_H2",
+                            "python",
+                            "3.9.13"
+                        ]
+                    ]
+                }
+            }
+        ],
+        "timestamp": "2026-09-18T22:51:07.721460598",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

@@ -1,0 +1,81 @@
+nextflow_function {
+
+    name "Test GCTA bivariate result identity"
+    script "../main.nf"
+    tag "function"
+    tag "gcta"
+    tag "bivariate"
+
+    test("the dense request identity is preserved while the matrix reuse key is dropped") {
+        function "stripMatrixReuseIdentity"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    id: 'gcta_bivariate_reml--qt_bt',
+                    request_id: 'gcta_bivariate_reml--qt_bt',
+                    relationship_id: 'qt_bt',
+                    method: 'gcta_bivariate_reml',
+                    cohort: 'example_pgen',
+                    left_analysis_id: 'example_pgen_qt',
+                    right_analysis_id: 'example_pgen_bt',
+                    left_trait_id: 'QT',
+                    right_trait_id: 'BT',
+                    left_trait_type: 'quantitative',
+                    right_trait_type: 'binary',
+                    right_population_prevalence: 0.1,
+                    reml_bivar_prevalence: [0.1],
+                    matrix_key: '3b47382e01cd',
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                // The matrix reuse identity existed only for attribution at the invocation boundary.
+                { assert !function.result.containsKey('matrix_key') },
+                // Dense atoms derive their native GRM basename from the staged bundle, so the request identity
+                // crosses the invocation unchanged.
+                { assert function.result.id == 'gcta_bivariate_reml--qt_bt' },
+                { assert function.result.id == function.result.request_id },
+                // Everything scientific is retained untouched, in the declared orientation.
+                { assert function.result.relationship_id == 'qt_bt' },
+                { assert function.result.method == 'gcta_bivariate_reml' },
+                { assert function.result.left_analysis_id == 'example_pgen_qt' },
+                { assert function.result.right_analysis_id == 'example_pgen_bt' },
+                { assert function.result.left_trait_id == 'QT' },
+                { assert function.result.right_trait_id == 'BT' },
+                { assert function.result.right_population_prevalence == 0.1 },
+                { assert function.result.reml_bivar_prevalence == [0.1] },
+            )
+        }
+    }
+
+    test("the LDMS native matrix identity is replaced by the request identity") {
+        function "stripNativeMatrixIdentity"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    id: '3b47382e01cd',
+                    request_id: 'gcta_bivariate_reml_ldms--qt_bt',
+                    relationship_id: 'qt_bt',
+                    method: 'gcta_bivariate_reml_ldms',
+                    matrix_key: '3b47382e01cd',
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == [id: 'gcta_bivariate_reml_ldms--qt_bt', request_id: 'gcta_bivariate_reml_ldms--qt_bt', relationship_id: 'qt_bt', method: 'gcta_bivariate_reml_ldms'] },
+            )
+        }
+    }
+}

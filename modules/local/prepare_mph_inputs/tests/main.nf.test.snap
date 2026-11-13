@@ -1,0 +1,62 @@
+{
+    "stub": {
+        "content": [
+            {
+                "covariates": [
+                    [
+                        {
+                            "id": "analysis"
+                        },
+                        "analysis.mph.covar.csv:md5,48c005b556a48a878a885f3c77943438"
+                    ]
+                ],
+                "phenotype": [
+                    [
+                        {
+                            "id": "analysis"
+                        },
+                        "analysis.mph.pheno.csv:md5,925b449b905d6cd9fe7454d805b55c56"
+                    ]
+                ],
+                "versions": [
+                    "versions.yml:md5,5c433fdcf8f13afd6708a2f3c09f4d90"
+                ]
+            }
+        ],
+        "timestamp": "2026-09-19T08:41:37.701246308",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "the CSVs are written in matrix order and every missing spelling becomes an empty field": {
+        "content": [
+            {
+                "covariates": [
+                    [
+                        {
+                            "id": "analysis"
+                        },
+                        "analysis.mph.covar.csv:md5,653f4ca5cb9c5d3069db2f3446e7a8e6"
+                    ]
+                ],
+                "phenotype": [
+                    [
+                        {
+                            "id": "analysis"
+                        },
+                        "analysis.mph.pheno.csv:md5,a047fd81da53d0aa8232a68e9a2d3bb3"
+                    ]
+                ],
+                "versions": [
+                    "versions.yml:md5,5c433fdcf8f13afd6708a2f3c09f4d90"
+                ]
+            }
+        ],
+        "timestamp": "2026-09-19T08:41:18.620238388",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

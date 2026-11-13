@@ -1,0 +1,42 @@
+nextflow_pipeline {
+
+    name "Test the single-node profile"
+    script "../main.nf"
+    tag "pipeline"
+    tag "single_node_profile"
+
+    // `single_node` carries no inputs of its own, so it is exercised the way a researcher stacks it:
+    // on top of a profile that supplies them. An unregistered profile name aborts the run, so a green
+    // case is also the registration check for the `profiles { }` entry.
+    profile "test,single_node"
+
+    // What this case cannot assert. `conf/single_node.config` sets `process.executor`,
+    // `process.resourceLimits` and the local executor's `cpus`/`memory`, and none of the three is
+    // reachable from a finished run: nf-test exposes each trace row as a task with only a name and a
+    // status, the trace it parses carries neither an executor nor a resource column, and the pipeline's
+    // own trace file is displaced by the `-with-trace` nf-test passes. `nextflow config -profile
+    // single_node` is where those resolved values are read; this case covers what a run can show, which
+    // is that the profile loads, composes with a static route profile, and leaves the science alone.
+    test("the single-node profile runs the routine route without changing it") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+        }
+
+        then {
+            def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'REGENIE_STEP1') == 1 },
+                { assert TRACE.count(workflow, 'REGENIE_STEP2') == 1 },
+                { assert TRACE.count(workflow, 'GWASLAB_HARMONIZE') == 1 },
+                { assert new File("${params.outdir}/association/regenie/example_quantitative").isDirectory() },
+                { assert snapshot(removeNextflowVersion(versions.toString())).match('versions') },
+            )
+        }
+    }
+}

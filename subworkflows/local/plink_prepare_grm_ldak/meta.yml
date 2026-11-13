@@ -1,0 +1,58 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
+name: plink_prepare_grm_ldak
+description: Calculate one LDAK base kinship artifact from PLINK1 data and derive each requested unrelated-sample child artifact
+keywords:
+  - ldak
+  - grm
+  - genetic-relationship-matrix
+  - relatedness
+  - plink
+components:
+  - ldak/calckins
+  - ldak/filter
+  - ldak/subgrm
+input:
+  - ch_genotypes:
+      description: PLINK1 genotypes and required LDAK kinship power for one base artifact. Metadata identifies the base artifact; producer_ref explicitly links weights and derivative requests. Both meta.id and producer_ref are unique among producers.
+      structure: [map meta, path bed, path bim, path fam, number power, string producer_ref]
+      pattern: "*.bed, *.bim, *.fam"
+      ontologies: []
+  - ch_weights:
+      description: Optional LDAK predictor weights for the same base artifact; use [] when absent.
+      structure: "[map meta2, path weights_file|[], string producer_ref]"
+      pattern: "*.{txt,weights}"
+      optional: true
+      ontologies: []
+  - ch_subset_requests:
+      description: Requested unrelated-sample child artifacts, each addressed by its explicit producer reference and carrying child-artifact metadata. Derivative meta.id values must be unique. Several derivatives may reference one producer.
+      structure: [map derived_meta, string producer_ref]
+output:
+  - base_grm:
+      type: file
+      description: Base all-sample LDAK kinship artifacts, each carrying unchanged base metadata and its explicit producer reference
+      structure: [map meta, path grm_files, string producer_ref]
+      pattern: "*.grm.{bin,id,details,adjust}"
+      ontologies: []
+  - subset_grm:
+      type: file
+      description: Unrelated-sample child kinship artifacts, each carrying unchanged child metadata
+      structure: [map derived_meta, path grm_files]
+      pattern: "*.grm.{bin,id,details,adjust}"
+      ontologies: []
+  - filtered_list:
+      type: file
+      description: LDAK relatedness-filter keep and lose files for requested subset children
+      structure: [map derived_meta, path keep, path lose]
+      pattern: "*.{keep,lose}"
+      ontologies: []
+  - maxrel:
+      type: file
+      description: LDAK maximum-relatedness diagnostic for requested subset children
+      structure: [map derived_meta, path maxrel]
+      optional: true
+      pattern: "*.maxrel"
+      ontologies: []
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"

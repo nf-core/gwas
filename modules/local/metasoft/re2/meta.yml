@@ -1,0 +1,61 @@
+name: "metasoft_re2"
+description: Run METASOFT and preserve its native meta-analysis result
+keywords:
+  - gwas
+  - genome-wide association study
+  - meta-analysis
+  - random effects
+  - RE2
+  - Han-Eskin random effects
+tools:
+  - "metasoft":
+      description: Meta-analysis software implementing fixed, random, and Han-Eskin random-effects models
+      homepage: "https://hanlab-snu.github.io/METASOFT/index.html"
+      documentation: "https://hanlab-snu.github.io/METASOFT/index.html"
+      licence:
+        - "custom"
+input:
+  - - meta:
+        type: map
+        description: Groovy Map containing the meta-analysis request information
+    - effect_matrix:
+        type: file
+        description: Native METASOFT effect matrix
+        pattern: "*.txt"
+        ontologies: []
+output:
+  result:
+    - - meta:
+          type: map
+          description: Groovy Map containing the meta-analysis request information
+      - "${prefix}.metasoft.txt":
+          type: file
+          description: Native METASOFT result
+          pattern: "*.metasoft.txt"
+          ontologies: []
+  log:
+    - - meta:
+          type: map
+          description: Groovy Map containing the meta-analysis request information
+      - "${prefix}.metasoft.log":
+          type: file
+          description: Native METASOFT log
+          pattern: "*.metasoft.log"
+          ontologies: []
+  versions:
+    - "versions.yml":
+        type: file
+        description: File containing software versions
+        pattern: "versions.yml"
+        ontologies: []
+topics:
+  versions:
+    - "versions.yml":
+        type: file
+        description: File containing software versions
+        pattern: "versions.yml"
+        ontologies: []
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"

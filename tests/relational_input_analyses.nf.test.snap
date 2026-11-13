@@ -1,0 +1,58 @@
+{
+    "versions": {
+        "content": [
+            {
+                "GWASLAB_HARMONIZE": {
+                    "gwaslab": "4.1.9",
+                    "python": "3.12.13"
+                },
+                "PREPARE_GENOTYPE_SOURCE": {
+                    "python": "3.14.5"
+                },
+                "PREPARE_PHENOTYPE_INPUTS": {
+                    "python": "3.14.5"
+                },
+                "REGENIE_STEP1": {
+                    "regenie": "4.1.2"
+                },
+                "REGENIE_STEP2": {
+                    "regenie": "4.1.2"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "timestamp": "2026-09-10T06:11:12.449700188",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "association": {
+        "content": [
+            [
+                "regenie",
+                "regenie/example_pgen_bt",
+                "regenie/example_pgen_bt/example_pgen_bt.regenie.gz",
+                "regenie/example_pgen_bt_no_covariates",
+                "regenie/example_pgen_bt_no_covariates/example_pgen_bt_no_covariates.regenie.gz",
+                "regenie/example_pgen_qt",
+                "regenie/example_pgen_qt/example_pgen_qt.regenie.gz",
+                "regenie/example_pgen_qt_no_covariates",
+                "regenie/example_pgen_qt_no_covariates/example_pgen_qt_no_covariates.regenie.gz"
+            ],
+            [
+                "regenie/example_pgen_bt/example_pgen_bt.regenie.gz:md5,a124891d393284d94bb2f87f01633f4b",
+                "regenie/example_pgen_bt_no_covariates/example_pgen_bt_no_covariates.regenie.gz:md5,b4a51933344562f05020060014ad0702",
+                "regenie/example_pgen_qt/example_pgen_qt.regenie.gz:md5,05fb502ea44e27f996066a1cfbf051c0",
+                "regenie/example_pgen_qt_no_covariates/example_pgen_qt_no_covariates.regenie.gz:md5,5003ea8f90ec45a749d4727ac3262a83"
+            ]
+        ],
+        "timestamp": "2026-09-02T11:34:45.62822622",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

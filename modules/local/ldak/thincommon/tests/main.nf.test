@@ -1,0 +1,49 @@
+nextflow_process {
+    name "Test Process LDAK_THINCOMMON"
+    script "../main.nf"
+    process "LDAK_THINCOMMON"
+    config "./nextflow.config"
+    tag "modules"
+    tag "modules_nfcore"
+    tag "ldak"
+    tag "ldak/thincommon"
+
+    test("homo_sapiens popgen - common predictors") {
+
+        when {
+            process {
+                """
+                input[0] = [
+                    [ id: 'plink_simulated' ],
+                    file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bed', checkIfExists: true),
+                    file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bim', checkIfExists: true),
+                    file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.fam', checkIfExists: true)
+                ]
+                """
+            }
+        }
+        then {
+            assert process.success
+            assert snapshot(sanitizeOutput(process.out, unstableKeys: ['progress'])).match()
+        }
+    }
+    test("homo_sapiens popgen - common predictors - stub") {
+        options "-stub"
+        when {
+            process {
+                """
+                input[0] = [
+                    [ id: 'plink_simulated' ],
+                    file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bed', checkIfExists: true),
+                    file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bim', checkIfExists: true),
+                    file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.fam', checkIfExists: true)
+                ]
+                """
+            }
+        }
+        then {
+            assert process.success
+            assert snapshot(sanitizeOutput(process.out, unstableKeys: ['progress'])).match()
+        }
+    }
+}

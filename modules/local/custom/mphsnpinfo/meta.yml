@@ -1,0 +1,125 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/modules/meta-schema.json
+name: "custom_mphsnpinfo"
+description: Write the MPH SNP-information CSV that assigns each BIM variant a 0/1 membership weight per component
+keywords:
+  - mph
+  - minque for partitioning heritability
+  - genome relationship matrix
+  - grm
+  - variant partition
+  - snp weight
+tools:
+  - "custom":
+      description: |
+        A Python 3 representation adapter. It converts a BIM and ordered named SNP groups into the
+        comma-separated SNP-information file MPH reads through `--snp_info_file`, whose column named by
+        `--snp_weight_name` gives each variant its weight in one component.
+      homepage: "https://github.com/nf-core/modules"
+      documentation: "https://jiang18.github.io/mph/"
+      licence: ["MIT"]
+      identifier: ""
+input:
+  - - meta:
+        type: map
+        description: |
+          Groovy Map containing sample information, e.g. `[ id:'sample1' ]`
+    - bim:
+        type: file
+        description: |
+          PLINK 1 variant file of the bundle the matrices will be built from. Every row is written to the
+          output CSV in BIM order, so the CSV stays auditable against the BIM line for line.
+        pattern: "*.bim"
+        ontologies:
+          - edam: "http://edamontology.org/format_3475"
+  - - meta2:
+        type: map
+        description: |
+          Groovy Map containing plan information, e.g. `[ id:'plan1' ]`
+    - group_manifest:
+        type: file
+        description: |
+          Required TSV with header group_id and group_filename. Each row names one staged SNP list, and its
+          group_id selects the weight column that list is written into, so a one-row whole-universe manifest
+          uses the same interface as many rows. Every `group_filename` is a bare basename of a file staged
+          through `snp_group_files`, because the rows are opened relative to the task directory; a path with
+          a directory component will not resolve.
+        pattern: "*.tsv"
+        ontologies:
+          - edam: "http://edamontology.org/format_3475"
+    - snp_group_files:
+        type: file
+        description: |
+          Newline-separated variant ID lists named by the manifest. Lists are disjoint subsets of the BIM.
+          SNPs absent from every group receive zero weight. Chromosomes are not filtered.
+        pattern: "*.txt"
+        ontologies:
+          - edam: "http://edamontology.org/format_2330"
+    - weight_names:
+        type: list
+        description: |
+          Required group IDs, one per manifest row and the same set as its group_id column. These name the
+          output columns and their order is the column order. Echoed on the output tuple.
+output:
+  snp_info:
+    - - meta:
+          type: map
+          description: |
+            Groovy Map containing sample information, e.g. `[ id:'sample1' ]`
+      - "${prefix}.snp_info.csv":
+          type: file
+          description: |
+            MPH SNP-information file: header `SNP` followed by the weight column names, then one row per BIM
+            variant in BIM order. A variant in no component carries 0 in every column.
+          pattern: "*.snp_info.csv"
+          ontologies:
+            - edam: "http://edamontology.org/format_3752"
+      - weight_names:
+          type: list
+          description: The weight column names, echoed from the input in the same order.
+  counts:
+    - - meta:
+          type: map
+          description: |
+            Groovy Map containing sample information, e.g. `[ id:'sample1' ]`
+      - "${prefix}.snp_info.counts.tsv":
+          type: file
+          description: |
+            Group membership counts: one `group_id`/`predictor_count` row per weight column in column
+            order, then `__unassigned__` (BIM rows carrying 0 everywhere) and `__bim_rows__` (total BIM rows).
+            Group accounting rather than a native input; no MPH command reads it.
+          pattern: "*.snp_info.counts.tsv"
+          ontologies:
+            - edam: "http://edamontology.org/format_3475"
+  versions:
+    - versions.yml:
+        type: file
+        description: File containing software versions
+        pattern: "versions.yml"
+        ontologies:
+          - edam: "http://edamontology.org/format_3750"
+topics:
+  versions:
+    - versions.yml:
+        type: file
+        description: File containing software versions
+        pattern: "versions.yml"
+        ontologies:
+          - edam: "http://edamontology.org/format_3750"
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"
+containers:
+  conda:
+    linux/amd64:
+      lock_file: "modules/local/custom/mphsnpinfo/.conda-lock/linux_amd64-bd-dc8358b3c5eeb927_1.txt"
+  docker:
+    linux/amd64:
+      name: "community.wave.seqera.io/library/python:3.14.5--dc8358b3c5eeb927"
+      build_id: "bd-dc8358b3c5eeb927_1"
+      scan_id: "sc-d453bf85569b853d_1"
+  singularity:
+    linux/amd64:
+      name: "oras://community.wave.seqera.io/library/python:3.14.5--b29a2f2e65e096bd"
+      build_id: "bd-b29a2f2e65e096bd_10"
+      https: "https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/18/1841daa69f98a0b0ffcb8f545070c8350a75febb167202136eab0990131d31c0/data"

@@ -1,0 +1,524 @@
+{
+    "homo_sapiens popgen - quantitative trait with quantitative and categorical covariates": {
+        "content": [
+            {
+                "cats": [
+                    [
+                        {
+                            "id": "fast_he_covariates"
+                        },
+                        "fast_he_covariates.cats:md5,36ddc0fc4309fe686c2ec056b46de1ca"
+                    ]
+                ],
+                "coeff": [
+                    [
+                        {
+                            "id": "fast_he_covariates"
+                        },
+                        "fast_he_covariates.coeff:md5,f0168564a5227d3b5292b8da8847844a"
+                    ]
+                ],
+                "combined": [
+                    [
+                        {
+                            "id": "fast_he_covariates"
+                        },
+                        "fast_he_covariates.combined:md5,7258d4025535db5c703c399ec0482089"
+                    ]
+                ],
+                "cross": [
+                    [
+                        {
+                            "id": "fast_he_covariates"
+                        },
+                        "fast_he_covariates.cross:md5,cdecdb878b3b1cdbe040ccbe933e7a38"
+                    ]
+                ],
+                "enrich": [
+                    [
+                        {
+                            "id": "fast_he_covariates"
+                        },
+                        "fast_he_covariates.enrich:md5,df56367ff3328fc00acec0e70cb65daa"
+                    ]
+                ],
+                "factor": [
+                    
+                ],
+                "fasthe_liability": [
+                    
+                ],
+                "fasthe_results": [
+                    [
+                        {
+                            "id": "fast_he_covariates"
+                        },
+                        "fast_he_covariates.fasthe:md5,045a5e486812ca783fb9f392b8576896"
+                    ]
+                ],
+                "ind_hers": [
+                    [
+                        {
+                            "id": "fast_he_covariates"
+                        },
+                        "fast_he_covariates.ind.hers:md5,d2312e39253c2ef5dea4c8aa157d12e1"
+                    ]
+                ],
+                "jackests": [
+                    [
+                        {
+                            "id": "fast_he_covariates"
+                        },
+                        "fast_he_covariates.jackests:md5,34d502d3878015949c8f706973319fce"
+                    ]
+                ],
+                "labels": [
+                    [
+                        {
+                            "id": "fast_he_covariates"
+                        },
+                        "fast_he_covariates.labels:md5,4718aa1c231787fa66d76835ac662b16"
+                    ]
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "fast_he_covariates"
+                        },
+                        "fast_he_covariates.log"
+                    ]
+                ],
+                "progress": [
+                    [
+                        {
+                            "id": "fast_he_covariates"
+                        },
+                        "fast_he_covariates.progress:md5,25db3d3bd54d8e5b7f43f49668822604"
+                    ]
+                ],
+                "repetitions": [
+                    [
+                        {
+                            "id": "fast_he_covariates"
+                        },
+                        "fast_he_covariates.repetitions:md5,1c29f4208eda57d954ed8676e4df91f9"
+                    ]
+                ],
+                "share": [
+                    [
+                        {
+                            "id": "fast_he_covariates"
+                        },
+                        "fast_he_covariates.share:md5,01b0b07a8fc56e5ad02a43b20beafe6d"
+                    ]
+                ],
+                "versions_ldak6": [
+                    [
+                        "LDAK_FASTHE",
+                        "ldak6",
+                        "6"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-02T14:59:29.704670299",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "homo_sapiens popgen - a binary trait with a declared prevalence adds the liability-scale family": {
+        "content": [
+            {
+                "cats": [
+                    [
+                        {
+                            "id": "fast_he_binary"
+                        },
+                        "fast_he_binary.cats:md5,d13316dcca457e2154ce86db99ce138b"
+                    ]
+                ],
+                "coeff": [
+                    [
+                        {
+                            "id": "fast_he_binary"
+                        },
+                        "fast_he_binary.coeff:md5,05f015ac2bcbf3bea6359e99e288122e"
+                    ]
+                ],
+                "combined": [
+                    
+                ],
+                "cross": [
+                    [
+                        {
+                            "id": "fast_he_binary"
+                        },
+                        "fast_he_binary.cross:md5,cfdaf75998918fef85a298a87a04a33e"
+                    ]
+                ],
+                "enrich": [
+                    [
+                        {
+                            "id": "fast_he_binary"
+                        },
+                        "fast_he_binary.enrich:md5,df56367ff3328fc00acec0e70cb65daa"
+                    ]
+                ],
+                "factor": [
+                    [
+                        {
+                            "id": "fast_he_binary"
+                        },
+                        "fast_he_binary.factor:md5,28f1f42309d5bab1b3e225aa1c609835"
+                    ]
+                ],
+                "fasthe_liability": [
+                    [
+                        {
+                            "id": "fast_he_binary"
+                        },
+                        "fast_he_binary.fasthe.liab:md5,0f661a515019f09b703db6ff0f9d34da"
+                    ]
+                ],
+                "fasthe_results": [
+                    [
+                        {
+                            "id": "fast_he_binary"
+                        },
+                        "fast_he_binary.fasthe:md5,c48146cda7d78eb50f730038ef911bdc"
+                    ]
+                ],
+                "ind_hers": [
+                    [
+                        {
+                            "id": "fast_he_binary"
+                        },
+                        "fast_he_binary.ind.hers:md5,c4054fba51e3d39f4dcad677bf953b79"
+                    ]
+                ],
+                "jackests": [
+                    [
+                        {
+                            "id": "fast_he_binary"
+                        },
+                        "fast_he_binary.jackests:md5,da72bd644054f21489cde7bd46a4e3db"
+                    ]
+                ],
+                "labels": [
+                    [
+                        {
+                            "id": "fast_he_binary"
+                        },
+                        "fast_he_binary.labels:md5,4718aa1c231787fa66d76835ac662b16"
+                    ]
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "fast_he_binary"
+                        },
+                        "fast_he_binary.log"
+                    ]
+                ],
+                "progress": [
+                    [
+                        {
+                            "id": "fast_he_binary"
+                        },
+                        "fast_he_binary.progress:md5,25db3d3bd54d8e5b7f43f49668822604"
+                    ]
+                ],
+                "repetitions": [
+                    [
+                        {
+                            "id": "fast_he_binary"
+                        },
+                        "fast_he_binary.repetitions:md5,63889c8a97e3140affbd0cf8792d91de"
+                    ]
+                ],
+                "share": [
+                    [
+                        {
+                            "id": "fast_he_binary"
+                        },
+                        "fast_he_binary.share:md5,01b0b07a8fc56e5ad02a43b20beafe6d"
+                    ]
+                ],
+                "versions_ldak6": [
+                    [
+                        "LDAK_FASTHE",
+                        "ldak6",
+                        "6"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-02T15:00:46.963239876",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "homo_sapiens popgen - quantitative trait with quantitative and categorical covariates - stub": {
+        "content": [
+            {
+                "cats": [
+                    [
+                        {
+                            "id": "fast_he_stub"
+                        },
+                        "fast_he_stub.cats:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "coeff": [
+                    [
+                        {
+                            "id": "fast_he_stub"
+                        },
+                        "fast_he_stub.coeff:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "combined": [
+                    [
+                        {
+                            "id": "fast_he_stub"
+                        },
+                        "fast_he_stub.combined:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "cross": [
+                    [
+                        {
+                            "id": "fast_he_stub"
+                        },
+                        "fast_he_stub.cross:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "enrich": [
+                    [
+                        {
+                            "id": "fast_he_stub"
+                        },
+                        "fast_he_stub.enrich:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "factor": [
+                    [
+                        {
+                            "id": "fast_he_stub"
+                        },
+                        "fast_he_stub.factor:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "fasthe_liability": [
+                    [
+                        {
+                            "id": "fast_he_stub"
+                        },
+                        "fast_he_stub.fasthe.liab:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "fasthe_results": [
+                    [
+                        {
+                            "id": "fast_he_stub"
+                        },
+                        "fast_he_stub.fasthe:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "ind_hers": [
+                    [
+                        {
+                            "id": "fast_he_stub"
+                        },
+                        "fast_he_stub.ind.hers:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "jackests": [
+                    [
+                        {
+                            "id": "fast_he_stub"
+                        },
+                        "fast_he_stub.jackests:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "labels": [
+                    [
+                        {
+                            "id": "fast_he_stub"
+                        },
+                        "fast_he_stub.labels:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "fast_he_stub"
+                        },
+                        "fast_he_stub.log"
+                    ]
+                ],
+                "progress": [
+                    [
+                        {
+                            "id": "fast_he_stub"
+                        },
+                        "fast_he_stub.progress:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "repetitions": [
+                    [
+                        {
+                            "id": "fast_he_stub"
+                        },
+                        "fast_he_stub.repetitions:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "share": [
+                    [
+                        {
+                            "id": "fast_he_stub"
+                        },
+                        "fast_he_stub.share:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
+                ],
+                "versions_ldak6": [
+                    [
+                        "LDAK_FASTHE",
+                        "ldak6",
+                        "6"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-02T15:01:28.851045741",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "homo_sapiens popgen - full-coverage weights with reduced repetitions and jackknife blocks": {
+        "content": [
+            {
+                "cats": [
+                    [
+                        {
+                            "id": "fast_he_weights"
+                        },
+                        "fast_he_weights.cats:md5,0659dcf449ded85df4424b7f9b12f48c"
+                    ]
+                ],
+                "coeff": [
+                    [
+                        {
+                            "id": "fast_he_weights"
+                        },
+                        "fast_he_weights.coeff:md5,9b5d26afbcd8046434aa026f4640900d"
+                    ]
+                ],
+                "combined": [
+                    
+                ],
+                "cross": [
+                    [
+                        {
+                            "id": "fast_he_weights"
+                        },
+                        "fast_he_weights.cross:md5,7463494d4970ec59134258d3979d6c09"
+                    ]
+                ],
+                "enrich": [
+                    [
+                        {
+                            "id": "fast_he_weights"
+                        },
+                        "fast_he_weights.enrich:md5,df56367ff3328fc00acec0e70cb65daa"
+                    ]
+                ],
+                "factor": [
+                    
+                ],
+                "fasthe_liability": [
+                    
+                ],
+                "fasthe_results": [
+                    [
+                        {
+                            "id": "fast_he_weights"
+                        },
+                        "fast_he_weights.fasthe:md5,60275aa71580ff7ab4f1abfc6a0e09a6"
+                    ]
+                ],
+                "ind_hers": [
+                    [
+                        {
+                            "id": "fast_he_weights"
+                        },
+                        "fast_he_weights.ind.hers:md5,71df047527a29370fde5f857c342d946"
+                    ]
+                ],
+                "jackests": [
+                    [
+                        {
+                            "id": "fast_he_weights"
+                        },
+                        "fast_he_weights.jackests:md5,47e8f83652d74933b1c1f50558f99d83"
+                    ]
+                ],
+                "labels": [
+                    [
+                        {
+                            "id": "fast_he_weights"
+                        },
+                        "fast_he_weights.labels:md5,4718aa1c231787fa66d76835ac662b16"
+                    ]
+                ],
+                "log": [
+                    [
+                        {
+                            "id": "fast_he_weights"
+                        },
+                        "fast_he_weights.log"
+                    ]
+                ],
+                "progress": [
+                    [
+                        {
+                            "id": "fast_he_weights"
+                        },
+                        "fast_he_weights.progress:md5,a4f6ec814de9d27bdf039959e022ffd3"
+                    ]
+                ],
+                "repetitions": [
+                    [
+                        {
+                            "id": "fast_he_weights"
+                        },
+                        "fast_he_weights.repetitions:md5,25039d7965e2864f7d3cf8e475b0fe46"
+                    ]
+                ],
+                "share": [
+                    [
+                        {
+                            "id": "fast_he_weights"
+                        },
+                        "fast_he_weights.share:md5,01b0b07a8fc56e5ad02a43b20beafe6d"
+                    ]
+                ],
+                "versions_ldak6": [
+                    [
+                        "LDAK_FASTHE",
+                        "ldak6",
+                        "6"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-02T14:59:47.178039653",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

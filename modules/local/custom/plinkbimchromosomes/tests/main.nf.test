@@ -1,0 +1,55 @@
+nextflow_process {
+
+    name "Test Process CUSTOM_PLINKBIMCHROMOSOMES"
+    script "../main.nf"
+    process "CUSTOM_PLINKBIMCHROMOSOMES"
+    config "./nextflow.config"
+
+    tag "modules"
+    tag "modules_nfcore"
+    tag "custom"
+    tag "custom/plinkbimchromosomes"
+
+    // Chromosome 2 is listed before chromosome 1 and returns after X, so a listing that sorted the codes, or
+    // that only collapsed adjacent repeats, would give a different answer from first appearance.
+    def bimCode = """
+        def bim = file('scatter.bim')
+        bim.text = [
+            ['2', 'v2_1', '0', '100', 'A', 'C'],
+            ['2', 'v2_2', '0', '200', 'G', 'T'],
+            ['1', 'v1_1', '0', '100', 'A', 'G'],
+            ['X', 'vX_1', '0', '100', 'C', 'T'],
+            ['2', 'v2_3', '0', '300', 'A', 'T'],
+            ['1', 'v1_2', '0', '200', 'C', 'G'],
+        ].collect { row -> row.join('\\t') }.join('\\n') + '\\n'
+        input[0] = [[id: 'scatter'], bim]
+    """
+
+    test("chromosomes are listed once each in order of first appearance") {
+        when {
+            process { bimCode }
+        }
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.chromosomes[0][0] == [id: 'scatter'] },
+                { assert path(process.out.chromosomes[0][1]).readLines() == ['2', '1', 'X'] },
+                { assert snapshot(sanitizeOutput(process.out)).match() },
+            )
+        }
+    }
+
+    test("chromosome listing - stub") {
+        options "-stub"
+        when {
+            process { bimCode }
+        }
+        then {
+            assertAll(
+                { assert process.success },
+                { assert path(process.out.chromosomes[0][1]).readLines() == ['1'] },
+                { assert snapshot(sanitizeOutput(process.out)).match() },
+            )
+        }
+    }
+}

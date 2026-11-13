@@ -1,0 +1,154 @@
+nextflow_process {
+
+    name "Test Process PREPARE_GENOTYPE_SOURCE"
+    script "../main.nf"
+    process "PREPARE_GENOTYPE_SOURCE"
+
+    tag "modules"
+    tag "modules_local"
+    tag "prepare_genotype_source"
+
+    def fixtures = { project_dir -> "${FIXTURES.base(project_dir)}results/fixtures/genotypes/" }
+
+    def rows = { produced -> path(produced).readLines().findAll { line -> line.trim() }.collect { line -> line.split('\t', -1) as List } }
+
+    // The expected digests are computed here from the same files the task staged, per the bundle-derived
+    // literal rule: nothing about the fixture's content is written down, so a fixture bump cannot silently
+    // agree with a stale constant.
+    def sha256 = { location ->
+        def digest = java.security.MessageDigest.getInstance('SHA-256')
+        new File(location.toString()).eachByte(8192) { buffer, count -> digest.update(buffer, 0, count) }
+        return digest.digest().encodeHex().toString()
+    }
+
+    test("example_all - a PLINK 2 bundle yields one row per member in supplied order and one bundle identity") {
+
+        when {
+            process {
+                """
+                input[0] = [
+                    [ id:'cohort_pgen', genotype_format:'plink2' ],
+                    [
+                        file('${fixtures.call(projectDir)}example_all.pgen', checkIfExists: true),
+                        file('${fixtures.call(projectDir)}example_all.psam', checkIfExists: true),
+                        file('${fixtures.call(projectDir)}example_all.pvar', checkIfExists: true),
+                    ],
+                ]
+                """
+            }
+        }
+
+        then {
+            def members = rows(process.out.source_members.get(0).get(1))
+            def identity = path(process.out.source_identity.get(0).get(1)).text.trim()
+            def expected = ['pgen', 'psam', 'pvar'].collect { role ->
+                [role, "example_all.${role}", new File("${fixtures.call(projectDir)}example_all.${role}").length().toString(), sha256("${fixtures.call(projectDir)}example_all.${role}")]
+            }
+            assertAll(
+                { assert process.success },
+                // Manifest-group order is the caller's, and the table preserves it: the role column is what a
+                // reader of the published provenance record uses to tell which member is which.
+                { assert members == expected },
+                { assert identity ==~ /^[0-9a-f]{64}$/ },
+                { assert path(process.out.versions.get(0)).text.contains('python:') },
+            )
+        }
+    }
+
+    test("example_all - a PLINK 1 bundle yields the three PLINK 1 roles") {
+
+        when {
+            process {
+                """
+                input[0] = [
+                    [ id:'cohort_plink1', genotype_format:'plink1' ],
+                    [
+                        file('${fixtures.call(projectDir)}example_all.bed', checkIfExists: true),
+                        file('${fixtures.call(projectDir)}example_all.bim', checkIfExists: true),
+                        file('${fixtures.call(projectDir)}example_all.fam', checkIfExists: true),
+                    ],
+                ]
+                """
+            }
+        }
+
+        then {
+            def members = rows(process.out.source_members.get(0).get(1))
+            assertAll(
+                { assert process.success },
+                { assert members.collect { row -> row[0] } == ['bed', 'bim', 'fam'] },
+                { assert members.every { row -> row[3] ==~ /^[0-9a-f]{64}$/ } },
+                { assert members.collect { row -> row[3] } == ['bed', 'bim', 'fam'].collect { role -> sha256("${fixtures.call(projectDir)}example_all.${role}") } },
+            )
+        }
+    }
+
+    test("example_all - the bundle identity ignores member names") {
+
+        when {
+            process {
+                """
+                def renamed = { name, target ->
+                    def copy = new File("\${workDir}/renamed_\${target}")
+                    copy.parentFile.mkdirs()
+                    copy.bytes = new File('${fixtures.call(projectDir)}' + name).bytes
+                    return copy.absolutePath
+                }
+                input[0] = [
+                    [ id:'cohort_renamed', genotype_format:'plink2' ],
+                    [
+                        file(renamed.call('example_all.pgen', 'other.pgen'), checkIfExists: true),
+                        file(renamed.call('example_all.psam', 'other.psam'), checkIfExists: true),
+                        file(renamed.call('example_all.pvar', 'other.pvar'), checkIfExists: true),
+                    ],
+                ]
+                """
+            }
+        }
+
+        then {
+            def members = rows(process.out.source_members.get(0).get(1))
+            def identity = path(process.out.source_identity.get(0).get(1)).text.trim()
+            // The identity folds only the role and digest columns, so a byte-identical bundle under different
+            // names has the same identity while its provenance record still names the researcher's own files.
+            def expectedIdentity = java.security.MessageDigest.getInstance('SHA-256').digest(
+                ['pgen', 'psam', 'pvar'].collect { role -> "${role}\t${sha256("${fixtures.call(projectDir)}example_all.${role}")}\n" }.join('').getBytes('UTF-8')
+            ).encodeHex().toString()
+            assertAll(
+                { assert process.success },
+                { assert members.collect { row -> row[1] } == ['renamed_other.pgen', 'renamed_other.psam', 'renamed_other.pvar'] },
+                { assert identity == expectedIdentity },
+            )
+        }
+    }
+
+    test("example_all - stub emits both outputs whatever the source format") {
+
+        options "-stub"
+
+        when {
+            process {
+                """
+                input[0] = [
+                    [ id:'cohort_plink1', genotype_format:'plink1' ],
+                    [
+                        file('${fixtures.call(projectDir)}example_all.bed', checkIfExists: true),
+                        file('${fixtures.call(projectDir)}example_all.bim', checkIfExists: true),
+                        file('${fixtures.call(projectDir)}example_all.fam', checkIfExists: true),
+                    ],
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                // Both outputs are unconditional, so a stubbed caller sees one shape for every source format.
+                { assert process.out.source_members.size() == 1 },
+                { assert process.out.source_identity.size() == 1 },
+                { assert path(process.out.source_identity.get(0).get(1)).text.trim() ==~ /^[0-9a-f]{64}$/ },
+            )
+        }
+    }
+}

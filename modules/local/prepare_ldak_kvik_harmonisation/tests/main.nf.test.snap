@@ -1,0 +1,35 @@
+{
+    "join the native frequency and effective size onto the association table": {
+        "content": [
+            {
+                "0": [
+                    [
+                        {
+                            "id": "analysis"
+                        },
+                        "analysis.step2.harmonisation.tsv:md5,fa0dee5cc787af5309fed2d4d783f33a"
+                    ]
+                ],
+                "1": [
+                    "versions.yml:md5,824273ec4b37b17314a84ae79d2c891b"
+                ],
+                "harmonisation_input": [
+                    [
+                        {
+                            "id": "analysis"
+                        },
+                        "analysis.step2.harmonisation.tsv:md5,fa0dee5cc787af5309fed2d4d783f33a"
+                    ]
+                ],
+                "versions": [
+                    "versions.yml:md5,824273ec4b37b17314a84ae79d2c891b"
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T21:52:20.140461759",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

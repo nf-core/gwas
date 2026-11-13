@@ -1,0 +1,133 @@
+{
+    "a real two-group family follows the declared SNP-list order": {
+        "content": [
+            {
+                "0": [
+                    [
+                        {
+                            "id": "popgen_family"
+                        },
+                        [
+                            "popgen_family__000001_group_b.grm.N.bin:md5,b0b8427ecf3b2804ebd89f444d80255f",
+                            "popgen_family__000001_group_b.grm.bin:md5,9a07eb6c3887391b5030b0d6b0c99a70",
+                            "popgen_family__000001_group_b.grm.id:md5,4f9aa36c44a417ff6d7caa9841e66ad9",
+                            "popgen_family__000002_group_a.grm.N.bin:md5,b0b8427ecf3b2804ebd89f444d80255f",
+                            "popgen_family__000002_group_a.grm.bin:md5,b57e6e3377905657f1961cb4eee130f6",
+                            "popgen_family__000002_group_a.grm.id:md5,4f9aa36c44a417ff6d7caa9841e66ad9"
+                        ],
+                        [
+                            "popgen_family__000001_group_b",
+                            "popgen_family__000002_group_a"
+                        ]
+                    ]
+                ],
+                "grm_family": [
+                    [
+                        {
+                            "id": "popgen_family"
+                        },
+                        [
+                            "popgen_family__000001_group_b.grm.N.bin:md5,b0b8427ecf3b2804ebd89f444d80255f",
+                            "popgen_family__000001_group_b.grm.bin:md5,9a07eb6c3887391b5030b0d6b0c99a70",
+                            "popgen_family__000001_group_b.grm.id:md5,4f9aa36c44a417ff6d7caa9841e66ad9",
+                            "popgen_family__000002_group_a.grm.N.bin:md5,b0b8427ecf3b2804ebd89f444d80255f",
+                            "popgen_family__000002_group_a.grm.bin:md5,b57e6e3377905657f1961cb4eee130f6",
+                            "popgen_family__000002_group_a.grm.id:md5,4f9aa36c44a417ff6d7caa9841e66ad9"
+                        ],
+                        [
+                            "popgen_family__000001_group_b",
+                            "popgen_family__000002_group_a"
+                        ]
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T18:41:49.369938954",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "one named group returns the same family contract - stub": {
+        "content": [
+            {
+                "0": [
+                    [
+                        {
+                            "id": "single_family"
+                        },
+                        [
+                            "single_family__000001_all.grm.N.bin:md5,d41d8cd98f00b204e9800998ecf8427e",
+                            "single_family__000001_all.grm.bin:md5,d41d8cd98f00b204e9800998ecf8427e",
+                            "single_family__000001_all.grm.id:md5,d41d8cd98f00b204e9800998ecf8427e"
+                        ],
+                        [
+                            "single_family__000001_all"
+                        ]
+                    ]
+                ],
+                "grm_family": [
+                    [
+                        {
+                            "id": "single_family"
+                        },
+                        [
+                            "single_family__000001_all.grm.N.bin:md5,d41d8cd98f00b204e9800998ecf8427e",
+                            "single_family__000001_all.grm.bin:md5,d41d8cd98f00b204e9800998ecf8427e",
+                            "single_family__000001_all.grm.id:md5,d41d8cd98f00b204e9800998ecf8427e"
+                        ],
+                        [
+                            "single_family__000001_all"
+                        ]
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T18:41:57.380072061",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "one real group returns a complete matrix family": {
+        "content": [
+            {
+                "0": [
+                    [
+                        {
+                            "id": "single_real"
+                        },
+                        [
+                            "single_real__000001_all.grm.N.bin:md5,acaa43bbbf2253d392537a178ecf09a4",
+                            "single_real__000001_all.grm.bin:md5,45f8dff14bda17d50009a21050572228",
+                            "single_real__000001_all.grm.id:md5,4f9aa36c44a417ff6d7caa9841e66ad9"
+                        ],
+                        [
+                            "single_real__000001_all"
+                        ]
+                    ]
+                ],
+                "grm_family": [
+                    [
+                        {
+                            "id": "single_real"
+                        },
+                        [
+                            "single_real__000001_all.grm.N.bin:md5,acaa43bbbf2253d392537a178ecf09a4",
+                            "single_real__000001_all.grm.bin:md5,45f8dff14bda17d50009a21050572228",
+                            "single_real__000001_all.grm.id:md5,4f9aa36c44a417ff6d7caa9841e66ad9"
+                        ],
+                        [
+                            "single_real__000001_all"
+                        ]
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T18:42:04.837524169",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

@@ -1,0 +1,125 @@
+nextflow_process {
+
+    name "Test Process FINALISE_META_ANALYSIS"
+    script "../main.nf"
+    process "FINALISE_META_ANALYSIS"
+
+    tag "modules"
+    tag "modules_local"
+    tag "finalise_meta_analysis"
+
+    def writeTable = { outputDir, name, text ->
+        def target = new File(outputDir.toString(), name)
+        target.text = text.readLines().collect { line -> line.trim() }.findAll { line -> line }.join('\n') + '\n'
+        target
+    }
+    def inputs = { outputDir ->
+        def fixed = writeTable(outputDir, 'fixed.tsv', '''
+            SNPID\tCHR\tPOS\tEA\tNEA\tBETA\tSE\tP\tDOF\tEAF\tN\tZ\tQ\tP_HET\tI2\tDIRECTION
+            rs1\t1\t1000\tA\tG\t0.10\t0.02\t0.000001\t2\t0.3\t3000\t5\t2\t0.4\t0\t+++
+            rs2\t1\t2000\tC\tT\t0.20\t0.03\t0.001\t1\t0.4\t2000\t6\t1\t0.3\t0\t+?+
+            rs3\t1\t3000\tG\tA\t-0.10\t0.04\t0.02\t2\t0.2\t3000\t-2.5\t3\t0.2\tNA\t---
+        ''')
+        def random = writeTable(outputDir, 'random.tsv', '''
+            CHR\tPOS\tEA\tNEA\tBETA_RANDOM\tSE_RANDOM\tZ_RANDOM\tP_RANDOM
+            1\t3000\tA\tG\t9\t9\t9\t9
+            1\t1000\tA\tG\t0.11\t0.03\t3.67\t0.0002
+            1\t4000\tA\tC\t0.3\t0.05\t6\t0.01
+        ''')
+        def metasoft = writeTable(outputDir, 'metasoft.txt', '''
+            RSID #STUDY PVALUE_FE BETA_FE STD_FE PVALUE_RE BETA_RE STD_RE PVALUE_RE2 STAT1_RE2 STAT2_RE2 PVALUE_BE I_SQUARE Q PVALUE_Q TAU_SQUARE PVALUES_OF_STUDIES(Tab_delimitered) MVALUES_OF_STUDIES(Tab_delimitered)
+            1:1000:A:G 3 0.000001 0.10 0.02 0.0002 0.11 0.03 0.0003 8.2 1.3 NA 0 2 0.4 0 0.01 0.02 0.03 NA NA NA
+            1:3000:G:A 3 0.02 -0.10 0.04 0.03 -0.11 0.05 0.04 4.1 0.2 NA 0 3 0.2 0 0.04 0.05 0.06 NA NA NA
+        ''')
+        def mrmega = writeTable(outputDir, 'mrmega.txt', '''
+            MarkerName chisq_association ndf_association P-value_association chisq_ancestry_het ndf_ancestry_het P-value_ancestry_het chisq_residual_het ndf_residual_het P-value_residual_het lnBF
+            1:1000:A:G 10.1 2 0.006 2.1 1 0.14 1.2 1 0.27 2.5
+        ''')
+        [fixed, random, metasoft, mrmega]
+    }
+    def readResult = { target ->
+        def stream = new java.util.zip.GZIPInputStream(new File(target.toString()).newInputStream())
+        def lines = stream.getText('UTF-8').readLines()
+        stream.close()
+        def header = lines[0].split('\t').toList()
+        [header: header, rows: lines.drop(1).collect { line -> [header, line.split('\t').toList()].transpose().collectEntries() }]
+    }
+
+    test("select fixed variants using the declared study count") {
+        when {
+            def files = inputs(outputDir)
+            process {
+                """
+                input[0] = [[id: 'derived', summary_statistics_id: 'derived', min_studies: 3], file('${files[0]}'), [], [], []]
+                """
+            }
+        }
+        then {
+            assert process.success
+            def result = readResult(process.out.summary_statistics[0][1])
+            assertAll(
+                { assert process.out.summary_statistics[0][0].summary_statistics_id == 'derived' },
+                { assert new File(process.out.summary_statistics[0][1].toString()).name == 'derived.gwaslab.tsv.gz' },
+                { assert result.rows*.SNPID == ['rs1', 'rs3'] },
+                { assert result.rows*.N_STUDIES == ['3', '3'] },
+                { assert result.rows*.BETA == ['0.10', '-0.10'] },
+                { assert result.rows*.SE == ['0.02', '0.04'] },
+                { assert result.rows*.P == ['0.000001', '0.02'] },
+                { assert result.rows*.I2 == ['0', 'NA'] },
+                { assert !result.header.contains('P_RE2') },
+                { assert path(process.out.versions[0]).text.contains('pandas:') },
+            )
+        }
+    }
+
+    test("attach native model fields by allele-aware left joins") {
+        when {
+            def files = inputs(outputDir)
+            process {
+                """
+                input[0] = [[id: 'derived', summary_statistics_id: 'derived', min_studies: 2], file('${files[0]}'), file('${files[1]}'), file('${files[2]}'), file('${files[3]}')]
+                """
+            }
+        }
+        then {
+            assert process.success
+            def result = readResult(process.out.summary_statistics[0][1])
+            assertAll(
+                { assert result.rows*.SNPID == ['rs1', 'rs2', 'rs3'] },
+                { assert result.rows*.N_STUDIES == ['3', '2', '3'] },
+                { assert result.rows*.BETA == ['0.10', '0.20', '-0.10'] },
+                { assert result.rows*.P == ['0.000001', '0.001', '0.02'] },
+                { assert result.rows*.BETA_RANDOM == ['0.11', 'NA', 'NA'] },
+                { assert result.rows[0].SE_RANDOM == '0.03' },
+                { assert result.rows[0].Z_RANDOM == '3.67' },
+                { assert result.rows[0].P_RANDOM == '0.0002' },
+                { assert result.rows*.P_RE2 == ['0.0003', 'NA', '0.04'] },
+                { assert result.rows[0].RE2_MEAN_COMPONENT == '8.2' },
+                { assert result.rows[0].RE2_HET_COMPONENT == '1.3' },
+                { assert result.rows[0].subMap(['MRMEGA_CHISQ_ASSOC', 'MRMEGA_DF_ASSOC', 'MRMEGA_P_ASSOC', 'MRMEGA_CHISQ_ANCESTRY_HET', 'MRMEGA_DF_ANCESTRY_HET', 'MRMEGA_P_ANCESTRY_HET', 'MRMEGA_CHISQ_RESIDUAL_HET', 'MRMEGA_DF_RESIDUAL_HET', 'MRMEGA_P_RESIDUAL_HET', 'MRMEGA_LNBF']).values().toList() == ['10.1', '2', '0.006', '2.1', '1', '0.14', '1.2', '1', '0.27', '2.5'] },
+                { assert result.rows*.MRMEGA_P_ASSOC == ['0.006', 'NA', 'NA'] },
+            )
+        }
+    }
+
+    test("emit a valid gzip stub with selected model columns") {
+        options "-stub"
+        when {
+            def files = inputs(outputDir)
+            process {
+                """
+                input[0] = [[id: 'derived', summary_statistics_id: 'derived', min_studies: 2], file('${files[0]}'), file('${files[1]}'), file('${files[2]}'), file('${files[3]}')]
+                """
+            }
+        }
+        then {
+            assert process.success
+            def result = readResult(process.out.summary_statistics[0][1])
+            assertAll(
+                { assert result.rows == [] },
+                { assert result.header.containsAll(['BETA', 'SE', 'P', 'DOF', 'N_STUDIES', 'P_RANDOM', 'P_RE2', 'MRMEGA_P_ASSOC', 'MRMEGA_LNBF']) },
+                { assert path(process.out.versions[0]).text.contains('pandas:') },
+            )
+        }
+    }
+}

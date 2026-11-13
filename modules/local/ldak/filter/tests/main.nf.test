@@ -1,0 +1,103 @@
+nextflow_process {
+    name "Test Process LDAK_FILTER"
+    script "../main.nf"
+    process "LDAK_FILTER"
+    config "./nextflow.config"
+    tag "modules"
+    tag "modules_nfcore"
+    tag "ldak"
+    tag "ldak/calckins"
+    tag "ldak/filter"
+
+    test("homo sapiens - native") {
+        setup {
+            run("LDAK_CALCKINS") {
+                script "../../calckins/main.nf"
+                process {
+                    """
+                    input[0] = Channel.of([[id:'base'], file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bed', checkIfExists: true),
+                        file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bim', checkIfExists: true),
+                        file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.fam', checkIfExists: true), -0.25])
+                    input[1] = Channel.of([[id:'weights'], []])
+                    """
+                }
+            }
+        }
+        when {
+            process {
+                """
+                input[0] = LDAK_CALCKINS.out.ldak_grm.map { _meta, grm_files -> [[id:'derived'], grm_files] }
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert process.success },
+                { assert snapshot(sanitizeOutput(process.out)).match() }
+            )
+        }
+    }
+
+    test("homo sapiens - explicit threshold") {
+        setup {
+            run("LDAK_CALCKINS") {
+                script "../../calckins/main.nf"
+                process {
+                    """
+                    input[0] = Channel.of([[id:'base'], file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bed', checkIfExists: true),
+                        file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bim', checkIfExists: true),
+                        file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.fam', checkIfExists: true), -0.25])
+                    input[1] = Channel.of([[id:'weights'], []])
+                    """
+                }
+            }
+        }
+        when {
+            params {
+                module_args = "--max-rel 0.125"
+            }
+            process {
+                """
+                input[0] = LDAK_CALCKINS.out.ldak_grm.map { _meta, grm_files -> [[id:'derived'], grm_files] }
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert process.success },
+                { assert process.out.maxrel.size() == 0 },
+                { assert snapshot(sanitizeOutput(process.out)).match() }
+            )
+        }
+    }
+
+    test("homo sapiens - bed bim fam - stub") {
+        options "-stub"
+        setup {
+            run("LDAK_CALCKINS") {
+                script "../../calckins/main.nf"
+                process {
+                    """
+                    input[0] = Channel.of([[id:'base'], file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bed', checkIfExists: true),
+                        file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.bim', checkIfExists: true),
+                        file(params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.fam', checkIfExists: true), -0.25])
+                    input[1] = Channel.of([[id:'weights'], []])
+                    """
+                }
+            }
+        }
+        when {
+            process {
+                """
+                input[0] = LDAK_CALCKINS.out.ldak_grm.map { _meta, grm_files -> [[id:'derived'], grm_files] }
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert process.success },
+                { assert snapshot(sanitizeOutput(process.out)).match() }
+            )
+        }
+    }
+}

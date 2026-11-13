@@ -1,0 +1,44 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
+name: sumstats_metaanalysis_mrmega
+description: Export aligned multi-study summary statistics to MR-MEGA's per-study input files and run one genome-wide
+  MR-MEGA meta-regression
+keywords:
+  - summary statistics
+  - meta-analysis
+  - meta-regression
+  - trans-ancestry
+  - MR-MEGA
+components:
+  - custom/preparemrmegainput
+  - mrmega
+input:
+  - ch_aligned:
+      description: |
+        One genome-wide request per element. aligned_studies is the aligned wide table GWASLab's meta-analysis
+        exports, a gzip TSV with META_VARIANT_KEY, CHR, POS, EA, NEA and EAF_i/BETA_i/SE_i/N_i columns indexed
+        from one; study_names lists the studies in that column order. trait_type is `quantitative` or `binary`
+        and selects both the exported effect columns and MR-MEGA's native input-column mode. Optional MR-MEGA
+        settings such as --pc are supplied with MRMEGA task.ext.args. Focal request metadata is preserved
+        unchanged on every output.
+      structure:
+        - map meta
+        - path aligned_studies
+        - list study_names
+        - string trait_type
+      pattern: "*.mrmega.tsv.gz"
+      ontologies: []
+output:
+  - result:
+      description: Native MR-MEGA result, with the focal request metadata.
+      structure: [map meta, path result]
+      pattern: "*.result"
+      ontologies: []
+  - mrmega_log:
+      description: Native MR-MEGA log, with the focal request metadata.
+      structure: [map meta, path log]
+      pattern: "*.log"
+      ontologies: []
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"

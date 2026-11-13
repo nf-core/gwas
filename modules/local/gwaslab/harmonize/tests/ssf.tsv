@@ -1,0 +1,3 @@
+variant_id	rsid	chromosome	base_pair_location	other_allele	effect_allele	effect_allele_frequency	n	beta	standard_error	p_value
+1:1000:A:G	rs1	1	1000	A	G	0.25	500	0.10	0.02	1e-6
+1:2000:C:T	rs2	1	2000	C	T	0.30	500	3e-5	1e-5	0.0027

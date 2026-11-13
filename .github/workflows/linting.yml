@@ -46,7 +46,7 @@ jobs:
         run: uv tool install nf-core==${{ steps.read_yml.outputs['nf_core_version'] }}
 
       - name: Run nf-core pipelines lint
-        if: ${{ github.base_ref != 'master' || github.base_ref != 'main' }}
+        if: ${{ github.base_ref != 'master' && github.base_ref != 'main' }}
         env:
           GITHUB_COMMENTS_URL: ${{ github.event.pull_request.comments_url }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -75,7 +75,7 @@ jobs:
             lint_results.md
             PR_number.txt
 
-      # Build a comment for the shared pr-comment.yml poster to publish on the PR
+      # Build a comment for the shared linting_comment.yml poster to publish on the PR
       - name: Prepare PR comment
         if: ${{ always() }}
         env:

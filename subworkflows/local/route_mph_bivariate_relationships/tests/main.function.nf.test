@@ -1,0 +1,217 @@
+nextflow_function {
+
+    name "Test MPH bivariate relationship route functions"
+    script "../main.nf"
+    tag "function"
+    tag "mph"
+    tag "relationship"
+
+    // The validated pair request as `VALIDATE_GWAS_INPUT` hands it over. `request_options.mph` is always
+    // populated for an MPH pair request, because the pair namespace resolves every curated option against its
+    // default even when the researcher declared none.
+    def PAIR = [
+        id: 'mph_bivariate_reml_ldms--qt_qt2',
+        request_id: 'mph_bivariate_reml_ldms--qt_qt2',
+        relationship_id: 'qt_qt2',
+        method: 'mph_bivariate_reml_ldms',
+        cohort: 'example_cohort',
+        left_analysis_id: 'example_qt',
+        right_analysis_id: 'example_qt2',
+        left_trait_id: 'QT',
+        right_trait_id: 'QT2',
+        native_args: [],
+        request_options: [mph: [iterations: null, tolerance: null, random_vectors: null, seed: 7, save_memory: false]],
+    ]
+
+    def MATRIX = [
+        key: 'ldms000001',
+        layer: 'base',
+        artifact_type: 'mph_ldms',
+        settings: [format: 'mph_grm'],
+        plan_key: 'plan000001',
+        plan_settings: [ld_score_region_kb: 50, ld_bins: 2, maf_edges: [0, 0.5]],
+        components: [[ordinal: 1, name: 'ld01_maf01', plan_predictor_count: 1100]],
+        variant_counts: [bim_rows: 1100, assigned: 1100, unassigned: 0],
+    ]
+
+    test("the route meta keeps the request identity and its matrix attribution") {
+        function "resolveMphPairRouteMeta"
+
+        when {
+            function {
+                """
+                input[0] = ${PAIR.inspect()}
+                input[1] = ${MATRIX.inspect()}
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                // The request identity stays primary throughout execution. The matrix key is attribution only:
+                // MPH addresses its family through the prefix list, so nothing here rewrites the ID.
+                { assert function.result.id == 'mph_bivariate_reml_ldms--qt_qt2' },
+                { assert function.result.request_id == 'mph_bivariate_reml_ldms--qt_qt2' },
+                { assert function.result.matrix_key == 'ldms000001' },
+                { assert function.result.mph_estimator == 'mph_bivariate_reml_ldms' },
+                { assert function.result.mph_effective.native_arguments == ['--seed 7'] },
+            )
+        }
+    }
+
+    test("the declared orientation is taken as given even when it reverses the alphabetical order") {
+        function "mphTraitNames"
+
+        when {
+            function {
+                """
+                input[0] = ${(PAIR + [left_trait_id: 'ZTRAIT', right_trait_id: 'ATRAIT']).inspect()}
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                // Declared manifest order, never sorted: this list becomes `--trait_names` and therefore fixes
+                // which endpoint is the left one in every published record. `ATRAIT` sorts before `ZTRAIT` on
+                // no ordering this pipeline uses, but the point is that no ordering is applied at all.
+                { assert function.result == ['ZTRAIT', 'ATRAIT'] },
+            )
+        }
+    }
+
+    test("the declared pair becomes the fit's trait-name list in manifest order") {
+        function "mphTraitNames"
+
+        when {
+            function {
+                """
+                input[0] = ${PAIR.inspect()}
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == ['QT', 'QT2'] },
+            )
+        }
+    }
+
+    // Every combination that changes what reaches the configured command line.
+    def effectiveSettings = [
+        [
+            name: 'every option left native and no named addition',
+            options: [iterations: null, tolerance: null, random_vectors: null, seed: null, save_memory: false],
+            native_args: [],
+            arguments: [],
+        ],
+        [
+            name: 'a curated seed only',
+            options: [iterations: null, tolerance: null, random_vectors: null, seed: 7, save_memory: false],
+            native_args: [],
+            arguments: ['--seed 7'],
+        ],
+        [
+            // The curated options come first and the allow-listed named addition after them, which is the
+            // order the firewall admitted them in.
+            name: 'a curated seed beside an allow-listed native addition',
+            options: [iterations: null, tolerance: null, random_vectors: null, seed: 7, save_memory: false],
+            native_args: ['--min_maf', '0.01'],
+            arguments: ['--seed 7', '--min_maf', '0.01'],
+        ],
+        [
+            name: 'a native addition with no curated option at all',
+            options: [iterations: null, tolerance: null, random_vectors: null, seed: null, save_memory: false],
+            native_args: ['--verbose'],
+            arguments: ['--verbose'],
+        ],
+        [
+            name: 'every option curated',
+            options: [iterations: 50, tolerance: 0.001, random_vectors: 200, seed: 7, save_memory: true],
+            native_args: [],
+            arguments: ['--num_iterations 50', '--tolerance 0.001', '--num_random_vectors 200', '--seed 7', '--save_memory'],
+        ],
+    ]
+
+    effectiveSettings.each { scenario ->
+        test("effective pair settings render ${scenario.name}") {
+            function "buildMphEffectiveSettings"
+
+            when {
+                function {
+                    """
+                    input[0] = ${scenario.options.inspect()}
+                    input[1] = ${scenario.native_args.inspect()}
+                    """
+                }
+            }
+
+            then {
+                assertAll(
+                    { assert function.success },
+                    { assert function.result.native_arguments == scenario.arguments },
+                )
+            }
+        }
+    }
+
+    test("the matrix prefix comes from the member whose name defines it, not from the collection order") {
+        function "grmPrefix"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    file('${RELATIONAL.resource(outputDir, 'pair-mph_dense.abc123.grm.bin', 'binary\n')}', checkIfExists: true),
+                    file('${RELATIONAL.resource(outputDir, 'pair-mph_dense.abc123.grm.iid', 'S001\n')}', checkIfExists: true),
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                { assert function.result == 'pair-mph_dense.abc123' },
+            )
+        }
+    }
+
+    test("route bookkeeping is stripped before emission and the request identity is what survives") {
+        function "stripMphPairRouteState"
+
+        when {
+            function {
+                """
+                input[0] = [
+                    id: 'mph_bivariate_reml--qt_qt2',
+                    request_id: 'mph_bivariate_reml--qt_qt2',
+                    relationship_id: 'qt_qt2',
+                    method: 'mph_bivariate_reml',
+                    matrix_key: 'abc123',
+                    mph_estimator: 'mph_bivariate_reml',
+                    mph_effective: [native_arguments: ['--seed 7']],
+                ]
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert function.success },
+                // `method` already names the estimator for a pair request, so unlike the unary route this one
+                // strips its own `mph_estimator` copy too: nothing this route minted reaches a published key.
+                { assert function.result == [
+                    id: 'mph_bivariate_reml--qt_qt2',
+                    request_id: 'mph_bivariate_reml--qt_qt2',
+                    relationship_id: 'qt_qt2',
+                    method: 'mph_bivariate_reml',
+                ] },
+            )
+        }
+    }
+}

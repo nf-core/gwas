@@ -1,0 +1,253 @@
+nextflow_workflow {
+    name "Test PLINK_FIT_REGENIE"
+    script "../main.nf"
+    workflow "PLINK_FIT_REGENIE"
+    config "./nextflow.config"
+    tag "subworkflows"
+    tag "plink_fit_regenie"
+    tag "subworkflows_nfcore"
+    tag "subworkflows/plink_fit_regenie"
+    tag "regenie/step1"
+    tag "regenie/splitl0"
+    tag "regenie/runl0"
+    tag "regenie/runl1"
+    tag "regenie"
+
+    test("homo_sapiens popgen - standard fitting") {
+        when {
+            workflow {
+                """
+                def meta = [id: 'fit']
+                def base = params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/'
+                input[0] = channel.of([meta, file(base + 'plink_simulated.bed', checkIfExists: true), file(base + 'plink_simulated.bim', checkIfExists: true), file(base + 'plink_simulated.fam', checkIfExists: true)])
+                input[1] = channel.of([meta, file(base + 'plink_simulated_quantitative_phenoname.phe', checkIfExists: true)])
+                input[2] = channel.of([meta, file(base + 'plink_simulated_covariates.txt', checkIfExists: true)])
+                input[3] = channel.of([meta, 1000])
+                input[4] = channel.of([meta, 'standard'])
+                input[5] = channel.of([meta, []])
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert workflow.out.predictions*.getAt(0) == [[id: 'fit']] },
+                { assert workflow.out.loco*.getAt(0) == [[id: 'fit']] },
+                { assert workflow.out.logs.size() == 1 },
+                {
+                    def predictionList = path(workflow.out.predictions[0][1])
+                    def companions = workflow.out.loco[0][1]
+                    companions = companions instanceof List ? companions : [companions]
+                    assert predictionList.exists()
+                    assert companions.every { path(it).exists() }
+                    assert predictionList.text.readLines().findAll { it }.size() == 1
+                },
+                {
+                    // Native prediction lists contain task paths; snapshot the public names and identities.
+                    assert snapshot(
+                        workflow.out.predictions.collect { [it[0], path(it[1]).getFileName().toString()] },
+                        workflow.out.loco.collect { row -> [row[0], (row[1] instanceof List ? row[1] : [row[1]]).collect { path(it).getFileName().toString() }.sort()] },
+                        workflow.out.logs.collect { [it[0], path(it[1]).getFileName().toString()] }.sort { it[1] }
+                    ).match()
+                }
+            )
+        }
+    }
+
+    test("homo_sapiens popgen - chunked fitting") {
+        when {
+            workflow {
+                """
+                def meta = [id: 'fit']
+                def base = params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/'
+                input[0] = channel.of([meta, file(base + 'plink_simulated.bed', checkIfExists: true), file(base + 'plink_simulated.bim', checkIfExists: true), file(base + 'plink_simulated.fam', checkIfExists: true)])
+                input[1] = channel.of([meta, file(base + 'plink_simulated_quantitative_phenoname.phe', checkIfExists: true)])
+                input[2] = channel.of([meta, file(base + 'plink_simulated_covariates.txt', checkIfExists: true)])
+                input[3] = channel.of([meta, 100])
+                input[4] = channel.of([meta, 'chunked'])
+                input[5] = channel.of([meta, 2])
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert workflow.out.predictions*.getAt(0) == [[id: 'fit']] },
+                { assert workflow.out.loco*.getAt(0) == [[id: 'fit']] },
+                { assert workflow.out.logs.size() == 4 },
+                {
+                    def predictionList = path(workflow.out.predictions[0][1])
+                    def companions = workflow.out.loco[0][1]
+                    companions = companions instanceof List ? companions : [companions]
+                    assert predictionList.exists()
+                    assert companions.every { path(it).exists() }
+                    assert predictionList.text.readLines().findAll { it }.size() == 1
+                },
+                {
+                    // Native prediction lists contain task paths; snapshot the public names and identities.
+                    assert snapshot(
+                        workflow.out.predictions.collect { [it[0], path(it[1]).getFileName().toString()] },
+                        workflow.out.loco.collect { row -> [row[0], (row[1] instanceof List ? row[1] : [row[1]]).collect { path(it).getFileName().toString() }.sort()] },
+                        workflow.out.logs.collect { [it[0], path(it[1]).getFileName().toString()] }.sort { it[1] }
+                    ).match()
+                }
+            )
+        }
+    }
+
+    test("homo_sapiens popgen - observed single chunk without covariates") {
+        when {
+            workflow {
+                """
+                def meta = [id: 'fit']
+                def base = params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/'
+                input[0] = channel.of([meta, file(base + 'plink_simulated.pgen', checkIfExists: true), file(base + 'plink_simulated.pvar', checkIfExists: true), file(base + 'plink_simulated.psam', checkIfExists: true)])
+                input[1] = channel.of([meta, file(base + 'plink_simulated_quantitative_phenoname.phe', checkIfExists: true)])
+                input[2] = channel.of([meta, []])
+                input[3] = channel.of([meta, 1000])
+                input[4] = channel.of([meta, 'chunked'])
+                input[5] = channel.of([meta, 5])
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert workflow.out.predictions*.getAt(0) == [[id: 'fit']] },
+                { assert workflow.out.loco*.getAt(0) == [[id: 'fit']] },
+                { assert workflow.out.logs.size() == 3 },
+                {
+                    def predictionList = path(workflow.out.predictions[0][1])
+                    def companions = workflow.out.loco[0][1]
+                    companions = companions instanceof List ? companions : [companions]
+                    assert predictionList.exists()
+                    assert companions.every { path(it).exists() }
+                    assert predictionList.text.readLines().findAll { it }.size() == 1
+                },
+                {
+                    // Native prediction lists contain task paths; snapshot the public names and identities.
+                    assert snapshot(
+                        workflow.out.predictions.collect { [it[0], path(it[1]).getFileName().toString()] },
+                        workflow.out.loco.collect { row -> [row[0], (row[1] instanceof List ? row[1] : [row[1]]).collect { path(it).getFileName().toString() }.sort()] },
+                        workflow.out.logs.collect { [it[0], path(it[1]).getFileName().toString()] }.sort { it[1] }
+                    ).match()
+                }
+            )
+        }
+    }
+
+    test("homo_sapiens popgen - standard fitting - stub") {
+        options "-stub"
+        when {
+            workflow {
+                """
+                def meta = [id: 'fit']
+                def base = params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/'
+                input[0] = channel.of([meta, file(base + 'plink_simulated.pgen', checkIfExists: true), file(base + 'plink_simulated.pvar', checkIfExists: true), file(base + 'plink_simulated.psam', checkIfExists: true)])
+                input[1] = channel.of([meta, file(base + 'plink_simulated_quantitative_phenoname.phe', checkIfExists: true)])
+                input[2] = channel.of([meta, []])
+                input[3] = channel.of([meta, 1000])
+                input[4] = channel.of([meta, 'standard'])
+                input[5] = channel.of([meta, []])
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert workflow.out.predictions*.getAt(0) == [[id: 'fit']] },
+                { assert workflow.out.loco*.getAt(0) == [[id: 'fit']] },
+                { assert workflow.out.logs.size() == 1 },
+                {
+                    def predictionList = path(workflow.out.predictions[0][1])
+                    def companions = workflow.out.loco[0][1]
+                    companions = companions instanceof List ? companions : [companions]
+                    assert predictionList.exists()
+                    assert companions.every { path(it).exists() }
+                    assert predictionList.text.readLines().findAll { it }.size() == 1
+                },
+                {
+                    // Native prediction lists contain task paths; snapshot the public names and identities.
+                    assert snapshot(
+                        workflow.out.predictions.collect { [it[0], path(it[1]).getFileName().toString()] },
+                        workflow.out.loco.collect { row -> [row[0], (row[1] instanceof List ? row[1] : [row[1]]).collect { path(it).getFileName().toString() }.sort()] },
+                        workflow.out.logs.collect { [it[0], path(it[1]).getFileName().toString()] }.sort { it[1] }
+                    ).match()
+                }
+            )
+        }
+    }
+
+    test("homo_sapiens popgen - chunked fitting - stub") {
+        options "-stub"
+        when {
+            workflow {
+                """
+                def meta = [id: 'fit']
+                def base = params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/'
+                input[0] = channel.of([meta, file(base + 'plink_simulated.bed', checkIfExists: true), file(base + 'plink_simulated.bim', checkIfExists: true), file(base + 'plink_simulated.fam', checkIfExists: true)])
+                input[1] = channel.of([meta, file(base + 'plink_simulated_quantitative_phenoname.phe', checkIfExists: true)])
+                input[2] = channel.of([meta, file(base + 'plink_simulated_covariates.txt', checkIfExists: true)])
+                input[3] = channel.of([meta, 100])
+                input[4] = channel.of([meta, 'chunked'])
+                input[5] = channel.of([meta, 2])
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert workflow.out.predictions*.getAt(0) == [[id: 'fit']] },
+                { assert workflow.out.loco*.getAt(0) == [[id: 'fit']] },
+                { assert workflow.out.logs.size() == 4 },
+                {
+                    def predictionList = path(workflow.out.predictions[0][1])
+                    def companions = workflow.out.loco[0][1]
+                    companions = companions instanceof List ? companions : [companions]
+                    assert predictionList.exists()
+                    assert companions.every { path(it).exists() }
+                    assert predictionList.text.readLines().findAll { it }.size() == 1
+                },
+                {
+                    // Native prediction lists contain task paths; snapshot the public names and identities.
+                    assert snapshot(
+                        workflow.out.predictions.collect { [it[0], path(it[1]).getFileName().toString()] },
+                        workflow.out.loco.collect { row -> [row[0], (row[1] instanceof List ? row[1] : [row[1]]).collect { path(it).getFileName().toString() }.sort()] },
+                        workflow.out.logs.collect { [it[0], path(it[1]).getFileName().toString()] }.sort { it[1] }
+                    ).match()
+                }
+            )
+        }
+    }
+
+    test("homo_sapiens popgen - mixed per-fit routes") {
+        when {
+            workflow {
+                """
+                def base = params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/'
+                def fits = [[id: 'standard'], [id: 'chunked']]
+                input[0] = channel.fromList(fits).map { meta -> [meta, file(base + 'plink_simulated.bed'), file(base + 'plink_simulated.bim'), file(base + 'plink_simulated.fam')] }
+                input[1] = channel.fromList(fits).map { meta -> [meta, file(base + 'plink_simulated_quantitative_phenoname.phe')] }
+                input[2] = channel.fromList(fits).map { meta -> [meta, []] }
+                input[3] = channel.fromList(fits).map { meta -> [meta, 1000] }
+                input[4] = channel.fromList(fits).map { meta -> [meta, meta.id] }
+                input[5] = channel.of([[id: 'standard'], []], [[id: 'chunked'], 5])
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert workflow.out.predictions.collect { it[0] }.sort { it.id } == [[id: 'chunked'], [id: 'standard']] },
+                { assert workflow.out.loco.collect { it[0] }.sort { it.id } == [[id: 'chunked'], [id: 'standard']] },
+                { assert workflow.out.logs.countBy { it[0].id } == [standard: 1, chunked: 3] },
+                {
+                    assert snapshot(
+                        workflow.out.predictions.collect { [it[0], path(it[1]).getFileName().toString()] }.sort { it[0].id },
+                        workflow.out.logs.collect { [it[0], path(it[1]).getFileName().toString()] }.sort { it[0].id + it[1] }
+                    ).match()
+                }
+            )
+        }
+    }
+}

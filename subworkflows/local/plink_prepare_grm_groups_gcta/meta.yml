@@ -1,0 +1,46 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
+name: "plink_prepare_grm_groups_gcta"
+description: Build an ordered native GCTA genetic relationship matrix family from caller-defined SNP groups
+keywords:
+  - gcta
+  - named SNP groups
+  - genome relationship matrix
+  - grm
+  - scatter gather
+components:
+  - plink_prepare_grm_gcta
+input:
+  - ch_groups:
+      description: |
+        Required tab-separated table with group_id and group_filename columns and one or more rows.
+        Each group_filename names a supplied SNP-list file. Groups are disjoint; row order defines
+        matrix order. The caller selects the variant universe. Public outputs preserve focal meta.
+      structure: [map meta, path group_manifest, list snp_group_files]
+      pattern: "*.tsv, *.txt"
+      ontologies:
+        - edam: "http://edamontology.org/format_3475"
+        - edam: "http://edamontology.org/format_2330"
+  - ch_genotypes:
+      description: PLINK1 multi-file bundle for the focal analysis in the second metadata-bearing tuple. meta2.id equals meta.id.
+      structure: [map meta2, path mfile, path bed, path bim, path fam]
+      pattern: "*.mbfile, *.bed, *.bim, *.fam"
+      ontologies:
+        - edam: "http://edamontology.org/format_3003"
+        - edam: "http://edamontology.org/format_2330"
+  - ch_n_parts:
+      description: Requested GRM part count in the third metadata-bearing tuple. meta3.id equals meta.id.
+      structure: [map meta3, integer requested_parts]
+output:
+  - grm_family:
+      description: |
+        Merged GRM bundles and their prefixes in declared group order, including a one-group family. Each
+        prefix is `<meta.id>__<six-digit ordinal>_<group_id>`, so the declared group label names the native
+        matrix files and the variance components a consumer builds from them.
+      structure: [map meta, path grm_files, list grm_prefixes]
+      pattern: "*.grm.{bin,N.bin,id}"
+      ontologies:
+        - edam: "http://edamontology.org/format_2330"
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"

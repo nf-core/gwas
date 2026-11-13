@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
+name: prepare_relationship_traits
+description: Prepare each declared relationship's ordered two-trait table and normalized pair covariates once for every individual-level pair estimator
+keywords:
+  - relationship
+  - bivariate
+  - phenotype
+  - covariates
+components:
+  - prepare/bivariate/traits
+input:
+  - ch_relationships:
+      description: Validated relationship requests, one row per selected method
+      structure: "[map meta, [ path genotype_file, ... ], path pair_quant_covariates|[], path pair_cat_covariates|[]]"
+      pattern: "*.{bed,bim,fam,pgen,psam,pvar,vcf,vcf.gz,tsv,txt}"
+      ontologies: []
+  - ch_prepared_phenotypes:
+      description: Headerless prepared phenotype for every analysis unit
+      structure: "[map meta, path phenotype]"
+      pattern: "*.pheno"
+      ontologies: []
+output:
+  - pairs:
+      description: The shared prepared pair, one record per relationship, with headerless covariates and [] for an absent table
+      structure: "[map relationship_meta, path phenotype, path quant_covariates|[], path cat_covariates|[]]"
+      pattern: "*.{pheno,noheader.qcovar,noheader.catcovar}"
+      ontologies: []
+  - named_covariates:
+      description: The same normalized pair covariates with their validated header, one record per relationship, and [] for an absent table
+      structure: "[map relationship_meta, path quant_covariates|[], path cat_covariates|[]]"
+      pattern: "*.{qcovar,catcovar}"
+      ontologies: []
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"

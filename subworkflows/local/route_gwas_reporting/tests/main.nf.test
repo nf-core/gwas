@@ -1,0 +1,141 @@
+nextflow_workflow {
+
+    name "Test GWAS reporting route"
+    script "../main.nf"
+    workflow "ROUTE_GWAS_REPORTING"
+    tag "subworkflow"
+    tag "subworkflows_local"
+    tag "reporting"
+    tag "multiqc"
+
+    // Every case drives the same run description, so the only variable under test is asset selection.
+    def inputs = { project_dir, overrides ->
+        def tests = "${project_dir}/subworkflows/local/route_gwas_reporting/tests"
+        return """
+        def analysis = [
+            id: 'example_pgen_qt',
+            cohort: 'example_pgen',
+            trait: 'QT',
+            trait_type: 'quantitative',
+            build: 'GRCh38',
+            ancestry: 'EUR',
+            association_methods: ['regenie'],
+            heritability_methods: ['gcta_greml'],
+        ]
+        input[0] = channel.value(file('${tests}/nf_core_gwas_software_mqc_versions.yml', checkIfExists: true))
+        input[1] = channel.value([analysis])
+        input[2] = channel.value([
+            [domain: 'analysis', meta: analysis],
+            [domain: 'summary_unary', meta: [method: 'ldsc_h2']],
+            [domain: 'summary_set', meta: [meta_analysis_models: ['fixed', 'random', 're2', 'mrmega']]],
+            [domain: 'pairwise', meta: [relationship_methods: ['gcta_bivariate_reml']]],
+        ])
+        input[3] = ['Input/output options': [outdir: 'results']]
+        input[4] = ${overrides.multiqc_config}
+        input[5] = ${overrides.multiqc_logo}
+        input[6] = ${overrides.multiqc_methods_description}
+        input[7] = file('${project_dir}/assets/multiqc_analysis_plan.yml', checkIfExists: true)
+        input[8] = file('${project_dir}/assets/multiqc_config.yml', checkIfExists: true)
+        input[9] = file('${project_dir}/assets/nf-core-gwas_logo_light.png', checkIfExists: true)
+        input[10] = file('${project_dir}/assets/methods_description_template.yml', checkIfExists: true)
+        """
+    }
+
+    def defaults = [multiqc_config: 'null', multiqc_logo: 'null', multiqc_methods_description: 'null']
+
+    def custom = { project_dir ->
+        def tests = "${project_dir}/subworkflows/local/route_gwas_reporting/tests"
+        return [
+            multiqc_config: "'${tests}/custom_multiqc_config.yml'",
+            multiqc_logo: "'${project_dir}/docs/images/nf-core-gwas_logo_dark.png'",
+            multiqc_methods_description: "'${tests}/custom_methods_description_template.yml'",
+        ]
+    }
+
+    // MultiQC records the sections it rendered, the resolved report comment and the exact command line,
+    // so both the assembled input set and the selected assets are observable from the report data.
+    def sections = { outdir ->
+        new File("${outdir}/multiqc/multiqc_data/llms-full.txt")
+            .readLines()
+            .findAll { line -> line ==~ /^\d+\. .+/ }
+            .collect { line -> line.replaceFirst(/^\d+\. /, '') }
+    }
+
+    def reportData = { outdir ->
+        new groovy.json.JsonSlurper().parse(new File("${outdir}/multiqc/multiqc_data/multiqc_data.json"))
+    }
+
+    def RENDERED_SECTIONS = ['Analysis plan', 'nf-core/gwas Methods Description', 'nf-core/gwas Workflow Summary']
+
+    test("the pipeline default assets render every report section exactly once") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                inputs(projectDir, defaults)
+            }
+        }
+
+        then {
+            def report_data = reportData(params.outdir)
+            def report = new File(workflow.out.report[0][0].toString())
+            def analysis_plan = new File("${params.outdir}/multiqc/multiqc_data/multiqc_nf-core-gwas-analysis-plan-table.txt")
+            def software_versions = new File("${params.outdir}/multiqc/multiqc_data/multiqc_software_versions.txt")
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'MULTIQC') == 1 },
+                // The public emit is one record holding one report path, and the report publishes unchanged.
+                { assert workflow.out.report.size() == 1 },
+                { assert workflow.out.report[0].size() == 1 },
+                { assert report.name == 'multiqc_report.html' },
+                { assert new File("${params.outdir}/multiqc/multiqc_report.html").isFile() },
+                // Each assembled section is present exactly once, in the configured order.
+                { assert sections(params.outdir) == RENDERED_SECTIONS },
+                { assert analysis_plan.readLines()[0] == 'Sample\tcohort\ttrait\ttrait_type\tgenome_build\tancestry\tassociation_methods\theritability_methods' },
+                { assert analysis_plan.readLines().findAll { line -> line.startsWith('example_pgen_qt\t') }.size() == 1 },
+                { assert software_versions.readLines().findAll { line -> line.startsWith('REGENIE_STEP2\t') }.size() == 1 },
+                // The pipeline defaults were selected for all three overridable assets.
+                { assert report_data.config_report_comment.contains('analysis pipeline') },
+                { assert report_data.report_multiqc_command.contains('custom_logo: "nf-core-gwas_logo_light.png"') },
+                { assert report.text.contains('nf-core collection of workflows') },
+                { assert report.text.contains('10.1016/j.ajhg.2011.04.014') },
+                { assert report.text.contains('10.1093/hmg/ddx280') },
+                { assert report.text.contains('METASOFT') },
+                { assert report.text.contains('MR-MEGA') },
+                { assert !report.text.contains('ROUTE_GWAS_REPORTING custom') },
+            )
+        }
+    }
+
+    test("user-supplied assets replace the pipeline defaults without changing the section set") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                inputs(projectDir, custom(projectDir))
+            }
+        }
+
+        then {
+            def report_data = reportData(params.outdir)
+            def report = new File(workflow.out.report[0][0].toString())
+            assertAll(
+                { assert workflow.success },
+                { assert TRACE.count(workflow, 'MULTIQC') == 1 },
+                { assert workflow.out.report.size() == 1 },
+                { assert report.name == 'multiqc_report.html' },
+                // Every override was honoured and no pipeline default leaked through.
+                { assert report_data.config_report_comment == 'ROUTE_GWAS_REPORTING custom configuration asset' },
+                { assert report_data.report_multiqc_command.contains('custom_logo: "nf-core-gwas_logo_dark.png"') },
+                { assert report.text.contains('ROUTE_GWAS_REPORTING custom methods description asset') },
+                { assert !report.text.contains('nf-core collection of workflows') },
+                // Overriding an asset must not add, drop or duplicate a section.
+                { assert sections(params.outdir) == RENDERED_SECTIONS },
+            )
+        }
+    }
+}

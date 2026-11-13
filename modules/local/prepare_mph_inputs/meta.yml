@@ -1,0 +1,122 @@
+name: prepare_mph_inputs
+description: Convert FID/IID sample tables and a declared covariate design to ordered IID-keyed MPH CSVs
+keywords:
+  - mph
+  - minque for partitioning heritability
+  - phenotype
+  - covariate
+  - serialisation
+  - heritability
+tools:
+  - prepare_mph_inputs:
+      description: |
+        A Python 3 representation adapter. It rewrites the pipeline's prepared phenotype and covariate tables
+        into MPH's comma-separated, IID-keyed, empty-field-is-missing form, dummy-encodes
+        categorical covariates by the same rule the pipeline's other numeric design uses, prepends
+        the explicit intercept column MPH does not synthesise once a covariate is named.
+      homepage: "https://github.com/nf-core/gwas"
+      documentation: "https://nf-co.re/gwas"
+      # Pipeline-authored code carrying the pipeline's own licence. It invokes no third-party programme; MPH
+      # is GPL-3.0-only and is declared by the two `mph/*` modules that do.
+      licence: ["MIT"]
+      identifier: ""
+input:
+  - - meta:
+        type: map
+        description: Sample-set metadata preserved on outputs.
+    - phenotype_table:
+        type: file
+        description: |
+          Headerless FID IID trait table, one column per declared trait name. Missing tokens are supplied
+          explicitly.
+        pattern: "*.pheno"
+        ontologies:
+          - edam: "http://edamontology.org/format_3475"
+    - quant_covariates:
+        type: file
+        description: |
+          Optional headered `FID IID name...` quantitative covariate table. Use `[]` for absence. Values must
+          parse as numbers when present.
+        pattern: "*.qcovar"
+        ontologies:
+          - edam: "http://edamontology.org/format_3475"
+    - cat_covariates:
+        type: file
+        description: |
+          Optional headered FID IID categorical table; [] for absence. Treatment-coded against the lexically
+          first observed non-missing level.
+        pattern: "*.catcovar"
+        ontologies:
+          - edam: "http://edamontology.org/format_3475"
+    - trait_names:
+        type: list
+        description: Ordered names for the headerless trait columns.
+    - missing_tokens:
+        type: list
+        description: |
+          Case-insensitive missing-value spellings to serialize as empty CSV fields; no implicit missing
+          tokens.
+  - - meta2:
+        type: map
+        description: |
+          Groovy Map containing the matrix family's information.
+    - grm_iid:
+        type: file
+        description: Native MPH one-IID-per-line sample order, shared by every supplied matrix.
+        pattern: "*.grm.iid"
+        ontologies:
+          - edam: "http://edamontology.org/format_2330"
+    - fam:
+        type: file
+        description: |
+          FID IID sample mapping, optionally with remaining FAM columns. Supplies the FID used to join the
+          covariate tables.
+        pattern: "*.fam"
+        ontologies:
+          - edam: "http://edamontology.org/format_3475"
+output:
+  phenotype:
+    - - meta:
+          type: map
+          description: Groovy Map containing the analysis unit's information.
+      - "${prefix}.mph.pheno.csv":
+          type: file
+          description: |
+            IID-keyed phenotype CSV in matrix sample order, one column per trait, missing values written as
+            empty fields. The rows are the intersection of the `.grm.iid` order with the trait table: a matrix
+            sample the trait table does not list, and a trait row whose IID the supplied FAM does not list, are
+            both omitted.
+          pattern: "*.mph.pheno.csv"
+          ontologies:
+            - edam: "http://edamontology.org/format_3752"
+  covariates:
+    - - meta:
+          type: map
+          description: Groovy Map containing the analysis unit's information.
+      - "${prefix}.mph.covar.csv":
+          type: file
+          description: |
+            Optional IID-keyed numeric design CSV, row-aligned with the phenotype CSV. An explicit intercept
+            is followed by quantitative columns and treatment-coded categorical columns. The covariate tables
+            are joined on (FID, IID) with the FID taken from the supplied FAM, and a sample they do not
+            describe under that identity is written with empty covariate cells.
+          pattern: "*.mph.covar.csv"
+          ontologies:
+            - edam: "http://edamontology.org/format_3752"
+  versions:
+    - "versions.yml":
+        type: file
+        description: File containing software versions
+        pattern: "versions.yml"
+        ontologies: []
+topics:
+  versions:
+    - "versions.yml":
+        type: file
+        description: File containing software versions
+        pattern: "versions.yml"
+        ontologies: []
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"

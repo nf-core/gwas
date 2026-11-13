@@ -1,0 +1,102 @@
+{
+    "2 named groups preserve BIM order and explicit non-autosomal membership": {
+        "content": [
+            {
+                "counts": [
+                    [
+                        {
+                            "id": "focal"
+                        },
+                        "focal.snp_info.counts.tsv:md5,0bc6eef8f208ab07dbad23ab1a91dd51"
+                    ]
+                ],
+                "snp_info": [
+                    [
+                        {
+                            "id": "focal"
+                        },
+                        "focal.snp_info.csv:md5,8456021b43a1d1bd72d9c4f3abd97da6",
+                        [
+                            "first",
+                            "second"
+                        ]
+                    ]
+                ],
+                "versions": [
+                    "versions.yml:md5,8154b64808b130d7143db5265bd4f984"
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T17:25:31.403818494",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "ordered column contract - stub": {
+        "content": [
+            {
+                "counts": [
+                    [
+                        {
+                            "id": "focal"
+                        },
+                        "focal.snp_info.counts.tsv:md5,aaa06856409e2899ee2d072d1589b1b8"
+                    ]
+                ],
+                "snp_info": [
+                    [
+                        {
+                            "id": "focal"
+                        },
+                        "focal.snp_info.csv:md5,ef546ce01039b93876fcca536cde54d6",
+                        [
+                            "a"
+                        ]
+                    ]
+                ],
+                "versions": [
+                    "versions.yml:md5,8154b64808b130d7143db5265bd4f984"
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T17:25:41.906198677",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "1 named groups preserve BIM order and explicit non-autosomal membership": {
+        "content": [
+            {
+                "counts": [
+                    [
+                        {
+                            "id": "focal"
+                        },
+                        "focal.snp_info.counts.tsv:md5,12bf319c7767e30a956bc819e6bad39a"
+                    ]
+                ],
+                "snp_info": [
+                    [
+                        {
+                            "id": "focal"
+                        },
+                        "focal.snp_info.csv:md5,5e9a67d9f5b21e3ed8d86d9549b3b7bf",
+                        [
+                            "first"
+                        ]
+                    ]
+                ],
+                "versions": [
+                    "versions.yml:md5,8154b64808b130d7143db5265bd4f984"
+                ]
+            }
+        ],
+        "timestamp": "2026-09-18T17:25:28.133446029",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

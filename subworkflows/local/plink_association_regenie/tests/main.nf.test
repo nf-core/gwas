@@ -1,0 +1,155 @@
+nextflow_workflow {
+
+    name "Test Workflow PLINK_ASSOCIATION_REGENIE"
+    script "../main.nf"
+    workflow "PLINK_ASSOCIATION_REGENIE"
+    config "./nextflow.config"
+    tag "subworkflows"
+    tag "subworkflows_nfcore"
+    tag "plink_association_regenie"
+    tag "subworkflows/plink_association_regenie"
+    tag "subworkflows/plink_fit_regenie"
+    tag "plink_fit_regenie"
+    tag "regenie"
+    tag "regenie/step1"
+    tag "regenie/splitl0"
+    tag "regenie/runl0"
+    tag "regenie/runl1"
+    tag "regenie/step2"
+
+    ['standard', 'chunked'].each { mode ->
+        test("${mode} fit serves distinct analyses and testing genotype formats") {
+            when {
+                workflow {
+                    """
+                    def base = params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated'
+                    def bed = file(base + '.bed', checkIfExists: true)
+                    def bim = file(base + '.bim', checkIfExists: true)
+                    def fam = file(base + '.fam', checkIfExists: true)
+                    def pgen = file(base + '.pgen', checkIfExists: true)
+                    def pvar = file(base + '.pvar', checkIfExists: true)
+                    def psam = file(base + '.psam', checkIfExists: true)
+                    def pheno = file(base + '_quantitative_phenoname.phe', checkIfExists: true)
+                    def covar = file(base + '_covariates.txt', checkIfExists: true)
+                    input[0] = channel.of(['producer', [id:'training'], bed, bim, fam, pheno, covar, 256, '${mode}', ${mode == 'chunked' ? '2' : '[]'}])
+                    input[1] = channel.empty()
+                    input[2] = channel.of(
+                        ['producer', [id:'analysis_a'], pgen, pvar, psam, pheno, covar, 256],
+                        ['producer', [id:'analysis_b'], bed, bim, fam, pheno, covar, 256],
+                    )
+                    """
+                }
+            }
+            then {
+                assertAll(
+                    { assert workflow.success },
+                    { assert workflow.out.predictions.size() == 1 },
+                    { assert workflow.out.predictions[0][0] == 'producer' },
+                    { assert workflow.out.predictions[0][1] == [id:'training'] },
+                    { assert workflow.out.results.collect { row -> row[0].id }.sort() == ['analysis_a', 'analysis_b'] },
+                    { assert workflow.out.results.every { row -> path(row[1]).getFileName().toString().startsWith(row[0].id + '.plink_simulated') } },
+                    { assert workflow.out.logs.size() == 2 },
+                    // The nested fitter's logs carry the caller's producer reference and metadata, not the
+                    // private fit identifier the composition gives the fit modules.
+                    { assert workflow.out.fit_logs.every { row -> row[0] == 'producer' && row[1] == [id:'training'] } },
+                    { assert mode == 'standard' ? workflow.out.fit_logs.size() == 1 : workflow.out.fit_logs.size() >= 3 },
+                    { assert snapshot(workflow.out.results.collect { row -> [row[0], path(row[1]).getFileName().toString()] }.sort { row -> row[0].id }).match() },
+                    { assert workflow.trace.tasks().count { task -> task.name.tokenize(':').last().startsWith('REGENIE_STEP2') } == 2 },
+                    { assert workflow.trace.tasks().count { task -> task.name.tokenize(':').last().startsWith('REGENIE_STEP1') } == (mode == 'standard' ? 1 : 0) },
+                    { assert workflow.trace.tasks().count { task -> task.name.tokenize(':').last().startsWith('REGENIE_RUNL1') } == (mode == 'chunked' ? 1 : 0) },
+                )
+            }
+        }
+    }
+
+    test("supplied complete predictions bypass fitting") {
+        setup {
+            run("PLINK_FIT_REGENIE") {
+                script "../../plink_fit_regenie/main.nf"
+                workflow {
+                    """
+                    def base = params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated'
+                    input[0] = channel.of([[id:'supplied_fit'], file(base + '.bed'), file(base + '.bim'), file(base + '.fam')])
+                    input[1] = channel.of([[id:'supplied_fit'], file(base + '_quantitative_phenoname.phe')])
+                    input[2] = channel.of([[id:'supplied_fit'], []])
+                    input[3] = channel.of([[id:'supplied_fit'], 256])
+                    input[4] = channel.of([[id:'supplied_fit'], 'standard'])
+                    input[5] = channel.of([[id:'supplied_fit'], []])
+                    """
+                }
+            }
+        }
+        when {
+            workflow {
+                """
+                def test_base = params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated'
+                input[0] = channel.empty()
+                input[1] = PLINK_FIT_REGENIE.out.predictions.join(PLINK_FIT_REGENIE.out.loco).map { _meta, predictions, loco -> ['existing', [id:'original_fit'], predictions, loco] }
+                input[2] = channel.of(['existing', [id:'consumer'], file(test_base + '.pgen'), file(test_base + '.pvar'), file(test_base + '.psam'), file(test_base + '_quantitative_phenoname.phe'), [], 256])
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert workflow.out.predictions[0][0..1] == ['existing', [id:'original_fit']] },
+                { assert workflow.out.results.size() == 1 },
+                { assert workflow.out.results[0][0] == [id:'consumer'] },
+                { assert workflow.out.fit_logs.size() == 0 },
+                { assert snapshot(workflow.out.results.collect { row -> [row[0], path(row[1]).getFileName().toString()] }).match() },
+                { assert workflow.trace.tasks().every { task -> !task.name.contains('PLINK_ASSOCIATION_REGENIE:PLINK_FIT_REGENIE:') } },
+            )
+        }
+    }
+
+    test("one fit fans out to 22 separately named chromosome bundles - stub") {
+        options "-stub"
+        when {
+            params {
+                fit_args = '--phenoColList QuantitativeTrait,QuantitativeTrait2 --use-relative-path'
+                test_args = '--phenoColList QuantitativeTrait,QuantitativeTrait2'
+            }
+            workflow {
+                """
+                def fixture_dir = file('${outputDir}/chromosomes')
+                fixture_dir.mkdirs()
+                def training = ['bed', 'bim', 'fam'].collect { ext ->
+                    def fixture = fixture_dir.resolve('training.' + ext)
+                    fixture.text = ''
+                    fixture
+                }
+                def pheno = fixture_dir.resolve('phenotype.phe')
+                pheno.text = 'FID IID QuantitativeTrait QuantitativeTrait2\\n'
+                input[0] = channel.of(['F', [id:'training'], training[0], training[1], training[2], pheno, [], 256, 'standard', []])
+                input[1] = channel.empty()
+                input[2] = channel.fromList((1..22).collect { chromosome ->
+                    def bundle = ['bed', 'bim', 'fam'].collect { ext ->
+                        def fixture = fixture_dir.resolve('chr' + chromosome + '.' + ext)
+                        fixture.text = ''
+                        fixture
+                    }
+                    ['F', [id:'analysis'], bundle[0], bundle[1], bundle[2], pheno, [], 256]
+                })
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert workflow.out.predictions.size() == 1 },
+                { assert workflow.out.predictions[0][3].size() == 2 },
+                { assert workflow.out.results.size() == 22 },
+                { assert workflow.out.results.every { row -> row[0] == [id:'analysis'] } },
+                { assert workflow.out.results.every { row -> row[1].size() == 2 } },
+                {
+                    assert workflow.out.results.collectMany { row -> row[1].collect { result -> path(result).getFileName().toString() } }.sort() == (1..22).collectMany { chromosome ->
+                        ['QuantitativeTrait', 'QuantitativeTrait2'].collect { trait -> "analysis.chr${chromosome}_${trait}.regenie.gz" }
+                    }.sort()
+                },
+                { assert snapshot(workflow.out.results.collect { row -> [row[0], row[1].collect { result -> path(result).getFileName().toString() }.sort()] }.sort { row -> row[1][0] }).match() },
+                { assert workflow.trace.tasks().count { task -> task.name.contains(':REGENIE_STEP1') } == 1 },
+                { assert workflow.trace.tasks().count { task -> task.name.contains(':REGENIE_STEP2') } == 22 },
+            )
+        }
+    }
+}

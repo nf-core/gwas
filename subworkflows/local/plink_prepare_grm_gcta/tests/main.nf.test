@@ -1,0 +1,92 @@
+nextflow_workflow {
+    name "Test independent GCTA row-part construction and merge"
+    script "../main.nf"
+    workflow "PLINK_PREPARE_GRM_GCTA"
+    config "./nextflow.config"
+    tag "subworkflows"
+    tag "subworkflows_nfcore"
+    tag "subworkflows/plink_prepare_grm_gcta"
+    tag "gcta/makegrmpart"
+    tag "custom/gctamergegrmparts"
+
+    def inputCode = { parts, selectionCode ->
+        """
+        def root = params.modules_testdata_base_path + 'genomics/homo_sapiens/popgen/plink_simulated.'
+        def manifest = file('genotypes.txt')
+        manifest.text = 'plink_simulated\\n'
+        ${selectionCode}
+        input[0] = channel.of([[id: 'focal'], manifest, [file(root + 'bed')], [file(root + 'bim')], [file(root + 'fam')]])
+        input[1] = channel.of([[id: 'focal'], selected])
+        input[2] = channel.of([[id: 'focal'], ${parts}])
+        """
+    }
+    def selectionCode = """
+        def selected = file('selected.txt')
+        selected.text = file(root + 'bim').readLines().take(10).collect { row -> row.split(/\\s+/)[1] }.join('\\n') + '\\n'
+    """
+    def assertDimensions = { files ->
+        assert path(files.find { entry -> entry.toString().endsWith('.grm.id') }).readLines().size() == 200
+        assert path(files.find { entry -> entry.toString().endsWith('.grm.bin') }).size() == 200 * 201 / 2 * 4
+        assert path(files.find { entry -> entry.toString().endsWith('.grm.N.bin') }).size() == 200 * 201 / 2 * 4
+    }
+
+    test("parts=1 selected=false - real") {
+        when {
+            workflow {
+                inputCode(1, 'def selected = []')
+            }
+        }
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert workflow.out.grm_files[0][0] == [id: 'focal'] },
+                { assert workflow.trace.succeeded().count { task -> task.name.contains('GCTA_MAKEGRMPART (') } == 1 },
+                { assert workflow.trace.succeeded().count { task -> task.name.contains('CUSTOM_GCTAMERGEGRMPARTS (') } == 1 },
+                { assert snapshot(workflow.out).match() }
+            )
+            assertDimensions(workflow.out.grm_files[0][1])
+        }
+    }
+
+    test("parts=2 selected=true - real") {
+        when {
+            workflow {
+                inputCode(2, selectionCode)
+            }
+        }
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert workflow.out.grm_files[0][0] == [id: 'focal'] },
+                { assert workflow.trace.succeeded().count { task -> task.name.contains('GCTA_MAKEGRMPART (') } == 2 },
+                { assert workflow.trace.succeeded().count { task -> task.name.contains('CUSTOM_GCTAMERGEGRMPARTS (') } == 1 },
+                { assert snapshot(workflow.out).match() }
+            )
+            assertDimensions(workflow.out.grm_files[0][1])
+            def countFile = workflow.out.grm_files[0][1].find { entry -> entry.toString().endsWith('.grm.N.bin') }
+            def counts = java.nio.ByteBuffer.wrap(new File(countFile.toString()).bytes)
+                .order(java.nio.ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
+            def markerCounts = (0..<counts.limit()).collect { index -> counts.get(index) }
+            assert markerCounts.max() == 10.0f
+            assert markerCounts.every { count -> count >= 0.0f && count <= 10.0f }
+        }
+    }
+
+    test("parts=2 selected=false - stub") {
+        options "-stub"
+        when {
+            workflow {
+                inputCode(2, 'def selected = []')
+            }
+        }
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert workflow.out.grm_files[0][0] == [id: 'focal'] },
+                { assert workflow.trace.succeeded().count { task -> task.name.contains('GCTA_MAKEGRMPART (') } == 2 },
+                { assert workflow.trace.succeeded().count { task -> task.name.contains('CUSTOM_GCTAMERGEGRMPARTS (') } == 1 },
+                { assert snapshot(workflow.out).match() }
+            )
+        }
+    }
+}

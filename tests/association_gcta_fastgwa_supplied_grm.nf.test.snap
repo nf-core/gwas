@@ -1,0 +1,39 @@
+{
+    "versions": {
+        "content": [
+            {
+                "GCTA_FASTGWA": {
+                    "gcta": "1.94.1"
+                },
+                "GWASLAB_HARMONIZE": {
+                    "gwaslab": "4.1.9",
+                    "python": "3.12.13"
+                },
+                "PREPARE_GENOTYPE_SOURCE": {
+                    "python": "3.14.5"
+                },
+                "PREPARE_PHENOTYPE_INPUTS": {
+                    "python": "3.14.5"
+                },
+                "Workflow": {
+                    "nf-core/gwas": "v1.0.0dev"
+                }
+            }
+        ],
+        "timestamp": "2026-10-19T06:18:03.676284956",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    },
+    "fastgwa_supplied": {
+        "content": [
+            "fastgwa_supplied.gcta_fastgwa.fastGWA:md5,d756c893ac9fc977735a6dc3b7ba4dd7"
+        ],
+        "timestamp": "2026-10-18T20:14:27.777144666",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

@@ -1,0 +1,50 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/subworkflows/yaml-schema.json
+name: route_ldak_direct_heritability
+description: Route nf-core/gwas unary analysis units through the LDAK direct-genotype randomised heritability estimators, adapting the cohort's PLINK 1 derivative and headerless phenotypes into LDAK fast Haseman-Elston and fast PCGC native results without constructing any relatedness matrix
+keywords:
+  - heritability
+  - haseman-elston
+  - pcgc
+  - randomized
+  - direct genotypes
+components:
+  - ldak/fasthe
+  - ldak/fastpcgc
+  - getmethodcapability
+  - getmethodtokenswithcapabilities
+input:
+  - ch_plink1_genotypes:
+      description: The cohort's PLINK 1 derivative, already fanned out one element per requesting analysis and carrying that analysis's meta. Relationship-scoped rows are excluded by the caller. An analysis whose selectors need no PLINK 1 bundle is absent from this stream and is therefore never routed here
+      structure: "[map meta, path bed, path bim, path fam]"
+      pattern: "*.{bed,bim,fam}"
+      ontologies: []
+  - ch_headerless_phenotypes:
+      description: The headerless prepared phenotype and covariate serialisations of every analysis unit, keyed one-to-one on the analysis meta. LDAK rejects a header row, and preparation writes the trait at a fixed third column, which is what makes `--mpheno` a constant. An absent optional covariate file is `[]`, never a placeholder file and never a null path
+      structure: "[map meta, path phenotype, path quant_covariates|[], path cat_covariates|[]]"
+      pattern: "*.{pheno,qcovar,catcovar}"
+      ontologies: []
+  - ch_ldak_weights:
+      description: The optional LDAK predictor weights resource declared by each analysis unit, `[]` unless `ldak.weights_policy` is `provided`. LDAK gives weight zero to any predictor the file omits and only warns about it in its native log
+      structure: "[map meta, path weights|[]]"
+      pattern: "*.{txt,weights}"
+      ontologies: []
+output:
+  - ldak_fast_he_results:
+      description: Native LDAK randomised Haseman-Elston results, one record per analysis unit that selected `ldak_fast_he`. The estimate is computed from the raw genotypes with no kinship matrix, so it is not the same quantity as the `ldak_he` result and is deliberately not merged with it
+      structure: "[map meta, path fasthe]"
+      pattern: "*.fasthe"
+      ontologies: []
+  - ldak_fast_pcgc_results:
+      description: Native LDAK randomised PCGC results, one record per analysis unit that selected `ldak_fast_pcgc`. PCGC is a binary-trait estimator and consumes the declared population prevalence natively
+      structure: "[map meta, path fastpcgc]"
+      pattern: "*.fastpcgc"
+      ontologies: []
+  - ldak_fast_pcgc_marginal:
+      description: Native LDAK randomised PCGC marginal estimates, emitted only where LDAK produced them. The marginal estimate is unconditional on the covariates and therefore differs from the primary result whenever a covariate design was supplied
+      structure: "[map meta, path fastpcgc_marginal]"
+      pattern: "*.fastpcgc.marginal"
+      ontologies: []
+authors:
+  - "@lyh970817"
+maintainers:
+  - "@lyh970817"
