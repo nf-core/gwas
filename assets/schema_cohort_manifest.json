@@ -51,7 +51,7 @@
                 "exists": true,
                 "pattern": "^\\S+\\.pvar$",
                 "description": "PLINK 2 variant file accompanying pgen.",
-                "errorMessage": "PLINK 2 variant file cannot contain spaces, must exist and must have extension '.pvar'; a Zstandard-compressed '.pvar.zst' is not supported because the pipeline's PLINK 2, GCTA and REGENIE consumers derive a bare --pfile prefix and do not pass the 'vzs' modifier"
+                "errorMessage": "PLINK 2 variant file cannot contain spaces, must exist and must have extension '.pvar'; a Zstandard-compressed '.pvar.zst' is not supported because the consumers that address a PLINK 2 fileset by a single prefix read only an uncompressed '<prefix>.pvar'"
             },
             "bed": {
                 "type": "string",
