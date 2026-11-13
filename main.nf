@@ -15,9 +15,65 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-include { GWAS  } from './workflows/gwas'
+include { GWAS                    } from './workflows/gwas'
 include { PIPELINE_INITIALISATION } from './subworkflows/local/utils_nfcore_gwas_pipeline'
 include { PIPELINE_COMPLETION     } from './subworkflows/local/utils_nfcore_gwas_pipeline'
+/*
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    RUN MAIN WORKFLOW
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+*/
+
+workflow {
+
+    main:
+
+    //
+    // SUBWORKFLOW: Run initialisation tasks
+    //
+    PIPELINE_INITIALISATION(
+        params.version,
+        params.validate_params,
+        params.monochrome_logs,
+        args,
+        params.outdir,
+        params.input,
+        params.cohort_manifest,
+        params.method_options,
+        params.help,
+        params.help_full,
+        params.show_hidden,
+    )
+
+    //
+    // WORKFLOW: Run main workflow
+    //
+    NFCORE_GWAS(
+        PIPELINE_INITIALISATION.out.analyses
+    )
+    //
+    // SUBWORKFLOW: Run completion tasks
+    //
+    PIPELINE_COMPLETION(
+        params.email,
+        params.email_on_fail,
+        params.plaintext_email,
+        params.outdir,
+        params.monochrome_logs,
+        NFCORE_GWAS.out.multiqc_report,
+    )
+
+    publish:
+    genotype_views = NFCORE_GWAS.out.genotype_views
+}
+
+output {
+    // Every cohort has a view record explaining its published artifact keys; derived genotype bundles
+    // remain work-directory intermediates.
+    genotype_views {
+        path { cohort_id, _record -> "genotypes/${cohort_id}" }
+    }
+}
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     NAMED WORKFLOWS FOR PIPELINE
@@ -28,70 +84,23 @@ include { PIPELINE_COMPLETION     } from './subworkflows/local/utils_nfcore_gwas
 // WORKFLOW: Run main analysis pipeline depending on type of input
 //
 workflow NFCORE_GWAS {
-
     take:
-    samplesheet // channel: samplesheet read in from --input
+    analyses // channel: [ val(meta), path(genotype_files), path(phenotype), path(quant_covariates), path(cat_covariates) ]
 
     main:
 
     //
     // WORKFLOW: Run pipeline
     //
-    GWAS (
-        samplesheet,
+    GWAS(
+        analyses,
         params.multiqc_config,
         params.multiqc_logo,
         params.multiqc_methods_description,
         params.outdir,
     )
+
     emit:
-    multiqc_report = GWAS.out.multiqc_report // channel: /path/to/multiqc_report.html
+    multiqc_report = GWAS.out.multiqc_report // channel: [ [ path(report) ] ]
+    genotype_views = GWAS.out.genotype_views // channel: [ val(cohort_id), path(genotype_view_record) ], one per cohort
 }
-/*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    RUN MAIN WORKFLOW
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-*/
-
-workflow {
-
-    main:
-    //
-    // SUBWORKFLOW: Run initialisation tasks
-    //
-    PIPELINE_INITIALISATION (
-        params.version,
-        params.validate_params,
-        params.monochrome_logs,
-        args,
-        params.outdir,
-        params.input,
-        params.help,
-        params.help_full,
-        params.show_hidden
-    )
-
-    //
-    // WORKFLOW: Run main workflow
-    //
-    NFCORE_GWAS (
-        PIPELINE_INITIALISATION.out.samplesheet
-    )
-    //
-    // SUBWORKFLOW: Run completion tasks
-    //
-    PIPELINE_COMPLETION (
-        params.email,
-        params.email_on_fail,
-        params.plaintext_email,
-        params.outdir,
-        params.monochrome_logs,
-        NFCORE_GWAS.out.multiqc_report
-    )
-}
-
-/*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    THE END
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-*/

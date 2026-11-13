@@ -1,0 +1,144 @@
+nextflow_pipeline {
+
+    name "Test linked cohort and analysis manifests"
+    script "../main.nf"
+    tag "pipeline"
+    tag "input"
+    tag "relational"
+    tag "analyses"
+
+    test("linked analyses prepare each trait once and preserve identity through the published files") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+                save_normalised_phenotypes = true
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, "trait_semantics")
+                input = RELATIONAL.analyses(projectDir, outputDir, "trait_semantics", { rows ->
+                    def binary = RELATIONAL.analysis(projectDir, 'example_pgen_bt')
+                    def quantitativeWithoutCovariates = new LinkedHashMap(rows[0])
+                    quantitativeWithoutCovariates.analysis_id = 'example_pgen_qt_no_covariates'
+                    quantitativeWithoutCovariates.quant_covariates = ''
+                    quantitativeWithoutCovariates.cat_covariates = ''
+                    def binaryWithoutCovariates = new LinkedHashMap(binary)
+                    binaryWithoutCovariates.analysis_id = 'example_pgen_bt_no_covariates'
+                    binaryWithoutCovariates.quant_covariates = ''
+                    binaryWithoutCovariates.cat_covariates = ''
+                    rows.addAll([binary, quantitativeWithoutCovariates, binaryWithoutCovariates])
+                })
+            }
+        }
+
+        then {
+            def analysisIds = [
+                'example_pgen_bt',
+                'example_pgen_bt_no_covariates',
+                'example_pgen_qt',
+                'example_pgen_qt_no_covariates',
+            ]
+            def phenotypes = new File("${params.outdir}/phenotypes")
+            def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
+            def stable_name_phenotypes = getAllFilesFromDir("${params.outdir}/phenotypes", relative: true, includeDir: true).findAll { path -> path.toString() }
+            def stable_path_phenotypes = getAllFilesFromDir("${params.outdir}/phenotypes").findAll { path -> path.toString() }
+            assertAll(
+                { assert workflow.success },
+                // Four analyses on one cohort: the cohort is prepared once, each trait once.
+                { assert TRACE.count(workflow, 'PREPARE_GENOTYPE_SOURCE') == 1 },
+                { assert TRACE.tags(workflow, 'PREPARE_PHENOTYPE_INPUTS').sort() == analysisIds },
+                { assert TRACE.count(workflow, 'PREPARE_PHENOTYPE_INPUTS') == analysisIds.size() },
+                { assert phenotypes.list().toList().sort() == analysisIds },
+                // A row that supplied no covariates publishes a phenotype file and nothing else; a binary trait
+                // is recoded from its declared source values.
+                { assert new File(phenotypes, 'example_pgen_qt_no_covariates').list().toList() == ['example_pgen_qt_no_covariates.pheno'] },
+                { assert new File(phenotypes, 'example_pgen_qt').list().toList().sort() == ['example_pgen_qt.catcovar', 'example_pgen_qt.covar', 'example_pgen_qt.pheno', 'example_pgen_qt.qcovar'] },
+                { assert new File(phenotypes, 'example_pgen_bt/example_pgen_bt.pheno').readLines().drop(1).every { line -> line.tokenize().last() in ['0', '1', 'NA'] } },
+                { assert snapshot(stable_name_phenotypes, stable_path_phenotypes).match('phenotypes') },
+                { assert snapshot(removeNextflowVersion(versions.toString())).match('versions') },
+            )
+        }
+    }
+
+    // The pipeline-level sentinel for the analysis-manifest contracts. Every other rule in that family is
+    // asserted, message and attribution included, by resolve_input.function.nf.test; this case is kept because
+    // it is the cross-manifest link — an analysis row resolved against the cohort manifest — and because only a
+    // pipeline run can prove the refusal happens before any task is submitted.
+    test("an analysis naming an undefined cohort fails before task submission") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, "undefined_cohort")
+                input = RELATIONAL.analyses(projectDir, outputDir, "undefined_cohort", { rows ->
+                    rows[0].cohort_id = 'missing_cohort'
+                })
+            }
+        }
+
+        then {
+            def report = VALIDATION.report(outputDir, workflow)
+            assertAll(
+                { assert !workflow.success },
+                { assert report.contains(params.input.toString()) },
+                { assert report.contains("row 2 (analysis_id 'example_pgen_qt')") },
+                { assert report.contains("field 'cohort_id'") },
+                { assert report.contains("undefined cohort_id 'missing_cohort'") },
+                { assert TRACE.count(workflow, 'PREPARE_PHENOTYPE_INPUTS') == 0 },
+                // Stronger than any list of named zero-counts: nothing at all was submitted.
+                { assert workflow.trace.tasks().isEmpty() },
+            )
+        }
+    }
+
+    // No method is registered in this release, so a populated selector cell can only be an unknown token.
+    // The function test asserts the message; this case proves the refusal precedes task submission.
+    test("an analysis selecting a method token fails before task submission") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, "unregistered_method")
+                input = RELATIONAL.analyses(projectDir, outputDir, "unregistered_method", { rows ->
+                    rows[0].association_methods = 'regenie'
+                })
+            }
+        }
+
+        then {
+            def report = VALIDATION.report(outputDir, workflow)
+            assertAll(
+                { assert !workflow.success },
+                { assert report.contains("field 'association_methods'") },
+                { assert report.contains("unknown method 'regenie'") },
+                { assert workflow.trace.tasks().isEmpty() },
+            )
+        }
+    }
+
+    // The pipeline-level sentinel for manifest pairing. The rule lives in the VALIDATE_GWAS_INPUT workflow body
+    // rather than in a resolver, so it has no function form at all; this case additionally proves that a null
+    // analysis manifest (`--input`) passes nf-schema and that the pairing check fires before samplesheetToList. Its
+    // mirror image, an analysis manifest with no cohort manifest, is a workflow-level case in
+    // subworkflows/local/validate_gwas_input/tests/main.nf.test.
+    test("a cohort manifest without an analysis manifest is rejected") {
+        tag "manifest_pairing"
+
+        when {
+            params {
+                outdir = "$outputDir"
+                cohort_manifest = RELATIONAL.cohorts(projectDir, outputDir, "cohort_only")
+                input = null
+            }
+        }
+
+        then {
+            def report = VALIDATION.report(outputDir, workflow)
+            assertAll(
+                { assert !workflow.success },
+                { assert report.contains('the analysis manifest --input is missing; linked manifests require both') },
+                { assert TRACE.count(workflow, 'PREPARE_PHENOTYPE_INPUTS') == 0 },
+                { assert workflow.trace.tasks().isEmpty() },
+            )
+        }
+    }
+
+}

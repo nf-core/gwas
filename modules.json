@@ -70,17 +70,10 @@
                         "git_sha": "008f9d3e61209bf995edac3ba531f54e269e1215",
                         "installed_by": ["modules"]
                     },
-                    "plink/gwas": {
+                    "plink2/makebed": {
                         "branch": "master",
-                        "git_sha": "2d5c9c019a4848ae6fb27dd5280e4e2307a18f74",
-                        "installed_by": ["modules"],
-                        "patch": "modules/nf-core/plink/gwas/plink-gwas.diff"
-                    },
-                    "plink/vcf": {
-                        "branch": "master",
-                        "git_sha": "6d46786420b4d7bc88eba026eb389c0c5535d120",
-                        "installed_by": ["modules"],
-                        "patch": "modules/nf-core/plink/vcf/plink-vcf.diff"
+                        "git_sha": "f505e501f8e58346c85940e35c9288f3eb591b03",
+                        "installed_by": ["modules"]
                     },
                     "regenie/runl0": {
                         "branch": "master",

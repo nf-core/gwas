@@ -6,208 +6,269 @@
 
 ## Introduction
 
-<!-- TODO nf-core: Add documentation about anything specific to running your pipeline. For general topics, please point to (and add to) the main nf-core website. -->
+nf-core/gwas takes genotyped cohorts and the traits to analyse on them as two linked manifests. A cohort manifest owns genotype facts; an analysis manifest links each individual-level trait analysis to one cohort. This release validates the two manifests, prepares each cohort's genotypes and each analysis's phenotype and covariates once, and reports the run plan; the association and heritability routes that consume those prepared inputs are added in later releases, each registering its own method selector token.
 
-## Samplesheet input
+> [!IMPORTANT]
+> Genotypes must be prepared before you run the pipeline. The pipeline converts accepted genotype
+> encodings into the formats required by its methods, but it does not perform genotype quality control.
 
-You will need to create a samplesheet with information about the samples you would like to analyse before running the pipeline. Use this parameter to specify its location. It has to be a comma-separated file with 3 columns, and a header row as shown in the examples below.
+## Relational manifest input
+
+Every run supplies the analysis manifest as `--input` together with the cohort manifest it links to as `--cohort_manifest`.
+
+The JSON schemas own column names, required fields, types, enumerations and file existence. Schema-optional columns may be omitted entirely or supplied with blank cells. Unexpected and repeated column names are rejected; quoted CSV headers and values are supported, and column order is not significant.
 
 ```bash
---input '[path to samplesheet file]'
+nextflow run nf-core/gwas \
+    -r <VERSION> \
+    -profile docker \
+    --input ./analyses.csv \
+    --cohort_manifest ./cohorts.csv \
+    --outdir ./results
 ```
 
-### Multiple runs of the same sample
+The cohort manifest owns reusable genotype facts. The analysis manifest owns one cohort–trait analysis and joins to exactly one cohort through `cohort_id`. Each `cohort_id` has one non-conflicting definition; each `analysis_id` is unique; and every analysis references a declared cohort. Cohort preparation is shared by every analysis on the cohort, while outputs retain `analysis_id`.
 
-The `sample` identifiers have to be the same when you have re-sequenced the same sample more than once e.g. to increase sequencing depth. The pipeline will concatenate the raw reads before performing any downstream analysis. Below is an example for the same sample sequenced across 3 lanes:
+### Cohort manifest fields
 
-```csv title="samplesheet.csv"
-sample,fastq_1,fastq_2
-CONTROL_REP1,AEG588A1_S1_L002_R1_001.fastq.gz,AEG588A1_S1_L002_R2_001.fastq.gz
-CONTROL_REP1,AEG588A1_S1_L003_R1_001.fastq.gz,AEG588A1_S1_L003_R2_001.fastq.gz
-CONTROL_REP1,AEG588A1_S1_L004_R1_001.fastq.gz,AEG588A1_S1_L004_R2_001.fastq.gz
+| Column             | Required | Description                                                                                                                                                                                                                              |
+| ------------------ | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cohort_id`        | Yes      | Unique, whitespace-free cohort identifier and analysis-manifest foreign key.                                                                                                                                                             |
+| `genome_build`     | Yes      | `GRCh37` or `GRCh38`; recorded in provenance and selects build-specific resources once a route consumes them.                                                                                                                            |
+| `ancestry`         | Yes      | Case-sensitive provenance label beginning with a letter or digit and containing only letters, digits, `_`, `.`, or `-`.                                                                                                                  |
+| `pgen`             | By group | PLINK 2 genotype file; supply the complete `pgen`/`psam`/`pvar` group.                                                                                                                                                                   |
+| `psam`             | By group | PLINK 2 sample file.                                                                                                                                                                                                                     |
+| `pvar`             | By group | PLINK 2 variant file ending in `.pvar`. A Zstandard-compressed `.pvar.zst` is not accepted: genotype consumers that address a PLINK 2 fileset by a single prefix read only an uncompressed `<prefix>.pvar`.                              |
+| `bed`              | By group | PLINK 1 genotype file; supply the complete `bed`/`bim`/`fam` group.                                                                                                                                                                      |
+| `bim`              | By group | PLINK 1 variant file.                                                                                                                                                                                                                    |
+| `fam`              | By group | PLINK 1 sample file.                                                                                                                                                                                                                     |
+| `genotype_view_id` | No       | Immutable identity of the supplied genotype view: 16–64 lowercase hexadecimal characters, optionally prefixed by a backend namespace such as `biofuse:`. When absent, the pipeline digests the supplied bytes once per cohort in a task. |
+
+Populate exactly one complete genotype representation on each row, and give the members of a multi-file group one shared basename stem — genotype consumers that address a fileset by a single prefix require it. VCF input is not accepted; convert a VCF to PGEN or BED with PLINK 2 before declaring the cohort.
+
+The supplied representation is preserved. A PLINK 1 or PLINK 2 cohort is used exactly as given and nothing is converted for it. A PLINK 1 BED/BIM/FAM view is derived from a PGEN cohort once, and only when a selected method reads PLINK 1; no method is registered in this release, so no cohort is projected. That projection takes hard calls at an explicit `--hard-call-threshold 0.1` and drops dosage and phase; every cohort's `genotypes/<cohort_id>/<cohort_id>.genotype_view.json` records which of these applied to it.
+
+### Analysis manifest fields
+
+| Column                  | Required | Description                                                                                                                                                         |
+| ----------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `analysis_id`           | Yes      | Unique, whitespace-free result identifier.                                                                                                                          |
+| `cohort_id`             | Yes      | A `cohort_id` declared in the cohort manifest.                                                                                                                      |
+| `trait_id`              | Yes      | Whitespace-free trait identifier retained in provenance.                                                                                                            |
+| `trait_type`            | Yes      | `quantitative` or `binary`; never inferred from values.                                                                                                             |
+| `phenotype`             | Yes      | Existing headered phenotype file containing the selected trait.                                                                                                     |
+| `phenotype_column`      | Yes      | Header name of the selected trait column.                                                                                                                           |
+| `control_value`         | Binary   | Source value recoded to `0`; required for binary traits, forbidden for quantitative traits, and distinct from `case_value`.                                         |
+| `case_value`            | Binary   | Source value recoded to `1`; required for binary traits and forbidden for quantitative traits.                                                                      |
+| `quant_covariates`      | No       | Existing headered quantitative-covariate file.                                                                                                                      |
+| `cat_covariates`        | No       | Existing headered categorical-covariate file.                                                                                                                       |
+| `association_methods`   | No       | Comma-delimited association selector. No association method is registered in this release, so the cell must be empty; each route adds its token when it is wired.   |
+| `heritability_methods`  | No       | Comma-delimited heritability selector. No heritability method is registered in this release, so the cell must be empty; each route adds its token when it is wired. |
+| `population_prevalence` | By route | Number strictly between `0` and `1`; valid only for a binary analysis whose selected estimator consumes it. With no method registered, it is rejected on every row. |
+| `sample_prevalence`     | No       | Optional sample case fraction strictly between `0` and `1` for binary traits; forbidden for quantitative traits.                                                    |
+
+Tokens in a selector cell are comma-delimited without spaces and may appear only once; a token that no registered method claims is rejected by name, and the diagnostic lists the accepted values. A row with both selector cells empty declares a cohort-trait pairing to prepare, which is every row in this release.
+
+### Examples
+
+[`assets/examples/relational/cohort_manifest.csv`](../assets/examples/relational/cohort_manifest.csv) declares the public two-autosome PGEN cohort from the nf-core/test-datasets `gwas` branch. The [preparation-only analysis manifest](../assets/examples/relational/analysis_manifest_preparation_only.csv) declares one quantitative trait on it with both selector cells empty, and is what `-profile test` runs:
+
+```bash
+nextflow run nf-core/gwas \
+    -r <VERSION> \
+    -profile docker \
+    --input assets/examples/relational/analysis_manifest_preparation_only.csv \
+    --cohort_manifest assets/examples/relational/cohort_manifest.csv \
+    --save_normalised_phenotypes \
+    --outdir results
 ```
 
-### Full samplesheet
+The [quantitative example](../assets/examples/relational/analysis_manifest_quantitative.csv) is the same row with an association selector populated. It shows the shape of a method-selecting row and is rejected by this release, which registers no method.
 
-The pipeline will auto-detect whether a sample is single- or paired-end using the information provided in the samplesheet. The samplesheet can have as many columns as you desire, however, there is a strict requirement for the first 3 columns to match those defined in the table below.
+## Advanced method options
 
-A final samplesheet file consisting of both single- and paired-end data may look something like the one below. This is for 6 samples, where `TREATMENT_REP3` has been sequenced twice.
+`--method_options` is optional. The document keeps its JSON root keyed by `analysis_id`, or places that same object under an `analyses` namespace; each analysis entry names a method family and the options it sets for it. No method family is registered in this release, so every family is rejected by name and an empty document is the only accepted one; each route adds its family, option names and defaults when it is wired. Unlisted analysis settings receive their defaults.
 
-```csv title="samplesheet.csv"
-sample,fastq_1,fastq_2
-CONTROL_REP1,AEG588A1_S1_L002_R1_001.fastq.gz,AEG588A1_S1_L002_R2_001.fastq.gz
-CONTROL_REP2,AEG588A2_S2_L002_R1_001.fastq.gz,AEG588A2_S2_L002_R2_001.fastq.gz
-CONTROL_REP3,AEG588A3_S3_L002_R1_001.fastq.gz,AEG588A3_S3_L002_R2_001.fastq.gz
-TREATMENT_REP1,AEG588A4_S4_L003_R1_001.fastq.gz,
-TREATMENT_REP2,AEG588A5_S5_L003_R1_001.fastq.gz,
-TREATMENT_REP3,AEG588A6_S6_L003_R1_001.fastq.gz,
-TREATMENT_REP3,AEG588A6_S6_L004_R1_001.fastq.gz,
-```
+### Validation diagnostics
 
-| Column    | Description                                                                                                                                                                            |
-| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sample`  | Custom sample name. This entry will be identical for multiple sequencing libraries/runs from the same sample. Spaces in sample names are automatically converted to underscores (`_`). |
-| `fastq_1` | Full path to FastQ file for Illumina short reads 1. File has to be gzipped and have the extension ".fastq.gz" or ".fq.gz".                                                             |
-| `fastq_2` | Full path to FastQ file for Illumina short reads 2. File has to be gzipped and have the extension ".fastq.gz" or ".fq.gz".                                                             |
+Structural failures name the manifest and invalid column. Cross-row preflight failures additionally name the CSV row and `cohort_id` or `analysis_id`: examples include an incomplete genotype group, a second genotype group, members that do not share one basename stem, conflicting duplicates, an undefined cohort, unknown or repeated method tokens, invalid binary coding and route-inapplicable prevalence. Method-options failures name the document, analysis and qualified option before task submission.
 
-An [example samplesheet](../assets/samplesheet.csv) has been provided with the pipeline.
+### Phenotype input preparation
+
+`PREPARE_PHENOTYPE_INPUTS` prepares each selected phenotype in a shared two-identifier-plus-trait layout. Binary source values matching `control_value` and `case_value` become `0` and `1`; missing values and unmatched binary values become `NA`. Quantitative values must be numeric. Quantitative and categorical covariates remain distinct for tools with separate native interfaces, and a merged covariate file is written when either was supplied.
+
+### Run-level defaults
+
+Parameters divide by what they control. Scientific specification — what is estimated and under which model — is declared per analysis in the method-options document, not on the command line. CPU, memory and time requests are not parameters at all: change them with a custom process configuration passed via `-c`.
+
+| Parameter or behaviour | Default and rationale                                                                                                           |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Save controls          | Off. Intermediates stay out of the results directory unless explicitly requested, avoiding unexpectedly large published output. |
+
+The one opt-in save control is:
+
+- `--save_normalised_phenotypes`: publish headered prepared phenotype and covariate files under `phenotypes/<analysis_id>/`. The parameter name is retained for compatibility.
+
+Prepared genotype derivatives have no save control: a cohort's supplied files are never copied, and a derived PLINK 1 projection is a work-directory intermediate described by the always-published view record.
+
+See the [output documentation](output.md) for the exact files and publication exceptions.
 
 ## Running the pipeline
 
-The typical command for running the pipeline is as follows:
+The typical command for running the pipeline is:
 
 ```bash
-nextflow run nf-core/gwas --input ./samplesheet.csv --outdir ./results  -profile docker
+nextflow run nf-core/gwas \
+    -r <VERSION> \
+    -profile docker \
+    --input ./analyses.csv \
+    --cohort_manifest ./cohorts.csv \
+    --outdir ./results
 ```
 
-This will launch the pipeline with the `docker` configuration profile. See below for more information about profiles.
+`-r <VERSION>` is strongly recommended for reproducibility. Choose the software profile appropriate for your system; see [`-profile`](#-profile).
 
-Note that the pipeline will create the following files in your working directory:
+The pipeline creates the following in your launch directory:
 
 ```bash
-work                # Directory containing the nextflow working files
-<OUTDIR>            # Finished results in specified location (defined with --outdir)
-.nextflow_log       # Log file from Nextflow
-# Other nextflow hidden files, eg. history of pipeline runs and old logs.
+work                # Nextflow task work directories
+<OUTDIR>            # Published results selected by --outdir
+.nextflow_log       # Nextflow execution log
 ```
 
-If you wish to repeatedly use the same parameters for multiple runs, rather than specifying each flag in the command, you can specify these in a params file.
-
-Pipeline settings can be provided in a `yaml` or `json` file via `-params-file <file>`.
-
-> [!WARNING]
-> Do not use `-c <file>` to specify parameters as this will result in errors. Custom config files specified with `-c` must only be used for [tuning process resource specifications](https://nf-co.re/docs/running/run-pipelines#configuring-pipelines), other infrastructural tweaks (such as output directories), or module arguments (args).
-
-The above pipeline run specified with a params file in yaml format:
+For repeated runs, place pipeline parameters in a YAML or JSON file and supply it with `-params-file`:
 
 ```bash
-nextflow run nf-core/gwas -profile docker -params-file params.yaml
+nextflow run nf-core/gwas -r <VERSION> -profile docker -params-file params.yaml
 ```
-
-with:
 
 ```yaml title="params.yaml"
-input: './samplesheet.csv'
-outdir: './results/'
-<...>
+input: "./analyses.csv"
+cohort_manifest: "./cohorts.csv"
+outdir: "./results/"
 ```
 
-You can also generate such `YAML`/`JSON` files via [nf-core/launch](https://nf-co.re/launch).
+You can also generate parameter files with [nf-core/launch](https://nf-co.re/launch).
 
-### Updating the pipeline
+> [!WARNING]
+> Do not use `-c <file>` to specify pipeline parameters. Custom configuration files loaded with `-c` are for process resources, infrastructure settings and module arguments; use CLI flags or `-params-file` for parameters.
 
-When you run the above command, Nextflow automatically pulls the pipeline code from GitHub and stores it as a cached version. When running the pipeline after this, it will always use the cached version if available - even if the pipeline has been updated since. To make sure that you're running the latest version of the pipeline, make sure that you regularly update the cached version of the pipeline:
+## Updating
+
+Nextflow caches pipeline code after the first run. Update the cached copy with:
 
 ```bash
 nextflow pull nf-core/gwas
 ```
 
-### Reproducibility
+## Reproducibility
 
-It is a good idea to specify the pipeline version when running the pipeline on your data. This ensures that a specific version of the pipeline code and software are used when you run your pipeline. If you keep using the same tag, you'll be running the same version of the pipeline, even if there have been changes to the code since.
+Pin the pipeline revision with `-r`, retain the exact supplied manifests, method-options document and parameter file, and archive `pipeline_info/` with your results. Reusing the same revision, inputs and parameters also lets `-resume` recover cached tasks.
 
-First, go to the [nf-core/gwas releases page](https://github.com/nf-core/gwas/releases) and find the latest pipeline version - numeric only (eg. `1.3.1`). Then specify this when running the pipeline with `-r` (one hyphen) - eg. `-r 1.3.1`. Of course, you can switch to another version by changing the number after the `-r` flag.
-
-This version number will be logged in reports when you run the pipeline, so that you'll know what you used when you look back in the future. For example, at the bottom of the MultiQC reports.
-
-To further assist in reproducibility, you can use share and reuse [parameter files](#running-the-pipeline) to repeat pipeline runs with the same settings without having to write out a command with every single parameter.
-
-> [!TIP]
-> If you wish to share such profile (such as upload as supplementary material for academic publications), make sure to NOT include cluster specific paths to files, nor institutional specific profiles.
+Find published version tags on the [nf-core/gwas versions page](https://github.com/nf-core/gwas/tags). The run's pipeline and tool versions are recorded in the published reports described in [Pipeline information](output.md#pipeline-information).
 
 ## Core Nextflow arguments
 
 > [!NOTE]
-> These options are part of Nextflow and use a _single_ hyphen (pipeline parameters use a double-hyphen)
+> Nextflow options use one hyphen; pipeline parameters use two.
 
 ### `-profile`
 
-Use this parameter to choose a configuration profile. Profiles can give configuration presets for different compute environments.
+Use `-profile` to select configuration for your software or compute environment. Multiple profiles are comma-separated and applied from left to right, for example `-profile test,docker`.
 
-Several generic profiles are bundled with the pipeline which instruct the pipeline to use software packaged using different methods (Docker, Singularity, Podman, Shifter, Charliecloud, Apptainer, Conda) - see below.
+The generic software profiles include `docker`, `singularity`, `apptainer`, `podman`, `shifter`, `charliecloud`, `conda`, `mamba` and `wave`. Docker or Singularity/Apptainer is recommended for reproducibility. If no profile is supplied, every tool must already be available on `PATH`.
 
-> [!IMPORTANT]
-> We highly recommend the use of Docker or Singularity containers for full pipeline reproducibility, however when this is not possible, Conda is also supported.
-
-The pipeline also dynamically loads configurations from [https://github.com/nf-core/configs](https://github.com/nf-core/configs) when it runs, making multiple config profiles for various institutional clusters available at run time. For more information and to check if your system is supported, please see the [nf-core/configs documentation](https://github.com/nf-core/configs#documentation).
-
-Note that multiple profiles can be loaded, for example: `-profile test,docker` - the order of arguments is important!
-They are loaded in sequence, so later profiles can overwrite earlier profiles.
-
-If `-profile` is not specified, the pipeline will run locally and expect all software to be installed and available on the `PATH`. This is _not_ recommended, since it can lead to different results on different machines dependent on the computer environment.
-
-- `test`
-  - A profile with a complete configuration for automated testing
-  - Includes links to test data so needs no other parameters
-- `docker`
-  - A generic configuration profile to be used with [Docker](https://docker.com/)
-- `singularity`
-  - A generic configuration profile to be used with [Singularity](https://sylabs.io/docs/)
-- `podman`
-  - A generic configuration profile to be used with [Podman](https://podman.io/)
-- `shifter`
-  - A generic configuration profile to be used with [Shifter](https://nersc.gitlab.io/development/shifter/how-to-use/)
-- `charliecloud`
-  - A generic configuration profile to be used with [Charliecloud](https://charliecloud.io/)
-- `apptainer`
-  - A generic configuration profile to be used with [Apptainer](https://apptainer.org/)
-- `wave`
-  - A generic configuration profile to enable [Wave](https://seqera.io/wave/) containers. Use together with one of the above (requires Nextflow ` 24.03.0-edge` or later).
-- `conda`
-  - A generic configuration profile to be used with [Conda](https://conda.io/docs/). Please only use Conda as a last resort i.e. when it's not possible to run the pipeline with Docker, Singularity, Podman, Shifter, Charliecloud, or Apptainer.
+The pipeline also loads institutional profiles from [nf-core/configs](https://github.com/nf-core/configs#documentation).
 
 ### `-resume`
 
-Specify this when restarting a pipeline. Nextflow will use cached results from any pipeline steps where the inputs are the same, continuing from where it got to previously. For input to be considered the same, not only the names must be identical but the files' contents as well. For more info about this parameter, see [this blog post](https://www.nextflow.io/blog/2019/demystifying-nextflow-resume.html).
-
-You can also supply a run name to resume a specific run: `-resume [run-name]`. Use the `nextflow log` command to show previous run names.
+Add `-resume` when restarting a run. Nextflow reuses cached tasks whose inputs, code and configuration have not changed. You can resume a named run with `-resume <run-name>`; use `nextflow log` to list run names.
 
 ### `-c`
 
-Specify the path to a specific config file (this is a core Nextflow command). See the [nf-core website documentation](https://nf-co.re/usage/configuration) for more information.
+Use `-c <file>` to load a Nextflow configuration file for infrastructure, executors and process resources. See the [nf-core configuration documentation](https://nf-co.re/docs/running/configuration).
 
 ## Custom configuration
 
 ### Resource requests
 
-Whilst the default requirements set within the pipeline will hopefully work for most people and with most input data, you may find that you want to customise the compute resources that the pipeline requests. Each step in the pipeline has a default set of requirements for number of CPUs, memory and time. For most of the pipeline steps, if the job exits with any of the error codes specified [here](https://github.com/nf-core/rnaseq/blob/4c27ef5610c87db00c3c5a3eed10b1d161abf575/conf/base.config#L18) it will automatically be resubmitted with higher resources request (2 x original, then 3 x original). If it still fails after the third attempt then the pipeline execution is stopped.
+The pipeline assigns default CPU, memory and time requests by process label and retries selected resource-related failures once, with doubled requests. Cap every request at what your machine or queue offers with `process.resourceLimits` in a custom configuration file, and [customise individual processes](https://nf-co.re/docs/running/configuration/nextflow-for-your-system#customize-process-resources) with `withName` selectors.
 
-To change the resource requests, please see the [max resources](https://nf-co.re/docs/running/configuration/nextflow-for-your-system#set-max-resources) and [customise process resources](https://nf-co.re/docs/running/configuration/nextflow-for-your-system#customize-process-resources) section of the nf-core website.
+### Custom containers
 
-### Custom Containers
+To override a tool container or Conda environment, follow the nf-core guidance for [updating tool versions](https://nf-co.re/docs/running/configuration/nextflow-for-your-system#update-tool-versions). Record overrides because they change the software provenance of your run.
 
-In some cases, you may wish to change the container or conda environment used by a pipeline steps for a particular tool. By default, nf-core pipelines use containers and software from the [biocontainers](https://biocontainers.pro/) or [bioconda](https://bioconda.github.io/) projects. However, in some cases the pipeline specified version maybe out of date.
+### Custom tool arguments
 
-To use a different container from the default container or conda environment specified in a pipeline, please see the [updating tool versions](https://nf-co.re/docs/running/configuration/nextflow-for-your-system#update-tool-versions) section of the nf-core website.
-
-### Custom Tool Arguments
-
-A pipeline might not always support every possible argument or option of a particular tool used in pipeline. Fortunately, nf-core pipelines provide some freedom to users to insert additional parameters that the pipeline does not include by default.
-
-To learn how to provide additional arguments to a particular tool of the pipeline, please see the [customising tool arguments](https://nf-co.re/docs/running/configuration/nextflow-for-your-system#modifying-tool-arguments) section of the nf-core website.
+Use a custom configuration file to add supported process-specific arguments as described in [customising tool arguments](https://nf-co.re/docs/running/configuration/nextflow-for-your-system#modifying-tool-arguments). Do not use this mechanism to reach methods outside the documented selector lists.
 
 ### nf-core/configs
 
-In most cases, you will only need to create a custom config as a one-off but if you and others within your organisation are likely to be running nf-core pipelines regularly and need to use the same settings regularly it may be a good idea to request that your custom config file is uploaded to the `nf-core/configs` git repository. Before you do this please can you test that the config file works with your pipeline of choice using the `-c` parameter. You can then create a pull request to the `nf-core/configs` repository with the addition of your config file, associated documentation file (see examples in [`nf-core/configs/docs`](https://github.com/nf-core/configs/tree/master/docs)), and amending [`nfcore_custom.config`](https://github.com/nf-core/configs/blob/master/nfcore_custom.config) to include your custom profile.
-
-See the main [Nextflow documentation](https://www.nextflow.io/docs/latest/config.html) for more information about creating your own configuration files.
-
-If you have any questions or issues please send us a message on [Slack](https://nf-co.re/join/slack) on the [`#configs` channel](https://nfcore.slack.com/channels/configs).
+If a configuration is useful across your institution, test it locally and consider contributing it to [nf-core/configs](https://github.com/nf-core/configs). Include the corresponding documentation and profile registration in that repository.
 
 ## Running in the background
 
-Nextflow handles job submissions and supervises the running jobs. The Nextflow process must run until the pipeline is finished.
-
-The Nextflow `-bg` flag launches Nextflow in the background, detached from your terminal so that the workflow does not stop if you log out of your session. The logs are saved to a file.
-
-Alternatively, you can use `screen` / `tmux` or similar tool to create a detached session which you can log back into at a later time.
-Some HPC setups also allow you to run nextflow within a cluster job submitted your job scheduler (from where it submits more jobs).
+Nextflow must keep running to submit and supervise jobs. Use `-bg`, a detached `screen` or `tmux` session, or a cluster job appropriate to your infrastructure. With `-bg`, Nextflow writes its console output to a log file.
 
 ## Nextflow memory requirements
 
-In some cases, the Nextflow Java virtual machines can start to request a large amount of memory.
-We recommend adding the following line to your environment to limit this (typically in `~/.bashrc` or `~./bash_profile`):
+The Nextflow Java process can require substantial memory when coordinating a large run. Limit its heap with `NXF_OPTS`, for example:
 
 ```bash
-NXF_OPTS='-Xms1g -Xmx4g'
+export NXF_OPTS='-Xms1g -Xmx4g'
 ```
+
+## Troubleshooting
+
+### Start with the reported phase
+
+| What you see                                             | Meaning                                                                                      | First evidence to inspect                                                                                                |
+| -------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| An error naming a manifest, CSV row, identity and field  | Preflight rejected input before task submission                                              | Read the complete grouped error report, fix every listed row and relaunch.                                               |
+| `Method-options document ... analysis_id ... option ...` | The method-options document names an analysis, family or option the pipeline does not accept | Read the analysis, option and reason; then correct the document.                                                         |
+| `Process ... terminated with an error`                   | A task was submitted and failed                                                              | Inspect `.nextflow.log` and the task's `.command.err`, `.command.out` and `.command.log` in the reported work directory. |
+
+### Manifest validation failed
+
+Read the reported CSV path, row number, entity ID, field name and reason from left to right. The validator reports all linked-manifest errors it can find in one launch, so correct every bullet before rerunning.
+
+| Diagnostic fragment                                                                                                       | Supported action                                                                                                                                                          |
+| ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Validation of samplesheet failed` and a named field                                                                      | Correct the schema violation. Required columns must be present; schema-optional columns may be omitted; unexpected columns are rejected. Column order is not significant. |
+| `header row 1 repeats column ...`                                                                                         | Keep each column name once. Quoted header names are accepted.                                                                                                             |
+| `no genotype group is populated`, `a second genotype group is populated` or `genotype group ... is only partly populated` | Populate exactly one complete representation: `pgen`/`psam`/`pvar` or `bed`/`bim`/`fam`.                                                                                  |
+| `do not share one basename stem`                                                                                          | Rename the members of the group so that they share one prefix.                                                                                                            |
+| `duplicate cohort_id` or `duplicate analysis_id`                                                                          | Keep one row for each identity. Conflicting duplicates also report the fields that differ.                                                                                |
+| `undefined cohort_id`                                                                                                     | Make the analysis row's `cohort_id` match one cohort-manifest identity exactly.                                                                                           |
+| `unknown method` or `listed more than once`                                                                               | Use only the accepted values the diagnostic lists, each at most once. This release lists none, so leave both selector cells empty.                                        |
+| A binary `case_value` or `control_value` diagnostic                                                                       | Supply both distinct source codes for a binary trait. Remove both from a quantitative row. The pipeline does not infer `trait_type` from phenotype values.                |
+| A `population_prevalence` diagnostic                                                                                      | Use it only for a binary analysis whose selected estimator consumes it. See [Analysis manifest fields](#analysis-manifest-fields).                                        |
+
+### Method-options validation failed
+
+The diagnostic names the document, analysis ID, fully qualified option and reason. Fix malformed JSON, name only analyses declared in the analysis manifest, and use only the `analyses` namespace described under [Advanced method options](#advanced-method-options). Operational settings such as process resources and tool threads belong in run or profile configuration, not `--method_options`.
+
+### A process failed
+
+1. Copy the process name and work-directory hash from the terminal or `.nextflow.log`.
+2. Inspect `.command.err`, `.command.out` and `.command.log` in that task directory; `.command.sh` records the executed command.
+3. Correct the reported input, configuration, container, filesystem or resource problem.
+4. Relaunch the same command with `-resume`; do not delete `work/` or `.nextflow/` first.
+
+Selected resource failures are retried with larger requests, subject to `process.resourceLimits`. See [Resource requests](#resource-requests) and the general [nf-core troubleshooting guide](https://nf-co.re/docs/running/troubleshooting).
+
+### Expected results are missing
+
+- Prepared phenotypes and covariates are unpublished by default; enable `--save_normalised_phenotypes` before expecting `phenotypes/`.
+- Every cohort publishes its view record under `genotypes/<cohort_id>/`; the genotype files themselves are never copied.
+- Published intermediates are retention outputs, not importable cross-run caches. Supported reuse requires retained Nextflow work and `-resume`.
+
+### `-resume` did not reuse work
+
+Nextflow reuses a task only when its inputs, pipeline code and relevant configuration still match a retained cache entry. Keep the original `work/` directory and `.nextflow/` cache, rerun from the same launch context where practical, and use `nextflow log` to find a run name for `-resume <run-name>`. A changed input file, manifest, method option, pipeline revision, process configuration or missing work directory can require recomputation. See [`-resume`](#-resume).
+
+### Get help
+
+Before requesting help, retain the pipeline version, exact launch command with secrets removed, `.nextflow.log`, the failing process name and relevant `.command.*` files, the reported manifest row or a minimal redacted reproducer, executor/profile and container runtime, and whether the original work directory remains available for `-resume`.
+
+Use the [nf-core troubleshooting guide](https://nf-co.re/docs/running/troubleshooting), open a [GitHub issue](https://github.com/nf-core/gwas/issues) with a reproducible report, or ask in the nf-core [`#gwas` Slack channel](https://nfcore.slack.com/channels/gwas).

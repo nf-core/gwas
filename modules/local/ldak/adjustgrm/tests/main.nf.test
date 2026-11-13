@@ -59,8 +59,8 @@ nextflow_process {
                     }
                     .groupTuple(by: 0)
 
-                input[0] = grouped_grms.combine(mgrm_file).map { group_id, bins, ids, details, adjusts, mgrm ->
-                    tuple([ id: group_id ], mgrm, bins + ids + details + adjusts)
+                input[0] = grouped_grms.combine(mgrm_file).map { group_id, bins, ids, details, adjusts, mgrm_path ->
+                    tuple([ id: group_id ], mgrm_path, bins + ids + details + adjusts)
                 }
                 """
             }

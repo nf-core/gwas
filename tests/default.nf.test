@@ -4,6 +4,10 @@ nextflow_pipeline {
     script "../main.nf"
     tag "pipeline"
 
+    tag "default"
+
+    // The profile owns its portable fixture-backed manifests. Keeping `outdir` as the only test
+    // override means this exercises the same public configuration a researcher invokes directly.
     test("-profile test") {
 
         when {
@@ -13,20 +17,62 @@ nextflow_pipeline {
         }
 
         then {
-            // stable_path: All files + folders in ${params.outdir}/ with a stable path (including file name)
-            def stable_path = getAllFilesFromDir(params.outdir, relative: true, includeDir: true, ignore: ['pipeline_info/*.{html,json,txt}'])
-            // stable_content: All files in ${params.outdir}/ with stable content
-            def stable_content = getAllFilesFromDir(params.outdir, ignoreFile: 'tests/.nftignore')
-            assert workflow.success
+            def versions = new File("${params.outdir}/pipeline_info/nf_core_gwas_software_mqc_versions.yml")
+            def multiqc_report = new File("${params.outdir}/multiqc/multiqc_report.html")
+            def analysis_plan = new File("${params.outdir}/multiqc/multiqc_data/multiqc_nf-core-gwas-analysis-plan-table.txt")
+            def view = new groovy.json.JsonSlurper().parse(new File("${params.outdir}/genotypes/example_cohort/example_cohort.genotype_view.json"))
+            def stable_name_genotypes = getAllFilesFromDir("${params.outdir}/genotypes", relative: true, includeDir: true).findAll { path -> path.toString() }
+            def stable_path_genotypes = getAllFilesFromDir("${params.outdir}/genotypes").findAll { path -> path.toString() }
+            def stable_name_phenotypes = getAllFilesFromDir("${params.outdir}/phenotypes", relative: true, includeDir: true).findAll { path -> path.toString() }
+            def stable_path_phenotypes = getAllFilesFromDir("${params.outdir}/phenotypes").findAll { path -> path.toString() }
+            def stable_name_multiqc = getAllFilesFromDir("${params.outdir}/multiqc", relative: true, includeDir: true).findAll { path -> path.toString() }
+            def stable_path_multiqc = getAllFilesFromDir(
+                "${params.outdir}",
+                ignoreFile: 'tests/.nftignore',
+                include: ['multiqc/**'],
+            ).findAll { path -> path.toString() }
+            def stable_name_pipeline_info = getAllFilesFromDir(
+                "${params.outdir}/pipeline_info",
+                relative: true,
+                includeDir: true,
+                ignore: ['*.{html,json,txt}'],
+            ).findAll { path -> path.toString() }
+            def stable_path_pipeline_info = getAllFilesFromDir(
+                "${params.outdir}",
+                ignoreFile: 'tests/.nftignore',
+                include: ['pipeline_info/**'],
+            ).findAll { path -> path.toString() }
             assertAll(
-                { assert snapshot(
-                    // pipeline versions.yml file for multiqc from which Nextflow version is removed because we test pipelines on multiple Nextflow versions
-                    removeNextflowVersion("$outputDir/pipeline_info/nf_core_gwas_software_mqc_versions.yml"),
-                    // All stable path name, with a relative path
-                    stable_path,
-                    // All files with stable contents
-                    stable_content
-                ).match() }
+                { assert workflow.success },
+                // The routine profile prepares the public quantitative example and publishes its prepared
+                // phenotype through the profile's save control. Every cohort publishes its view record under
+                // `genotypes/` to explain the run's other keys.
+                { assert new File("${params.outdir}").list().toList().sort() == ['genotypes', 'multiqc', 'phenotypes', 'pipeline_info'] },
+                { assert TRACE.count(workflow, 'PREPARE_GENOTYPE_SOURCE') == 1 },
+                { assert TRACE.count(workflow, 'PREPARE_PHENOTYPE_INPUTS') == 1 },
+                // A PGEN cohort with no PLINK 1 consumer is never projected.
+                { assert TRACE.count(workflow, 'PLINK2_MAKEBED') == 0 },
+                { assert TRACE.count(workflow, 'MULTIQC') == 1 },
+                { assert view.source.format == 'plink2' },
+                { assert view.source.identity.mode == 'sha256' },
+                { assert view.native_view.format == 'plink2' },
+                { assert view.plink1 == null },
+                { assert analysis_plan.text.readLines() == [
+                    'Sample\tcohort\ttrait\ttrait_type\tgenome_build\tancestry\tassociation_methods\theritability_methods',
+                    'example_quantitative\texample_cohort\tQT\tquantitative\tGRCh37\tEUR\t-\t-',
+                ] },
+                { assert multiqc_report.text.contains('This table describes the run plan, not per-method completion or scientific results.') },
+                { assert multiqc_report.text.contains('Analysis ID') },
+                { assert !multiqc_report.text.contains('Association testing was performed') },
+                { assert !multiqc_report.text.contains('SNP-based heritability was estimated') },
+                { assert multiqc_report.text.contains('The run report was generated with MultiQC') },
+                { assert multiqc_report.text.contains('title="nf-core/gwas"') },
+                { assert multiqc_report.text.contains('class="custom_logo') },
+                { assert snapshot(removeNextflowVersion(versions.toString())).match('versions') },
+                { assert snapshot(stable_name_genotypes, stable_path_genotypes).match('genotypes') },
+                { assert snapshot(stable_name_phenotypes, stable_path_phenotypes).match('phenotypes') },
+                { assert snapshot(stable_name_multiqc, stable_path_multiqc).match('multiqc') },
+                { assert snapshot(stable_name_pipeline_info, stable_path_pipeline_info).match('pipeline_info') },
             )
         }
     }

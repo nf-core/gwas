@@ -1,0 +1,173 @@
+nextflow_workflow {
+
+    name "Test subworkflow VALIDATE_GWAS_INPUT"
+    script "../main.nf"
+    workflow "VALIDATE_GWAS_INPUT"
+    tag "subworkflow"
+    tag "subworkflows_local"
+    tag "input"
+    tag "relational"
+
+    test("linked manifests emit the canonical analysis tuple") {
+        when {
+            workflow {
+                """
+                input[0] = file('${RELATIONAL.cohorts(projectDir, outputDir, 'validate_gwas_input')}', checkIfExists: true)
+                input[1] = file('${RELATIONAL.analyses(projectDir, outputDir, 'validate_gwas_input')}', checkIfExists: true)
+                input[2] = null
+                """
+            }
+        }
+
+        then {
+            def records = workflow.out.analyses
+            def meta = records[0][0]
+            assertAll(
+                { assert workflow.success },
+                { assert records.size() == 1 },
+                { assert meta.id == 'example_pgen_qt' },
+                { assert meta.cohort == 'example_pgen' },
+                { assert meta.association_methods == [] },
+                { assert meta.heritability_methods == [] },
+                { assert meta.genotype_format == 'plink2' },
+                { assert !meta.is_binary },
+                { assert meta.method_options == [:] },
+                { assert records[0].size() == 5 },
+                { assert records[0][1].collect { input -> input.tokenize('.').last() } == ['pgen', 'psam', 'pvar'] },
+                { assert records[0][2].endsWith('example.pheno') },
+            )
+        }
+    }
+
+    test("schema-optional manifest columns may be omitted") {
+        tag "manifest_schema"
+
+        when {
+            workflow {
+                """
+                input[0] = file('${RELATIONAL.retainColumns(
+                    RELATIONAL.cohorts(projectDir, outputDir, 'omitted_optional_columns'),
+                    ['cohort_id', 'genome_build', 'ancestry', 'pgen', 'psam', 'pvar'],
+                )}', checkIfExists: true)
+                input[1] = file('${RELATIONAL.retainColumns(
+                    RELATIONAL.analyses(projectDir, outputDir, 'omitted_optional_columns'),
+                    ['analysis_id', 'cohort_id', 'trait_id', 'trait_type', 'phenotype', 'phenotype_column'],
+                )}', checkIfExists: true)
+                input[2] = null
+                """
+            }
+        }
+
+        then {
+            def analysis = workflow.out.analyses[0]
+            assertAll(
+                { assert workflow.success },
+                { assert analysis[0].id == 'example_pgen_qt' },
+                { assert analysis[1].collect { genotype -> genotype.toString().tokenize('.').last() } == ['pgen', 'psam', 'pvar'] },
+                { assert analysis[3..4].every { optional -> optional == [] } },
+            )
+        }
+    }
+
+    test("quoted manifest headers preserve the schema contract") {
+        tag "manifest_schema"
+
+        when {
+            workflow {
+                """
+                input[0] = file('${RELATIONAL.quoteHeaders(RELATIONAL.cohorts(projectDir, outputDir, 'quoted_headers'))}', checkIfExists: true)
+                input[1] = file('${RELATIONAL.quoteHeaders(RELATIONAL.analyses(projectDir, outputDir, 'quoted_headers'))}', checkIfExists: true)
+                input[2] = null
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert workflow.out.analyses[0][0].id == 'example_pgen_qt' },
+            )
+        }
+    }
+
+    // A cohort that declares no view identity must carry no `genotype_view_id` key at all, not a null one:
+    // analysis metadata is a task-hash input everywhere downstream, so an unconditional null would move every
+    // existing analysis's hash and every pinned snapshot for cohorts that declare nothing.
+    test("an undeclared genotype view identity leaves the key absent from analysis metadata") {
+        tag "genotype_view_id"
+
+        when {
+            workflow {
+                """
+                input[0] = file('${RELATIONAL.cohorts(projectDir, outputDir, 'undeclared_view_id')}', checkIfExists: true)
+                input[1] = file('${RELATIONAL.analyses(projectDir, outputDir, 'undeclared_view_id')}', checkIfExists: true)
+                input[2] = null
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert !workflow.out.analyses[0][0].containsKey('genotype_view_id') },
+            )
+        }
+    }
+
+    def declaredViewIds = [
+        [name: 'a bare hexadecimal digest', token: '52d1d326413775cd52d1d326413775cd52d1d326413775cd52d1d326413775cd'],
+        [name: 'a shortest-accepted digest', token: '52d1d326413775cd'],
+        [name: 'a backend-namespaced identity', token: 'biofuse:52d1d326413775cd'],
+    ]
+
+    declaredViewIds.each { scenario ->
+        test("${scenario.name} declared as genotype_view_id reaches the analysis metadata") {
+            tag "genotype_view_id"
+
+            when {
+                workflow {
+                    """
+                    input[0] = file('${RELATIONAL.cohorts(projectDir, outputDir, "declared_view_id_${scenario.token.replaceAll(/[^a-z0-9]/, '_')}", { rows -> rows[0].genotype_view_id = scenario.token })}', checkIfExists: true)
+                    input[1] = file('${RELATIONAL.analyses(projectDir, outputDir, "declared_view_id_${scenario.token.replaceAll(/[^a-z0-9]/, '_')}")}', checkIfExists: true)
+                    input[2] = null
+                    """
+                }
+            }
+
+            then {
+                assertAll(
+                    { assert workflow.success },
+                    { assert workflow.out.analyses[0][0].genotype_view_id == scenario.token },
+                )
+            }
+        }
+    }
+
+    // The pairing rule lives in the VALIDATE_GWAS_INPUT workflow body (main.nf), not in a resolver, so it has
+    // no function form. Its other half — a cohort manifest with no analysis manifest — stays at pipeline level
+    // in tests/relational_input_analyses.nf.test, where it also proves that a null analysis manifest (`--input`)
+    // passes nf-schema; this half needs no pipeline run to make its point and is asserted here instead.
+    test("an analysis manifest without a cohort manifest is rejected") {
+        tag "manifest_pairing"
+
+        when {
+            workflow {
+                """
+                input[0] = null
+                input[1] = file('${RELATIONAL.analyses(projectDir, outputDir, 'analysis_only')}', checkIfExists: true)
+                input[2] = null
+                """
+            }
+        }
+
+        then {
+            def report = VALIDATION.console(workflow)
+            assertAll(
+                { assert !workflow.success },
+                { assert report.contains('the analysis manifest --input') },
+                { assert report.contains('--cohort_manifest is missing; linked manifests require both') },
+            )
+        }
+    }
+
+}
